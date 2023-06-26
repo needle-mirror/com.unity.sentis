@@ -1,0 +1,399 @@
+// This is auto-generated -- do not modify directly
+
+#pragma kernel ReduceMaxFloat FLOAT REDUCEMAXFLOAT
+#pragma kernel ReduceMinFloat FLOAT REDUCEMINFLOAT
+#pragma kernel ReduceSumFloat FLOAT REDUCESUMFLOAT
+#pragma kernel ReduceSumSquareFloat FLOAT REDUCESUMSQUAREFLOAT
+#pragma kernel ReduceMeanFloat FLOAT REDUCEMEANFLOAT
+#pragma kernel ReduceProdFloat FLOAT REDUCEPRODFLOAT
+#pragma kernel ReduceL1Float FLOAT REDUCEL1FLOAT
+#pragma kernel ReduceL2Float FLOAT REDUCEL2FLOAT
+#pragma kernel ReduceSqrtFloat FLOAT REDUCESQRTFLOAT
+#pragma kernel ReduceLogSumFloat FLOAT REDUCELOGSUMFLOAT
+#pragma kernel ReduceMaxInt INT REDUCEMAXINT
+#pragma kernel ReduceMinInt INT REDUCEMININT
+#pragma kernel ReduceSumInt INT REDUCESUMINT
+#pragma kernel ReduceSumSquareInt INT REDUCESUMSQUAREINT
+#pragma kernel ReduceProdInt INT REDUCEPRODINT
+#pragma kernel ReduceL1Int INT REDUCEL1INT
+
+#include "Tensor.cginc"
+
+int shapeO[8];
+int stridesO[8];
+int shapeX[8];
+int stridesX[8];
+int shapeY[8];
+int stridesY[8];
+uint2 unrolledDispatchArgs;
+int rank;
+int innerLength;
+int reduceLength;
+
+#ifdef INT
+StructuredBuffer<int> Xptr;
+StructuredBuffer<int> Bptr;
+RWStructuredBuffer<int> Optr;
+#else
+StructuredBuffer<float> Xptr;
+StructuredBuffer<float> Bptr;
+RWStructuredBuffer<float> Optr;
+#endif
+
+#ifdef REDUCEMAXFLOAT
+[numthreads(64, 1, 1)]
+void ReduceMaxFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    float accVal = FLT_MIN;
+    for (int z = 0; z < reduceLength; ++z)
+    {
+        float v = Xptr[y * innerLength * reduceLength + z * innerLength + x];
+        accVal = max(accVal, v);
+    }
+
+    Optr[y * innerLength + x] = accVal;
+}
+#endif
+
+#ifdef REDUCEMINFLOAT
+[numthreads(64, 1, 1)]
+void ReduceMinFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    float accVal = FLT_MAX;
+    for (int z = 0; z < reduceLength; ++z)
+    {
+        float v = Xptr[y * innerLength * reduceLength + z * innerLength + x];
+        accVal = min(accVal, v);
+    }
+
+    Optr[y * innerLength + x] = accVal;
+}
+#endif
+
+#ifdef REDUCESUMFLOAT
+[numthreads(64, 1, 1)]
+void ReduceSumFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    float accVal = 0.0f;
+    for (int z = 0; z < reduceLength; ++z)
+    {
+        float v = Xptr[y * innerLength * reduceLength + z * innerLength + x];
+        accVal = accVal + v;
+    }
+
+    Optr[y * innerLength + x] = accVal;
+}
+#endif
+
+#ifdef REDUCESUMSQUAREFLOAT
+[numthreads(64, 1, 1)]
+void ReduceSumSquareFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    float accVal = 0.0f;
+    for (int z = 0; z < reduceLength; ++z)
+    {
+        float v = Xptr[y * innerLength * reduceLength + z * innerLength + x];
+        v = v * v;
+        accVal = accVal + v;
+    }
+
+    Optr[y * innerLength + x] = accVal;
+}
+#endif
+
+#ifdef REDUCEMEANFLOAT
+[numthreads(64, 1, 1)]
+void ReduceMeanFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    float accVal = 0.0f;
+    for (int z = 0; z < reduceLength; ++z)
+    {
+        float v = Xptr[y * innerLength * reduceLength + z * innerLength + x];
+        accVal = accVal + v;
+    }
+
+    float normalization = 1.0f / reduceLength;    Optr[y * innerLength + x] = accVal * normalization;
+}
+#endif
+
+#ifdef REDUCEPRODFLOAT
+[numthreads(64, 1, 1)]
+void ReduceProdFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    float accVal = 1.0f;
+    for (int z = 0; z < reduceLength; ++z)
+    {
+        float v = Xptr[y * innerLength * reduceLength + z * innerLength + x];
+        accVal = accVal * v;
+    }
+
+    Optr[y * innerLength + x] = accVal;
+}
+#endif
+
+#ifdef REDUCEL1FLOAT
+[numthreads(64, 1, 1)]
+void ReduceL1Float(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    float accVal = 0.0f;
+    for (int z = 0; z < reduceLength; ++z)
+    {
+        float v = Xptr[y * innerLength * reduceLength + z * innerLength + x];
+        v = abs(v);
+        accVal = accVal + v;
+    }
+
+    Optr[y * innerLength + x] = accVal;
+}
+#endif
+
+#ifdef REDUCEL2FLOAT
+[numthreads(64, 1, 1)]
+void ReduceL2Float(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    float accVal = 0.0f;
+    for (int z = 0; z < reduceLength; ++z)
+    {
+        float v = Xptr[y * innerLength * reduceLength + z * innerLength + x];
+        v = v * v;
+        accVal = accVal + v;
+    }
+
+    Optr[y * innerLength + x] = sqrt(accVal);
+}
+#endif
+
+#ifdef REDUCESQRTFLOAT
+[numthreads(64, 1, 1)]
+void ReduceSqrtFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    float accVal = 0.0f;
+    for (int z = 0; z < reduceLength; ++z)
+    {
+        float v = Xptr[y * innerLength * reduceLength + z * innerLength + x];
+        accVal = accVal + v;
+    }
+
+    Optr[y * innerLength + x] = sqrt(accVal);
+}
+#endif
+
+#ifdef REDUCELOGSUMFLOAT
+[numthreads(64, 1, 1)]
+void ReduceLogSumFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    float accVal = 0.0f;
+    for (int z = 0; z < reduceLength; ++z)
+    {
+        float v = Xptr[y * innerLength * reduceLength + z * innerLength + x];
+        accVal = accVal + v;
+    }
+
+    Optr[y * innerLength + x] = log(accVal);
+}
+#endif
+
+#ifdef REDUCEMAXINT
+[numthreads(64, 1, 1)]
+void ReduceMaxInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    int accVal = INT_MIN;
+    for (int z = 0; z < reduceLength; ++z)
+    {
+        int v = Xptr[y * innerLength * reduceLength + z * innerLength + x];
+        accVal = max(accVal, v);
+    }
+
+    Optr[y * innerLength + x] = accVal;
+}
+#endif
+
+#ifdef REDUCEMININT
+[numthreads(64, 1, 1)]
+void ReduceMinInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    int accVal = INT_MAX;
+    for (int z = 0; z < reduceLength; ++z)
+    {
+        int v = Xptr[y * innerLength * reduceLength + z * innerLength + x];
+        accVal = min(accVal, v);
+    }
+
+    Optr[y * innerLength + x] = accVal;
+}
+#endif
+
+#ifdef REDUCESUMINT
+[numthreads(64, 1, 1)]
+void ReduceSumInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    int accVal = 0;
+    for (int z = 0; z < reduceLength; ++z)
+    {
+        int v = Xptr[y * innerLength * reduceLength + z * innerLength + x];
+        accVal = accVal + v;
+    }
+
+    Optr[y * innerLength + x] = accVal;
+}
+#endif
+
+#ifdef REDUCESUMSQUAREINT
+[numthreads(64, 1, 1)]
+void ReduceSumSquareInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    int accVal = 0;
+    for (int z = 0; z < reduceLength; ++z)
+    {
+        int v = Xptr[y * innerLength * reduceLength + z * innerLength + x];
+        v = v * v;
+        accVal = accVal + v;
+    }
+
+    Optr[y * innerLength + x] = accVal;
+}
+#endif
+
+#ifdef REDUCEPRODINT
+[numthreads(64, 1, 1)]
+void ReduceProdInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    int accVal = 1;
+    for (int z = 0; z < reduceLength; ++z)
+    {
+        int v = Xptr[y * innerLength * reduceLength + z * innerLength + x];
+        accVal = accVal * v;
+    }
+
+    Optr[y * innerLength + x] = accVal;
+}
+#endif
+
+#ifdef REDUCEL1INT
+[numthreads(64, 1, 1)]
+void ReduceL1Int(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    int accVal = 0;
+    for (int z = 0; z < reduceLength; ++z)
+    {
+        int v = Xptr[y * innerLength * reduceLength + z * innerLength + x];
+        v = abs(v);
+        accVal = accVal + v;
+    }
+
+    Optr[y * innerLength + x] = accVal;
+}
+#endif
+

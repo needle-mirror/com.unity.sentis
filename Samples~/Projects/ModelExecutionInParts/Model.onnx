@@ -1,0 +1,32 @@
+pytorch1.13.1:Ã
+0
+input.1/relu/Relu_output_0
+/relu/Relu"Relu
+@
+/relu/Relu_output_0/relu_1/Relu_output_0/relu_1/Relu"Relu
+B
+/relu_1/Relu_output_0/relu_2/Relu_output_0/relu_2/Relu"Relu
+B
+/relu_2/Relu_output_0/relu_3/Relu_output_0/relu_3/Relu"Relu
+B
+/relu_3/Relu_output_0/relu_4/Relu_output_0/relu_4/Relu"Relu
+B
+/relu_4/Relu_output_0/relu_5/Relu_output_0/relu_5/Relu"Relu
+B
+/relu_5/Relu_output_0/relu_6/Relu_output_0/relu_6/Relu"Relu
+B
+/relu_6/Relu_output_0/relu_7/Relu_output_0/relu_7/Relu"Relu
+B
+/relu_7/Relu_output_0/relu_8/Relu_output_0/relu_8/Relu"Relu
+B
+/relu_8/Relu_output_0/relu_9/Relu_output_0/relu_9/Relu"Relu
+D
+/relu_9/Relu_output_0/relu_10/Relu_output_0/relu_10/Relu"Relu
+1
+/relu_10/Relu_output_012/relu_11/Relu"Relu	torch_jitZ
+input.1
+	
+€b
+12
+	
+€B

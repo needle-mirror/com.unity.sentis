@@ -1,0 +1,11 @@
+#pragma kernel CSMain
+
+RWStructuredBuffer<float> Result;
+
+[numthreads(1,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    // For simplicity, this code assumes dispatch will be (m_GpuTensorX.maxCapacity, 1, 1) with numthreads(1,1,1),
+    // so it only needs to index using id.x.
+    Result[id.x] = 41;
+}

@@ -1,0 +1,35 @@
+#pragma kernel AxisNormalizationTail
+#include "Tensor.cginc"
+
+StructuredBuffer<float> Xptr;
+StructuredBuffer<float> Sptr;
+StructuredBuffer<float> Bptr;
+StructuredBuffer<float> Wptr;
+RWStructuredBuffer<float> Optr;
+
+uint axisDim, outerLength;
+float epsilon;
+
+[numthreads(8, 8, 1)]
+void AxisNormalizationTail(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint dim = dispatchThreadID.x;
+    uint outer = dispatchThreadID.y;
+
+    if (outer >= outerLength || dim >= axisDim)
+        return;
+
+    float mean = Wptr[(outer * 2 + 0)];
+    float variance = Wptr[(outer * 2 + 1)];
+
+    float scale = Sptr[dim];
+    float bias = Bptr[dim];
+
+    uint threadIndex = (outer * axisDim + dim);
+    float v = Xptr[threadIndex];
+
+    v = (v - mean) / sqrt(variance + epsilon);
+    v = scale * v + bias;
+
+    Optr[threadIndex] = v;
+}

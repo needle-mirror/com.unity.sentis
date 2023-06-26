@@ -1,0 +1,31 @@
+pytorch1.10:Þ
+ƒ
+x
+yresultAdd_0"Add2æC:\src\UnityInferenceEngine\com.unity.barracuda\Samples\Resources\OnnxModels\AdderTorchExport.py(10): forward
+C:\Users\jeremyco\AppData\Local\pypoetry\Cache\virtualenvs\mlgfx-bXPYw4Td-py3.6\lib\site-packages\torch\nn\modules\module.py(1090): _slow_forward
+C:\Users\jeremyco\AppData\Local\pypoetry\Cache\virtualenvs\mlgfx-bXPYw4Td-py3.6\lib\site-packages\torch\nn\modules\module.py(1102): _call_impl
+C:\Users\jeremyco\AppData\Local\pypoetry\Cache\virtualenvs\mlgfx-bXPYw4Td-py3.6\lib\site-packages\torch\jit\_trace.py(118): wrapper
+C:\Users\jeremyco\AppData\Local\pypoetry\Cache\virtualenvs\mlgfx-bXPYw4Td-py3.6\lib\site-packages\torch\jit\_trace.py(132): forward
+C:\Users\jeremyco\AppData\Local\pypoetry\Cache\virtualenvs\mlgfx-bXPYw4Td-py3.6\lib\site-packages\torch\nn\modules\module.py(1102): _call_impl
+C:\Users\jeremyco\AppData\Local\pypoetry\Cache\virtualenvs\mlgfx-bXPYw4Td-py3.6\lib\site-packages\torch\jit\_trace.py(1166): _get_trace_graph
+C:\Users\jeremyco\AppData\Local\pypoetry\Cache\virtualenvs\mlgfx-bXPYw4Td-py3.6\lib\site-packages\torch\onnx\utils.py(388): _trace_and_get_graph_from_model
+C:\Users\jeremyco\AppData\Local\pypoetry\Cache\virtualenvs\mlgfx-bXPYw4Td-py3.6\lib\site-packages\torch\onnx\utils.py(437): _create_jit_graph
+C:\Users\jeremyco\AppData\Local\pypoetry\Cache\virtualenvs\mlgfx-bXPYw4Td-py3.6\lib\site-packages\torch\onnx\utils.py(493): _model_to_graph
+C:\Users\jeremyco\AppData\Local\pypoetry\Cache\virtualenvs\mlgfx-bXPYw4Td-py3.6\lib\site-packages\torch\onnx\utils.py(729): _export
+C:\Users\jeremyco\AppData\Local\pypoetry\Cache\virtualenvs\mlgfx-bXPYw4Td-py3.6\lib\site-packages\torch\onnx\utils.py(111): export
+C:\Users\jeremyco\AppData\Local\pypoetry\Cache\virtualenvs\mlgfx-bXPYw4Td-py3.6\lib\site-packages\torch\onnx\__init__.py(320): export
+C:\src\UnityInferenceEngine\com.unity.barracuda\Samples\Resources\OnnxModels\AdderTorchExport.py(18): <module>
+torch-jit-exportZ
+x
+	
+
+€Z
+y
+
+
+b
+result
+	
+
+€B	rz
+custom_metadata_from_onnx]This is a custom value saved in the .onnx file, written while exporting the model from python

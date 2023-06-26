@@ -1,0 +1,60 @@
+// This is auto-generated -- do not modify directly
+
+#pragma kernel ExpBiasReduceFloat
+#pragma kernel ReduceLogSumExpFloat
+
+#include "Tensor.cginc"
+
+uint2 unrolledDispatchArgs;
+float normalization;
+int innerLength;
+int reduceLength;
+
+StructuredBuffer<float> Xptr;
+RWStructuredBuffer<float> Optr;
+StructuredBuffer<float> Bptr;
+
+[numthreads(64, 1, 1)]
+void ExpBiasReduceFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    float accum = 0.0f;
+    for (int z = 0; z < reduceLength; ++z)
+    {
+        float v = Xptr[y * innerLength * reduceLength + z * innerLength + x];
+        float b = Bptr[y * innerLength + x];
+        accum += exp(v - b);
+    }
+    Optr[y * innerLength + x] = accum;
+}
+
+[numthreads(64, 1, 1)]
+void ReduceLogSumExpFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+    int x = threadIdx % innerLength;
+    int y = threadIdx / innerLength;
+
+    float maxVal = FLT_MIN;
+    for (int zm = 0; zm < reduceLength; ++zm)
+    {
+        float v = Xptr[y * innerLength * reduceLength + zm * innerLength + x];
+        maxVal = max(v, maxVal);
+    }
+
+    float expSumVal = 0.0f;
+    for (int zr = 0; zr < reduceLength; ++zr)
+    {
+        float v = Xptr[y * innerLength * reduceLength + zr * innerLength + x];
+        expSumVal += exp(v - maxVal);
+    }
+
+    Optr[y * innerLength + x] = log(expSumVal) + maxVal;
+}

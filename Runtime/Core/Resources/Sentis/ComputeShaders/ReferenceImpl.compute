@@ -1,0 +1,83 @@
+#pragma kernel MatMul
+#pragma kernel MatMul2D
+
+#include "Tensor.cginc"
+
+StructuredBuffer<float> Xptr;
+StructuredBuffer<float> Yptr;
+StructuredBuffer<float> Kptr;
+StructuredBuffer<float> Wptr;
+StructuredBuffer<float> Bptr;
+RWStructuredBuffer<float> Optr;
+
+uint AM, AN;
+uint BM, BN;
+uint CB, CM, CN;
+uint rank;
+uint shapeO[6], stridesO[6];
+uint shapeA[6], stridesA[6];
+uint shapeB[6], stridesB[6];
+
+[numthreads(4, 4, 4)]
+void MatMul(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint batchOffSetC = dispatchThreadID.x;
+    uint j = dispatchThreadID.y;
+    uint i = dispatchThreadID.z;
+
+    if (i >= CN) return;
+    if (j >= CM) return;
+    if (batchOffSetC >= CB) return;
+
+    uint batchOffSetA = 0; uint batchOffSetB = 0;
+    for (uint axis = 5; axis > (5 - (rank - 2)); axis--)
+    {
+        batchOffSetA += (((batchOffSetC / stridesO[axis]) % shapeO[axis]) % shapeA[axis]) * stridesA[axis];
+        batchOffSetB += (((batchOffSetC / stridesO[axis]) % shapeO[axis]) % shapeB[axis]) * stridesB[axis];
+    }
+
+
+    float v = 0.0f;
+    for (uint l = 0; l < AN; ++l)
+    {
+        float vX = Xptr[batchOffSetA * AM * AN + j * AN + l];
+        float vY = Bptr[batchOffSetB * BM * BN + l * BN + i];
+        v += vX * vY;
+    }
+
+    Optr[batchOffSetC * CM * CN + j * CN + i] = v;
+}
+
+uint O_height, O_width;
+uint Y_height, Y_width;
+uint X_height, X_width;
+uint xTranspose, yTranspose;
+uint xOffset, yOffset;
+
+[numthreads(8, 8, 1)]
+void MatMul2D(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint y = dispatchThreadID.x;
+    uint x = dispatchThreadID.y;
+    if (y >= O_height) return;
+    if (x >= O_width) return;
+
+    #if defined(SHADER_API_MOBILE)
+    uint maxXIndex = X_height * X_width - 1;
+    uint maxYIndex = Y_height * Y_width - 1;
+    #endif
+
+    float v = 0;
+    for (uint i = 0; i < (xTranspose == 1 ? X_height : X_width); ++i)
+    {
+        #if defined(SHADER_API_MOBILE)
+        float vX = xTranspose == 1 ? Xptr[xOffset + min(i * X_width + y, maxXIndex)] : Xptr[xOffset + min(y * X_width + i, maxXIndex)];
+        float vY = yTranspose == 1 ? Yptr[yOffset + min(x * Y_width + i, maxYIndex)] : Yptr[yOffset + min(i * Y_width + x, maxYIndex)];
+        #else
+        float vX = xTranspose == 1 ? Xptr[xOffset + i * X_width + y] : Xptr[xOffset + y * X_width + i];
+        float vY = yTranspose == 1 ? Yptr[yOffset + x * Y_width + i] : Yptr[yOffset + i * Y_width + x];
+        #endif
+        v += vX * vY;
+    }
+    Optr[y * O_width + x] = v;
+}

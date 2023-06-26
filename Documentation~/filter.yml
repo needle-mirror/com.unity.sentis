@@ -1,0 +1,20 @@
+apiRules:
+  - exclude:
+      # Exclude types from Onnx.* namespace
+      uidRegex: ^Onnx\..*$
+      type: Type
+
+  - exclude:
+      # Exclude types from Unity.Sentis.Editor.* namespace
+      uidRegex: ^Unity\.Sentis\.Editor\..*$
+      type: Type
+
+  - exclude:
+      # Exclude types from Unity.Sentis.TensorCachingAllocator type
+      uidRegex: ^Unity\.Sentis\.TensorCachingAllocator$
+      type: Type
+
+  - exclude:
+      # Exclude types from Unity.Sentis.ONNX.ONNXNodeWrapper type
+      uidRegex: ^Unity\.Sentis\.ONNX\.ONNXNodeWrapper.*$
+      type: Type

@@ -1,0 +1,16 @@
+{
+    "name": "Unity.Sentis.Samples",
+    "references": [
+        "Unity.Sentis",
+        "Unity.Burst",
+        "Unity.Sentis.ONNX"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": []
+}
