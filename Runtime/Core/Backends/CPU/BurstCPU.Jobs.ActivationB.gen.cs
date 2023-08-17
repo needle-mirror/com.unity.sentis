@@ -15,7 +15,7 @@ using static Unity.Mathematics.math;
 
 namespace Unity.Sentis
 {
-public partial class CPUOps
+public partial class CPUBackend
 {
 
 
@@ -241,7 +241,7 @@ internal unsafe struct SoftplusJob : IJobParallelFor, IJobResourceDeclarationXO
     public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
     public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
 
-    float Apply(float v) { return log(exp(v) + 1.0f); }
+    float Apply(float v) { return log(1 + exp(-abs(v))) + max(v, 0); }
     public void Execute(int threadIdx)
     {
         float v = Xptr[threadIdx];

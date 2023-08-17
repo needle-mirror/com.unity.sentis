@@ -27,9 +27,9 @@ public class GenericWorker : IWorker
     Dictionary<string, TensorShape> m_InputShapes = new Dictionary<string, TensorShape>();
     IModelCompiler m_ModelCompiler;
 
-    IOps m_Ops;
+    IBackend m_Backend;
     IVars m_Vars;
-    CPUOps m_FallbackOps;
+    CPUBackend m_FallbackBackend;
     HashSet<string> m_LayerCPUFallback;
 
     bool m_AllocatorIsStale = false;
@@ -43,21 +43,21 @@ public class GenericWorker : IWorker
     /// <summary>
     /// Initializes and returns an instance of `GenericWorker` for the specified `model` and `ops`.
     /// </summary>
-    public GenericWorker(Model model, IOps ops, IVars vars, bool verbose = false, bool takeoverWeights = false)
+    public GenericWorker(Model model, IBackend backend, IVars vars, bool verbose = false, bool takeoverWeights = false)
     {
         m_Model = model;
         m_DefaultInputName = GraphLogicAnalysis.GetDefaultInputName(model);
         m_DefaultOutputName = GraphLogicAnalysis.GetDefaultOutputName(model);
         m_Vars = vars;
-        m_Ops = ops;
-        if (ops.GetType() == typeof(CPUOps))
-            m_FallbackOps = (ops as CPUOps);
+        m_Backend = backend;
+        if (backend.GetType() == typeof(CPUBackend))
+            m_FallbackBackend = (backend as CPUBackend);
         else
-            m_FallbackOps = new CPUOps(m_Vars.GetAllocator());
+            m_FallbackBackend = new CPUBackend(m_Vars.GetAllocator());
 
         m_LayerCPUFallback = model.LayerCPUFallback;
 
-        m_ModelCompiler = ops as IModelCompiler;
+        m_ModelCompiler = backend as IModelCompiler;
         m_Verbose = verbose;
         m_TakeoverWeights = takeoverWeights;
 
@@ -72,7 +72,7 @@ public class GenericWorker : IWorker
         Dispose();
     }
 
-    public IOps GetOps() { return m_Ops; }
+    public IBackend GetBackend() { return m_Backend; }
 
     void OccupyAllocator()
     {
@@ -83,8 +83,8 @@ public class GenericWorker : IWorker
     {
         if (m_AllocatorIsStale)
         {
-            m_Ops.ResetAllocator();
-            m_FallbackOps.ResetAllocator();
+            m_Backend.ResetAllocator();
+            m_FallbackBackend.ResetAllocator();
             m_AllocatorIsStale = false;
             m_AllocatorIsOccupied = false;
         }
@@ -102,14 +102,14 @@ public class GenericWorker : IWorker
     public virtual void Dispose()
     {
         m_Vars?.Dispose();
-        m_Ops?.ResetAllocator(false); // clear allocator's memory
-        m_FallbackOps?.ResetAllocator(false); // clear allocator's memory
+        m_Backend?.ResetAllocator(false); // clear allocator's memory
+        m_FallbackBackend?.ResetAllocator(false); // clear allocator's memory
         m_InputShapes?.Clear();
 
         m_Vars = null;
-        m_Ops = null;
+        m_Backend = null;
         m_InputShapes = null;
-        m_FallbackOps = null;
+        m_FallbackBackend = null;
     }
 
     /// <inheritdoc/>
@@ -118,7 +118,7 @@ public class GenericWorker : IWorker
         m_InputShapes.Clear();
         foreach (var input in inputShapes)
             m_InputShapes.Add(input.Key, input.Value);
-        m_Vars.PrepareStorage(m_Model, m_Ops, m_InputShapes, m_TakeoverWeights);
+        m_Vars.PrepareStorage(m_Model, m_Backend, m_InputShapes, m_TakeoverWeights);
     }
 
     /// <inheritdoc/>
@@ -170,18 +170,18 @@ public class GenericWorker : IWorker
     }
 
     /// <inheritdoc/>
+    public virtual void FlushSchedule(bool blocking)
+    {
+        // force execution of scheduled ops by requesting results of the intermediate tensor from the device
+        m_SyncTensor.CompleteAllPendingOperations();
+    }
+
+    /// <inheritdoc/>
     public virtual IEnumerator StartManualSchedule(IDictionary<string, Tensor> inputs)
     {
         foreach (var entry in inputs)
             SetInput(entry.Key, entry.Value);
         return StartManualSchedule();
-    }
-
-    /// <inheritdoc/>
-    public virtual void FlushSchedule(bool blocking)
-    {
-        // force execution of scheduled ops by requesting results of the intermediate tensor from the device
-        m_SyncTensor.PrepareCacheForAccess(blocking);
     }
 
     /// <inheritdoc/>
@@ -200,7 +200,7 @@ public class GenericWorker : IWorker
         ResetAllocatorIfStaleAndNotOccupied();
         m_AllocatorIsStale = true;
 
-        m_Vars.PrepareStorage(m_Model, m_Ops, m_InputShapes, m_TakeoverWeights);
+        m_Vars.PrepareStorage(m_Model, m_Backend, m_InputShapes, m_TakeoverWeights);
 
         if (m_ModelCompiler != null)
             m_ModelCompiler.PrepareModel(m_Model, m_InputShapes, m_Vars);
@@ -226,9 +226,9 @@ public class GenericWorker : IWorker
             if (m_ModelCompiler != null)
                 m_ModelCompiler.PreExecuteLayer(l, inputs);
 
-            ctx.ops = m_Ops;
+            ctx.backend = m_Backend;
             if (m_LayerCPUFallback.Contains(l.name))
-                ctx.ops = m_FallbackOps;
+                ctx.backend = m_FallbackBackend;
 
             Profiler.BeginSample(l.profilerTag);
             Tensor X = l.Execute(inputs, ctx);
@@ -252,26 +252,20 @@ public class GenericWorker : IWorker
     }
 
     /// <inheritdoc/>
-    public virtual Tensor PeekOutput(bool prepareCacheForAccess = false)
+    public virtual Tensor PeekOutput()
     {
         Profiler.BeginSample("Sentis.PeekOutput");
         var X = m_Vars.PeekOutput(m_DefaultOutputName);
-
-        if (prepareCacheForAccess)
-            X.PrepareCacheForAccess(blocking:false); // schedule non-blocking download from GPU/NPU to CPU
         Profiler.EndSample();
 
         return X;
     }
 
     /// <inheritdoc/>
-    public virtual Tensor PeekOutput(string name, bool prepareCacheForAccess = false)
+    public virtual Tensor PeekOutput(string name)
     {
         Profiler.BeginSample("Sentis.PeekOutput");
         var X = m_Vars.PeekOutput(name);
-
-        if (prepareCacheForAccess)
-            X.PrepareCacheForAccess(blocking:false);                    // thus schedule non-blocking download from GPU/NPU to CPU
         Profiler.EndSample();
 
         return X;
@@ -282,7 +276,7 @@ public class GenericWorker : IWorker
     /// </summary>
     public virtual string Summary()
     {
-        return m_Vars.GetAllocator().ToString() + "\n" + m_Ops.ToString();
+        return m_Vars.GetAllocator().ToString() + "\n" + m_Backend.ToString();
     }
 }
 
@@ -381,7 +375,7 @@ class GenericVars : IVars
         return valid;
     }
 
-    protected virtual Tensor[] PrepareLayerInputTensors(Layers.Layer layer, IOps ops)
+    protected virtual Tensor[] PrepareLayerInputTensors(Layers.Layer layer, IBackend backend)
     {
         return new Tensor[layer.inputs.Length];
     }
@@ -393,7 +387,7 @@ class GenericVars : IVars
     }
 
     /// <inheritdoc/>
-    public virtual void PrepareStorage(Model model, IOps ops, IDictionary<string, TensorShape> inputShapes, bool takeoverWeights)
+    public virtual void PrepareStorage(Model model, IBackend backend, IDictionary<string, TensorShape> inputShapes, bool takeoverWeights)
     {
         ValidateGlobalInputs(model, inputShapes);
 
@@ -420,7 +414,7 @@ class GenericVars : IVars
             if (m_InputTensorsByLayer.ContainsKey(layer.name))
                 continue;
 
-            var tensors = PrepareLayerInputTensors(layer, ops);
+            var tensors = PrepareLayerInputTensors(layer, backend);
             m_InputTensorsByLayer.Add(layer.name, tensors);
         }
 
@@ -515,8 +509,8 @@ class GenericVars : IVars
     public virtual void Store(string fromLayer, Tensor result)
     {
         // @TODO: implement Disposal of the old tensor that is going to be overwritten with new one
-        // NOTE: need to make IWorker.CopyOutput to do real copy before enabling code below
-        // otherwise there is a risk of Disposing tensor that is already owned by the user, if one calls CopyOutput on m_TensorsByName
+        // NOTE: need to make IWorker.FinishExecutionAndDownloadOutput to do real copy before enabling code below
+        // otherwise there is a risk of Disposing tensor that is already owned by the user, if one calls FinishExecutionAndDownloadOutput on m_TensorsByName
         // if (m_TensorsByName.ContainsKey(fromLayer.name))
         // {
         //     var oldTensor = m_TensorsByName[fromLayer.name];
@@ -569,12 +563,12 @@ class GenericVarsWithReuse : GenericVars
     }
 
     /// <inheritdoc/>
-    public override void PrepareStorage(Model model, IOps ops, IDictionary<string, TensorShape> inputShapes, bool takeoverWeights)
+    public override void PrepareStorage(Model model, IBackend backend, IDictionary<string, TensorShape> inputShapes, bool takeoverWeights)
     {
         if(m_CachedInputShapes != inputShapes)
         {
             m_CachedInputShapes = inputShapes;
-            base.PrepareStorage(model, ops, inputShapes, takeoverWeights);
+            base.PrepareStorage(model, backend, inputShapes, takeoverWeights);
         }
 
         ReleaseTemporary();
@@ -646,9 +640,9 @@ class GenericVarsWithPreallocation : GenericVarsWithReuse, ITensorAllocator
     }
 
     /// <inheritdoc/>
-    public override void PrepareStorage(Model model, IOps ops, IDictionary<string, TensorShape> inputShapes, bool takeoverWeights)
+    public override void PrepareStorage(Model model, IBackend backend, IDictionary<string, TensorShape> inputShapes, bool takeoverWeights)
     {
-        base.PrepareStorage(model, ops, inputShapes, takeoverWeights);
+        base.PrepareStorage(model, backend, inputShapes, takeoverWeights);
 
         m_CachedModel = model;
 

@@ -1,5 +1,4 @@
 #pragma kernel MatMul
-#pragma kernel MatMul2D
 
 #include "Tensor.cginc"
 
@@ -46,38 +45,4 @@ void MatMul(uint3 dispatchThreadID : SV_DispatchThreadID)
     }
 
     Optr[batchOffSetC * CM * CN + j * CN + i] = v;
-}
-
-uint O_height, O_width;
-uint Y_height, Y_width;
-uint X_height, X_width;
-uint xTranspose, yTranspose;
-uint xOffset, yOffset;
-
-[numthreads(8, 8, 1)]
-void MatMul2D(uint3 dispatchThreadID : SV_DispatchThreadID)
-{
-    uint y = dispatchThreadID.x;
-    uint x = dispatchThreadID.y;
-    if (y >= O_height) return;
-    if (x >= O_width) return;
-
-    #if defined(SHADER_API_MOBILE)
-    uint maxXIndex = X_height * X_width - 1;
-    uint maxYIndex = Y_height * Y_width - 1;
-    #endif
-
-    float v = 0;
-    for (uint i = 0; i < (xTranspose == 1 ? X_height : X_width); ++i)
-    {
-        #if defined(SHADER_API_MOBILE)
-        float vX = xTranspose == 1 ? Xptr[xOffset + min(i * X_width + y, maxXIndex)] : Xptr[xOffset + min(y * X_width + i, maxXIndex)];
-        float vY = yTranspose == 1 ? Yptr[yOffset + min(x * Y_width + i, maxYIndex)] : Yptr[yOffset + min(i * Y_width + x, maxYIndex)];
-        #else
-        float vX = xTranspose == 1 ? Xptr[xOffset + i * X_width + y] : Xptr[xOffset + y * X_width + i];
-        float vY = yTranspose == 1 ? Yptr[yOffset + x * Y_width + i] : Yptr[yOffset + i * Y_width + x];
-        #endif
-        v += vX * vY;
-    }
-    Optr[y * O_width + x] = v;
 }

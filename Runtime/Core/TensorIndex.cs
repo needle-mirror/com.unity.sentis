@@ -4,7 +4,7 @@ using System.Text;
 
 [assembly: InternalsVisibleTo("Unity.Sentis.Tests")]
 [assembly: InternalsVisibleTo("Unity.Sentis.EditorTests")]
-[assembly: InternalsVisibleTo("Unity.Sentis.CPUOps")]
+[assembly: InternalsVisibleTo("Unity.Sentis.CPUBackend")]
 
 namespace Unity.Sentis {
 

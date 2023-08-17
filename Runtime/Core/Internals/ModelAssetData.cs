@@ -5,6 +5,7 @@ namespace Unity.Sentis
     /// <summary>
     /// Represents data storage for a Sentis model asset.
     /// </summary>
+    [PreferBinarySerialization]
     public class ModelAssetData : ScriptableObject
     {
         /// <summary>

@@ -11,14 +11,12 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
     {
         public void Run(ref Model model)
         {
-            using var ops = new CPUOps();
+            using var ops = new CPUBackend();
 
             var preserve = new HashSet<string>(model.outputs);
-            var ctx = new ShapeInferenceContext();
-            ShapeInferenceAnalysis.InferModelShapes(model, ctx);
 
             var inputs = new HashSet<string>();
-            foreach(var input in model.inputs)
+            foreach (var input in model.inputs)
                 inputs.Add(input.name);
 
             Dictionary<string, Tensor> constTensors = new Dictionary<string, Tensor>();

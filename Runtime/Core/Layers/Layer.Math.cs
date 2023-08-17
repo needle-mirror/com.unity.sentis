@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 
 namespace Unity.Sentis.Layers
 {
@@ -20,9 +21,9 @@ namespace Unity.Sentis.Layers
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.Abs(inputTensors[0] as TensorInt);
+                return ctx.backend.Abs(inputTensors[0] as TensorInt);
             else
-                return ctx.ops.Abs(inputTensors[0] as TensorFloat);
+                return ctx.backend.Abs(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Abs";
@@ -45,18 +46,16 @@ namespace Unity.Sentis.Layers
         public Add(string name, string a, string b)
             : base(name, a, b) { }
 
-        internal override PartialTensor InferPartialTensor(PartialTensor[] partialTensors, ShapeInferenceContext ctx)
-        {
-            return PartialTensor.BroadcastWithOp(partialTensors[0], partialTensors[1], (a, b) => a + b);
-        }
+        /// <inheritdoc/>
+        internal override Func<PartialTensorElement, PartialTensorElement, PartialTensorElement> InferPartialOp => (a, b) => a + b;
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.Add(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+                return ctx.backend.Add(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
             else
-                return ctx.ops.Add(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+                return ctx.backend.Add(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
         }
 
         internal override string profilerTag => "Add";
@@ -79,7 +78,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Ceil(inputTensors[0] as TensorFloat);
+            return ctx.backend.Ceil(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Ceil";
@@ -128,17 +127,18 @@ namespace Unity.Sentis.Layers
             this.inputs = new[] { input, min, max };
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return inputShapes[0];
+            return new PartialTensor(DataType.Float, inputTensors[0].shape);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputs, ExecutionContext ctx)
         {
-            var min = inputs.Length > 1 && inputs[1] != null ? (inputs[1] as TensorFloat)[0] : float.MinValue;
-            var max = inputs.Length > 2 && inputs[2] != null ? (inputs[2] as TensorFloat)[0] : float.MaxValue;
-            return ctx.ops.Clip(inputs[0] as TensorFloat, min, max);
+            var min = inputs.Length > 1 && inputs[1] != null ? inputs[1].ToReadOnlySpan<float>()[0] : float.MinValue;
+            var max = inputs.Length > 2 && inputs[2] != null ? inputs[2].ToReadOnlySpan<float>()[0] : float.MaxValue;
+            return ctx.backend.Clip(inputs[0] as TensorFloat, min, max);
         }
 
         internal override string profilerTag => "Clip";
@@ -176,18 +176,19 @@ namespace Unity.Sentis.Layers
             this.exclusive = exclusive;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return inputShapes[0];
+            return new PartialTensor(inputTensors[0].dataType, inputTensors[0].shape);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.CumSum(inputTensors[0] as TensorInt, (inputTensors[1] as TensorInt)[0], reverse, exclusive);
+                return ctx.backend.CumSum(inputTensors[0] as TensorInt, inputTensors[1].ToReadOnlySpan<int>()[0], reverse, exclusive);
             else
-                return ctx.ops.CumSum(inputTensors[0] as TensorFloat, (inputTensors[1] as TensorInt)[0], reverse, exclusive);
+                return ctx.backend.CumSum(inputTensors[0] as TensorFloat, inputTensors[1].ToReadOnlySpan<int>()[0], reverse, exclusive);
         }
 
         /// <inheritdoc/>
@@ -222,15 +223,20 @@ namespace Unity.Sentis.Layers
             this.fusedActivation = fusedActivation;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return SymbolicInference.Dense(inputShapes[0], inputShapes[1], inputShapes[2]);
+            var shapeB = inputTensors[2].shape;
+            var shapeOut = inputTensors[0].shape.MatMul(inputTensors[1].shape);
+            if (shapeOut.hasRank)
+                shapeOut[-1] = SymbolicTensorDim.MaxDefinedDim(shapeB[0], shapeOut[-1]);
+            return new PartialTensor(DataType.Float, shapeOut);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Dense(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat, fusedActivation);
+            return ctx.backend.Dense(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat, fusedActivation);
         }
 
         internal override string profilerTag => "Dense";
@@ -257,9 +263,9 @@ namespace Unity.Sentis.Layers
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.Div(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+                return ctx.backend.Div(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
             else
-                return ctx.ops.Div(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+                return ctx.backend.Div(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
         }
 
         internal override string profilerTag => "Div";
@@ -295,16 +301,18 @@ namespace Unity.Sentis.Layers
             this.equation = equation;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            var operandIndices = new TensorIndex[inputShapes.Length];
-            return EinsumHelper.ParseEquationStringShape(equation, inputShapes, ref operandIndices, out _, out _);
+            var operandIndices = new TensorIndex[inputTensors.Length];
+            var shape = EinsumHelper.ParseEquationStringShape(equation, inputTensors.Select(i => i.shape).ToArray(), ref operandIndices, out _, out _);
+            return new PartialTensor(DataType.Float, shape);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Einsum(equation, Array.ConvertAll(inputTensors, i => i as TensorFloat));
+            return ctx.backend.Einsum(equation, Array.ConvertAll(inputTensors, i => i as TensorFloat));
         }
 
         /// <inheritdoc/>
@@ -333,7 +341,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Exp(inputTensors[0] as TensorFloat);
+            return ctx.backend.Exp(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Exp";
@@ -356,7 +364,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Floor(inputTensors[0] as TensorFloat);
+            return ctx.backend.Floor(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Floor";
@@ -379,7 +387,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Log(inputTensors[0] as TensorFloat);
+            return ctx.backend.Log(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Log";
@@ -403,15 +411,16 @@ namespace Unity.Sentis.Layers
             this.inputs = new[] { input0, input1 };
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return SymbolicInference.MatMul(inputShapes[0], inputShapes[1]);
+            return new PartialTensor(inputTensors[0].dataType, inputTensors[0].shape.MatMul(inputTensors[1].shape));
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.MatMul(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+            return ctx.backend.MatMul(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
         }
 
         internal override string profilerTag => "MatMul";
@@ -448,15 +457,27 @@ namespace Unity.Sentis.Layers
             this.transposeB = transpose1;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return SymbolicInference.MatMul2D(inputShapes[0], transposeA, inputShapes[1], transposeB);
+            var shapeX = inputTensors[0].shape;
+            var shapeY = inputTensors[1].shape;
+
+            shapeX.DeclareRank(2);
+            shapeY.DeclareRank(2);
+
+            var mulXDim = transposeA ? shapeX[0] : shapeX[1];
+            var mulYDim = transposeB ? shapeY[1] : shapeY[0];
+            Logger.AssertIsFalse(mulXDim != mulYDim, "MatMul2D.ValueError: failed, dims not equal");
+
+            var shapeOut = new SymbolicTensorShape(transposeA ? shapeX[1] : shapeX[0], transposeB ? shapeY[0] : shapeY[1]);
+            return new PartialTensor(inputTensors[0].dataType, shapeOut);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.MatMul2D(inputTensors[0] as TensorFloat, transposeA, inputTensors[1] as TensorFloat, transposeB);
+            return ctx.backend.MatMul2D(inputTensors[0] as TensorFloat, transposeA, inputTensors[1] as TensorFloat, transposeB);
         }
 
         /// <inheritdoc/>
@@ -488,9 +509,9 @@ namespace Unity.Sentis.Layers
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.Max(Array.ConvertAll(inputTensors, i => i as TensorInt));
+                return ctx.backend.Max(Array.ConvertAll(inputTensors, i => i as TensorInt));
             else
-                return ctx.ops.Max(Array.ConvertAll(inputTensors, i => i as TensorFloat));
+                return ctx.backend.Max(Array.ConvertAll(inputTensors, i => i as TensorFloat));
         }
 
         internal override string profilerTag => "Max";
@@ -515,7 +536,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Mean(Array.ConvertAll(inputTensors, i => i as TensorFloat));
+            return ctx.backend.Mean(Array.ConvertAll(inputTensors, i => i as TensorFloat));
         }
 
         internal override string profilerTag => "Mean";
@@ -541,9 +562,9 @@ namespace Unity.Sentis.Layers
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.Min(Array.ConvertAll(inputTensors, i => i as TensorInt));
+                return ctx.backend.Min(Array.ConvertAll(inputTensors, i => i as TensorInt));
             else
-                return ctx.ops.Min(Array.ConvertAll(inputTensors, i => i as TensorFloat));
+                return ctx.backend.Min(Array.ConvertAll(inputTensors, i => i as TensorFloat));
         }
 
         internal override string profilerTag => "Min";
@@ -583,11 +604,11 @@ namespace Unity.Sentis.Layers
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (!fmod)
-                return ctx.ops.Mod(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+                return ctx.backend.Mod(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
             else if (inputTensors[0] is TensorInt)
-                return ctx.ops.FMod(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+                return ctx.backend.FMod(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
             else
-                return ctx.ops.FMod(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+                return ctx.backend.FMod(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
         }
 
         /// <inheritdoc/>
@@ -616,18 +637,16 @@ namespace Unity.Sentis.Layers
         public Mul(string name, string a, string b)
             : base(name, a, b) { }
 
-        internal override PartialTensor InferPartialTensor(PartialTensor[] partialTensors, ShapeInferenceContext ctx)
-        {
-            return PartialTensor.BroadcastWithOp(partialTensors[0], partialTensors[1], (a, b) => a * b);
-        }
+        /// <inheritdoc/>
+        internal override Func<PartialTensorElement, PartialTensorElement, PartialTensorElement> InferPartialOp => (a, b) => a * b;
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.Mul(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+                return ctx.backend.Mul(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
             else
-                return ctx.ops.Mul(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+                return ctx.backend.Mul(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
         }
 
         internal override string profilerTag => "Mul";
@@ -651,9 +670,9 @@ namespace Unity.Sentis.Layers
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.Neg(inputTensors[0] as TensorInt);
+                return ctx.backend.Neg(inputTensors[0] as TensorInt);
             else
-                return ctx.ops.Neg(inputTensors[0] as TensorFloat);
+                return ctx.backend.Neg(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Neg";
@@ -680,9 +699,9 @@ namespace Unity.Sentis.Layers
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[1] is TensorFloat)
-                return ctx.ops.Pow(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+                return ctx.backend.Pow(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
             else
-                return ctx.ops.Pow(inputTensors[0] as TensorFloat, inputTensors[1] as TensorInt);
+                return ctx.backend.Pow(inputTensors[0] as TensorFloat, inputTensors[1] as TensorInt);
         }
 
         internal override string profilerTag => "Pow";
@@ -705,7 +724,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Reciprocal(inputTensors[0] as TensorFloat);
+            return ctx.backend.Reciprocal(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Reciprocal";
@@ -728,7 +747,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Round(inputTensors[0] as TensorFloat);
+            return ctx.backend.Round(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Round";
@@ -764,15 +783,16 @@ namespace Unity.Sentis.Layers
             this.lambd = lambd;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return inputShapes[0];
+            return new PartialTensor(inputTensors[0].dataType, inputTensors[0].shape);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Shrink(inputTensors[0] as TensorFloat, bias, lambd);
+            return ctx.backend.Shrink(inputTensors[0] as TensorFloat, bias, lambd);
         }
 
         /// <inheritdoc/>
@@ -801,18 +821,19 @@ namespace Unity.Sentis.Layers
             this.inputs = new[] { input };
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return inputShapes[0];
+            return new PartialTensor(inputTensors[0].dataType, inputTensors[0].shape);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.Sign(inputTensors[0] as TensorInt);
+                return ctx.backend.Sign(inputTensors[0] as TensorInt);
             else
-                return ctx.ops.Sign(inputTensors[0] as TensorFloat);
+                return ctx.backend.Sign(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Sign";
@@ -835,7 +856,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Sqrt(inputTensors[0] as TensorFloat);
+            return ctx.backend.Sqrt(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Sqrt";
@@ -858,7 +879,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Square(inputTensors[0] as TensorFloat);
+            return ctx.backend.Square(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Square";
@@ -881,18 +902,16 @@ namespace Unity.Sentis.Layers
         public Sub(string name, string a, string b)
             : base(name, a, b) { }
 
-        internal override PartialTensor InferPartialTensor(PartialTensor[] partialTensors, ShapeInferenceContext ctx)
-        {
-            return PartialTensor.BroadcastWithOp(partialTensors[0], partialTensors[1], (a, b) => a - b);
-        }
+        /// <inheritdoc/>
+        internal override Func<PartialTensorElement, PartialTensorElement, PartialTensorElement> InferPartialOp => (a, b) => a - b;
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.Sub(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+                return ctx.backend.Sub(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
             else
-                return ctx.ops.Sub(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+                return ctx.backend.Sub(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
         }
 
         internal override string profilerTag => "Sub";
@@ -917,7 +936,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Sum(Array.ConvertAll(inputTensors, i => i as TensorFloat));
+            return ctx.backend.Sum(Array.ConvertAll(inputTensors, i => i as TensorFloat));
         }
 
         internal override string profilerTag => "Sum";

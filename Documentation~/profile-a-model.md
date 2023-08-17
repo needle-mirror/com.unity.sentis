@@ -34,11 +34,10 @@ using Unity.Sentis;
 
 public class GetOutputFromALayer : MonoBehaviour
 {
-
     ModelAsset modelAsset;
     Model runtimeModel;
     IWorker worker;
-    
+
     void Start()
     {
         // Create an input tensor

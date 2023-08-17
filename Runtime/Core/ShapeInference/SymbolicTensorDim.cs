@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using UnityEngine;
 
 namespace Unity.Sentis
@@ -125,6 +126,22 @@ namespace Unity.Sentis
             return obj is SymbolicTensorDim other && Equals(other);
         }
 
+        /// <summary>
+        /// Whether the current 'SymbolicTensorDim' is 'DimType.Value' and is equal to the specified dim.
+        /// </summary>
+        public bool EqualsValue(SymbolicTensorDim other)
+        {
+            return m_DimType == DimType.Value && other.m_DimType == DimType.Value && m_Value == other.m_Value;
+        }
+
+        /// <summary>
+        /// Whether the current 'SymbolicTensorDim' is 'DimType.Param' and is equal to the specified dim.
+        /// </summary>
+        public bool EqualsParam(SymbolicTensorDim other)
+        {
+            return m_DimType == DimType.Param && other.m_DimType == DimType.Param && m_Param == other.m_Param;
+        }
+
         public static bool operator ==(SymbolicTensorDim a, SymbolicTensorDim b)
         {
             if (a.m_DimType != b.m_DimType)
@@ -138,15 +155,27 @@ namespace Unity.Sentis
 
         public static bool operator !=(SymbolicTensorDim a, SymbolicTensorDim b)
         {
-            return !(a == b);
+            return a.isValue && b.isValue && a.m_Value != b.m_Value;
         }
 
-        /// <summary>
-        /// Whether symbolic dims a and b could be referring to the same underlying value
-        /// </summary>
-        internal static bool IsCompatible(SymbolicTensorDim a, SymbolicTensorDim b)
+        public static bool operator ==(SymbolicTensorDim a, int b)
         {
-            return !a.isValue || !b.isValue || a == b;
+            return a.isValue && a.m_Value == b;
+        }
+
+        public static bool operator !=(SymbolicTensorDim a, int b)
+        {
+            return a.isValue && a.m_Value != b;
+        }
+
+        public static bool operator ==(int a, SymbolicTensorDim b)
+        {
+            return b.isValue && a == b.m_Value;
+        }
+
+        public static bool operator !=(int a, SymbolicTensorDim b)
+        {
+            return b.isValue && a != b.m_Value;
         }
 
         /// <summary>
@@ -383,6 +412,26 @@ namespace Unity.Sentis
             return new SymbolicTensorDim(Mathf.RoundToInt(v));
         }
 
+        public static bool operator <(SymbolicTensorDim d, int v)
+        {
+            return d.m_DimType == DimType.Value && d.m_Value < v;
+        }
+
+        public static bool operator >(SymbolicTensorDim d, int v)
+        {
+            return d.m_DimType == DimType.Value && d.m_Value > v;
+        }
+
+        public static bool operator <=(SymbolicTensorDim d, int v)
+        {
+            return d.m_DimType == DimType.Value && d.m_Value <= v;
+        }
+
+        public static bool operator >=(SymbolicTensorDim d, int v)
+        {
+            return d.m_DimType == DimType.Value && d.m_Value >= v;
+        }
+
         ///   | 2   3   A   B   ?
         /// --|-------------------
         /// 2 | 2  Err  2   2   2
@@ -444,6 +493,84 @@ namespace Unity.Sentis
         internal SymbolicTensorDim Broadcast(SymbolicTensorDim other)
         {
             return Broadcast(this, other);
+        }
+
+        internal SymbolicTensorDim Pool(int kernel, int stride, int padding, int dilation, bool ceilMode, Layers.AutoPad autoPad)
+        {
+            switch (autoPad)
+            {
+                case Layers.AutoPad.Valid:
+                    return (this - ((kernel - 1) * dilation + 1) + 1).DivideWithRounding(stride, 1);
+                case Layers.AutoPad.SameLower:
+                case Layers.AutoPad.SameUpper:
+                    return DivideWithRounding(stride, 1);
+                case Layers.AutoPad.NotSet:
+                    return (this + padding - ((kernel - 1) * dilation + 1)).DivideWithRounding(stride, ceilMode ? 1 : -1) + 1;
+                default:
+                    throw new InvalidEnumArgumentException();
+            }
+        }
+
+        internal SymbolicTensorDim Slice(PartialTensorElement start, PartialTensorElement end, PartialTensorElement step)
+        {
+            Logger.AssertIsTrue(!(step == 0), "Slice.InputError: Step cannot be 0");
+
+            if (isValue && start.isIntValue && end.isIntValue && step.isIntValue)
+                return new SymbolicTensorDim(ShapeInference.SliceDim(value, start.intValue, end.intValue, step.intValue));
+
+            if (start.isUnknown || end.isUnknown)
+                return Unknown;
+
+            if (start == end)
+                return Zero;
+
+            var dimXElement = (PartialTensorElement)this;
+            if (step > 0)
+            {
+                if (start == dimXElement || start == int.MaxValue || start >= this)
+                    return Zero;
+                if (end == 0 || end == int.MinValue || this >= -end)
+                    return Zero;
+                if (step == 1 && (start == 0 || start == int.MinValue) && (end == dimXElement || end == int.MaxValue))
+                    return this;
+            }
+            else if (step < 0)
+            {
+                if (end == dimXElement || end == int.MaxValue || end >= this)
+                    return Zero;
+                if (start == 0 || start == int.MinValue || this >= -start)
+                    return Zero;
+                if (step == -1 && (end == -1 || end == int.MinValue) && (start == this || start == int.MaxValue))
+                    return this;
+            }
+
+            return Unknown;
+        }
+
+        public static SymbolicTensorDim GCD(SymbolicTensorDim a, SymbolicTensorDim b)
+        {
+            if (a == One || b == One)
+                return One;
+            if (a.isUnknown || b.isUnknown)
+                return Unknown;
+            if (a == b)
+                return a;
+            if (a == Zero)
+                return b;
+            if (b == Zero)
+                return a;
+            if (a.isParam || b.isParam)
+                return Unknown;
+            var x = a.value;
+            var y = b.value;
+            while (x != 0 && y != 0)
+            {
+                if (x > y)
+                    x %= y;
+                else
+                    y %= x;
+            }
+            return new SymbolicTensorDim(x | y);
         }
 
         /// <summary>

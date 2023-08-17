@@ -48,7 +48,6 @@ namespace Unity.Sentis
             {
                 "LogSoftmaxEnd",
                 "SoftmaxEnd",
-                "LogSumExpEnd",
                 "HardmaxEnd",
             });
 
@@ -65,7 +64,7 @@ namespace Unity.Sentis
             });
 
             RegisterKernels("Sentis/ComputeShaders/ReferenceImpl",
-                new[] { "MatMul", "MatMul2D" });
+                new[] { "MatMul" });
 
             RegisterKernels("Sentis/ComputeShaders/RNN",
                 new[] { "LSTMEnd" });
@@ -99,7 +98,12 @@ namespace Unity.Sentis
                 new[] { "DepthwiseConv2DDirect", "DepthwiseConv2DWinograd", "KernelWinoExpand" });
 
             RegisterKernels("Sentis/ComputeShaders/ConvTranspose",
-                new[] { "ConvTranspose2D_T16x16_R4x4" });
+                new[]
+                {
+                    "ConvTranspose3D_T16x16_R4x4",
+                    "ConvTranspose2D_T16x16_R4x4",
+                    "ConvTranspose1D_T16x16_R4x4"
+                });
 
             RegisterKernels("Sentis/ComputeShaders/Dense",
                 new[]
@@ -107,6 +111,12 @@ namespace Unity.Sentis
                     "Dense_T8x8_R4x4", "Dense_T16x16_R4x4", "Dense_V_L1Cached64",
                     "Gemm_T8x8_R4x4", "Gemm_T16x16_R4x4", "Gemm_V_L1Cached64",
                     "GemmBatched_T8x8_R4x4", "GemmBatched_T16x16_R4x4",
+                });
+
+            RegisterKernels("Sentis/ComputeShaders/GemmT",
+                new[]
+                {
+                    "GemmT_XT_T8x8_R4x4", "GemmT_WT_T8x8_R4x4", "GemmT_XT_WT_T8x8_R4x4",
                 });
 
             RegisterKernels("Sentis/ComputeShaders/Pool",
@@ -119,10 +129,7 @@ namespace Unity.Sentis
                 });
 
             RegisterKernels("Sentis/ComputeShaders/Normalization",
-                new[] { "AxisNormalizationTail" });
-
-            RegisterKernels("Sentis/ComputeShaders/Reduce",
-                new[] { "ExpBiasReduceFloat", "ReduceLogSumExpFloat" });
+                new[] { "AxisNormalizationTail", "BatchNormalization", "ScaleBias" });
 
             RegisterKernels("Sentis/ComputeShaders/ReduceIndices",
                 new[]
@@ -132,7 +139,7 @@ namespace Unity.Sentis
                 });
 
             RegisterKernels("Sentis/ComputeShaders/CopyOps",
-                new[] { "MemCopy", "MemCopyStride", "MemSet", "Split", "Tril", "Triu", "RangeFloat", "RangeInt", "CastToInt", "CastToFloat" });
+                new[] { "MemCopy", "MemCopyStride", "MemSet", "Split", "Tril", "Triu", "RangeFloat", "RangeInt", "CastToInt", "CastToFloat", "Transpose2D" });
 
             RegisterKernels("Sentis/ComputeShaders/Random",
                 new[] { "RandomUniform", "RandomNormal", "BernoulliFloat", "BernoulliInt" });

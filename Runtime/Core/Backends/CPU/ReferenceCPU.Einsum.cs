@@ -1,24 +1,28 @@
+using System;
 using Unity.Sentis;
 
 namespace Unity.Sentis
 {
-    public partial class CPUOps
+    public partial class CPUBackend
     {
         TensorFloat EinsumND(string equation, params TensorFloat[] operands)
         {
             var tensorShapes = new TensorShape[operands.Length];
             for (var i = 0; i < tensorShapes.Length; i++)
             {
+                ArrayTensorData.Pin(operands[i]);
                 tensorShapes[i] = operands[i].shape;
             }
             var operandIndices = new TensorIndex[operands.Length];
             EinsumHelper.ParseEquationString(equation, tensorShapes, ref operandIndices, out var outputIndices, out var outputShape, out var sumIndices, out var sumShape, out var numIndices);
 
             var output = NewOutputTensorFloat(outputShape);
+            ArrayTensorData.Pin(output, clearOnInit: false);
+
             var outSize = output.shape.length;
             var sumSize = sumShape.length;
 
-            var position = new int[outputIndices.rank + sumIndices.rank];
+            Span<int> position = stackalloc int[outputIndices.rank + sumIndices.rank];
 
             for (var outIndex = 0; outIndex < outSize; outIndex++)
             {
@@ -43,7 +47,7 @@ namespace Unity.Sentis
             return output;
         }
 
-        static void SetPositionFromIndex(int[] position, TensorIndex indices, TensorShape shape, int index)
+        static void SetPositionFromIndex(Span<int> position, TensorIndex indices, TensorShape shape, int index)
         {
             for (var i = shape.rank - 1; i >= 0; i--)
             {
@@ -52,7 +56,7 @@ namespace Unity.Sentis
             }
         }
 
-        static int GetIndexFromPosition(int[] position, TensorIndex indices, TensorShape shape)
+        static int GetIndexFromPosition(Span<int> position, TensorIndex indices, TensorShape shape)
         {
             var index = 0;
             var stride = 1;

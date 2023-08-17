@@ -28,7 +28,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.LogSoftmax(inputTensors[0] as TensorFloat, axis);
+            return ctx.backend.LogSoftmax(inputTensors[0] as TensorFloat, axis);
         }
 
         /// <inheritdoc/>
@@ -66,7 +66,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Softmax(inputTensors[0] as TensorFloat, axis);
+            return ctx.backend.Softmax(inputTensors[0] as TensorFloat, axis);
         }
 
         /// <inheritdoc/>

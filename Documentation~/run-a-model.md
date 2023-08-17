@@ -13,7 +13,7 @@ worker = WorkerFactory.CreateWorker(BackendType.GPUCompute, runtimeModel, verbos
 
 When you run a model for the first time in the Unity Editor, it might be slow because Sentis needs to compile code and shaders. Later runs are faster.
 
-Refer to the `ModelExecution` example in the [sample scripts](package-samples.md) for a working example.
+Refer to the `ModelExecution` example in the [sample scripts](package-samples.md) for an example.
 
 ## Run a model a layer at a time
 
@@ -48,7 +48,6 @@ public class StartManualSchedule : MonoBehaviour
 
     void Update()
     {
-
         if (!started)
         {
             modelEnumerator = worker.StartManualSchedule(inputTensor);
@@ -57,21 +56,26 @@ public class StartManualSchedule : MonoBehaviour
 
         // Iterate running the model once per frame
         // In each iteration of the do-while loop, use the IEnumerator object to run the next layer of the model
-        do
+        if (hasMoreModelToRun)
         {
-            // Log the progress so far as a float value. 0 means no progress, 1 means complete
-            Debug.Log(worker.scheduleProgress);
-
             // Use MoveNext() to run the next layer of the model. MoveNext() returns true if there's more work to do
             hasMoreModelToRun = modelEnumerator.MoveNext();
 
-        } while (hasMoreModelToRun);
+            // Log the progress so far as a float value. 0 means no progress, 1 means complete
+            Debug.Log(worker.scheduleProgress);
+        }
 
-        // Get the output tensor
-        var outputTensor = worker.PeekOutput() as TensorFloat;
-        outputTensor.PrepareCacheForAccess(blocking: true);
-        float[] outputArray = outputTensor.ToReadOnlyArray();
+        else
+        {
+            // Get the output tensor
+            var outputTensor = worker.PeekOutput() as TensorFloat;
+            // Move the output tensor to CPU before reading the data
+            outputTensor.MakeReadable();
+            float[] outputArray = outputTensor.ToReadOnlyArray();
 
+            // turn off the component once the tensor is obtained
+            enabled = false;
+        }
     }
 
     void OnDisable()
@@ -79,11 +83,10 @@ public class StartManualSchedule : MonoBehaviour
         worker.Dispose();
         inputTensor.Dispose();
     }
-
 }
 ```
 
-Refer to the `ModelExecutionInParts` example in the [sample scripts](package-samples.md) for a working example.
+Refer to the `ModelExecutionInParts` example in the [sample scripts](package-samples.md) for an example.
 
 ## Additional resources
 

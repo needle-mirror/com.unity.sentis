@@ -23,16 +23,15 @@ using UnityEngine.Rendering;
 ​
 public class UseCommandBuffer : MonoBehaviour
 {
-
     public ModelAsset modelAsset;
     IWorker worker;
 
     void Start()
-    { 
+    {
         // Create a worker that uses the GPUCommandBuffer back end type
         worker = WorkerFactory.CreateWorker(BackendType.GPUCommandBuffer, ModelLoader.Load(modelAsset));
     }
-    
+
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         // Create a new command buffer
@@ -41,7 +40,7 @@ public class UseCommandBuffer : MonoBehaviour
         // Add a command to the command buffer that creates an input tensor from the source texture data
         // you can also call TextureConverter.ToTensor(commandBuffer, source, inputTensor) if you allready have the tensor allocated
         Tensor inputTensor = TextureConverter.ToTensor(commandBuffer, source);
-        
+
         // Add a command to the command buffer that runs the model using the input tensor
         commandBuffer.ExecuteWorker(worker, inputTensor);
 
@@ -50,7 +49,7 @@ public class UseCommandBuffer : MonoBehaviour
 
         // Execute all the commands in the command buffer
         Graphics.ExecuteCommandBuffer(commandBuffer);
-        
+
         // Clear the input tensor to free its memory.
         inputTensor.Dispose();
     }

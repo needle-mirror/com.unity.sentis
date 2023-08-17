@@ -49,24 +49,57 @@ namespace Unity.Sentis.Layers
             this.shape = tensor.shape;
             this.length = tensor.shape.length;
             this.dataType = tensor.dataType;
+            if (tensor.shape.length == 0)
+                return;
             weights = new NativeTensorArray(tensor.shape.length);
 
             switch (dataType)
             {
                 case DataType.Float:
                 {
-                    (tensor as TensorFloat).ToReadOnlyArray().CopyToNativeTensorArray(weights, 0);
+                    NativeTensorArray.Copy(tensor.ToReadOnlyNativeArray<float>(), 0, weights, 0, weights.Length);
                     break;
                 }
                 case DataType.Int:
                 {
-                    weights = new NativeTensorArray(tensor.shape.length);
-                    (tensor as TensorInt).ToReadOnlyArray().CopyToNativeTensorArray(weights, 0);
+                    NativeTensorArray.Copy(tensor.ToReadOnlyNativeArray<int>(), 0, weights, 0, weights.Length);
                     break;
                 }
                 default:
                     throw new NotImplementedException($"DataType {dataType} not supported");
             }
+        }
+
+        public Constant(string name, float[] value)
+        {
+            this.name = name;
+            this.offset = 0;
+            this.shape = new TensorShape(value.Length);
+            this.length = value.Length;
+            this.dataType = DataType.Float;
+            weights = new NativeTensorArray(value.Length);
+            NativeTensorArray.Copy(value, weights);
+        }
+
+        public Constant(string name, int[] value)
+        {
+            this.name = name;
+            this.offset = 0;
+            this.shape = new TensorShape(value.Length);
+            this.length = value.Length;
+            this.dataType = DataType.Int;
+            weights = new NativeTensorArray(value.Length);
+            NativeTensorArray.Copy(value, weights);
+        }
+
+        internal Constant(string name, TensorShape shape, DataType dataType, NativeTensorArray weights)
+        {
+            this.name = name;
+            this.offset = 0;
+            this.shape = shape;
+            this.length = shape.length;
+            this.dataType = dataType;
+            this.weights = weights;
         }
 
         /// <summary>
@@ -101,6 +134,25 @@ namespace Unity.Sentis.Layers
             }
         }
 
+        internal Tensor DataSetToTensorView()
+        {
+            switch (dataType)
+            {
+                case DataType.Float:
+                {
+                    var array = new SharedArrayTensorData(shape, weights, (int)offset);
+                    return new TensorFloat(shape, array);
+                }
+                case DataType.Int:
+                {
+                    var array = new SharedArrayTensorData(shape, weights, (int)offset);
+                    return new TensorInt(shape, array);
+                }
+                default:
+                    throw new NotImplementedException($"DataType {dataType} not supported");
+            }
+        }
+
         /// <summary>
         /// Initializes the constant with the shape, dataType and weights from a given `Tensor`.
         /// </summary>
@@ -114,12 +166,12 @@ namespace Unity.Sentis.Layers
             {
                 case DataType.Float:
                 {
-                    NativeTensorArray.Copy((X as TensorFloat).ToReadOnlyArray(), 0, weights, (int)offset, shape.length);
+                    NativeTensorArray.Copy(X.ToReadOnlyNativeArray<float>(), 0, weights, (int)offset, shape.length);
                     break;
                 }
                 case DataType.Int:
                 {
-                    NativeTensorArray.Copy((X as TensorInt).ToReadOnlyArray(), 0, weights, (int)offset, shape.length);
+                    NativeTensorArray.Copy(X.ToReadOnlyNativeArray<int>(), 0, weights, (int)offset, shape.length);
                     break;
                 }
                 default:

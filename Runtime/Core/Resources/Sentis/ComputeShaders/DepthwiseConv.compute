@@ -1,6 +1,7 @@
 #pragma kernel DepthwiseConv2DWinograd
 #pragma kernel KernelWinoExpand
 #pragma kernel DepthwiseConv2DDirect
+#pragma multi_compile _ USEBIAS
 
 #include "Tensor.cginc"
 
@@ -204,7 +205,11 @@ void DepthwiseConv2DWinograd(uint3 dispatchThreadID : SV_DispatchThreadID, uint3
     float4x4 U = ApplyWinnogradB(d);
     float4x4 V = KWE_GS[groupThreadID.z];
     float2x2 Y = ApplyWinnogradA(V*U);
+    #ifdef USEBIAS
     float2x2 acc = Y + Bptr[k];
+    #else
+    float2x2 acc = Y;
+    #endif
 
     // 4 writes per thread
     uint2 index = dispatchThreadID.xy << 1;
@@ -243,7 +248,11 @@ void DepthwiseConv2DDirect(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 g
     uint x = dispatchThreadID.x;
     uint y = dispatchThreadID.y;
 
+    #ifdef USEBIAS
     float acc = Bptr[k];
+    #else
+    float acc = 0;
+    #endif
 
     for (uint dy = 0; dy < K_heightDiv4; ++dy)
     for (uint dx = 0; dx < K_widthDiv4; ++dx)

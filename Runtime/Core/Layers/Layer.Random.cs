@@ -84,15 +84,16 @@ namespace Unity.Sentis.Layers
             this.shape = new TensorShape(shape);
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return new SymbolicTensorShape(shape);
+            return new PartialTensor(DataType.Float, new SymbolicTensorShape(shape));
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.RandomNormal(shape, mean, scale, NextSeed);
+            return ctx.backend.RandomNormal(shape, mean, scale, NextSeed);
         }
 
         /// <inheritdoc/>
@@ -137,15 +138,16 @@ namespace Unity.Sentis.Layers
             this.scale = scale;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return inputShapes[0];
+            return new PartialTensor(DataType.Float, inputTensors[0].shape);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.RandomNormal(inputTensors[0].shape, mean, scale, NextSeed);
+            return ctx.backend.RandomNormal(inputTensors[0].shape, mean, scale, NextSeed);
         }
 
         /// <inheritdoc/>
@@ -194,15 +196,16 @@ namespace Unity.Sentis.Layers
             this.shape = new TensorShape(shape);
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return new SymbolicTensorShape(shape);
+            return new PartialTensor(DataType.Float, new SymbolicTensorShape(shape));
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.RandomUniform(shape, low, high, NextSeed);
+            return ctx.backend.RandomUniform(shape, low, high, NextSeed);
         }
 
         /// <inheritdoc/>
@@ -247,15 +250,16 @@ namespace Unity.Sentis.Layers
             this.high = high;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return inputShapes[0];
+            return new PartialTensor(DataType.Float, inputTensors[0].shape);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.RandomUniform(inputTensors[0].shape, low, high, NextSeed);
+            return ctx.backend.RandomUniform(inputTensors[0].shape, low, high, NextSeed);
         }
 
         /// <inheritdoc/>
@@ -293,15 +297,16 @@ namespace Unity.Sentis.Layers
             this.dataType = dataType;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return inputShapes[0];
+            return new PartialTensor(dataType, inputTensors[0].shape);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Bernoulli(inputTensors[0] as TensorFloat, dataType, NextSeed);
+            return ctx.backend.Bernoulli(inputTensors[0] as TensorFloat, dataType, NextSeed);
         }
 
         /// <inheritdoc/>
@@ -339,15 +344,18 @@ namespace Unity.Sentis.Layers
             this.count = count;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return SymbolicInference.Multinomial(inputShapes[0], count);
+            var shapeX = inputTensors[0].shape;
+            shapeX.DeclareRank(2);
+            return new PartialTensor(DataType.Int, new SymbolicTensorShape(shapeX[0], new SymbolicTensorDim(count)));
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Multinomial(inputTensors[0] as TensorFloat, count, NextSeed);
+            return ctx.backend.Multinomial(inputTensors[0] as TensorFloat, count, NextSeed);
         }
 
         /// <inheritdoc/>

@@ -1,3 +1,15 @@
+# Upgrade from Sentis 1.0 to Sentis 1.1
+
+To upgrade from Sentis 1.0 to Sentis 1.1, do the following:
+
+- Use `MakeReadable` on GPU output tensor before indexing (see `Use tensor indexing methods` sample).
+- Remove `prepareCacheForAccess` parameter when calling `PeekOutput` and instead use `MakeReadable` on the returned tensor before reading it.
+- Use AsyncReadbackRequest for async readbacks from GPU (see `Read output asynchronously` sample).
+- Replace `: Layer` with `: CustomLayer` for custom layers and implement `InferOutputDataTypes` method (see `Add a custom layer` sample).
+- Replace instances of `IOps` with `Ops`.
+- Replace `uploadCache` with `clearOnInit` when using .Pin method.
+- Replace uses of `CopyOutput` with `FinishExecutionAndDownloadOutput`.
+
 # Upgrade from Barracuda 3.0 to Sentis 1.0
 
 To upgrade from Barracuda 3.0 to Sentis 1.0, do the following:
@@ -11,7 +23,7 @@ To upgrade from Barracuda 3.0 to Sentis 1.0, do the following:
 - Update getting output from intermediate layers.
 - Replace `asFloats` and `asInts`.
 
-## Replace references to `Barracuda` with `Sentis`
+## Replace references to Barracuda with Sentis
 
 All namespaces now use `Sentis` instead of `Barracuda`. To upgrade your project, change all references to `Barracuda`. For example, change `using Unity.Barracuda` to `using Unity.Sentis`.
 
@@ -19,7 +31,7 @@ All namespaces now use `Sentis` instead of `Barracuda`. To upgrade your project,
 
 The way tensors work has changed. Sentis no longer converts tensors to different layouts automatically, so you might need to update your code to make sure input and output tensors are the layout you expect. Refer to [Tensor fundamentals](tensor-fundamentals.md) for more information.
 
-## Use `TensorFloat` or `TensorInt` to create tensors
+## Use TensorFloat or TensorInt to create tensors
 
 Sentis supports tensors that contain floats or ints.
 
@@ -108,6 +120,6 @@ TensorFloat convolutionLayerOutputTensor = worker.PeekOutput("ConvolutionLayer")
 
 You should only use this for debugging. Refer to [Profile a model](profile-a-model.md) for more information.
 
-## Replace `asFloats` and `asInts`
+## Replace asFloats and asInts
 
 The `Tensor` classes no longer contain the `asFloats` and `asInts` methods. Use `ToReadOnlyArray` instead.

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine.Assertions;
 
 namespace Unity.Sentis {
@@ -7,64 +9,55 @@ static class Logger
 {
     //TODO handle context (execution/import/model/layer) + log it along error/assert (warning think of thread safety vs context)
     //TODO is it valuable to have a way collect many errors before asserting/throw?
-    public static void AssertAreEqual(object expected, object actual, string msg)
+    [Conditional("UNITY_ASSERTIONS")]
+    public static void AssertAreEqual<T>(T expected, T actual, string msg)
     {
-        #if (UNITY_ASSERTIONS)
-        if (expected != actual)
+        if (!EqualityComparer<T>.Default.Equals(expected, actual))
             Assert.AreEqual(expected, actual, msg);
-        #endif
     }
-    public static void AssertAreEqual(object expected, object actual, string msg, object msgParam)
+    [Conditional("UNITY_ASSERTIONS")]
+    public static void AssertAreEqual<T, TP0>(T expected, T actual, string msg, TP0 msgParam)
     {
-        #if (UNITY_ASSERTIONS)
-        if (expected != actual)
-            Assert.AreEqual(expected, actual, String.Format(msg, msgParam));
-        #endif
+        if (!EqualityComparer<T>.Default.Equals(expected, actual))
+            Assert.AreEqual(expected, actual, string.Format(msg, msgParam));
     }
-    public static void AssertAreEqual(object expected, object actual, string msg, object msgParam0, object msgParam1)
+    [Conditional("UNITY_ASSERTIONS")]
+    public static void AssertAreEqual<T, TP0, TP1>(T expected, T actual, string msg, TP0 msgParam0, TP1 msgParam1)
     {
-        #if (UNITY_ASSERTIONS)
-        if (expected != actual)
-            Assert.AreEqual(expected, actual, String.Format(msg, msgParam0, msgParam1));
-        #endif
+        if (!EqualityComparer<T>.Default.Equals(expected, actual))
+            Assert.AreEqual(expected, actual, string.Format(msg, msgParam0, msgParam1));
     }
-    public static void AssertAreEqual(object expected, object actual, string msg, object msgParam0, object msgParam1, object msgParam2)
+    [Conditional("UNITY_ASSERTIONS")]
+    public static void AssertAreEqual<T, TP0, TP1, TP2>(T expected, T actual, string msg, TP0 msgParam0, TP1 msgParam1, TP2 msgParam2)
     {
-        #if (UNITY_ASSERTIONS)
-        if (expected != actual)
-            Assert.AreEqual(expected, actual, String.Format(msg, msgParam0, msgParam1, msgParam2));
-        #endif
+        if (!EqualityComparer<T>.Default.Equals(expected, actual))
+            Assert.AreEqual(expected, actual, string.Format(msg, msgParam0, msgParam1, msgParam2));
     }
 
+    [Conditional("UNITY_ASSERTIONS")]
     public static void AssertIsFalse(bool condition, string msg)
     {
-        #if (UNITY_ASSERTIONS)
-        if (!condition)
+        if (condition)
             Assert.IsFalse(condition, msg);
-        #endif
     }
 
+    [Conditional("UNITY_ASSERTIONS")]
     public static void AssertIsTrue(bool condition, string msg)
     {
-        #if (UNITY_ASSERTIONS)
         if (!condition)
             Assert.IsTrue(condition, msg);
-        #endif
     }
-    public static void AssertIsTrue(bool condition, string msg, object msgParam0)
+    [Conditional("UNITY_ASSERTIONS")]
+    public static void AssertIsTrue<TP0>(bool condition, string msg, TP0 msgParam0)
     {
-        #if (UNITY_ASSERTIONS)
         if (!condition)
-            Assert.IsTrue(condition, String.Format(msg, msgParam0));
-        #endif
+            Assert.IsTrue(condition, string.Format(msg, msgParam0));
     }
-    public static void AssertIsTrue(bool condition, string msg, object msgParam0, object msgParam1)
+    [Conditional("UNITY_ASSERTIONS")]
+    public static void AssertIsTrue<TP0, TP1>(bool condition, string msg, TP0 msgParam0, TP1 msgParam1)
     {
-        #if (UNITY_ASSERTIONS)
         if (!condition)
-            Assert.IsTrue(condition, String.Format(msg, msgParam0, msgParam1));
-        #endif
+            Assert.IsTrue(condition, string.Format(msg, msgParam0, msgParam1));
     }
 }
 } // namespace Unity.Sentis
-

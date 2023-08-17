@@ -3,7 +3,7 @@ using Unity.Sentis;
 
 public class ExecuteOperatorOnTensor : MonoBehaviour
 {
-    static IOps s_Ops;
+    static Ops s_Ops;
     ITensorAllocator m_Allocator;
     TensorFloat m_InputTensor = new TensorFloat(new TensorShape(4), new[] { 2.0f, 1.0f, 3.0f, 0.0f });
     [SerializeField]
@@ -18,6 +18,8 @@ public class ExecuteOperatorOnTensor : MonoBehaviour
 
         // Execute an operator on the input tensor.
         var outputTensor = s_Ops.ArgMax(m_InputTensor, axis: 0, keepdim: true);
+        // Ensure tensor is on CPU before indexing.
+        outputTensor.MakeReadable();
         Debug.Log(outputTensor[0]);
     }
 

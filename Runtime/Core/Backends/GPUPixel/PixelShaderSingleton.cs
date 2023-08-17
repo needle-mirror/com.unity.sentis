@@ -27,7 +27,7 @@ namespace Unity.Sentis
         {
             if (EnableDebug) m_usedShaders.Add(kernelName);
 
-            if (!m_shaderNameToMaterial.TryGetValue(kernelName, out var material))
+            if (!m_shaderNameToMaterial.TryGetValue(kernelName, out var material) || material == null)
             {
                 Profiler.BeginSample(kernelName);
                 material = new Material(Shader.Find(kernelName));

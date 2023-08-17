@@ -21,19 +21,5 @@ static class PassesUtils
             }
         }
     }
-
-    /// <summary>
-    /// returns an Tensor given input name if found in model constants, otherwise null
-    /// </summary>
-    public static Tensor GetConstantInputAsTensor(Model model, string name)
-    {
-        foreach (var constant in model.constants)
-        {
-            if (constant.name == name)
-                return constant.DataSetToTensor();
-        }
-
-        return null;
-    }
 }
 } // namespace Unity.Sentis

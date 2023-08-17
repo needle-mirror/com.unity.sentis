@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Unity.Sentis.Layers;
-using Unity.Sentis;
 using UnityEngine;
 
 namespace Unity.Sentis.Compiler.Passes.Optimization
@@ -16,8 +15,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
         static void FuseConstants(ref Model model)
         {
-            var allocator = new DefaultTensorAllocator();
-            var computedLayerTensors = ComputeKnownLayerTensors(model, allocator);
+            var computedLayerTensors = ComputeKnownLayerTensors(model);
 
             // remove precalculated layers
             model.layers.RemoveAll(x => computedLayerTensors.ContainsKey(x.name));
@@ -26,84 +24,101 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             foreach (var kvp in computedLayerTensors)
             {
                 model.constants.Add(new Constant(kvp.Key, kvp.Value));
+                kvp.Value.Dispose();
             }
-
-            // dispose tensors
-            allocator.Dispose();
 
             // remove unused constants
             var removeUnusedPass = new Cleanup.RemoveUnusedPass();
             removeUnusedPass.Run(ref model);
         }
 
-        static Dictionary<string, Tensor> ComputeKnownLayerTensors(Model model, ITensorAllocator allocator)
+        static Dictionary<string, Tensor> ComputeKnownLayerTensors(Model model)
         {
-            var ctx = new ShapeInferenceContext();
-            var op = new CPUOps(allocator);
+            var ctx = new PartialInferenceContext();
+            var backend = new CPUBackend();
             var vars = new DefaultVars();
             var executionContext = new ExecutionContext
             {
-                ops = op,
+                backend = backend,
                 vars = vars
             };
 
-            var constantNames = new HashSet<string>();
+            var constantTensors = new Dictionary<string, Tensor>();
+            var calculatedTensors = new Dictionary<string, Tensor>();
 
             // model constants
             foreach (var constant in model.constants)
             {
-                constantNames.Add(constant.name);
-                ctx.AddKnownTensor(constant.name, constant.DataSetToTensor());
+                var constantTensor = constant.DataSetToTensor();
+                constantTensors.Add(constant.name, constantTensor);
+                ctx.AddPartialTensor(constant.name, PartialTensor.FromTensor(constantTensor));
             }
 
             // model inputs
             foreach (var input in model.inputs)
             {
-                ctx.AddShape(input.name, input.shape);
+                ctx.AddPartialTensor(input.name, new PartialTensor(input.dataType, input.shape));
             }
 
             // iterate through layers executing if layer inputs are all known
             foreach (var layer in model.layers)
             {
-                if (ctx.TryGetKnownTensors(layer.inputs, out var inputs) && !layer.GetType().IsDefined(typeof(NonDeterministicOutput)))
+                var isDeterministic = !layer.GetType().IsDefined(typeof(NonDeterministicOutput));
+                for (var i = 0; i < layer.inputs.Length && isDeterministic; i++)
                 {
-                    // full inference
-                    var outputTensor = layer.Execute(inputs, executionContext);
-                    ctx.AddKnownTensor(layer.name, outputTensor);
-
-                    if (layer.outputs == null)
-                        continue;
-
-                    for (var i = 1; i < layer.outputs.Length; i++)
-                    {
-                        ctx.AddKnownTensor(layer.outputs[i], vars.PeekOutput(layer.outputs[i]));
-                    }
+                    isDeterministic &= string.IsNullOrEmpty(layer.inputs[i]) || calculatedTensors.ContainsKey(layer.inputs[i]) || constantTensors.ContainsKey(layer.inputs[i]);
                 }
-                else
-                {
-                    // shape inference
-                    var layerInputShapes = ctx.GetShapes(layer.inputs);
-                    var layerOutputShape = layer.InferOutputShape(layerInputShapes, ctx);
-                    ctx.AddShape(layer.name, layerOutputShape);
 
+                if (!isDeterministic)
+                {
                     // partial tensor inference
                     var layerInputPartialTensors = ctx.GetPartialTensors(layer.inputs);
-                    var layerOutputPartialTensor = layer.InferPartialTensor(layerInputPartialTensors, ctx);
-                    ctx.AddPartialTensor(layer.name, layerOutputPartialTensor);
+                    var outputPartialTensor = layer.InferPartialTensor(layerInputPartialTensors, ctx);
+                    ctx.AddPartialTensor(layer.name, outputPartialTensor);
+                    if (outputPartialTensor.IsFullyKnown())
+                        calculatedTensors.Add(layer.name, outputPartialTensor.ToTensor());
+                    for (var i = 1; i < (layer.outputs?.Length ?? 0); i++)
+                    {
+                        outputPartialTensor = ctx.GetPartialTensor(layer.outputs[i]);
+                        if (outputPartialTensor.IsFullyKnown())
+                            calculatedTensors.Add(layer.name, outputPartialTensor.ToTensor());
+                    }
+                    continue;
+                }
+
+                var inputs = new Tensor[layer.inputs.Length];
+                for (var i = 0; i < layer.inputs.Length; i++)
+                {
+                    if (string.IsNullOrEmpty(layer.inputs[i]))
+                        continue;
+                    if (calculatedTensors.TryGetValue(layer.inputs[i], out var calculatedInputTensor))
+                        inputs[i] = calculatedInputTensor;
+                    else
+                        inputs[i] = constantTensors[layer.inputs[i]];
+                }
+
+                // full inference
+                var outputTensor = layer.Execute(inputs, executionContext);
+                calculatedTensors.Add(layer.name, outputTensor);
+                ctx.AddPartialTensor(layer.name, PartialTensor.FromTensor(outputTensor));
+
+                if (layer.outputs == null)
+                    continue;
+
+                for (var i = 1; i < layer.outputs.Length; i++)
+                {
+                    outputTensor = vars.PeekOutput(layer.outputs[i]);
+                    calculatedTensors.Add(layer.name, outputTensor);
+                    ctx.AddPartialTensor(layer.outputs[i], PartialTensor.FromTensor(outputTensor));
                 }
             }
 
-            // create return dictionary without constants
-            var calculatedTensors = new Dictionary<string, Tensor>();
-
-            foreach (var kvp in ctx.KnownTensors)
+            foreach (var constantTensor in constantTensors.Values)
             {
-                if (!constantNames.Contains(kvp.Key))
-                    calculatedTensors[kvp.Key] = kvp.Value.DeepCopy();
+                constantTensor.Dispose();
             }
 
             vars.Dispose();
-            ctx.Dispose();
 
             return calculatedTensors;
         }

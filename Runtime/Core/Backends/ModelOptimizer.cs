@@ -13,27 +13,26 @@ namespace Unity.Sentis
 
 static class ModelOptimizer
 {
-    public static bool IsLayerSupportingActivationFusing(Layers.Layer layer)
-    {
-        return layer is Layers.FusedActivation;
-    }
-
     internal static Model OptimizeModel(Model model)
     {
-        var optimizationPasses = new IModelPass[] {
+        var optimizationPasses = new IModelPass[]
+        {
             new EinsumToMatMulPass(),
+            new FuseConstantsPass(),
             new RemoveNoOpsPass(),
             new RemoveUnusedPass(),
-            new FuseConstantsPass(),
+            new ContractSubExpressionPass(),
             new ConcatenateTransposesPass(),
             new ContractToSimplerLayerPass(),
-            new ContractSubExpressionPass(),
+            new SimplifyReshapeInputPass(),
             new FuseDensePass(),
             new FuseLinearLayersPass(),
             new FuseActivationPass(),
             new RemoveDuplicatesPass(),
-            // Good to do those passes at the very end
+            new RemoveNoOpsPass(),
+            // // Good to do those passes at the very end
             new RemoveUnusedPass(),
+            new RoundDenormalWeightsPass(),
             new CPUFallbackPass(),
         };
 

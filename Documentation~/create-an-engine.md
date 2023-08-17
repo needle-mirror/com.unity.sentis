@@ -31,11 +31,11 @@ public class CreateWorker : MonoBehaviour
 
 ## Back end types
 
-|Back end type|Runs on|Compatible platforms|Compatible tensor data types|
-|-|-|-|-|
-|`BackendType.CPU`|CPU, using [Burst](https://docs.unity3d.com/Packages/com.unity.burst@latest/)|All|float and int|
-|`BackendType.GPUCompute`|GPU, using Sentis compute shaders|Platforms that support compute shaders. Use [SystemInfo.supportsComputeShaders](https://docs.unity3d.com/2023.2/Documentation/ScriptReference/SystemInfo-supportsComputeShaders.html) to check if a platform supports compute shaders.|float and int|
-|`BackendType.GPUPixel`|GPU, using Sentis pixel shaders|All|float|
+|Back end type|Runs on|Compatible platforms|
+|-|-|-|
+|`BackendType.CPU`|CPU, using [Burst](https://docs.unity3d.com/Packages/com.unity.burst@latest/)|All|
+|`BackendType.GPUCompute`|GPU, using Sentis compute shaders|Platforms that support compute shaders. Use [SystemInfo.supportsComputeShaders](https://docs.unity3d.com/2023.2/Documentation/ScriptReference/SystemInfo-supportsComputeShaders.html) to check if a platform supports compute shaders.|
+|`BackendType.GPUPixel`|GPU, using Sentis pixel shaders|All|
 
 If a back end type doesn't support a Sentis layer in a model, the worker falls back to running on the CPU for that layer. Refer to [Supported ONNX operators](supported-operators.md) for more information.
 

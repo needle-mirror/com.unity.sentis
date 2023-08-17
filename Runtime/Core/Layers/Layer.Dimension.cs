@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace Unity.Sentis.Layers
 {
@@ -37,22 +38,37 @@ namespace Unity.Sentis.Layers
             this.end = end;
         }
 
-        internal override PartialTensor InferPartialTensor(PartialTensor[] partialTensors, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            if (partialTensors[0].isPartiallyKnown)
-                return PartialInferenceHelper.PartialTensorFromSymbolicShape(partialTensors[0].symbolicShape, start, end);
-            return PartialInferenceHelper.PartialTensorFromSymbolicShape(ctx.GetSymbolicTensorShape(inputs[0]), start, end);
-        }
+            if (start == end)
+                return new PartialTensor(DataType.Int, new SymbolicTensorShape(new SymbolicTensorDim(0)));
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
-        {
-            return SymbolicInference.Shape(inputShapes[0], start, end);
+            var shapeX = inputTensors[0].shape;
+
+            if (!shapeX.hasRank)
+                return new PartialTensor(DataType.Int, SymbolicTensorShape.UnknownOfRank(1));
+
+            var startX = start < 0 ? start + shapeX.rank : start;
+            var endX = end < 0 ? end + shapeX.rank : end;
+            startX = Mathf.Clamp(startX, 0, shapeX.rank);
+            endX = Mathf.Clamp(endX, 0, shapeX.rank);
+
+            Logger.AssertIsTrue(endX >= startX, "PartialTensorFromSymbolicShape.InputError: start value cannot be greater than end value for shape slicing");
+
+            var tensorOut = new PartialTensor(DataType.Int, new SymbolicTensorShape(endX - startX));
+            for (var i = startX; i < endX; i++)
+            {
+                tensorOut[i - startX] = (PartialTensorElement)shapeX[i];
+            }
+
+            return tensorOut;
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Shape(inputTensors[0], start, end);
+            return ctx.backend.Shape(inputTensors[0], start, end);
         }
 
         /// <inheritdoc/>
@@ -82,23 +98,19 @@ namespace Unity.Sentis.Layers
             inputs = new[] { input };
         }
 
-        internal override PartialTensor InferPartialTensor(PartialTensor[] partialTensors, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            var symbolicShape = partialTensors[0].isPartiallyKnown ? partialTensors[0].symbolicShape : ctx.GetSymbolicTensorShape(inputs[0]);
-            var sizeTensor = new PartialTensor(new TensorShape());
-            sizeTensor[0] = PartialTensorElement.FromSymbolicTensorDim(symbolicShape.Length());
-            return sizeTensor;
-        }
-
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
-        {
-            return new SymbolicTensorShape();
+            return new PartialTensor(DataType.Int, new SymbolicTensorShape())
+            {
+                [0] = (PartialTensorElement)inputTensors[0].shape.Length()
+            };
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Size(inputTensors[0].shape);
+            return ctx.backend.Size(inputTensors[0].shape);
         }
 
         internal override string profilerTag => "Size";

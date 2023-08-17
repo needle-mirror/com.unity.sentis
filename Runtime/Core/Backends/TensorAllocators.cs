@@ -430,32 +430,58 @@ public class TensorCachingAllocator : ITensorAllocator
 
     void AdoptFreeBuffer(ITensorData buffer)
     {
-        // insert into the sorted array
-        var size = buffer.maxCapacity;
-        var newEntry = new Entry { size = size, tensorData = buffer, deviceType = buffer.deviceType, free = true };
-        bool found = false;
-        for (int i = 0; !found && i < m_AllocatedBuffers.Count; ++i)
-        {
-            var entry = m_AllocatedBuffers[i];
-            if (buffer == entry.tensorData)
-            {
-                Assert.IsTrue(!entry.free);
-                entry.free = true;
-                m_AllocatedBuffers[i] = entry;
-                Assert.IsTrue(m_AllocatedBuffers[i].free);
-                found = true;
-            }
+        var bufferSize = buffer.maxCapacity;
+        var newEntry = new Entry { size = bufferSize, tensorData = buffer, deviceType = buffer.deviceType, free = true };
+        var allocatedBufferCount = m_AllocatedBuffers.Count;
 
-            if (size < entry.size)
+        if (allocatedBufferCount == 0)
+        {
+            m_AllocatedBuffers.Add(newEntry);
+            return;
+        }
+
+        int l = -1, r = allocatedBufferCount;
+        var m = (l + r) / 2;
+
+        // Looking for l as the last entry with entry.size < buffer.size
+        while (r - l > 1)
+        {
+            if (m_AllocatedBuffers[m].size < bufferSize)
+                l = m;
+            else
+                r = m;
+
+            m = (l + r) / 2;
+        }
+
+        m = l + 1;
+        if (m == allocatedBufferCount)
+        {
+            m_AllocatedBuffers.Add(newEntry);
+            return;
+        }
+
+        for (; m < allocatedBufferCount; m++)
+        {
+            var entry = m_AllocatedBuffers[m];
+
+            if (entry.size != bufferSize)
+                break;
+
+            if (ReferenceEquals(buffer, entry.tensorData))
             {
-                m_AllocatedBuffers.Insert(i, newEntry);
-                Assert.IsTrue(m_AllocatedBuffers[i].size < m_AllocatedBuffers[i + 1].size);
-                found = true;
+                Assert.IsFalse(entry.free);
+                entry.free = true;
+                m_AllocatedBuffers[m] = entry;
+                return;
             }
         }
 
-        if (!found)
+        // m is now out of the list, or points to the first entry with entry.size > buffer.size
+        if (m == allocatedBufferCount)
             m_AllocatedBuffers.Add(newEntry);
+        else
+            m_AllocatedBuffers.Insert(m, newEntry);
     }
 
     void DisposeAllocatedBuffer(ITensorData buffer)

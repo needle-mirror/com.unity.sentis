@@ -5,6 +5,7 @@ namespace Unity.Sentis
     /// <summary>
     /// Represents data storage for the constant weights of a model.
     /// </summary>
+    [PreferBinarySerialization]
     public class ModelAssetWeightsData : ScriptableObject
     {
         /// <summary>

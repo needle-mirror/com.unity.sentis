@@ -1,6 +1,6 @@
 # Inspect a model
 
-## Get model inputs and outputs
+## Get model inputs
 
 Use the [`inputs` property of the runtime model](xref:Unity.Sentis.Model.inputs) to get the inputs of the model, and the name or tensor shape of each input.
 
@@ -13,7 +13,6 @@ using Unity.Sentis;
 
 public class GetModelInputs : MonoBehaviour
 {
-
     public ModelAsset modelAsset;
 
     void Start()
@@ -21,7 +20,7 @@ public class GetModelInputs : MonoBehaviour
         Model runtimeModel = ModelLoader.Load(modelAsset);
 
         List<Model.Input> inputs = runtimeModel.inputs;
-        
+
         // Loop through each input
         foreach (var input in inputs)
         {
@@ -30,13 +29,14 @@ public class GetModelInputs : MonoBehaviour
 
             // Log the tensor shape of the input, for example (1, 1, 28, 28)
             Debug.Log(input.shape);
-
         }
     }
 }
 ```
 
 Input dimensions are fixed or dynamic. Refer to [Model inputs](models-concept.md#model-inputs) for more information.
+
+## Get model outputs
 
 Use the [`outputs` property of the runtime model](xref:Unity.Sentis.Model.outputs) to get the names of the output layers of the model.
 

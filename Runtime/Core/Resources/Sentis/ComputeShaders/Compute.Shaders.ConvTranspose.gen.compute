@@ -1,6 +1,9 @@
 // This is auto-generated -- do not modify directly
 
 #pragma kernel ConvTranspose2D_KxK
+#pragma kernel ConvTranspose1D_KxK
+
+#pragma multi_compile _ USEBIAS
 
 StructuredBuffer<float> Xptr;
 StructuredBuffer<float> Wptr;
@@ -106,35 +109,35 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
             uint oy = oyChannels * (outputChannels * kernelSize) + baseOutputY * kernelSize + (kernelSize - 1) - oySpatial;
             {
                 wLoad_y0 = Wptr[oy];
-                oy += (kernelHeight * kernelWidth) * THREAD_COUNT_Y;
+                oy += kernelSize * THREAD_COUNT_Y;
             }
             {
                 wLoad_y1 = Wptr[oy];
-                oy += (kernelHeight * kernelWidth) * THREAD_COUNT_Y;
+                oy += kernelSize * THREAD_COUNT_Y;
             }
             {
                 wLoad_y2 = Wptr[oy];
-                oy += (kernelHeight * kernelWidth) * THREAD_COUNT_Y;
+                oy += kernelSize * THREAD_COUNT_Y;
             }
             {
                 wLoad_y3 = Wptr[oy];
-                oy += (kernelHeight * kernelWidth) * THREAD_COUNT_Y;
+                oy += kernelSize * THREAD_COUNT_Y;
             }
             {
                 wLoad_y4 = Wptr[oy];
-                oy += (kernelHeight * kernelWidth) * THREAD_COUNT_Y;
+                oy += kernelSize * THREAD_COUNT_Y;
             }
             {
                 wLoad_y5 = Wptr[oy];
-                oy += (kernelHeight * kernelWidth) * THREAD_COUNT_Y;
+                oy += kernelSize * THREAD_COUNT_Y;
             }
             {
                 wLoad_y6 = Wptr[oy];
-                oy += (kernelHeight * kernelWidth) * THREAD_COUNT_Y;
+                oy += kernelSize * THREAD_COUNT_Y;
             }
             {
                 wLoad_y7 = Wptr[oy];
-                oy += (kernelHeight * kernelWidth) * THREAD_COUNT_Y;
+                oy += kernelSize * THREAD_COUNT_Y;
             }
         }
 
@@ -147,7 +150,7 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
         float xLoad_k1_x2;
         float xLoad_k1_x3;
 
-        
+
         {
             uint k = outerK + 0 * THREAD_COUNT_Y + groupThreadID.y;
 
@@ -160,7 +163,7 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
                 uint iw = dilationWidth * kw + iwBase[0];
 
                 float xVal = 0.0f;
-                
+
                 uint readH = (ih - padHeight) / strideHeight;
                 uint readW = (iw - padWidth) / strideWidth;
                 if (readH < inputHeight && readW < inputWidth && (ih - padHeight) % strideHeight == 0 && (iw - padWidth) % strideWidth == 0 && k < K)
@@ -172,7 +175,7 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
                 uint iw = dilationWidth * kw + iwBase[1];
 
                 float xVal = 0.0f;
-                
+
                 uint readH = (ih - padHeight) / strideHeight;
                 uint readW = (iw - padWidth) / strideWidth;
                 if (readH < inputHeight && readW < inputWidth && (ih - padHeight) % strideHeight == 0 && (iw - padWidth) % strideWidth == 0 && k < K)
@@ -184,7 +187,7 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
                 uint iw = dilationWidth * kw + iwBase[2];
 
                 float xVal = 0.0f;
-                
+
                 uint readH = (ih - padHeight) / strideHeight;
                 uint readW = (iw - padWidth) / strideWidth;
                 if (readH < inputHeight && readW < inputWidth && (ih - padHeight) % strideHeight == 0 && (iw - padWidth) % strideWidth == 0 && k < K)
@@ -196,7 +199,7 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
                 uint iw = dilationWidth * kw + iwBase[3];
 
                 float xVal = 0.0f;
-                
+
                 uint readH = (ih - padHeight) / strideHeight;
                 uint readW = (iw - padWidth) / strideWidth;
                 if (readH < inputHeight && readW < inputWidth && (ih - padHeight) % strideHeight == 0 && (iw - padWidth) % strideWidth == 0 && k < K)
@@ -216,7 +219,7 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
                 uint iw = dilationWidth * kw + iwBase[0];
 
                 float xVal = 0.0f;
-                
+
                 uint readH = (ih - padHeight) / strideHeight;
                 uint readW = (iw - padWidth) / strideWidth;
                 if (readH < inputHeight && readW < inputWidth && (ih - padHeight) % strideHeight == 0 && (iw - padWidth) % strideWidth == 0 && k < K)
@@ -228,7 +231,7 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
                 uint iw = dilationWidth * kw + iwBase[1];
 
                 float xVal = 0.0f;
-                
+
                 uint readH = (ih - padHeight) / strideHeight;
                 uint readW = (iw - padWidth) / strideWidth;
                 if (readH < inputHeight && readW < inputWidth && (ih - padHeight) % strideHeight == 0 && (iw - padWidth) % strideWidth == 0 && k < K)
@@ -240,7 +243,7 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
                 uint iw = dilationWidth * kw + iwBase[2];
 
                 float xVal = 0.0f;
-                
+
                 uint readH = (ih - padHeight) / strideHeight;
                 uint readW = (iw - padWidth) / strideWidth;
                 if (readH < inputHeight && readW < inputWidth && (ih - padHeight) % strideHeight == 0 && (iw - padWidth) % strideWidth == 0 && k < K)
@@ -252,7 +255,7 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
                 uint iw = dilationWidth * kw + iwBase[3];
 
                 float xVal = 0.0f;
-                
+
                 uint readH = (ih - padHeight) / strideHeight;
                 uint readW = (iw - padWidth) / strideWidth;
                 if (readH < inputHeight && readW < inputWidth && (ih - padHeight) % strideHeight == 0 && (iw - padWidth) % strideWidth == 0 && k < K)
@@ -311,6 +314,7 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
         }
     }
 
+    #ifdef USEBIAS
     float bias[BLOCK_SIZE_Y];
     [unroll]
     for (by = 0; by < BLOCK_SIZE_Y; by++)
@@ -318,6 +322,7 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
         uint oy = baseOutputY + by * THREAD_COUNT_Y;
         bias[by] = Bptr[oy];
     }
+    #endif
 
     [unroll]
     for (bx = 0; bx < BLOCK_SIZE_X; bx++)
@@ -327,7 +332,11 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
         uint storeIndex = 0xFFFFFFFF;
         if (oy < outputChannels && ox < outputSize)
             storeIndex = batchWriteOffset + oy * outputSize + ox;
+        #ifdef USEBIAS
         Optr[storeIndex] = max(accum0[bx] + bias[0], _MinValue);
+        #else
+        Optr[storeIndex] = max(accum0[bx], _MinValue);
+        #endif
     }
     [unroll]
     for (bx = 0; bx < BLOCK_SIZE_X; bx++)
@@ -337,7 +346,11 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
         uint storeIndex = 0xFFFFFFFF;
         if (oy < outputChannels && ox < outputSize)
             storeIndex = batchWriteOffset + oy * outputSize + ox;
+        #ifdef USEBIAS
         Optr[storeIndex] = max(accum1[bx] + bias[1], _MinValue);
+        #else
+        Optr[storeIndex] = max(accum1[bx], _MinValue);
+        #endif
     }
     [unroll]
     for (bx = 0; bx < BLOCK_SIZE_X; bx++)
@@ -347,7 +360,11 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
         uint storeIndex = 0xFFFFFFFF;
         if (oy < outputChannels && ox < outputSize)
             storeIndex = batchWriteOffset + oy * outputSize + ox;
+        #ifdef USEBIAS
         Optr[storeIndex] = max(accum2[bx] + bias[2], _MinValue);
+        #else
+        Optr[storeIndex] = max(accum2[bx], _MinValue);
+        #endif
     }
     [unroll]
     for (bx = 0; bx < BLOCK_SIZE_X; bx++)
@@ -357,7 +374,11 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
         uint storeIndex = 0xFFFFFFFF;
         if (oy < outputChannels && ox < outputSize)
             storeIndex = batchWriteOffset + oy * outputSize + ox;
+        #ifdef USEBIAS
         Optr[storeIndex] = max(accum3[bx] + bias[3], _MinValue);
+        #else
+        Optr[storeIndex] = max(accum3[bx], _MinValue);
+        #endif
     }
     [unroll]
     for (bx = 0; bx < BLOCK_SIZE_X; bx++)
@@ -367,7 +388,11 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
         uint storeIndex = 0xFFFFFFFF;
         if (oy < outputChannels && ox < outputSize)
             storeIndex = batchWriteOffset + oy * outputSize + ox;
+        #ifdef USEBIAS
         Optr[storeIndex] = max(accum4[bx] + bias[4], _MinValue);
+        #else
+        Optr[storeIndex] = max(accum4[bx], _MinValue);
+        #endif
     }
     [unroll]
     for (bx = 0; bx < BLOCK_SIZE_X; bx++)
@@ -377,7 +402,11 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
         uint storeIndex = 0xFFFFFFFF;
         if (oy < outputChannels && ox < outputSize)
             storeIndex = batchWriteOffset + oy * outputSize + ox;
+        #ifdef USEBIAS
         Optr[storeIndex] = max(accum5[bx] + bias[5], _MinValue);
+        #else
+        Optr[storeIndex] = max(accum5[bx], _MinValue);
+        #endif
     }
     [unroll]
     for (bx = 0; bx < BLOCK_SIZE_X; bx++)
@@ -387,7 +416,11 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
         uint storeIndex = 0xFFFFFFFF;
         if (oy < outputChannels && ox < outputSize)
             storeIndex = batchWriteOffset + oy * outputSize + ox;
+        #ifdef USEBIAS
         Optr[storeIndex] = max(accum6[bx] + bias[6], _MinValue);
+        #else
+        Optr[storeIndex] = max(accum6[bx], _MinValue);
+        #endif
     }
     [unroll]
     for (bx = 0; bx < BLOCK_SIZE_X; bx++)
@@ -397,6 +430,370 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
         uint storeIndex = 0xFFFFFFFF;
         if (oy < outputChannels && ox < outputSize)
             storeIndex = batchWriteOffset + oy * outputSize + ox;
+        #ifdef USEBIAS
         Optr[storeIndex] = max(accum7[bx] + bias[7], _MinValue);
+        #else
+        Optr[storeIndex] = max(accum7[bx], _MinValue);
+        #endif
+    }
+}
+[numthreads(THREAD_COUNT_X, THREAD_COUNT_Y, 1)]
+void ConvTranspose1D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
+{
+    uint bx, by;
+
+    uint baseOutputX = groupID.x * TILE_SIZE_X + groupThreadID.x;
+    uint baseOutputY = groupID.y * TILE_SIZE_Y + groupThreadID.y;
+    uint batchReadOffset = groupID.z * inputChannelsSize;
+    uint batchWriteOffset = groupID.z * outputChannelsSize;
+
+    uint K = kernelChannelSize;
+
+    uint4 ihBase;
+    uint4 iwBase;
+    [unroll]
+    for (bx = 0; bx < BLOCK_SIZE_X; bx++)
+    {
+        iwBase[bx] = ((baseOutputX + bx * THREAD_COUNT_X) % outputWidth);
+    }
+
+
+    float4 accum0 = 0.0f;
+    float4 accum1 = 0.0f;
+    float4 accum2 = 0.0f;
+    float4 accum3 = 0.0f;
+    float4 accum4 = 0.0f;
+    float4 accum5 = 0.0f;
+    float4 accum6 = 0.0f;
+    float4 accum7 = 0.0f;
+
+    uint kyyStride = K * THREAD_COUNT_Y;
+    uint kxxStride = THREAD_COUNT_Y * inputSize;
+
+    for (uint outerK = 0; outerK < K; outerK += TILE_SIZE_K)
+    {
+        float wLoad_y0;
+        float wLoad_y1;
+        float wLoad_y2;
+        float wLoad_y3;
+        float wLoad_y4;
+        float wLoad_y5;
+        float wLoad_y6;
+        float wLoad_y7;
+        {
+            uint oySpatial = (outerK + groupThreadID.x) % kernelSize;
+            uint oyChannels = (outerK + groupThreadID.x) / kernelSize;
+
+            uint oy = oyChannels * (outputChannels * kernelSize) + baseOutputY * kernelSize + (kernelSize - 1) - oySpatial;
+            {
+                wLoad_y0 = Wptr[oy];
+                oy += kernelSize * THREAD_COUNT_Y;
+            }
+            {
+                wLoad_y1 = Wptr[oy];
+                oy += kernelSize * THREAD_COUNT_Y;
+            }
+            {
+                wLoad_y2 = Wptr[oy];
+                oy += kernelSize * THREAD_COUNT_Y;
+            }
+            {
+                wLoad_y3 = Wptr[oy];
+                oy += kernelSize * THREAD_COUNT_Y;
+            }
+            {
+                wLoad_y4 = Wptr[oy];
+                oy += kernelSize * THREAD_COUNT_Y;
+            }
+            {
+                wLoad_y5 = Wptr[oy];
+                oy += kernelSize * THREAD_COUNT_Y;
+            }
+            {
+                wLoad_y6 = Wptr[oy];
+                oy += kernelSize * THREAD_COUNT_Y;
+            }
+            {
+                wLoad_y7 = Wptr[oy];
+                oy += kernelSize * THREAD_COUNT_Y;
+            }
+        }
+
+        float xLoad_k0_x0;
+        float xLoad_k0_x1;
+        float xLoad_k0_x2;
+        float xLoad_k0_x3;
+        float xLoad_k1_x0;
+        float xLoad_k1_x1;
+        float xLoad_k1_x2;
+        float xLoad_k1_x3;
+
+
+        {
+            uint k = outerK + 0 * THREAD_COUNT_Y + groupThreadID.y;
+
+            uint kw = (k % kernelWidth);
+            uint ic = k / kernelWidth;
+
+            {
+                uint iw = dilationWidth * kw + iwBase[0];
+
+                float xVal = 0.0f;
+
+                uint readW = (iw - padWidth) / strideWidth;
+                if (readW < inputWidth && (iw - padWidth) % strideWidth == 0 && k < K)
+                    xVal = Xptr[batchReadOffset + ic * inputSize + readW];
+                xLoad_k0_x0 = xVal;
+            }
+            {
+                uint iw = dilationWidth * kw + iwBase[1];
+
+                float xVal = 0.0f;
+
+                uint readW = (iw - padWidth) / strideWidth;
+                if (readW < inputWidth && (iw - padWidth) % strideWidth == 0 && k < K)
+                    xVal = Xptr[batchReadOffset + ic * inputSize + readW];
+                xLoad_k0_x1 = xVal;
+            }
+            {
+                uint iw = dilationWidth * kw + iwBase[2];
+
+                float xVal = 0.0f;
+
+                uint readW = (iw - padWidth) / strideWidth;
+                if (readW < inputWidth && (iw - padWidth) % strideWidth == 0 && k < K)
+                    xVal = Xptr[batchReadOffset + ic * inputSize + readW];
+                xLoad_k0_x2 = xVal;
+            }
+            {
+                uint iw = dilationWidth * kw + iwBase[3];
+
+                float xVal = 0.0f;
+
+                uint readW = (iw - padWidth) / strideWidth;
+                if (readW < inputWidth && (iw - padWidth) % strideWidth == 0 && k < K)
+                    xVal = Xptr[batchReadOffset + ic * inputSize + readW];
+                xLoad_k0_x3 = xVal;
+            }
+        }
+        {
+            uint k = outerK + 1 * THREAD_COUNT_Y + groupThreadID.y;
+
+            uint kw = (k % kernelWidth);
+            uint ic = k / kernelWidth;
+
+            {
+                uint iw = dilationWidth * kw + iwBase[0];
+
+                float xVal = 0.0f;
+
+                uint readW = (iw - padWidth) / strideWidth;
+                if (readW < inputWidth && (iw - padWidth) % strideWidth == 0 && k < K)
+                    xVal = Xptr[batchReadOffset + ic * inputSize + readW];
+                xLoad_k1_x0 = xVal;
+            }
+            {
+                uint iw = dilationWidth * kw + iwBase[1];
+
+                float xVal = 0.0f;
+
+                uint readW = (iw - padWidth) / strideWidth;
+                if (readW < inputWidth && (iw - padWidth) % strideWidth == 0 && k < K)
+                    xVal = Xptr[batchReadOffset + ic * inputSize + readW];
+                xLoad_k1_x1 = xVal;
+            }
+            {
+                uint iw = dilationWidth * kw + iwBase[2];
+
+                float xVal = 0.0f;
+
+                uint readW = (iw - padWidth) / strideWidth;
+                if (readW < inputWidth && (iw - padWidth) % strideWidth == 0 && k < K)
+                    xVal = Xptr[batchReadOffset + ic * inputSize + readW];
+                xLoad_k1_x2 = xVal;
+            }
+            {
+                uint iw = dilationWidth * kw + iwBase[3];
+
+                float xVal = 0.0f;
+
+                uint readW = (iw - padWidth) / strideWidth;
+                if (readW < inputWidth && (iw - padWidth) % strideWidth == 0 && k < K)
+                    xVal = Xptr[batchReadOffset + ic * inputSize + readW];
+                xLoad_k1_x3 = xVal;
+            }
+        }
+
+        GroupMemoryBarrierWithGroupSync();
+
+        WTILE(groupThreadID.y, groupThreadID.x, 0) = wLoad_y0;
+        WTILE(groupThreadID.y, groupThreadID.x, 1) = wLoad_y1;
+        WTILE(groupThreadID.y, groupThreadID.x, 2) = wLoad_y2;
+        WTILE(groupThreadID.y, groupThreadID.x, 3) = wLoad_y3;
+        WTILE(groupThreadID.y, groupThreadID.x, 4) = wLoad_y4;
+        WTILE(groupThreadID.y, groupThreadID.x, 5) = wLoad_y5;
+        WTILE(groupThreadID.y, groupThreadID.x, 6) = wLoad_y6;
+        WTILE(groupThreadID.y, groupThreadID.x, 7) = wLoad_y7;
+
+        XTILE(groupThreadID.y + 0 * THREAD_COUNT_Y, groupThreadID.x, 0) = xLoad_k0_x0;
+        XTILE(groupThreadID.y + 0 * THREAD_COUNT_Y, groupThreadID.x, 1) = xLoad_k0_x1;
+        XTILE(groupThreadID.y + 0 * THREAD_COUNT_Y, groupThreadID.x, 2) = xLoad_k0_x2;
+        XTILE(groupThreadID.y + 0 * THREAD_COUNT_Y, groupThreadID.x, 3) = xLoad_k0_x3;
+        XTILE(groupThreadID.y + 1 * THREAD_COUNT_Y, groupThreadID.x, 0) = xLoad_k1_x0;
+        XTILE(groupThreadID.y + 1 * THREAD_COUNT_Y, groupThreadID.x, 1) = xLoad_k1_x1;
+        XTILE(groupThreadID.y + 1 * THREAD_COUNT_Y, groupThreadID.x, 2) = xLoad_k1_x2;
+        XTILE(groupThreadID.y + 1 * THREAD_COUNT_Y, groupThreadID.x, 3) = xLoad_k1_x3;
+
+        GroupMemoryBarrierWithGroupSync();
+
+        for (uint innerK = 0; innerK < TILE_SIZE_K; innerK++)
+        {
+            float4 xMultiplier;
+            xMultiplier[0] = XTILE(innerK, groupThreadID.x, 0);
+            xMultiplier[1] = XTILE(innerK, groupThreadID.x, 1);
+            xMultiplier[2] = XTILE(innerK, groupThreadID.x, 2);
+            xMultiplier[3] = XTILE(innerK, groupThreadID.x, 3);
+
+            float wMultiplier0 = WTILE(groupThreadID.y, innerK, 0);
+            float wMultiplier1 = WTILE(groupThreadID.y, innerK, 1);
+            float wMultiplier2 = WTILE(groupThreadID.y, innerK, 2);
+            float wMultiplier3 = WTILE(groupThreadID.y, innerK, 3);
+            float wMultiplier4 = WTILE(groupThreadID.y, innerK, 4);
+            float wMultiplier5 = WTILE(groupThreadID.y, innerK, 5);
+            float wMultiplier6 = WTILE(groupThreadID.y, innerK, 6);
+            float wMultiplier7 = WTILE(groupThreadID.y, innerK, 7);
+
+            accum0 = mad(xMultiplier, wMultiplier0, accum0);
+            accum1 = mad(xMultiplier, wMultiplier1, accum1);
+            accum2 = mad(xMultiplier, wMultiplier2, accum2);
+            accum3 = mad(xMultiplier, wMultiplier3, accum3);
+            accum4 = mad(xMultiplier, wMultiplier4, accum4);
+            accum5 = mad(xMultiplier, wMultiplier5, accum5);
+            accum6 = mad(xMultiplier, wMultiplier6, accum6);
+            accum7 = mad(xMultiplier, wMultiplier7, accum7);
+        }
+    }
+
+    #ifdef USEBIAS
+    float bias[BLOCK_SIZE_Y];
+    [unroll]
+    for (by = 0; by < BLOCK_SIZE_Y; by++)
+    {
+        uint oy = baseOutputY + by * THREAD_COUNT_Y;
+        bias[by] = Bptr[oy];
+    }
+    #endif
+
+    [unroll]
+    for (bx = 0; bx < BLOCK_SIZE_X; bx++)
+    {
+        uint oy = baseOutputY + 0 * THREAD_COUNT_Y;
+        uint ox = baseOutputX + bx * THREAD_COUNT_X;
+        uint storeIndex = 0xFFFFFFFF;
+        if (oy < outputChannels && ox < outputSize)
+            storeIndex = batchWriteOffset + oy * outputSize + ox;
+        #ifdef USEBIAS
+        Optr[storeIndex] = max(accum0[bx] + bias[0], _MinValue);
+        #else
+        Optr[storeIndex] = max(accum0[bx], _MinValue);
+        #endif
+    }
+    [unroll]
+    for (bx = 0; bx < BLOCK_SIZE_X; bx++)
+    {
+        uint oy = baseOutputY + 1 * THREAD_COUNT_Y;
+        uint ox = baseOutputX + bx * THREAD_COUNT_X;
+        uint storeIndex = 0xFFFFFFFF;
+        if (oy < outputChannels && ox < outputSize)
+            storeIndex = batchWriteOffset + oy * outputSize + ox;
+        #ifdef USEBIAS
+        Optr[storeIndex] = max(accum1[bx] + bias[1], _MinValue);
+        #else
+        Optr[storeIndex] = max(accum1[bx], _MinValue);
+        #endif
+    }
+    [unroll]
+    for (bx = 0; bx < BLOCK_SIZE_X; bx++)
+    {
+        uint oy = baseOutputY + 2 * THREAD_COUNT_Y;
+        uint ox = baseOutputX + bx * THREAD_COUNT_X;
+        uint storeIndex = 0xFFFFFFFF;
+        if (oy < outputChannels && ox < outputSize)
+            storeIndex = batchWriteOffset + oy * outputSize + ox;
+        #ifdef USEBIAS
+        Optr[storeIndex] = max(accum2[bx] + bias[2], _MinValue);
+        #else
+        Optr[storeIndex] = max(accum2[bx], _MinValue);
+        #endif
+    }
+    [unroll]
+    for (bx = 0; bx < BLOCK_SIZE_X; bx++)
+    {
+        uint oy = baseOutputY + 3 * THREAD_COUNT_Y;
+        uint ox = baseOutputX + bx * THREAD_COUNT_X;
+        uint storeIndex = 0xFFFFFFFF;
+        if (oy < outputChannels && ox < outputSize)
+            storeIndex = batchWriteOffset + oy * outputSize + ox;
+        #ifdef USEBIAS
+        Optr[storeIndex] = max(accum3[bx] + bias[3], _MinValue);
+        #else
+        Optr[storeIndex] = max(accum3[bx], _MinValue);
+        #endif
+    }
+    [unroll]
+    for (bx = 0; bx < BLOCK_SIZE_X; bx++)
+    {
+        uint oy = baseOutputY + 4 * THREAD_COUNT_Y;
+        uint ox = baseOutputX + bx * THREAD_COUNT_X;
+        uint storeIndex = 0xFFFFFFFF;
+        if (oy < outputChannels && ox < outputSize)
+            storeIndex = batchWriteOffset + oy * outputSize + ox;
+        #ifdef USEBIAS
+        Optr[storeIndex] = max(accum4[bx] + bias[4], _MinValue);
+        #else
+        Optr[storeIndex] = max(accum4[bx], _MinValue);
+        #endif
+    }
+    [unroll]
+    for (bx = 0; bx < BLOCK_SIZE_X; bx++)
+    {
+        uint oy = baseOutputY + 5 * THREAD_COUNT_Y;
+        uint ox = baseOutputX + bx * THREAD_COUNT_X;
+        uint storeIndex = 0xFFFFFFFF;
+        if (oy < outputChannels && ox < outputSize)
+            storeIndex = batchWriteOffset + oy * outputSize + ox;
+        #ifdef USEBIAS
+        Optr[storeIndex] = max(accum5[bx] + bias[5], _MinValue);
+        #else
+        Optr[storeIndex] = max(accum5[bx], _MinValue);
+        #endif
+    }
+    [unroll]
+    for (bx = 0; bx < BLOCK_SIZE_X; bx++)
+    {
+        uint oy = baseOutputY + 6 * THREAD_COUNT_Y;
+        uint ox = baseOutputX + bx * THREAD_COUNT_X;
+        uint storeIndex = 0xFFFFFFFF;
+        if (oy < outputChannels && ox < outputSize)
+            storeIndex = batchWriteOffset + oy * outputSize + ox;
+        #ifdef USEBIAS
+        Optr[storeIndex] = max(accum6[bx] + bias[6], _MinValue);
+        #else
+        Optr[storeIndex] = max(accum6[bx], _MinValue);
+        #endif
+    }
+    [unroll]
+    for (bx = 0; bx < BLOCK_SIZE_X; bx++)
+    {
+        uint oy = baseOutputY + 7 * THREAD_COUNT_Y;
+        uint ox = baseOutputX + bx * THREAD_COUNT_X;
+        uint storeIndex = 0xFFFFFFFF;
+        if (oy < outputChannels && ox < outputSize)
+            storeIndex = batchWriteOffset + oy * outputSize + ox;
+        #ifdef USEBIAS
+        Optr[storeIndex] = max(accum7[bx] + bias[7], _MinValue);
+        #else
+        Optr[storeIndex] = max(accum7[bx], _MinValue);
+        #endif
     }
 }

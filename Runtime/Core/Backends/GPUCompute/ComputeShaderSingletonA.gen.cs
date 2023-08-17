@@ -39,26 +39,68 @@ namespace Unity.Sentis
             RegisterKernels("Sentis/ComputeShaders/Compute.Shaders.ConvTranspose.gen", new[]
             {
               "ConvTranspose2D_KxK",
+              "ConvTranspose1D_KxK",
             });
 
             RegisterKernels("Sentis/ComputeShaders/Compute.Shaders.Reduction.gen", new[]
             {
                 "ReduceMaxFloat",
+                "GlobalReduceMaxFloat",
                 "ReduceMinFloat",
+                "GlobalReduceMinFloat",
                 "ReduceSumFloat",
+                "GlobalReduceSumFloat",
                 "ReduceSumSquareFloat",
+                "GlobalReduceSumSquareFloat",
                 "ReduceMeanFloat",
+                "GlobalReduceMeanFloat",
                 "ReduceProdFloat",
+                "GlobalReduceProdFloat",
                 "ReduceL1Float",
+                "GlobalReduceL1Float",
                 "ReduceL2Float",
+                "GlobalReduceL2Float",
                 "ReduceSqrtFloat",
+                "GlobalReduceSqrtFloat",
                 "ReduceLogSumFloat",
+                "GlobalReduceLogSumFloat",
+                "ReduceLogSumExpFloat",
+                "GlobalReduceLogSumExpFloat",
+                "ReduceSumExpFloat",
+                "GlobalReduceSumExpFloat",
                 "ReduceMaxInt",
+                "GlobalReduceMaxInt",
                 "ReduceMinInt",
+                "GlobalReduceMinInt",
                 "ReduceSumInt",
+                "GlobalReduceSumInt",
                 "ReduceSumSquareInt",
+                "GlobalReduceSumSquareInt",
                 "ReduceProdInt",
+                "GlobalReduceProdInt",
                 "ReduceL1Int",
+                "GlobalReduceL1Int",
+            });
+            RegisterKernels("Sentis/ComputeShaders/Compute.Shaders.ReductionUnrolled.gen", new[]
+            {
+                "UnrolledReduceMaxFloat",
+                "UnrolledReduceMinFloat",
+                "UnrolledReduceSumFloat",
+                "UnrolledReduceSumSquareFloat",
+                "UnrolledReduceMeanFloat",
+                "UnrolledReduceProdFloat",
+                "UnrolledReduceL1Float",
+                "UnrolledReduceL2Float",
+                "UnrolledReduceSqrtFloat",
+                "UnrolledReduceLogSumFloat",
+                "UnrolledReduceLogSumExpFloat",
+                "UnrolledReduceSumExpFloat",
+                "UnrolledReduceMaxInt",
+                "UnrolledReduceMinInt",
+                "UnrolledReduceSumInt",
+                "UnrolledReduceSumSquareInt",
+                "UnrolledReduceProdInt",
+                "UnrolledReduceL1Int",
             });
         }
     }

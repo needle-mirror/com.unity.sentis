@@ -25,7 +25,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     if (!constTensors.ContainsKey(i))
                         continue;
 
-                    if(sharedConstants.ContainsKey(i))
+                    if (sharedConstants.ContainsKey(i))
                         sharedConstants[i] = true;
                     else
                         sharedConstants.Add(i, false);
@@ -95,7 +95,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     fusedLayer.name = layer.name;
                     model.layers[l] = fusedLayer;
 
-                    if(!preserve.Contains(inputLayer.name))
+                    if (!preserve.Contains(inputLayer.name))
                         mergedLayers.Add(inputLayer.name);
                 }
                 else
@@ -121,7 +121,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
         static bool IsLayerFusedActivation(Layers.Layer layer)
         {
-            if(layer is Layers.FusedActivation)
+            if (layer is Layers.FusedActivation)
                 return (layer as Layers.FusedActivation).fusedActivation != Layers.FusableActivation.None;
             return false;
         }

@@ -19,7 +19,7 @@ Shader "Hidden/Sentis/Pad"
             #include "CommonVertexShader.cginc"
             #include "CommonPixelShader.cginc"
 
-            DECLARE_TENSOR(X);
+            DECLARE_TENSOR(X, float);
 
             uint DimO[8];
             int Pad[8];

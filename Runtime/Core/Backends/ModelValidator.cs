@@ -11,7 +11,6 @@ static class ModelValidator
     internal static Model ValidateModel(Model model)
     {
         var validationPasses = new IValidationPass[] {
-            new ValidateShapeInference(),
             new ValidateBrokenLinks(),
             new ValidateUnconectedLayers(),
             new ValidateUniqueOutputs() };

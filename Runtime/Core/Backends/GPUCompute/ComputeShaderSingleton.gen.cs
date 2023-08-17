@@ -8,7 +8,6 @@ namespace Unity.Sentis
         {
             RegisterKernels("Sentis/ComputeShaders/ReferenceImpl.GenericA.gen", new[] {
                 "Transpose",
-                "ScaleBias",
                 "InstanceNormalizationTail",
             });
             RegisterKernels("Sentis/ComputeShaders/ReferenceImpl.ActivationA.gen", new[] {

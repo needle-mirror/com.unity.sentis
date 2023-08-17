@@ -84,6 +84,54 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     layersOnCPU.Add(input);
                 }
             }
+
+            // duplicate constants if used both on cpu and gpu
+            // ONNX-Bad: replace gather with int[] and not tensor
+            Dictionary<string, Layers.Constant> constants = new Dictionary<string, Layers.Constant>();
+            foreach (var c in model.constants)
+                constants[c.name] = c;
+
+            // Algorithm:
+            // if layer is on cpu :
+            //   do nothing
+            // if layer is on gpu :
+            //   check all inputs that are supposed to be on the gpu + those who are constants
+            //   -> if inconsistency (input is on the cpu), duplicate constant
+            Dictionary<string, string> remapConstants = new Dictionary<string, string>();
+            foreach (var layer in model.layers)
+            {
+                if (layersOnCPU.Contains(layer.name))
+                    continue;
+
+                // layer not on cpu, check if input that is supposed to be on gpu is a constant on the cpu
+                CPUReadInputs attribute = (CPUReadInputs)Attribute.GetCustomAttribute(layer.GetType(), typeof(CPUReadInputs));
+                HashSet<int> inputsOnCPU = new HashSet<int>();
+                if (attribute != null)
+                    inputsOnCPU = new HashSet<int>(attribute.InputsOnCPU);
+
+                for (int i = 0; i < layer.inputs.Length; i++)
+                {
+                    if (inputsOnCPU.Contains(i))
+                        continue;
+
+                    var input = layer.inputs[i];
+
+                    if (!(constants.ContainsKey(input) && layersOnCPU.Contains(input)))
+                        continue;
+
+                    if (remapConstants.TryGetValue(input, out string newName))
+                    {
+                        layer.inputs[i] = newName;
+                    }
+                    else
+                    {
+                        var constant = new Layers.Constant(model.GetUniqueName(input), constants[input].DataSetToTensor());
+                        model.constants.Add(constant);
+                        layer.inputs[i] = constant.name;
+                        remapConstants[input] = constant.name;
+                    }
+                }
+            }
         }
     }
 }

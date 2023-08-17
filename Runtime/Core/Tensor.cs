@@ -1,6 +1,6 @@
 using UnityEngine.Assertions;
 using System;
-using UnityEngine;
+using Unity.Collections;
 
 namespace Unity.Sentis {
 
@@ -12,10 +12,7 @@ public abstract class Tensor : IDisposable
     protected ITensorData m_TensorOnDevice;
     protected ITensorAllocator m_TensorAllocator;
     protected TensorShape m_Shape;
-    protected bool m_CacheIsDirty;
     protected bool m_Disposed = false;
-
-    protected abstract bool isCacheNull { get; }
 
     /// <summary>
     /// The data type of the elements of the tensor.
@@ -55,7 +52,6 @@ public abstract class Tensor : IDisposable
         m_Shape = shape;
         tensorOnDevice = data;
         m_TensorAllocator = allocator;
-        ClearCache();
     }
 
     /// <summary>
@@ -66,7 +62,7 @@ public abstract class Tensor : IDisposable
         Dispose();
     }
 
-    void PinToDevice(ITensorData onDevice, bool disposeUnpinned = true)
+    protected void PinToDevice(ITensorData onDevice, bool disposeUnpinned = true)
     {
         Logger.AssertIsTrue(onDevice?.maxCapacity >= shape.length || onDevice == null, "Tensor.PinToDevice: not enough capacity on device to pin tensor or device null");
 
@@ -79,108 +75,79 @@ public abstract class Tensor : IDisposable
     }
 
     /// <summary>
-    /// Upload tensor values to the device, by associating the tensor with the uninitialized block of data on the device.
-    ///
-    /// You should allocate `destination` on the device. `UploadToDevice` overwrites the current contents of `destination`.
-    ///
-    /// By default Sentis discards the local cache after you call this method. Set `invalidateCacheAfterUpload` to false to keep the cache.
-    /// </summary>
-    public void UploadToDevice(ITensorData destination, bool invalidateCacheAfterUpload = true)
-    {
-        if (m_TensorOnDevice == destination && !m_CacheIsDirty)
-            return;
-
-        PrepareCacheForAccess();
-        PinToDevice(destination, disposeUnpinned: true);
-
-        m_CacheIsDirty = true;
-        if (invalidateCacheAfterUpload)
-            UploadAndInvalidateCache();
-        else
-            UploadIfDirty();
-    }
-
-    /// <summary>
-    /// Upload tensor values to the device, by associating the tensor with the uninitialized block of data on the device.
-    ///
-    /// You should allocate `destination` on the device. `UploadToDevice` overwrites the current contents of `destination`.
-    ///
-    /// Sentis doesn't copy or initialize content from the tensor, regardless of the current cache or data on the device.
-    /// </summary>
-    public void AllocateOnDevice(ITensorData destination)
-    {
-        if (m_TensorOnDevice == destination)
-            return;
-
-        PinToDevice(destination, disposeUnpinned: true);
-        ClearCache();
-    }
-
-    /// <summary>
     /// Associates a tensor with the block of data on a device. Sentis downloads from `source` on first access.
     ///
     /// Make sure `source` contains initialized and valid data that represents tensor values.
     ///
-    /// Refer to `PrepareCacheForAccess()` if you need to schedule the download as soon as possible.
     /// </summary>
     public void AttachToDevice(ITensorData source)
     {
-        if (m_TensorOnDevice == source && !m_CacheIsDirty)
+        if (m_TensorOnDevice == source)
             return;
 
-        UploadIfDirty();
         PinToDevice(source, disposeUnpinned: true);
-        if (!isCacheNull)
-            PrepareCacheForAccess();
     }
 
+
+    public abstract void UploadToDevice(ITensorData destination);
+
     /// <summary>
-    /// Synchronizes the tensor cache with the data on the device, then remove the tensor from the device.
+    /// Synchronizes the tensor data with the data on the device, then remove the tensor from the device.
     /// </summary>
     public ITensorData DetachFromDevice(bool disposeDeviceData = true)
     {
-        PrepareCacheForAccess();
-
         ITensorData unpinned = (disposeDeviceData) ? null : m_TensorOnDevice;
         PinToDevice(null, disposeDeviceData);
         return unpinned;
     }
 
-    protected abstract void UploadIfDirty();
-
-    void InvalidateCache()
+    /// <summary>
+    /// Blocking call to make tensor data read write.
+    ///
+    /// Issues a blocking download of the internal data. And converts tensorData to ArrayTensorData
+    /// </summary>
+    public void MakeReadable()
     {
-        // Removes the tensor cache. If the tensor isn't pinned to the device, the cache holds the only copy, so Sentis can't remove it.
-        if (m_TensorOnDevice == null)
+        m_TensorOnDevice.CompleteAllPendingOperations();
+        if (tensorOnDevice is IReadableTensorData)
             return;
-
-        ClearCache();
-    }
-
-    void UploadAndInvalidateCache()
-    {
-        UploadIfDirty();
-        InvalidateCache();
+        ArrayTensorData.Pin(this, clearOnInit: false);
     }
 
     /// <summary>
-    /// Read data from the device and write it to the cache.
+    /// Checks if asynchronous readback request it done.
     ///
-    /// The default value of `blocking` is `true`, which means this method is a blocking read.
-    ///
-    /// When the value of `blocking` is false, the read is non-blocking. You can keep calling the method to get the status of the asynchronous download. You can access the tensor data when the method returns `true`.
+    /// Returns true if async readback is successful.
     /// </summary>
-    public abstract bool PrepareCacheForAccess(bool blocking = true);
+    public bool IsAsyncReadbackRequestDone()
+    {
+        if (m_TensorOnDevice == null)
+            return false;
+
+        return m_TensorOnDevice.IsAsyncReadbackRequestDone();
+    }
 
     /// <summary>
-    /// Upload the tensor cache to device memory and delete the tensor cache.
+    /// Schedules asynchronous download of the internal data.
+    ///
+    /// Invokes callback when async readback is finished.
+    ///
+    /// Boolean indicates if async readback is successful.
     /// </summary>
-    public void FlushCache(bool uploadCache)
+    public void AsyncReadbackRequest(Action<bool> callback = null)
     {
-        if(uploadCache)
-            UploadAndInvalidateCache();
-        else
-            InvalidateCache();
+        if (m_TensorOnDevice == null)
+        {
+            callback?.Invoke(false);
+            return;
+        }
+
+        m_TensorOnDevice.AsyncReadbackRequest(callback);
+    }
+
+    public void CompleteAllPendingOperations()
+    {
+        m_TensorOnDevice.CompleteAllPendingOperations();
     }
 
     /// <summary>
@@ -218,7 +185,6 @@ public abstract class Tensor : IDisposable
         ITensorData unpinned = m_TensorOnDevice;
         PinToDevice(null, false);
         Assert.AreEqual(m_TensorOnDevice, null, "Tensor.Invalidate: tensorOnDevice not null");
-        ClearCache();
         tensorOnDevice = null;
         m_TensorAllocator = null;
         return unpinned;
@@ -246,13 +212,10 @@ public abstract class Tensor : IDisposable
             m_TensorOnDevice.Dispose();
         }
 
-        ClearCache();
         tensorOnDevice = null;
         m_TensorAllocator = null;
         m_Disposed = true;
     }
-
-    protected abstract void ClearCache();
 
     /// <summary>
     /// Returns a string that represents the `Tensor`.
@@ -260,6 +223,46 @@ public abstract class Tensor : IDisposable
     public override string ToString()
     {
         return $"Tensor{dataType}{shape}";
+    }
+
+    internal T[] ToReadOnlyArray<T>() where T : unmanaged
+    {
+        if (m_TensorOnDevice is IReadableTensorData rwData)
+            return rwData.ToArray<T>(shape.length);
+        else
+            throw new InvalidOperationException("Tensor data cannot be read from, use .MakeReadable() to allow reading from tensor.");
+    }
+
+    internal NativeArray<T>.ReadOnly ToReadOnlyNativeArray<T>() where T : unmanaged
+    {
+        if (m_TensorOnDevice is IReadableTensorData rwData)
+            return rwData.GetReadOnlyNativeArrayHandle<T>(shape.length);
+        else
+            throw new InvalidOperationException("Tensor data cannot be read from, use .MakeReadable() to allow reading from tensor.");
+    }
+
+    internal ReadOnlySpan<T> ToReadOnlySpan<T>() where T : unmanaged
+    {
+        if (m_TensorOnDevice is IReadableTensorData rwData)
+            return rwData.ToReadOnlySpan<T>(shape.length);
+        else
+            throw new InvalidOperationException("Tensor data cannot be read from, use .MakeReadable() to allow reading from tensor.");
+    }
+
+    internal T Get<T>(int d0) where T : unmanaged
+    {
+        if (m_TensorOnDevice is IReadableTensorData rwData)
+            return rwData.Get<T>(d0);
+        else
+            throw new InvalidOperationException("Tensor data cannot be read from, use .MakeReadable() to allow reading from tensor.");
+    }
+
+    internal void Set<T>(int d0, T value) where T : unmanaged
+    {
+        if (m_TensorOnDevice is IReadableTensorData rwData)
+            rwData.Set<T>(d0, value);
+        else
+            throw new InvalidOperationException("Tensor data cannot be written to, use .MakeReadable() to allow writing to tensor.");
     }
 }
 

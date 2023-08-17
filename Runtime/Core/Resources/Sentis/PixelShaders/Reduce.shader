@@ -11,73 +11,86 @@ Shader "Hidden/Sentis/Reduce"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile REDUCEMIN REDUCEMAX REDUCESUM REDUCESUMSQUARE REDUCEMEAN REDUCEPROD REDUCEL1 REDUCEL2 REDUCESQRT REDUCELOGSUM REDUCELOGSUMEXP
+            #pragma multi_compile ReduceMin ReduceMax ReduceSum ReduceSumSquare ReduceMean ReduceMeanSquare ReduceProd ReduceL1 ReduceL2 ReduceSqrt ReduceLogSum ReduceLogSumExp ReduceMinInt ReduceMaxInt ReduceSumInt ReduceSumSquareInt ReduceProdInt ReduceL1Int
 
             #pragma vertex vert
             #pragma fragment frag
 
+
             #include "CommonVertexShader.cginc"
             #include "CommonPixelShader.cginc"
 
-            DECLARE_TENSOR(X);
+            #if defined(ReduceMinInt) | (ReduceMaxInt) | (ReduceSumInt) | (ReduceSumSquareInt) | (ReduceProdInt) | (ReduceL1Int)
+            #define DTYPE4 int4
+            DECLARE_TENSOR(X, int);
+            #else
+            #define DTYPE4 float4
+            DECLARE_TENSOR(X, float);
+            #endif
 
             uint StrideAxisX, DimAxisX;
 
             float Normalization;
 
-            #if defined(REDUCELOGSUMEXP)
+            #if defined(ReduceLogSumExp)
             float4 maxVal;
             #endif
 
-            #define FLT_MAX 3.402823466e+38F
-            #define FLT_MIN -3.402823466e+38F
+            #define FLT_MAX asfloat(0x7F7FFFFF) //  3.402823466 E + 38
+            #define FLT_MIN asfloat(0xFF7FFFFF) // -3.402823466 E + 38
+            #define INT_MAX 0x7FFFFFFF //  2147483647
+            #define INT_MIN 0x80000000 // –2147483648
 
-            inline float4 Default4()
+            inline DTYPE4 Default4()
             {
-                #if defined(REDUCEMIN)
+                #if defined(ReduceMin)
                 return FLT_MAX;
-                #elif defined(REDUCEMAX)
+                #elif defined(ReduceMax)
                 return FLT_MIN;
-                #elif defined(REDUCEPROD)
-                return 1.0f;
+                #elif defined(ReduceMinInt)
+                return INT_MAX;
+                #elif defined(ReduceMaxInt)
+                return INT_MIN;
+                #elif defined(ReduceProd) | defined(ReduceProdInt)
+                return 1;
                 #else
-                return 0.0f;
+                return 0;
                 #endif
             }
 
-            inline float4 Initialize4(float4 v)
+            inline DTYPE4 Initialize4(DTYPE4 v)
             {
-                #if defined(REDUCESUMSQUARE) | defined(REDUCEL2)
+                #if defined(ReduceSumSquare) | defined(ReduceMeanSquare) | defined(ReduceL2) | defined(ReduceSumSquareInt)
                 return v * v;
-                #elif defined(REDUCEL1)
+                #elif defined(ReduceL1) | defined(ReduceL1Int)
                 return abs(v);
-                #elif defined(REDUCELOGSUMEXP)
+                #elif defined(ReduceLogSumExp)
                 return exp(v - maxVal);
                 #else
                 return v;
                 #endif
             }
 
-            inline float4 Reduce4(float4 acc, float4 v)
+            inline DTYPE4 Reduce4(DTYPE4 acc, DTYPE4 v)
             {
-                #if defined(REDUCEMIN)
+                #if defined(ReduceMin) | defined(ReduceMinInt)
                 return min(acc, v);
-                #elif defined(REDUCEMAX)
+                #elif defined(ReduceMax) | defined(ReduceMaxInt)
                 return max(acc, v);
-                #elif defined(REDUCEPROD)
+                #elif defined(ReduceProd) | defined(ReduceProdInt)
                 return acc * v;
                 #else
                 return acc + v;
                 #endif
             }
 
-            inline float4 Finalize4(float4 acc)
+            inline DTYPE4 Finalize4(DTYPE4 acc)
             {
-                #if defined(REDUCEMEAN)
+                #if defined(ReduceMean) | defined(ReduceMeanSquare)
                 return Normalization * acc;
-                #elif defined(REDUCESQRT) | defined(REDUCEL2)
+                #elif defined(ReduceSqrt) | defined(ReduceL2)
                 return sqrt(acc);
-                #elif defined(REDUCELOGSUM)
+                #elif defined(ReduceLogSum)
                 float4 u = log(acc);
                 bool4 accNaN = acc <= 0.0f;
                 u.x = accNaN.x ? 0.0f : u.x;
@@ -85,23 +98,23 @@ Shader "Hidden/Sentis/Reduce"
                 u.z = accNaN.z ? 0.0f : u.z;
                 u.w = accNaN.w ? 0.0f : u.w;
                 return u;
-                #elif defined(REDUCELOGSUMEXP)
+                #elif defined(ReduceLogSumExp)
                 return log(acc) + maxVal;
                 #else
                 return acc;
                 #endif
             }
 
-            float4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
+            DTYPE4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
                 uint blockIndexO = GetBlockIndexO(screenPos);
                 uint2 lowerUpper = Unravel(uint1(StrideAxisX), blockIndexO);
 
-                float4 acc4 = Default4();
+                DTYPE4 acc4 = Default4();
                 uint blockIndexXMin = Ravel(uint1(StrideAxisX * DimAxisX), lowerUpper);
                 uint blockIndexXMax = blockIndexXMin + StrideAxisX * DimAxisX;
                 uint blockIndexX;
-                #if defined(REDUCELOGSUMEXP)
+                #if defined(ReduceLogSumExp)
                 maxVal = FLT_MIN;
                 for (blockIndexX = blockIndexXMin; blockIndexX < blockIndexXMax; blockIndexX += StrideAxisX)
                 {
@@ -111,7 +124,7 @@ Shader "Hidden/Sentis/Reduce"
                 #endif
                 for (blockIndexX = blockIndexXMin; blockIndexX < blockIndexXMax; blockIndexX += StrideAxisX)
                 {
-                    float4 v = SampleBlockX(blockIndexX);
+                    DTYPE4 v = SampleBlockX(blockIndexX);
                     v = Initialize4(v);
                     acc4 = Reduce4(acc4, v);
                 }

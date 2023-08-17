@@ -1,7 +1,7 @@
 using System;
-using Unity.Sentis;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
+using Unity.Sentis.Layers;
 using UnityEngine;
 
 namespace Unity.Sentis {
@@ -9,7 +9,7 @@ namespace Unity.Sentis {
 /// <summary>
 /// Represents a CPU backend ops.
 /// </summary>
-public partial class CPUOps : IOps
+public partial class CPUBackend : IBackend
 {
     bool m_OwnAllocator;
     internal ITensorAllocator m_Allocator;
@@ -18,10 +18,10 @@ public partial class CPUOps : IOps
     public virtual DeviceType deviceType => DeviceType.CPU;
 
     /// <summary>
-    /// Initializes and returns an instance of `CPUOps`.
+    /// Initializes and returns an instance of `CPUBackend`.
     /// </summary>
     /// <param name="allocator">The allocator to use when allocating tensors.</param>
-    public CPUOps(ITensorAllocator allocator = null)
+    public CPUBackend(ITensorAllocator allocator = null)
     {
         if (allocator == null)
         {
@@ -118,12 +118,17 @@ public partial class CPUOps : IOps
             ResetAllocator(keepCachedMemory: false);
     }
 
-    TensorFloat ConvND(TensorFloat X, TensorFloat K, TensorFloat B, int groups, int[] stride, int[] pad, int[] dilation, Layers.FusableActivation fusedActivation)
+    TensorFloat ConvND(TensorFloat X, TensorFloat K, TensorFloat B, int groups, Span<int> stride, Span<int> pad, Span<int> dilation, Layers.FusableActivation fusedActivation)
     {
-        var Oshape = ShapeInference.Conv(X.shape, K.shape, B.shape, groups, stride, pad, dilation);
+        var Oshape = ShapeInference.Conv(X.shape, K.shape, groups, stride, pad, dilation);
         var O = (fusedActivation != Layers.FusableActivation.None) ? NewTempTensorFloat(Oshape) : NewOutputTensorFloat(Oshape);
         if (O.shape.HasZeroDims())
             return O;
+
+        ArrayTensorData.Pin(X);
+        ArrayTensorData.Pin(K);
+        ArrayTensorData.Pin(B);
+        ArrayTensorData.Pin(O, clearOnInit: false);
 
         int inputGroupedChannels = X.shape[1] / groups;
         int outputGroupedChannels = O.shape[1] / groups;
@@ -181,14 +186,82 @@ public partial class CPUOps : IOps
         return O;
     }
 
+    TensorFloat ConvTransposeND(TensorFloat X, TensorFloat W, TensorFloat B, Span<int> strides, Span<int> pads, Span<int> outputPadding, FusableActivation fusedActivation)
+    {
+        var Oshape = ShapeInference.ConvTranspose(X.shape, W.shape, strides, pads, outputPadding);
+        var O = (fusedActivation != Layers.FusableActivation.None) ? NewTempTensorFloat(Oshape) : NewOutputTensorFloat(Oshape);
+        if (O.shape.HasZeroDims())
+            return O;
+
+        ArrayTensorData.Pin(X);
+        ArrayTensorData.Pin(W);
+        ArrayTensorData.Pin(B);
+        ArrayTensorData.Pin(O, clearOnInit: false);
+
+        var inputChannels = X.shape[1];
+
+        var itK = new TensorNDIterator(W.shape);
+        var itX = new TensorNDIterator(X.shape);
+        itX = itX.RemoveDim(0);
+        itX = itX.RemoveDim(0);
+
+        for (var itO = new TensorNDIterator(O.shape); itO.HasNext(); itO.MoveNext())
+        {
+            var n = itO[0];
+            var k = itO[1];
+            var v = B[k];
+            itK[1] = k;
+
+            for (var c = 0; c < inputChannels; ++c)
+            {
+                itK[0] = c;
+
+                itX.Reset();
+                for (; itX.HasNext(); itX.MoveNext())
+                {
+                    var outOfBounds = false;
+
+                    for (var i = 0; i < strides.Length; i++)
+                    {
+                        var ox = itX[i];
+                        var dx = itO[2 + i] + pads[i] - ox * strides[i];
+
+                        if ((dx < 0) || (dx >= W.shape[2 + i]))
+                        {
+                            outOfBounds = true;
+                            break;
+                        }
+
+                        itK[2 + i] = dx;
+                    }
+
+                    if (outOfBounds)
+                        continue;
+
+                    var xv = X[n * X.shape[1] * itX.shape.length + c * itX.shape.length + itX.index];
+                    var kv = W[itK.index];
+
+                    v += xv * kv;
+                }
+            }
+            O[itO.index] = v;
+        }
+
+        if (fusedActivation != Layers.FusableActivation.None)
+            O = ApplyFusedActivation(O, fusedActivation);
+
+        return O;
+    }
+
     /// <inheritdoc/>
     public virtual Tensor Compress(Tensor X, TensorInt condition, int axis)
     {
         var numCondition = condition.shape.length;
 
         var indices = NewTempTensorInt(condition.shape);
-        var numIndices = 0;
+        ArrayTensorData.Pin(indices, clearOnInit: false);
 
+        var numIndices = 0;
         for (var i = 0; i < numCondition; i++)
         {
             if (condition[i] == 0)
@@ -214,6 +287,9 @@ public partial class CPUOps : IOps
         ShapeInference.NonMaxSuppression(boxes.shape, scores.shape, iouThreshold);
         if (boxes.shape.HasZeroDims() || scores.shape.HasZeroDims() || maxOutputBoxesPerClass <= 0)
             return NewOutputTensorInt(new TensorShape(0, 3));
+
+        ArrayTensorData.Pin(boxes);
+        ArrayTensorData.Pin(scores);
 
         // allocate the maximum possible output size tensor
         var outputData = new int[scores.shape[0] * scores.shape[1] * maxOutputBoxesPerClass * 3];
@@ -334,8 +410,7 @@ public partial class CPUOps : IOps
 
         // create output tensor of correct length by trimming outputData
         var O = NewOutputTensorInt(new TensorShape(numberOfBoxes, 3));
-        var pinO = ArrayTensorData.Pin(O, false);
-        NativeTensorArray.Copy(outputData, pinO.array, numberOfBoxes * 3);
+        NativeTensorArray.Copy(outputData, ArrayTensorData.Pin(O, clearOnInit: false).array, numberOfBoxes * 3);
         return O;
     }
 
@@ -435,7 +510,7 @@ public partial class CPUOps : IOps
         return intersectionArea / (b1area + b2area - intersectionArea) <= iouThreshold;
     }
 
-    TensorFloat ResizeND(TensorFloat X, float[] scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode = Layers.NearestMode.RoundPreferFloor, Layers.CoordTransformMode coordTransformMode = Layers.CoordTransformMode.HalfPixel)
+    TensorFloat ResizeND(TensorFloat X, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode = Layers.NearestMode.RoundPreferFloor, Layers.CoordTransformMode coordTransformMode = Layers.CoordTransformMode.HalfPixel)
     {
         var O = Resize1D(X, 0, scale[0], interpolationMode, nearestMode, coordTransformMode);
         for (int i = 1; i < scale.Length; i++)
@@ -449,6 +524,9 @@ public partial class CPUOps : IOps
     TensorFloat Resize1D(TensorFloat X, int axis, float scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
     {
         var O = NewOutputTensorFloat(ShapeInference.Resize(X.shape, axis, scale));
+
+        ArrayTensorData.Pin(X, clearOnInit: false);
+        ArrayTensorData.Pin(O, clearOnInit: false);
 
         var itX = new TensorNDIterator(X.shape);
 
@@ -499,6 +577,9 @@ public partial class CPUOps : IOps
     TensorFloat ApplyLocalPoolingOperator(TensorFloat X, int[] pool, int[] stride, int[] pad, Func<float> initOp, Func<float, float, float> accumulateOp, Func<float, int, float> normalizeOp)
     {
         var O = NewOutputTensorFloat(ShapeInference.ApplyPool(X.shape, pool, stride, pad));
+
+        ArrayTensorData.Pin(X);
+        ArrayTensorData.Pin(O, clearOnInit: false);
 
         var itX = new TensorNDIterator(X.shape);
         var itP = new TensorNDIterator(new TensorShape(pool));
@@ -568,6 +649,10 @@ public partial class CPUOps : IOps
         var O = NewOutputTensorFloat(X.shape);
         if (O.shape.HasZeroDims())
             return O;
+
+        ArrayTensorData.Pin(X);
+        ArrayTensorData.Pin(O, clearOnInit: false);
+
         float sizef = size;
 
         var itRemap = new TensorNDIterator(O.shape);
@@ -596,6 +681,11 @@ public partial class CPUOps : IOps
     public virtual TensorInt Multinomial(TensorFloat X, int count, float? seed)
     {
         var O = NewOutputTensorInt(ShapeInference.Multinomial(X.shape, count));
+        if (O.shape.HasZeroDims())
+            return O;
+
+        ArrayTensorData.Pin(X);
+        ArrayTensorData.Pin(O, clearOnInit: false);
 
         uint finalSeed = Random.GetOpSeed(seed);
         finalSeed = finalSeed == 0 ? 1 : finalSeed;
@@ -635,6 +725,7 @@ public partial class CPUOps : IOps
     /// <inheritdoc/>
     public TensorInt NonZero(TensorFloat X)
     {
+        ArrayTensorData.Pin(X);
         int nbNonZeroIndices = 0;
         var end = X.shape.length;
         for (int i = 0; i < end; ++i)
@@ -647,6 +738,7 @@ public partial class CPUOps : IOps
         if (O.shape.HasZeroDims())
             return O;
 
+        ArrayTensorData.Pin(O, clearOnInit: false);
         int nonZeroIndicesIdx = 0;
         for (var it = new TensorNDIterator(X.shape); it.HasNext(); it.MoveNext())
         {
@@ -664,6 +756,7 @@ public partial class CPUOps : IOps
     /// <inheritdoc/>
     public TensorInt NonZero(TensorInt X)
     {
+        ArrayTensorData.Pin(X);
         int nbNonZeroIndices = 0;
         var end = X.shape.length;
         for (int i = 0; i < end; ++i)
@@ -676,6 +769,7 @@ public partial class CPUOps : IOps
         if (O.shape.HasZeroDims())
             return O;
 
+        ArrayTensorData.Pin(O, clearOnInit: false);
         int nonZeroIndicesIdx = 0;
         for (var it = new TensorNDIterator(X.shape); it.HasNext(); it.MoveNext())
         {
@@ -692,9 +786,16 @@ public partial class CPUOps : IOps
 
     Tensor ScatterElementsReduce(TensorInt X, TensorInt indices, TensorInt updates, int axis, Layers.ScatterReductionMode reduction)
     {
-        var O = Copy(X) as TensorInt;
+        var O = NewOutputTensorInt(X.shape);
         if (O.shape.HasZeroDims())
             return O;
+
+        MemCopy(X, O);
+
+        ArrayTensorData.Pin(X);
+        ArrayTensorData.Pin(indices);
+        ArrayTensorData.Pin(updates);
+        ArrayTensorData.Pin(O);
 
         var itO = new TensorNDIterator(O.shape);
         for (var itIndices = new TensorNDIterator(indices.shape); itIndices.HasNext(); itIndices.MoveNext())
@@ -720,9 +821,16 @@ public partial class CPUOps : IOps
     /// <inheritdoc/>
     public virtual TensorInt ScatterND(TensorInt X, TensorInt indices, TensorInt updates, Layers.ScatterReductionMode reduction)
     {
-        var O = Copy(X) as TensorInt;
+        var O = NewOutputTensorInt(X.shape);
         if (O.shape.HasZeroDims())
             return O;
+
+        MemCopy(X, O);
+
+        ArrayTensorData.Pin(X);
+        ArrayTensorData.Pin(indices);
+        ArrayTensorData.Pin(updates);
+        ArrayTensorData.Pin(O);
 
         var indexRemapDim = indices.shape[-1];
         var indicesLength = indices.shape.Length(0, -1);
@@ -765,10 +873,10 @@ public partial class CPUOps : IOps
 
         Logger.AssertIsTrue(end >= start, "Shape.InputError: start value cannot be greater than end value for shape slicing");
         var O = NewOutputTensorInt(new TensorShape(end - start));
-        var arrayO = ArrayTensorData.Pin(O, uploadCache: false).array;
+        ArrayTensorData.Pin(O, clearOnInit: false);
 
         for (var i = start; i < end; i++)
-            arrayO.Set<int>(i - start, X.shape[i]);
+            O[i - start] = X.shape[i];
 
         return O;
     }
@@ -777,9 +885,9 @@ public partial class CPUOps : IOps
     public virtual TensorInt Size(TensorShape shape)
     {
         var O = NewOutputTensorInt(new TensorShape());
-        var arrayO = ArrayTensorData.Pin(O, uploadCache: false).array;
+        ArrayTensorData.Pin(O, clearOnInit: false);
 
-        arrayO.Set<int>(0, shape.length);
+        O[0] = shape.length;
 
         return O;
     }

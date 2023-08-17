@@ -49,21 +49,18 @@ namespace Unity.Sentis.Layers
         public Flags flags;
 
         /// <summary>
+        /// Infer the output partial tensor from the input partial tensors.
+        ///
+        /// If the layer has more than one output, output partial tensors are saved to 'ctx'.
+        /// </summary>
+        internal abstract PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx);
+
+        /// <summary>
         /// Executes the layer using the operations and variables from the `ExecutionContext` and returns the output tensor.
         ///
         /// If the layer has more than one output, output tensors are saved to variables.
         /// </summary>
         public abstract Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx);
-
-        internal virtual PartialTensor InferPartialTensor(PartialTensor[] partialTensors, ShapeInferenceContext ctx)
-        {
-            return PartialTensor.Unknown;
-        }
-
-        internal virtual SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
-        {
-            return SymbolicTensorShape.UnknownShape;
-        }
 
         internal virtual string profilerTag => MethodBase.GetCurrentMethod()?.DeclaringType?.Name;
 
@@ -74,6 +71,45 @@ namespace Unity.Sentis.Layers
         {
             return $"{profilerTag} - name: {name}, inputs: [{string.Join(", ", inputs)}]";
         }
+    }
+
+    /// <summary>
+    /// Represents the base class for custom model layers.
+    /// </summary>
+    [Serializable]
+    public abstract class CustomLayer : Layer
+    {
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        {
+            var inputDataTypes = new DataType[inputTensors.Length];
+            for (var i = 0; i < inputDataTypes.Length; i++)
+            {
+                if (inputTensors[i] == null)
+                    continue;
+                inputDataTypes[i] = inputTensors[i].dataType;
+            }
+
+            var outputDataTypes = InferOutputDataTypes(inputDataTypes);
+            if (outputDataTypes == null || outputDataTypes.Length == 0)
+                return null;
+
+            for (var i = 1; i < outputDataTypes.Length; i++)
+            {
+                if (outputs == null || outputs.Length <= i || string.IsNullOrEmpty(outputs[i]))
+                    continue;
+                ctx.AddPartialTensor(outputs[i], new PartialTensor(outputDataTypes[i]));
+            }
+
+            return new PartialTensor(outputDataTypes[0]);
+        }
+
+        /// <summary>
+        /// Infer the data types of the output tensors of the custom layer given the data types of the input tensors.
+        /// </summary>
+        /// <param name="inputDataTypes">Array of input data types.</param>
+        /// <returns>Array of output data types.</returns>
+        public abstract DataType[] InferOutputDataTypes(DataType[] inputDataTypes);
     }
 
     /// <summary>
@@ -126,9 +162,67 @@ namespace Unity.Sentis.Layers
             this.inputs = inputs;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return SymbolicInference.Broadcast(inputShapes);
+            Logger.AssertIsTrue(inputTensors.Length > 0, "Broadcast.InputError: can't broadcast shapes array of size 0");
+            var dataType = InferPartialDataType(inputTensors);
+
+            if (inputTensors.Length == 1)
+                return inputTensors[0];
+
+            SymbolicTensorShape shapeOut;
+
+            if (inputTensors.Length == 2)
+            {
+                shapeOut = inputTensors[0].shape.Broadcast(inputTensors[1].shape);
+                var tensorOut = new PartialTensor(dataType, shapeOut);
+                var op = InferPartialOp;
+
+                if (op != null && shapeOut.IsFullyKnown() && shapeOut.rank <= 1 && inputTensors[0].isPartiallyKnown && inputTensors[1].isPartiallyKnown)
+                {
+                    for (var i = 0; i < tensorOut.length; i++)
+                    {
+                        tensorOut[i] = op(inputTensors[0][inputTensors[0].length > 1 ? i : 0], inputTensors[1][inputTensors[1].length > 1 ? i : 0]);
+                    }
+                }
+
+                return tensorOut;
+            }
+
+            var outRank = 0;
+            foreach (var input in inputTensors)
+            {
+                if (!input.shape.hasRank)
+                    return new PartialTensor(dataType);
+
+                outRank = Mathf.Max(outRank, input.shape.rank);
+            }
+
+            shapeOut = SymbolicTensorShape.Ones(outRank);
+
+            foreach (var tensorInput in inputTensors)
+            {
+                for (var j = 0; j < tensorInput.shape.rank; j++)
+                {
+                    shapeOut[shapeOut.rank - tensorInput.shape.rank + j] = SymbolicTensorDim.Broadcast(shapeOut[shapeOut.rank - tensorInput.shape.rank + j], tensorInput.shape[j]);
+                }
+            }
+
+            return new PartialTensor(dataType, shapeOut);
         }
+
+        /// <summary>
+        /// Returns the data type of the output partial tensor.
+        /// </summary>
+        internal virtual DataType InferPartialDataType(PartialTensor[] inputTensors)
+        {
+            return inputTensors[0].dataType;
+        }
+
+        /// <summary>
+        /// Returns the optional function that calculates an output partial tensor element from input partial tensor elements.
+        /// </summary>
+        internal virtual Func<PartialTensorElement, PartialTensorElement, PartialTensorElement> InferPartialOp => null;
     }
 }

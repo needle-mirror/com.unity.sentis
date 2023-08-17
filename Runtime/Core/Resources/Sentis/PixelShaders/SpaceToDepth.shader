@@ -19,7 +19,7 @@ Shader "Hidden/Sentis/SpaceToDepth"
 
             DECLARE_TENSOR_BLOCK_STRIDE_O;
 
-            DECLARE_TENSOR(X);
+            DECLARE_TENSOR(X, float);
             DECLARE_TENSOR_BLOCK_STRIDE(X);
 
             uint O_width, O_height, O_channels;
@@ -42,7 +42,7 @@ Shader "Hidden/Sentis/SpaceToDepth"
                 uint4 wx4 = w4 * BlockSize + (c4 / X_channels) % BlockSize;
                 uint4 hx4 = h4 * BlockSize + (c4 / X_channels) / BlockSize;
                 uint4 indexX4 = wx4 + X_width * (hx4 + X_height * (cx4 + X_channels * n4));
-                float4 v = SampleBlockX(indexX4);
+                float4 v = SampleElementsX(indexX4);
                 return v;
             }
             ENDCG

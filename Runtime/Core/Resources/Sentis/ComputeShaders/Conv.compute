@@ -11,6 +11,8 @@
 #pragma kernel Conv2D_T8x8_R4x4 SUFFIX=Conv2D_T8x8_R BLOCK_SIZE=4 KERNEL_PER_TG=256 CONV2D
 #pragma kernel Conv1D_T8x8_R4x4 SUFFIX=Conv1D_T8x8_R BLOCK_SIZE=4 KERNEL_PER_TG=256 CONV1D
 
+#pragma multi_compile _ USEBIAS
+
 // TODO see if we need a fast path when shapes modulo match threadcount
 // TODO no LDS path for specific architectures
 // TODO coalesced writes were needed
@@ -116,6 +118,7 @@ void FUNC_NAME(KERNEL_NAME, BLOCK_SIZE)(uint3 dispatchThreadID : SV_DispatchThre
     uint maxKIndex = strideK * features * channels - 1;
     #endif
 
+    #ifdef USEBIAS
     #if defined(SHADER_API_MOBILE)
     dstA0.x = Bptr[min(x + 0, maxBIndex)];
     dstA0.y = Bptr[min(x + 1, maxBIndex)];
@@ -127,6 +130,9 @@ void FUNC_NAME(KERNEL_NAME, BLOCK_SIZE)(uint3 dispatchThreadID : SV_DispatchThre
     dstA0.z = x + 2 < features ? Bptr[x + 2] : 0.0f;
     dstA0.w = x + 3 < features ? Bptr[x + 3] : 0.0f;
     #endif
+    #else
+    dstA0 = 0;
+    #endif
     dstA1 = dstA0;
     dstA2 = dstA0;
     dstA3 = dstA0;
@@ -137,16 +143,16 @@ void FUNC_NAME(KERNEL_NAME, BLOCK_SIZE)(uint3 dispatchThreadID : SV_DispatchThre
     uint topD = (((centroidId / w) / h) % d) * _Stride.x;
     uint topY = ((centroidId / w) % h) * _Stride.y;
     uint topX = (centroidId % w) * _Stride.z;
-    
+
     uint cornerId = (topD - _Pad.x) * heightX * widthX + (topY - _Pad.y) * widthX + (topX - _Pad.z);
     #elif defined(CONV2D)
     uint topY = ((centroidId / w) % h) * _Stride.x;
     uint topX = (centroidId % w) * _Stride.y;
-    
+
     uint cornerId = (topY - _Pad.x) * widthX + (topX - _Pad.y);
     #elif defined(CONV1D)
     uint topX = (centroidId % w) * _Stride.x;
-    
+
     uint cornerId = (topX - _Pad.x);
     #endif
     uint readX = strideX * (ti >> 6) + cornerId + batchReadOffset;
@@ -359,7 +365,14 @@ void FUNC_NAME(KERNEL_NAME, BLOCK_SIZE)(uint3 dispatchThreadID : SV_DispatchThre
     float4 dstA3;
 
     uint maxBiasIndex = O_channels - 1;
-    dstA0.x = Bptr[min(maxBiasIndex, x + 0)]; dstA0.y = Bptr[min(maxBiasIndex, x + 1)]; dstA0.z = Bptr[min(maxBiasIndex, x + 2)]; dstA0.w = Bptr[min(maxBiasIndex, x + 3)];
+    #ifdef USEBIAS
+    dstA0.x = Bptr[min(maxBiasIndex, x + 0)];
+    dstA0.y = Bptr[min(maxBiasIndex, x + 1)];
+    dstA0.z = Bptr[min(maxBiasIndex, x + 2)];
+    dstA0.w = Bptr[min(maxBiasIndex, x + 3)];
+    #else
+    dstA0 = 0;
+    #endif
     dstA1 = dstA0;
     dstA2 = dstA0;
     dstA3 = dstA0;

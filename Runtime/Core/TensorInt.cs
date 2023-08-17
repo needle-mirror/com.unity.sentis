@@ -1,5 +1,5 @@
 using System;
-using UnityEngine;
+using Unity.Collections;
 
 namespace Unity.Sentis {
 
@@ -8,13 +8,8 @@ namespace Unity.Sentis {
 /// </summary>
 public class TensorInt : Tensor
 {
-    int[] m_Cache;
-
     /// <inheritdoc/>
     public override DataType dataType => DataType.Int;
-
-    /// <inheritdoc/>
-    protected override bool isCacheNull => (m_Cache == null);
 
     /// <inheritdoc/>
     internal TensorInt(TensorShape shape, ITensorData data = null, ITensorAllocator allocator = null) : base(shape, data, allocator) { }
@@ -25,17 +20,28 @@ public class TensorInt : Tensor
     public TensorInt(TensorShape shape, int[] srcData) : this(shape, srcData, 0) { }
 
     /// <summary>
-    /// Initializes and returns a tensor with specified `shape` and an int[] array of `srcData` data. Sentis reads `srcData` from `dataStartIndex`. You can provide an optional debug `name`.
+    /// Initializes and returns a tensor with specified `shape` and an int[] array of `srcData` data. Sentis reads `srcData` from `dataStartIndex`.
     ///
     /// `srcData.Length` - `dataStartIndex` must be bigger than or equal to `shape.length`.
     /// </summary>
     public TensorInt(TensorShape shape, int[] srcData, int dataStartIndex = 0) : base(shape)
     {
-        tensorOnDevice = new ArrayTensorData(shape);
         Logger.AssertIsTrue((srcData.Length - dataStartIndex) >= shape.length, "RangeError: array length {0} is too small compared to shape length {1}", srcData.Length, shape);
-        m_TensorOnDevice.Upload(srcData, shape.length, dataStartIndex);
+
+        tensorOnDevice = new ArrayTensorData(shape);
+        NativeTensorArray.Copy(srcData, (tensorOnDevice as ArrayTensorData).array, shape.length, dataStartIndex);
+
         m_TensorAllocator = null;
-        ClearCache();
+    }
+
+    public TensorInt(TensorShape shape, NativeArray<int> srcData, int dataStartIndex = 0) : base(shape)
+    {
+        Logger.AssertIsTrue((srcData.Length - dataStartIndex) >= shape.length, "RangeError: array length {0} is too small compared to shape length {1}", srcData.Length, shape);
+
+        tensorOnDevice = new ArrayTensorData(shape);
+        NativeTensorArray.Copy(srcData, (tensorOnDevice as ArrayTensorData).array, shape.length, dataStartIndex);
+
+        m_TensorAllocator = null;
     }
 
     /// <summary>
@@ -48,36 +54,8 @@ public class TensorInt : Tensor
     /// </summary>
     public static TensorInt Zeros(TensorShape shape)
     {
-        return new TensorInt(shape, new int[shape.length]);
-    }
-
-    /// <inheritdoc/>
-    protected override void UploadIfDirty()
-    {
-        if (m_CacheIsDirty && m_TensorOnDevice != null)
-            m_TensorOnDevice.Upload(m_Cache, shape.length);
-        m_CacheIsDirty = false;
-    }
-
-    /// <inheritdoc/>
-    public override bool PrepareCacheForAccess(bool blocking = true)
-    {
-        // non-blocking, schedule download for later
-        if (!blocking && m_TensorOnDevice != null && m_Cache == null)
-            if (!m_TensorOnDevice.ScheduleAsyncDownload())
-                return false;
-
-        // blocking, have to get data now!
-        if (m_Cache == null)
-        {
-            if (m_TensorOnDevice != null)
-                m_Cache = m_TensorOnDevice.Download<int>(shape.length);
-            else
-                m_Cache = new int[shape.length];
-            m_CacheIsDirty = false;
-        }
-
-        return true;
+        var tensorOnDevice = new ArrayTensorData(shape, clearOnInit: true);
+        return new TensorInt(shape, tensorOnDevice);
     }
 
     /// <inheritdoc/>
@@ -89,140 +67,110 @@ public class TensorInt : Tensor
         else
             copy = new TensorInt(newShape, m_TensorOnDevice, null);
 
-        copy.m_Cache = m_Cache;
-        copy.m_CacheIsDirty = m_CacheIsDirty;
-
         return copy;
     }
 
     /// <inheritdoc/>
     public override Tensor DeepCopy()
     {
-        // @TODO: use Tensor allocator
         var copy = new TensorInt(shape);
-        if (m_TensorOnDevice is ICloneable)
-        {
-            UploadIfDirty();
-            var copyOfTensorData = (m_TensorOnDevice as ICloneable).Clone() as ITensorData;
-            copy.AttachToDevice(copyOfTensorData);
-        }
-        else
-        {
-            PrepareCacheForAccess();
-            copy.PrepareCacheForAccess();
-            Array.Copy(m_Cache, 0, copy.m_Cache, 0, shape.length);
-        }
-
+        copy.AttachToDevice(m_TensorOnDevice.Clone());
         return copy;
     }
 
-    /// <inheritdoc/>
-    protected override void ClearCache()
+    public override void UploadToDevice(ITensorData destination)
     {
-        m_Cache = null;
-        m_CacheIsDirty = false;
+        var data = m_TensorOnDevice.Download<float>(shape.length);
+        destination.Upload(data, shape.length);
+        PinToDevice(destination, disposeUnpinned: true);
     }
 
     /// <summary>
     /// Returns the tensor element at offset `(d7, d6, d5, d4, d3, d2, d1, d0)`, which is position `d7 * stride6 + d6 * stride5 + d5 * stride4 + d4 * stride3 + d3 * stride2 + d2 * stride1 + d1 * stride0 + d0`.
-    ///
-    /// If the tensor is the result of computation on a different device, the method creates a blocking read.
     /// </summary>
     public int this[int d7, int d6, int d5, int d4, int d3, int d2, int d1, int d0]
     {
-        get { PrepareCacheForAccess(); return m_Cache[shape.RavelIndex(d7, d6, d5, d4, d3, d2, d1, d0)]; }
-        set { PrepareCacheForAccess(); m_Cache[shape.RavelIndex(d7, d6, d5, d4, d3, d2, d1, d0)] = value; m_CacheIsDirty = true; }
+        get { return this[shape.RavelIndex(d7, d6, d5, d4, d3, d2, d1, d0)]; }
+        set { this[shape.RavelIndex(d7, d6, d5, d4, d3, d2, d1, d0)] = value;}
     }
 
     /// <summary>
     /// Returns the tensor element at offset `(d6, d5, d4, d3, d2, d1, d0)`, which is position `d6 * stride5 + d5 * stride4 + d4 * stride3 + d3 * stride2 + d2 * stride1 + d1 * stride0 + d0`.
-    ///
-    /// If the tensor is the result of computation on a different device, the method creates a blocking read.
     /// </summary>
     public int this[int d6, int d5, int d4, int d3, int d2, int d1, int d0]
     {
-        get { PrepareCacheForAccess(); return m_Cache[shape.RavelIndex(d6, d5, d4, d3, d2, d1, d0)]; }
-        set { PrepareCacheForAccess(); m_Cache[shape.RavelIndex(d6, d5, d4, d3, d2, d1, d0)] = value; m_CacheIsDirty = true; }
+        get { return this[shape.RavelIndex(d6, d5, d4, d3, d2, d1, d0)]; }
+        set { this[shape.RavelIndex(d6, d5, d4, d3, d2, d1, d0)] = value;}
     }
-
     /// <summary>
     /// Returns the tensor element at offset `(d5, d4, d3, d2, d1, d0)`, which is position `d5 * stride4 + d4 * stride3 + d3 * stride2 + d2 * stride1 + d1 * stride0 + d0`.
-    ///
-    /// If the tensor is the result of computation on a different device, the method creates a blocking read.
     /// </summary>
     public int this[int d5, int d4, int d3, int d2, int d1, int d0]
     {
-        get { PrepareCacheForAccess(); return m_Cache[shape.RavelIndex(d5, d4, d3, d2, d1, d0)]; }
-        set { PrepareCacheForAccess(); m_Cache[shape.RavelIndex(d5, d4, d3, d2, d1, d0)] = value; m_CacheIsDirty = true; }
+        get { return this[shape.RavelIndex(d5, d4, d3, d2, d1, d0)]; }
+        set { this[shape.RavelIndex(d5, d4, d3, d2, d1, d0)] = value;}
     }
-
     /// <summary>
     /// Returns the tensor element at offset `(d4, d3, d2, d1, d0)`, which is position `d4 * stride3 + d3 * stride2 + d2 * stride1 + d1 * stride0 + d0`.
-    ///
-    /// If the tensor is the result of computation on a different device, the method creates a blocking read.
     /// </summary>
     public int this[int d4, int d3, int d2, int d1, int d0]
     {
-        get { PrepareCacheForAccess(); return m_Cache[shape.RavelIndex(d4, d3, d2, d1, d0)]; }
-        set { PrepareCacheForAccess(); m_Cache[shape.RavelIndex(d4, d3, d2, d1, d0)] = value; m_CacheIsDirty = true; }
+        get { return this[shape.RavelIndex(d4, d3, d2, d1, d0)]; }
+        set { this[shape.RavelIndex(d4, d3, d2, d1, d0)] = value;}
     }
-
     /// <summary>
     /// Returns the tensor element at offset `(d3, d2, d1, d0)`, which is position `d3 * stride2 + d2 * stride1 + d1 * stride0 + d0` in this tensor.
-    ///
-    /// If the tensor is the result of computation on a different device, the method creates a blocking read.
     /// </summary>
     public int this[int d3, int d2, int d1, int d0]
     {
-        get { PrepareCacheForAccess(); return m_Cache[shape.RavelIndex(d3, d2, d1, d0)]; }
-        set { PrepareCacheForAccess(); m_Cache[shape.RavelIndex(d3, d2, d1, d0)] = value; m_CacheIsDirty = true; }
+        get { return this[shape.RavelIndex(d3, d2, d1, d0)]; }
+        set { this[shape.RavelIndex(d3, d2, d1, d0)] = value;}
     }
-
     /// <summary>
     /// Returns the tensor element at offset `(d2, d1, d0)`, which is position `d2 * stride1 + d1 * stride0 + d0`.
-    ///
-    /// If the tensor is the result of computation on a different device, the method creates a blocking read.
     /// </summary>
     public int this[int d2, int d1, int d0]
     {
-        get { PrepareCacheForAccess(); return m_Cache[shape.RavelIndex(d2, d1, d0)]; }
-        set { PrepareCacheForAccess(); m_Cache[shape.RavelIndex(d2, d1, d0)] = value; m_CacheIsDirty = true; }
+        get { return this[shape.RavelIndex(d2, d1, d0)]; }
+        set { this[shape.RavelIndex(d2, d1, d0)] = value;}
     }
-
     /// <summary>
     /// Returns the tensor element at offset `(d1, d0)`, which is position `d1 * stride0 + d0`.
-    ///
-    /// If the tensor is the result of computation on a different device, the method creates a blocking read.
     /// </summary>
     public int this[int d1, int d0]
     {
-        get { PrepareCacheForAccess(); return m_Cache[shape.RavelIndex(d1, d0)]; }
-        set { PrepareCacheForAccess(); m_Cache[shape.RavelIndex(d1, d0)] = value; m_CacheIsDirty = true; }
+        get { return this[shape.RavelIndex(d1, d0)]; }
+        set { this[shape.RavelIndex(d1, d0)] = value;}
     }
 
     /// <summary>
     /// Returns the tensor element at offset `d0`.
-    ///
-    /// If the tensor is the result of computation on a different device, the method creates a blocking read.
     /// </summary>
     public int this[int d0]
     {
-        get { PrepareCacheForAccess(); return m_Cache[d0]; }
-        set { PrepareCacheForAccess(); m_Cache[d0] = value; m_CacheIsDirty = true; }
+        get { return base.Get<int>(d0); }
+        set { base.Set<int>(d0, value); }
     }
 
     /// <summary>
-    /// Returns the cached linear memory representation of this tensor data.
+    /// Returns a copy of linear memory representation of the data in this tensor.
     ///
-    /// If the tensor is the result of computation on a different device, the method creates a blocking read.
+    /// If the tensor is the result of computation on a different backend, the method creates a blocking read.
     ///
-    /// If you modify the contents of the returned array, the behaviour is undefined.
+    /// the returned array is a deepcopy of the tensor, the caller of this methods is now responsible for it.
+    /// If you modify the contents of the returned array, it will not modify the underlying tensor
     /// </summary>
     public int[] ToReadOnlyArray()
     {
-        // @TODO: implement via ITensorData.SharedAccess(), public int[] ToReadOnlyArray(ref int arrayOffset)
-        PrepareCacheForAccess();
-        return m_Cache;
+        return base.ToReadOnlyArray<int>();
+    }
+
+    /// <summary>
+    /// Returns a ReadOnlySpan on the linear memory representation of the data in this tensor.
+    /// </summary>
+    public ReadOnlySpan<int> ToReadOnlySpan()
+    {
+        return base.ToReadOnlySpan<int>();
     }
 }
 

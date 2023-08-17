@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace Unity.Sentis.Layers
 {
@@ -21,11 +22,8 @@ namespace Unity.Sentis.Layers
         Mul,
     }
 
-    /// <summary>
-    /// Represents an `ArgMax` layer. This computes the indices of the maximum elements of the input tensor along a given axis.
-    /// </summary>
     [Serializable]
-    public class ArgMax : Layer
+    public abstract class ArgReduce : Layer
     {
         /// <summary>
         /// The axis along which to perform the operation.
@@ -40,6 +38,42 @@ namespace Unity.Sentis.Layers
         /// </summary>
         public bool selectLastIndex;
 
+        protected ArgReduce(string name, string input, int axis, bool keepdims = true, bool selectLastIndex = false)
+        {
+            this.name = name;
+            this.inputs = new[] { input };
+            this.axis = axis;
+            this.keepdims = keepdims;
+            this.selectLastIndex = selectLastIndex;
+        }
+
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        {
+            var dataType = inputTensors[0].dataType;
+            var shapeX = inputTensors[0].shape;
+            if (!shapeX.hasRank)
+                return new PartialTensor(dataType);
+
+            var reducedShape = new SymbolicTensorShape(shapeX);
+
+            // reducing on a zero axis will result in a zero rather than a one
+            if (shapeX[axis].isValue)
+                reducedShape[axis] = shapeX[axis].value == 0 ? SymbolicTensorDim.Zero : SymbolicTensorDim.One;
+            else
+                reducedShape[axis] = SymbolicTensorDim.Unknown;
+
+            var shapeOut = !keepdims ? reducedShape.Squeeze(axis) : reducedShape;
+            return new PartialTensor(dataType, shapeOut);
+        }
+    }
+
+    /// <summary>
+    /// Represents an `ArgMax` layer. This computes the indices of the maximum elements of the input tensor along a given axis.
+    /// </summary>
+    [Serializable]
+    public class ArgMax : ArgReduce
+    {
         /// <summary>
         /// Initializes and returns an instance of `ArgMax` layer.
         /// </summary>
@@ -49,26 +83,15 @@ namespace Unity.Sentis.Layers
         /// <param name="keepdims">Whether to keep the axis dimension in the output tensor. The default value is `true`.</param>
         /// <param name="selectLastIndex">Whether to perform the operation from the back of the axis. The default value is `false`.</param>
         public ArgMax(string name, string input, int axis, bool keepdims = true, bool selectLastIndex = false)
-        {
-            this.name = name;
-            this.inputs = new[] { input };
-            this.axis = axis;
-            this.keepdims = keepdims;
-            this.selectLastIndex = selectLastIndex;
-        }
-
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
-        {
-            return SymbolicInference.Reduce(inputShapes[0], axis, keepdims);
-        }
+            : base(name, input, axis, keepdims, selectLastIndex) { }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.ArgMax(inputTensors[0] as TensorInt, axis, keepdims, selectLastIndex);
+                return ctx.backend.ArgMax(inputTensors[0] as TensorInt, axis, keepdims, selectLastIndex);
             else
-                return ctx.ops.ArgMax(inputTensors[0] as TensorFloat, axis, keepdims, selectLastIndex);
+                return ctx.backend.ArgMax(inputTensors[0] as TensorFloat, axis, keepdims, selectLastIndex);
         }
 
         /// <inheritdoc/>
@@ -84,21 +107,8 @@ namespace Unity.Sentis.Layers
     /// Represents an `ArgMin` layer. This computes the indices of the minimum elements of the input tensor along a given axis.
     /// </summary>
     [Serializable]
-    public class ArgMin : Layer
+    public class ArgMin : ArgReduce
     {
-        /// <summary>
-        /// The axis along which to perform the operation.
-        /// </summary>
-        public int axis;
-        /// <summary>
-        /// Whether to keep the axis dimension in the output tensor.
-        /// </summary>
-        public bool keepdims;
-        /// <summary>
-        /// Whether to perform the operation from the back of the axis.
-        /// </summary>
-        public bool selectLastIndex;
-
         /// <summary>
         /// Initializes and returns an instance of `ArgMin` layer.
         /// </summary>
@@ -108,26 +118,15 @@ namespace Unity.Sentis.Layers
         /// <param name="keepdims">Whether to keep the axis dimension in the output tensor. The default value is `true`.</param>
         /// <param name="selectLastIndex">Whether to perform the operation from the back of the axis. The default value is `false`.</param>
         public ArgMin(string name, string input, int axis, bool keepdims = true, bool selectLastIndex = false)
-        {
-            this.name = name;
-            this.inputs = new[] { input };
-            this.axis = axis;
-            this.keepdims = keepdims;
-            this.selectLastIndex = selectLastIndex;
-        }
-
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
-        {
-            return SymbolicInference.Reduce(inputShapes[0], axis, keepdims);
-        }
+            : base(name, input, axis, keepdims, selectLastIndex) { }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.ArgMin(inputTensors[0] as TensorInt, axis, keepdims, selectLastIndex);
+                return ctx.backend.ArgMin(inputTensors[0] as TensorInt, axis, keepdims, selectLastIndex);
             else
-                return ctx.ops.ArgMin(inputTensors[0] as TensorFloat, axis, keepdims, selectLastIndex);
+                return ctx.backend.ArgMin(inputTensors[0] as TensorFloat, axis, keepdims, selectLastIndex);
         }
 
         /// <inheritdoc/>
@@ -164,20 +163,56 @@ namespace Unity.Sentis.Layers
             this.axis = axis;
         }
 
-        internal override PartialTensor InferPartialTensor(PartialTensor[] partialTensors, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return PartialInferenceHelper.Gather(partialTensors[0], partialTensors[1], axis);
-        }
+            var dataType = inputTensors[0].dataType;
+            var input = inputTensors[0];
+            var indices = inputTensors[1];
+            if (dataType == DataType.Int && axis == 0 && input.isPartiallyKnown && indices.isPartiallyKnown && input.shape.rank == 1 && indices.shape.rank <= 1)
+            {
+                var tensorOut = new PartialTensor(dataType, indices.shape);
+                for (var i = 0; i < indices.length; i++)
+                {
+                    var index = indices[i];
+                    index = index < 0 ? index + input.length : index;
+                    tensorOut[i] = input[index];
+                }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
-        {
-            return SymbolicInference.Gather(inputShapes[0], inputShapes[1], axis);
+                return tensorOut;
+            }
+
+            var shapeX = input.shape;
+            var shapeIndices = indices.shape;
+            if (!shapeX.hasRank)
+                return new PartialTensor(dataType);
+
+            Logger.AssertIsTrue(shapeX.hasRank ? shapeX.rank >= 1 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", 1, shapeX.rank);
+
+            if (!shapeIndices.hasRank)
+                return new PartialTensor(dataType);
+
+            var axisX = shapeX.Axis(axis);
+
+            var shapeOut = SymbolicTensorShape.UnknownOfRank(shapeX.rank - 1 + shapeIndices.rank);
+
+            for (var i = 0; i < shapeOut.rank; i++)
+            {
+                if (i < axisX)
+                    shapeOut[i] = shapeX[i];
+                else if (i < axisX + shapeIndices.rank)
+                    shapeOut[i] = shapeIndices[i - axisX];
+                else
+                    shapeOut[i] = shapeX[i - shapeOut.rank];
+            }
+
+            return new PartialTensor(dataType, shapeOut);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Gather(inputTensors[0], inputTensors[1] as TensorInt, axis);
+            return ctx.backend.Gather(inputTensors[0], inputTensors[1] as TensorInt, axis);
         }
 
         /// <inheritdoc/>
@@ -214,15 +249,26 @@ namespace Unity.Sentis.Layers
             this.axis = axis;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return SymbolicInference.GatherElements(inputShapes[0], inputShapes[1], axis);
+            var shapeX = inputTensors[0].shape;
+            var shapeIndices = inputTensors[1].shape;
+            Logger.AssertIsTrue(shapeX.hasRank ? shapeX.rank >= 1 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", 1, shapeX.rank);
+
+            if (shapeX.hasRank)
+            {
+                shapeX.Axis(axis);
+                shapeIndices.DeclareRank(shapeX.rank);
+            }
+
+            return new PartialTensor(inputTensors[0].dataType, shapeIndices);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.GatherElements(inputTensors[0], inputTensors[1] as TensorInt, axis);
+            return ctx.backend.GatherElements(inputTensors[0], inputTensors[1] as TensorInt, axis);
         }
 
         /// <inheritdoc/>
@@ -259,15 +305,41 @@ namespace Unity.Sentis.Layers
             this.batchDims = batchDims;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return SymbolicInference.GatherND(inputShapes[0], inputShapes[1], batchDims);
+            var dataType = inputTensors[0].dataType;
+            var shapeX = inputTensors[0].shape;
+            var shapeIndices = inputTensors[1].shape;
+            // from https://github.com/onnx/onnx/blob/main/docs/Operators.md#GatherND
+            Logger.AssertIsTrue(shapeX.hasRank ? shapeX.rank >= batchDims : true, "RankError: incorrect rank, expecting at least {0}, got {1}", batchDims, shapeX.rank);
+            Logger.AssertIsTrue(shapeIndices.hasRank ? shapeIndices.rank >= batchDims : true, "RankError: incorrect rank, expecting at least {0}, got {1}", batchDims, shapeIndices.rank);
+
+            if (!shapeX.hasRank || !shapeIndices.hasRank)
+                return new PartialTensor(dataType);
+
+            if (!shapeIndices[-1].isValue)
+                return new PartialTensor(dataType);
+
+            Logger.AssertIsTrue(batchDims + shapeIndices[-1].value <= shapeX.rank, "GatherND.InputError: last indices dim too large");
+            var shapeOut = SymbolicTensorShape.UnknownOfRank(shapeX.rank + shapeIndices.rank - shapeIndices[-1].value - 1 - batchDims);
+            for (var i = 0; i < shapeOut.rank; i++)
+            {
+                if (i < batchDims)
+                    shapeOut[i] = SymbolicTensorDim.MaxDefinedDim(shapeX[i], shapeIndices[i]);
+                else if (i < shapeIndices.rank - 1)
+                    shapeOut[i] = shapeIndices[i];
+                else
+                    shapeOut[i] = shapeX[i - shapeOut.rank];
+            }
+
+            return new PartialTensor(dataType, shapeOut);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.GatherND(inputTensors[0], inputTensors[1] as TensorInt, batchDims);
+            return ctx.backend.GatherND(inputTensors[0], inputTensors[1] as TensorInt, batchDims);
         }
 
         internal override string profilerTag => "GatherND";
@@ -290,20 +362,20 @@ namespace Unity.Sentis.Layers
             inputs = new[] { input };
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            if (!inputShapes[0].hasRank)
-                return SymbolicTensorShape.UnknownOfRank(2);
-            return new SymbolicTensorShape(new SymbolicTensorDim(inputShapes[0].rank), SymbolicTensorDim.Unknown);
+            var shape = !inputTensors[0].shape.hasRank ? SymbolicTensorShape.UnknownOfRank(2) : new SymbolicTensorShape(new SymbolicTensorDim(inputTensors[0].shape.rank), SymbolicTensorDim.Unknown);
+            return new PartialTensor(DataType.Int, shape);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.NonZero(inputTensors[0] as TensorInt);
+                return ctx.backend.NonZero(inputTensors[0] as TensorInt);
             else
-                return ctx.ops.NonZero(inputTensors[0] as TensorFloat);
+                return ctx.backend.NonZero(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "NonZero";
@@ -343,15 +415,44 @@ namespace Unity.Sentis.Layers
             this.reduction = reduction;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return SymbolicInference.ScatterElements(inputShapes[0], inputShapes[1], inputShapes[2], axis, reduction);
+            var dataType = inputTensors[0].dataType;
+            var shapeX = inputTensors[0].shape;
+            var shapeIndices = inputTensors[1].shape;
+            var shapeUpdates = inputTensors[2].shape;
+
+            if (!shapeX.hasRank && !shapeIndices.hasRank && !shapeUpdates.hasRank)
+                return new PartialTensor(dataType);
+
+            if (!shapeX.hasRank && shapeIndices.hasRank)
+                shapeX = SymbolicTensorShape.UnknownOfRank(shapeIndices.rank);
+
+            if (!shapeX.hasRank && shapeUpdates.hasRank)
+                shapeX = SymbolicTensorShape.UnknownOfRank(shapeUpdates.rank);
+
+            Logger.AssertIsTrue(shapeX.hasRank ? shapeX.rank >= 1 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", 1, shapeX.rank);
+
+            shapeIndices.DeclareRank(shapeX.rank);
+            shapeUpdates.DeclareRank(shapeX.rank);
+
+            // throw error if axis incorrect
+            shapeX.Axis(axis);
+
+            // throw error if indices and updates don't match
+            for (var i = 0; i < shapeIndices.rank; i++)
+            {
+                SymbolicTensorDim.MaxDefinedDim(shapeIndices[i], shapeUpdates[i]);
+            }
+
+            return new PartialTensor(dataType, shapeX);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.ScatterElements(inputTensors[0], inputTensors[1] as TensorInt, inputTensors[2], axis, reduction);
+            return ctx.backend.ScatterElements(inputTensors[0], inputTensors[1] as TensorInt, inputTensors[2], axis, reduction);
         }
 
         /// <inheritdoc/>
@@ -391,18 +492,31 @@ namespace Unity.Sentis.Layers
             this.reduction = reduction;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return SymbolicInference.ScatterND(inputShapes[0], inputShapes[1], inputShapes[2], reduction);
+            var dataType = inputTensors[0].dataType;
+            var shapeX = inputTensors[0].shape;
+            var shapeIndices = inputTensors[1].shape;
+            var shapeUpdates = inputTensors[2].shape;
+
+            Logger.AssertIsTrue(shapeIndices.hasRank ? shapeIndices.rank >= 1 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", shapeIndices.rank, 1);
+
+            if (shapeIndices.hasRank && shapeUpdates.hasRank && shapeIndices[-1].isValue)
+                shapeX.DeclareRank(shapeUpdates.rank - (shapeIndices.rank - shapeIndices[-1].value - 1));
+
+            Logger.AssertIsTrue(shapeX.hasRank ? shapeX.rank >= 1 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", 1, shapeX.rank);
+
+            return new PartialTensor(dataType, shapeX);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.ScatterND(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt, inputTensors[2] as TensorInt, reduction);
+                return ctx.backend.ScatterND(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt, inputTensors[2] as TensorInt, reduction);
             else
-                return ctx.ops.ScatterND(inputTensors[0] as TensorFloat, inputTensors[1] as TensorInt, inputTensors[2] as TensorFloat, reduction);
+                return ctx.backend.ScatterND(inputTensors[0] as TensorFloat, inputTensors[1] as TensorInt, inputTensors[2] as TensorFloat, reduction);
         }
 
         /// <inheritdoc/>
@@ -456,19 +570,35 @@ namespace Unity.Sentis.Layers
             this.outputs = outputNames;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            SymbolicInference.TopK(inputShapes[0], inputShapes[1], axis, out var shapeValues, out var shapeIndices);
+            var dataType = inputTensors[0].dataType;
+            var shapeX = inputTensors[0].shape;
+            if (!shapeX.hasRank)
+            {
+                ctx.AddPartialTensor(outputs[1], new PartialTensor(DataType.Int));
+                return new PartialTensor(dataType);
+            }
 
-            ctx.AddShape(outputs[1], shapeIndices);
+            var shapeK = inputTensors[1].shape;
+            shapeK.DeclareRank(1);
+            Logger.AssertIsFalse(shapeK[0] != 1, "TopK.InputError: k must be a single value");
 
-            return shapeValues;
+            var shapeOut = new SymbolicTensorShape(shapeX);
+
+            var axisX = shapeX.Axis(axis);
+
+            shapeOut[axisX] = (SymbolicTensorDim)inputTensors[1][0];
+
+            ctx.AddPartialTensor(outputs[1], new PartialTensor(DataType.Int, shapeOut));
+            return new PartialTensor(dataType, shapeOut);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            Tensor[] Y = ctx.ops.TopK(inputTensors[0] as TensorFloat, (inputTensors[1] as TensorInt)[0], axis, largest, sorted);
+            Tensor[] Y = ctx.backend.TopK(inputTensors[0] as TensorFloat, inputTensors[1].ToReadOnlySpan<int>()[0], axis, largest, sorted);
 
             ctx.vars.Store(outputs[1], Y[1]);
 

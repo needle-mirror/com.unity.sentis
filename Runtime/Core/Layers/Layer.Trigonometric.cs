@@ -19,7 +19,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Acos(inputTensors[0] as TensorFloat);
+            return ctx.backend.Acos(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Acos";
@@ -42,7 +42,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Acosh(inputTensors[0] as TensorFloat);
+            return ctx.backend.Acosh(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Acosh";
@@ -65,7 +65,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Asin(inputTensors[0] as TensorFloat);
+            return ctx.backend.Asin(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Asin";
@@ -88,7 +88,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Asinh(inputTensors[0] as TensorFloat);
+            return ctx.backend.Asinh(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Asinh";
@@ -111,7 +111,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Atan(inputTensors[0] as TensorFloat);
+            return ctx.backend.Atan(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Atan";
@@ -134,7 +134,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Atanh(inputTensors[0] as TensorFloat);
+            return ctx.backend.Atanh(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Atanh";
@@ -157,7 +157,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Cos(inputTensors[0] as TensorFloat);
+            return ctx.backend.Cos(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Cos";
@@ -180,7 +180,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Cosh(inputTensors[0] as TensorFloat);
+            return ctx.backend.Cosh(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Cosh";
@@ -203,7 +203,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Sin(inputTensors[0] as TensorFloat);
+            return ctx.backend.Sin(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Sin";
@@ -226,7 +226,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Sinh(inputTensors[0] as TensorFloat);
+            return ctx.backend.Sinh(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Sinh";
@@ -249,7 +249,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Tan(inputTensors[0] as TensorFloat);
+            return ctx.backend.Tan(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Tan";

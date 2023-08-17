@@ -77,24 +77,24 @@ void FUNC_NAME(KERNEL_NAME, BLOCK_SIZE)(uint3 dispatchThreadID : SV_DispatchThre
     dstA[2] = dstA[0];
     dstA[3] = dstA[0];
     #endif
-    
+
     uint readW = strideW * (ti >> 6) + bx + (ti & 63);
     #ifdef BATCH
     readW += dispatchThreadID.z * X_width * O_width;
     #endif
-    
+
     uint4 centroidId = uint4(
         (by + (ti>>4) +  0),
         (by + (ti>>4) + 16),
         (by + (ti>>4) + 32),
         (by + (ti>>4) + 48));
-    
+
     uint4 readX = strideX * centroidId + (ti & 15);
     #ifdef BATCH
     readX += dispatchThreadID.z * O_height * X_width;
     #endif
-    bool4 maskX = centroidId < m;    
-    
+    bool4 maskX = centroidId < m;
+
     for (uint i = 0; i < n; i += CACHE_DEPTH)
     {
         [unroll] for (uint j = 0; j < 4; ++j)
@@ -104,7 +104,7 @@ void FUNC_NAME(KERNEL_NAME, BLOCK_SIZE)(uint3 dispatchThreadID : SV_DispatchThre
             #else
             LDS_[W_OFFSET + ((ti>>6)<<6) + ((ti&3)<<4) + ((ti&63)>>2) + 256*j] = Wptr[readW];
             #endif
-    
+
             readW += strideW * 4;
 
             #if defined(SHADER_API_MOBILE)
@@ -113,14 +113,14 @@ void FUNC_NAME(KERNEL_NAME, BLOCK_SIZE)(uint3 dispatchThreadID : SV_DispatchThre
             LDS_[X_OFFSET + (ti>>4) + 65*(ti&15) + 16*j] = maskX[j] ? Xptr[readX[j] + i] : 0.0f;
             #endif
         }
-    
+
         GroupMemoryBarrierWithGroupSync();
-    
+
         uint4 idX = uint4(0,1,2,3);
         uint4 idW = uint4(0,16,32,48);
         uint incX = 64 + (1-0);
         uint incW = 64;
-    
+
         for (uint di = 0; di < CACHE_DEPTH; di++)
         {
             float4 srcX = float4(
@@ -136,36 +136,36 @@ void FUNC_NAME(KERNEL_NAME, BLOCK_SIZE)(uint3 dispatchThreadID : SV_DispatchThre
             );
             idX += incX;
             idW += incW;
-    
+
             dstA[0].x = ffma(srcX.x, srcW.x, dstA[0].x);
             dstA[0].y = ffma(srcX.x, srcW.y, dstA[0].y);
             dstA[0].z = ffma(srcX.x, srcW.z, dstA[0].z);
             dstA[0].w = ffma(srcX.x, srcW.w, dstA[0].w);
-    
+
             dstA[1].x = ffma(srcX.y, srcW.x, dstA[1].x);
             dstA[1].y = ffma(srcX.y, srcW.y, dstA[1].y);
             dstA[1].z = ffma(srcX.y, srcW.z, dstA[1].z);
             dstA[1].w = ffma(srcX.y, srcW.w, dstA[1].w);
-    
+
             dstA[2].x = ffma(srcX.z, srcW.x, dstA[2].x);
             dstA[2].y = ffma(srcX.z, srcW.y, dstA[2].y);
             dstA[2].z = ffma(srcX.z, srcW.z, dstA[2].z);
             dstA[2].w = ffma(srcX.z, srcW.w, dstA[2].w);
-    
+
             dstA[3].x = ffma(srcX.w, srcW.x, dstA[3].x);
             dstA[3].y = ffma(srcX.w, srcW.y, dstA[3].y);
             dstA[3].z = ffma(srcX.w, srcW.z, dstA[3].z);
             dstA[3].w = ffma(srcX.w, srcW.w, dstA[3].w);
         }
-    
+
         GroupMemoryBarrierWithGroupSync();
-    } 
+    }
 
     uint writeO = 0;
     #ifdef BATCH
     writeO += dispatchThreadID.z * O_height * O_width;
     #endif
-    
+
     [unroll] for (uint sy = 0; sy < 4 && y+sy < m; ++sy)
         [unroll] for (uint sx = 0; sx < 4 && x+sx < strideO; ++sx)
             {

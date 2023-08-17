@@ -19,11 +19,11 @@ using Constant = Unity.Burst.CompilerServices.Constant;
 
 namespace Unity.Sentis {
 
-// BurstCPU.Core.cs -- definition of class BurstCPUOps, Pin(), BurstTensorData
+// BurstCPU.Core.cs -- definition of class CPUBackend, Pin(), BurstTensorData
 // BurstCPU.Ops.cs  -- impl. IOps, job schedulers
 // BurstCPU.Jobs.cs -- impl. jobs
 
-public partial class CPUOps
+public partial class CPUBackend
 {
     internal static readonly Thread MainThread = Thread.CurrentThread;
 
@@ -453,6 +453,8 @@ public partial class CPUOps
         public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
 
+        public bool useBias;
+
         const int maxSpatialDims = 3;
 
         const int blockSizeM = 64;
@@ -486,14 +488,14 @@ public partial class CPUOps
         [NativeDisableUnsafePtrRestriction]
         unsafe float* columnBuffer, blockTempC;
 
-        public int Prepare(TensorShape X, TensorShape W, TensorShape O, int groupCount, int[] stride, int[] pad, int[] dilation, Layers.FusableActivation fusedActivation)
+        public int Prepare(TensorShape X, TensorShape W, TensorShape O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
         {
             int spatialDims = X.rank - 2;
 
             this.batchCount = X[0];
-            this.groupCount = groupCount;
-            this.inputChannels = X[1] / groupCount;
-            this.outputChannels = O[1] / groupCount;
+            this.groupCount = groups;
+            this.inputChannels = X[1] / groups;
+            this.outputChannels = O[1] / groups;
             this.spatialDims = spatialDims;
 
             int baseOutputIndex = 0;
@@ -521,17 +523,15 @@ public partial class CPUOps
 
             for (int i = 0; i < spatialDims; i++)
             {
-                this.stride[baseOutputIndex + i] = stride[i];
-                this.padLeft[baseOutputIndex + i] = pad[i];
-                this.padRight[baseOutputIndex + i] = pad[i + spatialDims];
-                this.dilation[baseOutputIndex + i] = dilation[i];
-
-                this.inputSize *= this.inputShape[baseOutputIndex + i] = X[2 + i];
-                this.kernelSize *= this.kernelShape[baseOutputIndex + i] = W[2 + i];
-                this.outputSize *= this.outputShape[baseOutputIndex + i] = O[2 + i];
-
-                allStridesEqualOne &= (stride[i] == 1);
-                allPaddingEqualsZero &= (pad[i] == 0 && pad[i + spatialDims] == 0);
+                inputSize *= inputShape[baseOutputIndex + i] = X[2 + i];
+                kernelSize *= kernelShape[baseOutputIndex + i] = W[2 + i];
+                outputSize *= outputShape[baseOutputIndex + i] = O[2 + i];
+                stride[baseOutputIndex + i] = strides[i];
+                padLeft[baseOutputIndex + i] = pads[i];
+                padRight[baseOutputIndex + i] = pads[i + spatialDims];
+                dilation[baseOutputIndex + i] = dilations[i];
+                allStridesEqualOne &= strides[i] == 1;
+                allPaddingEqualsZero &= pads[i] == 0 && pads[i + spatialDims] == 0;
             }
 
             // Detect a pointwise convolution and handle by flattening the shapes (a 3D convolution
@@ -550,7 +550,7 @@ public partial class CPUOps
 
             this.minValue = (fusedActivation == Layers.FusableActivation.Relu) ? 0.0f : float.MinValue;
 
-            if (groupCount > 1 && CanUseDepthwiseConvKernel(this))
+            if (groups > 1 && CanUseDepthwiseConvKernel(this))
                 this.useDepthwiseKernel = true;
 
             // Distribute jobs over a single axis.
@@ -575,18 +575,20 @@ public partial class CPUOps
             float *Xp = Xptr + batchGroupIndex * inputChannels * inputSize;
             float *Op = Optr + batchGroupIndex * outputChannels * outputSize;
             float *Wp = Wptr + groupIndex * outputChannels * K;
-            float *Bp = Bptr + groupIndex * outputChannels;
+            float *Bp = useBias ? Bptr + groupIndex * outputChannels : null;
 
             if (useDepthwiseKernel)
             {
                 if (Unity.Burst.Intrinsics.X86.Avx2.IsAvx2Supported)
                 {
-                    DepthwiseConv2D_Avx2(Xp, Wp, Bp, Op);
+                    float bias = useBias ? Bp[0] : 0;
+                    DepthwiseConv2D_Avx2(Xp, Wp, bias, Op);
                     return;
                 }
                 else if (Unity.Burst.Intrinsics.Arm.Neon.IsNeonSupported)
                 {
-                    DepthwiseConv2D_Neon_Kernel3x3_Stride1x1(Xp, Wp, Bp, Op);
+                    float bias = useBias ? Bp[0] : 0;
+                    DepthwiseConv2D_Neon_Kernel3x3_Stride1x1(Xp, Wp, bias, Op);
                     return;
                 }
             }
@@ -635,7 +637,7 @@ public partial class CPUOps
                     k += blockCountK;
                 }
 
-                CopyBlock(blockCountM, blockCountN, blockTempC, alignedCountN, Op + m * outputSize + n, outputSize, Bp + m);
+                CopyBlock(blockCountM, blockCountN, blockTempC, alignedCountN, Op + m * outputSize + n, outputSize, useBias, useBias ? Bp + m : null);
             }
         }
 
@@ -1084,18 +1086,31 @@ public partial class CPUOps
             Vol2Col_StrideNxNxN(Xptr, Optr, k, countK, n, countN, alignedCountN);
         }
 
-        void CopyBlock(int M, int N, [NoAlias] float* src, int srcStride, [NoAlias] float* dst, int dstStride, [NoAlias] float* bias)
+        void CopyBlock(int M, int N, [NoAlias] float* src, int srcStride, [NoAlias] float* dst, int dstStride, bool useBias, [NoAlias] float* bias)
         {
             // Avoid generating compiled code for the case where M or N are negative or zero.
             Hint.Assume(M > 0);
             Hint.Assume(N > 0);
 
-            for (int m = 0; m < M; m++)
+            if (useBias)
             {
-                for (int n = 0; n < N; n++)
-                    dst[n] = math.max(src[n] + bias[m], minValue);
-                src += srcStride;
-                dst += dstStride;
+                for (int m = 0; m < M; m++)
+                {
+                    for (int n = 0; n < N; n++)
+                        dst[n] = math.max(src[n] + bias[m], minValue);
+                    src += srcStride;
+                    dst += dstStride;
+                }
+            }
+            else
+            {
+                for (int m = 0; m < M; m++)
+                {
+                    for (int n = 0; n < N; n++)
+                        dst[n] = math.max(src[n], minValue);
+                    src += srcStride;
+                    dst += dstStride;
+                }
             }
         }
 
@@ -1153,7 +1168,7 @@ public partial class CPUOps
         }
 
         [MethodImplAttribute(MethodImplOptions.NoInlining)]
-        void DepthwiseConv2D_Avx2([NoAlias] float* Xptr, [NoAlias] float* Wptr, [NoAlias] float* Bptr, [NoAlias] float* Optr)
+        void DepthwiseConv2D_Avx2([NoAlias] float* Xptr, [NoAlias] float* Wptr, [NoAlias] float bias, [NoAlias] float* Optr)
         {
             if (!Unity.Burst.Intrinsics.X86.Avx2.IsAvx2Supported)
                 return;
@@ -1169,7 +1184,7 @@ public partial class CPUOps
             int strideWidth = stride[1];
             int strideHeight = stride[0];
 
-            v256 biasV = new v256(Bptr[0]);
+            v256 biasV = new v256(bias);
             v256 minValueV = new v256(minValue);
             v256 laneIndexV = new v256(0, 1, 2, 3, 4, 5, 6, 7);
             v256 inputWidthV = new v256(inputWidth);
@@ -1262,7 +1277,7 @@ public partial class CPUOps
         }
 
         [MethodImplAttribute(MethodImplOptions.NoInlining)]
-        void DepthwiseConv2D_Neon_Kernel3x3_Stride1x1([NoAlias] float* Xptr, [NoAlias] float* Wptr, [NoAlias] float* Bptr, [NoAlias] float* Optr)
+        void DepthwiseConv2D_Neon_Kernel3x3_Stride1x1([NoAlias] float* Xptr, [NoAlias] float* Wptr, float bias, [NoAlias] float* Optr)
         {
             int outputWidth = outputShape[1];
             int outputHeight = outputShape[0];
@@ -1271,7 +1286,7 @@ public partial class CPUOps
             int padWidth = padLeft[1];
             int padHeight = padLeft[0];
 
-            float4 biasV = new float4(Bptr[0]);
+            float4 biasV = new float4(bias);
             float4 weight0V = *((float4*)(&Wptr[0]));
             float4 weight1V = *((float4*)(&Wptr[4]));
             float4 weight2V = new float4(Wptr[8], 0, 0, 0);

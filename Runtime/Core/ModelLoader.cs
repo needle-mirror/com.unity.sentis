@@ -41,6 +41,18 @@ public static class ModelLoader
         return model;
     }
 
+    public static Model Load(string path)
+    {
+        Model model = new Model();
+
+        FileStream fileStream = File.Open(path, FileMode.Open);
+        LoadModelDesc(fileStream, ref model);
+        LoadModelWeights(fileStream, ref model);
+        fileStream.Dispose();
+
+        return model;
+    }
+
     public static void LoadModelDesc(ModelAsset modelAsset, ref Model model)
     {
         MemoryStream descStream = Open(modelAsset.modelAssetData.value);
@@ -99,12 +111,6 @@ public static class ModelLoader
             constant.offset         = Read<long>(stream);
             constant.length         = Read<int>(stream);
             model.constants.Add(constant);
-        }
-
-        Int64 numWeightsToRead = 0;
-        for (var l = 0; l < model.constants.Count; ++l)
-        {
-            numWeightsToRead += model.constants[l].length;
         }
 
         // Importer Reporting
@@ -190,6 +196,53 @@ public static class ModelLoader
         }
 
         var sharedWeightsArray2  = new NativeTensorArrayFromManagedArray(stream.GetBuffer(), 0, (int)count);
+        for (var ll = lstart; ll < (lstart + lcount); ++ll)
+        {
+            model.constants[ll].weights = sharedWeightsArray2;
+        }
+
+        Profiler.EndSample();
+    }
+
+    static void LoadModelWeights(FileStream stream, ref Model model)
+    {
+        Profiler.BeginSample("Sentis.LoadModelWeights");
+
+        var sizeOfDataItem = sizeof(float);
+
+        int lstart = 0;
+        int lcount = 0;
+        long count = 0;
+        long readLength = 0;
+
+        // write constant data
+        for (var l = 0; l < model.constants.Count; ++l)
+        {
+            var constant = model.constants[l];
+            int memorySize = constant.length * sizeOfDataItem;
+            if (readLength + (long)memorySize >= (long)Int32.MaxValue)
+            {
+                var byteArray = new byte[(int)count * sizeOfDataItem];
+                stream.Read(byteArray, 0, (int)count * sizeOfDataItem);
+                var sharedWeightsArray  = new NativeTensorArrayFromManagedArray(byteArray, 0, (int)count);
+                for (var ll = lstart; ll < (lstart + lcount); ++ll)
+                {
+                    model.constants[ll].weights = sharedWeightsArray;
+                }
+
+                readLength = 0;
+                count = 0;
+                lstart = (lstart + lcount);
+                lcount = 0;
+            }
+            readLength += memorySize;
+            count += constant.length;
+            lcount += 1;
+        }
+
+        var byteArray2 = new byte[(int)count * sizeOfDataItem];
+        stream.Read(byteArray2, 0, (int)count * sizeOfDataItem);
+        var sharedWeightsArray2  = new NativeTensorArrayFromManagedArray(byteArray2, 0, (int)count);
         for (var ll = lstart; ll < (lstart + lcount); ++ll)
         {
             model.constants[ll].weights = sharedWeightsArray2;

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 
 namespace Unity.Sentis.Layers
 {
@@ -219,16 +220,64 @@ namespace Unity.Sentis.Layers
             this.layout = layout;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            SymbolicInference.LSTM(inputShapes, hiddenSize, NumDirections, layout, out var shapeY, out var shapeYH, out var shapeYC);
+            var shapeX = inputTensors[0].shape;
+            var shapeW = inputTensors[1].shape;
+            var shapeR = inputTensors[2].shape;
+
+            var seqLength = SymbolicTensorDim.Unknown;
+            var batchSize = SymbolicTensorDim.Unknown;
+
+            shapeX.DeclareRank(3);
+            shapeW.DeclareRank(3);
+            shapeR.DeclareRank(3);
+
+            seqLength = SymbolicTensorDim.MaxDefinedDim(seqLength, layout == RnnLayout.SequenceFirst ? shapeX[0] : shapeX[1]);
+            batchSize = SymbolicTensorDim.MaxDefinedDim(batchSize, layout == RnnLayout.SequenceFirst ? shapeX[1] : shapeX[0]);
+
+            if (inputTensors.Length > 3 && inputTensors[3] != null && inputTensors[3].shape is var shapeB)
+                shapeB.DeclareRank(2);
+
+            if (inputTensors.Length > 4 && inputTensors[4] != null && inputTensors[4].shape is var shapeSequenceLens)
+            {
+                shapeSequenceLens.DeclareRank(1);
+                batchSize = SymbolicTensorDim.MaxDefinedDim(batchSize, shapeSequenceLens[0]);
+            }
+
+            if (inputTensors.Length > 5 && inputTensors[5] != null && inputTensors[5].shape is var shapeInitialH)
+            {
+                shapeInitialH.DeclareRank(3);
+                batchSize = SymbolicTensorDim.MaxDefinedDim(batchSize, layout == RnnLayout.SequenceFirst ? shapeInitialH[1] : shapeInitialH[0]);
+            }
+
+            if (inputTensors.Length > 6 && inputTensors[6] != null && inputTensors[6].shape is var shapeInitialC)
+            {
+                shapeInitialC.DeclareRank(3);
+                batchSize = SymbolicTensorDim.MaxDefinedDim(batchSize, layout == RnnLayout.SequenceFirst ? shapeInitialC[1] : shapeInitialC[0]);
+            }
+
+            if (inputTensors.Length > 7 && inputTensors[7] != null && inputTensors[7].shape is var shapeP)
+                shapeP.DeclareRank(2);
+
+            var numDirectionsDim = new SymbolicTensorDim(NumDirections);
+            var hiddenSizeDim = new SymbolicTensorDim(hiddenSize);
+
+            if (layout == RnnLayout.SequenceFirst)
+            {
+                if (outputs.Length > 1 && !string.IsNullOrEmpty(outputs[1]))
+                    ctx.AddPartialTensor(outputs[1], new PartialTensor(DataType.Float, new SymbolicTensorShape(numDirectionsDim, batchSize, hiddenSizeDim)));
+                if (outputs.Length > 2 && !string.IsNullOrEmpty(outputs[2]))
+                    ctx.AddPartialTensor(outputs[2], new PartialTensor(DataType.Float, new SymbolicTensorShape(numDirectionsDim, batchSize, hiddenSizeDim)));
+                return new PartialTensor(DataType.Float, new SymbolicTensorShape(seqLength, numDirectionsDim, batchSize, hiddenSizeDim));
+            }
 
             if (outputs.Length > 1 && !string.IsNullOrEmpty(outputs[1]))
-                ctx.AddShape(outputs[1], shapeYH);
+                ctx.AddPartialTensor(outputs[1], new PartialTensor(DataType.Float, new SymbolicTensorShape(batchSize, numDirectionsDim, hiddenSizeDim)));
             if (outputs.Length > 2 && !string.IsNullOrEmpty(outputs[2]))
-                ctx.AddShape(outputs[2], shapeYC);
-
-            return shapeY;
+                ctx.AddPartialTensor(outputs[2], new PartialTensor(DataType.Float, new SymbolicTensorShape(batchSize, numDirectionsDim, hiddenSizeDim)));
+            return new PartialTensor(DataType.Float, new SymbolicTensorShape(batchSize, seqLength, numDirectionsDim, hiddenSizeDim));
         }
 
         /// <inheritdoc/>
@@ -240,7 +289,7 @@ namespace Unity.Sentis.Layers
             var initialC = inputTensors.Length > 6 ? inputTensors[6] as TensorFloat : null;
             var P = inputTensors.Length > 7 ? inputTensors[7] as TensorFloat : null;
 
-            var ret = ctx.ops.LSTM(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat, B, sequenceLens, initialH, initialC, P, direction, activations, activationAlpha, activationBeta, inputForget, clip, layout);
+            var ret = ctx.backend.LSTM(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat, B, sequenceLens, initialH, initialC, P, direction, activations, activationAlpha, activationBeta, inputForget, clip, layout);
 
             if (outputs.Length > 1 && !string.IsNullOrEmpty(outputs[1]))
                 ctx.vars.Store(outputs[1], ret[1]);

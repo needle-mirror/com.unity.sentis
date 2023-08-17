@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using Unity.Collections.LowLevel.Unsafe;
 using static Unity.Sentis.ShaderPropertyID;
 using UnityEngine.Rendering;
+using System;
 
 [assembly: InternalsVisibleTo("Unity.Sentis.EditorTests")]
 
@@ -67,6 +68,17 @@ static class CommandBufferHelper
         cb.SetComputeIntParam(fn.shader, nameID, data ? 1 : 0);
     }
 
+    // for setting uint4 and int4 values, no padding required
+    static readonly int[] s_scratchPadInt4 = new int[4];
+
+    public static void SetInt4(this CommandBuffer cb, ComputeFunc fn, int nameID, Span<int> ptr)
+    {
+        for (int i = 0; i < ptr.Length && i < 4; i++)
+            s_scratchPadInt4[i] = ptr[i];
+
+        cb.SetComputeIntParams(fn.shader, nameID, s_scratchPadInt4);
+    }
+
     public static unsafe void SetTensorShapeStrides(this CommandBuffer cb, ComputeFunc fn, int shapeNameID, int strideNameID, TensorShape shape)
     {
         int* pShape = stackalloc int[TensorShape.maxRank];
@@ -83,13 +95,31 @@ static class CommandBufferHelper
     static readonly int[] s_scratchPadInt8 = new int[8*4];
     static readonly int[] s_scratchPadInt6 = new int[6*4];
 
-    public static void SetInt16(this CommandBuffer cb, ComputeFunc fn, int nameID, int[] ptr)
+    public static void SetInt16(this CommandBuffer cb, ComputeFunc fn, int nameID, ReadOnlySpan<int> ptr)
     {
         Logger.AssertIsTrue(ptr.Length <= 16, "cannot pin array > 16, got {0}", ptr.Length);
         for (int i = 0; i < ptr.Length; i++)
             s_scratchPadInt16[4 * i] = ptr[i];
 
         cb.SetComputeIntParams(fn.shader, nameID, s_scratchPadInt16);
+    }
+
+    public static void SetInt16(this CommandBuffer cb, ComputeFunc fn, int nameID, Span<int> ptr)
+    {
+        Logger.AssertIsTrue(ptr.Length <= 16, "cannot pin array > 16, got {0}", ptr.Length);
+        for (int i = 0; i < ptr.Length; i++)
+            s_scratchPadInt16[4 * i] = ptr[i];
+
+        cb.SetComputeIntParams(fn.shader, nameID, s_scratchPadInt16);
+    }
+
+    public static void SetInt8(this CommandBuffer cb, ComputeFunc fn, int nameID, Span<int> ptr)
+    {
+        Logger.AssertIsTrue(ptr.Length <= 8, "cannot pin array > 8, got {0}", ptr.Length);
+        for (int i = 0; i < ptr.Length; i++)
+            s_scratchPadInt8[4 * i] = ptr[i];
+
+        cb.SetComputeIntParams(fn.shader, nameID, s_scratchPadInt8);
     }
 
     public static unsafe void SetInt8(this CommandBuffer cb, ComputeFunc fn, int nameID, int* ptr)

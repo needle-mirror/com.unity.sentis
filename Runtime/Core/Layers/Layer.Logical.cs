@@ -3,6 +3,22 @@ using System;
 namespace Unity.Sentis.Layers
 {
     /// <summary>
+    /// Represents an element-wise comparison layer.
+    /// </summary>
+    [Serializable]
+    public abstract class Comparison : Broadcast
+    {
+        protected Comparison(string name, string a, string b)
+            : base(name, a, b) { }
+
+        /// <inheritdoc/>
+        internal override DataType InferPartialDataType(PartialTensor[] inputTensors)
+        {
+            return DataType.Int;
+        }
+    }
+
+    /// <summary>
     /// Represents an element-wise `And` logical operation layer: f(a, b) = a & b.
     ///
     /// This supports numpy-style broadcasting of input tensors.
@@ -22,7 +38,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.And(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+            return ctx.backend.And(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
         }
 
         internal override string profilerTag => "And";
@@ -71,19 +87,29 @@ namespace Unity.Sentis.Layers
             this.axis = axis;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
+            var dataType = inputTensors[0].dataType;
+            var shapeX = inputTensors[0].shape;
+            var condition = inputTensors[1];
+            var isZero = shapeX.Length() * condition.shape.Length() == 0;
             if (hasAxis)
-                return SymbolicInference.Compress(inputShapes[0], inputShapes[1], axis);
-            return SymbolicInference.Compress(inputShapes[0], inputShapes[1]);
+            {
+                var shapeOut = shapeX;
+                shapeOut[axis] = isZero ? SymbolicTensorDim.Zero : SymbolicTensorDim.Unknown;
+                return new PartialTensor(dataType, shapeOut);
+            }
+
+            return new PartialTensor(dataType, new SymbolicTensorShape(isZero ? SymbolicTensorDim.Zero : SymbolicTensorDim.Unknown));
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (hasAxis)
-                return ctx.ops.Compress(inputTensors[0], inputTensors[1] as TensorInt, axis);
-            return ctx.ops.Compress(ctx.ops.Reshape(inputTensors[0], new TensorShape(inputTensors[0].shape.length)), inputTensors[1] as TensorInt, 0);
+                return ctx.backend.Compress(inputTensors[0], inputTensors[1] as TensorInt, axis);
+            return ctx.backend.Compress(ctx.backend.Reshape(inputTensors[0], new TensorShape(inputTensors[0].shape.length)), inputTensors[1] as TensorInt, 0);
         }
 
         /// <inheritdoc/>
@@ -101,7 +127,7 @@ namespace Unity.Sentis.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Serializable]
-    public class Equal : Broadcast
+    public class Equal : Comparison
     {
         /// <summary>
         /// Initializes and returns an instance of `Equal` logical operation layer.
@@ -116,9 +142,9 @@ namespace Unity.Sentis.Layers
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.Equal(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+                return ctx.backend.Equal(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
             else
-                return ctx.ops.Equal(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+                return ctx.backend.Equal(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
         }
 
         internal override string profilerTag => "Equal";
@@ -130,7 +156,7 @@ namespace Unity.Sentis.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Serializable]
-    public class Greater : Broadcast
+    public class Greater : Comparison
     {
         /// <summary>
         /// Initializes and returns an instance of `Greater` logical operation layer.
@@ -145,9 +171,9 @@ namespace Unity.Sentis.Layers
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.Greater(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+                return ctx.backend.Greater(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
             else
-                return ctx.ops.Greater(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+                return ctx.backend.Greater(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
         }
 
         internal override string profilerTag => "Greater";
@@ -159,7 +185,7 @@ namespace Unity.Sentis.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Serializable]
-    public class GreaterOrEqual : Broadcast
+    public class GreaterOrEqual : Comparison
     {
         /// <summary>
         /// Initializes and returns an instance of `GreaterOrEqual` logical operation layer.
@@ -174,9 +200,9 @@ namespace Unity.Sentis.Layers
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.GreaterOrEqual(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+                return ctx.backend.GreaterOrEqual(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
             else
-                return ctx.ops.GreaterOrEqual(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+                return ctx.backend.GreaterOrEqual(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
         }
 
         internal override string profilerTag => "GreaterOrEqual";
@@ -212,15 +238,16 @@ namespace Unity.Sentis.Layers
             this.detectPositive = detectPositive;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return inputShapes[0];
+            return new PartialTensor(DataType.Int, inputTensors[0].shape);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.IsInf(inputTensors[0] as TensorFloat, detectNegative, detectPositive);
+            return ctx.backend.IsInf(inputTensors[0] as TensorFloat, detectNegative, detectPositive);
         }
 
         /// <inheritdoc/>
@@ -249,15 +276,16 @@ namespace Unity.Sentis.Layers
             inputs = new[] { input };
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return inputShapes[0];
+            return new PartialTensor(DataType.Int, inputTensors[0].shape);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.IsNaN(inputTensors[0] as TensorFloat);
+            return ctx.backend.IsNaN(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "IsNaN";
@@ -269,7 +297,7 @@ namespace Unity.Sentis.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Serializable]
-    public class Less : Broadcast
+    public class Less : Comparison
     {
         /// <summary>
         /// Initializes and returns an instance of `Less` logical operation layer.
@@ -284,9 +312,9 @@ namespace Unity.Sentis.Layers
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.Less(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+                return ctx.backend.Less(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
             else
-                return ctx.ops.Less(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+                return ctx.backend.Less(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
         }
 
         internal override string profilerTag => "Less";
@@ -298,7 +326,7 @@ namespace Unity.Sentis.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Serializable]
-    public class LessOrEqual : Broadcast
+    public class LessOrEqual : Comparison
     {
         /// <summary>
         /// Initializes and returns an instance of `LessOrEqual` logical operation layer.
@@ -313,9 +341,9 @@ namespace Unity.Sentis.Layers
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (inputTensors[0] is TensorInt)
-                return ctx.ops.LessOrEqual(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+                return ctx.backend.LessOrEqual(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
             else
-                return ctx.ops.LessOrEqual(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+                return ctx.backend.LessOrEqual(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
         }
 
         internal override string profilerTag => "LessOrEqual";
@@ -338,15 +366,16 @@ namespace Unity.Sentis.Layers
             this.inputs = new[] { input };
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return inputShapes[0];
+            return new PartialTensor(DataType.Int, inputTensors[0].shape);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Not(inputTensors[0] as TensorInt);
+            return ctx.backend.Not(inputTensors[0] as TensorInt);
         }
 
         internal override string profilerTag => "Not";
@@ -372,7 +401,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Or(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+            return ctx.backend.Or(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
         }
 
         internal override string profilerTag => "Or";
@@ -398,7 +427,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Xor(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+            return ctx.backend.Xor(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
         }
 
         internal override string profilerTag => "Xor";
@@ -423,9 +452,15 @@ namespace Unity.Sentis.Layers
             : base(name, condition, input1, input2) { }
 
         /// <inheritdoc/>
+        internal override DataType InferPartialDataType(PartialTensor[] inputTensors)
+        {
+            return inputTensors[1].dataType;
+        }
+
+        /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Where(inputTensors[0] as TensorInt, inputTensors[1], inputTensors[2]);
+            return ctx.backend.Where(inputTensors[0] as TensorInt, inputTensors[1], inputTensors[2]);
         }
 
         internal override string profilerTag => "Where";

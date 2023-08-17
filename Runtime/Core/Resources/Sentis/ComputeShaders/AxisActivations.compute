@@ -1,6 +1,5 @@
 #pragma kernel LogSoftmaxEnd LOGSOFTMAXEND SOFTMAX
 #pragma kernel SoftmaxEnd SOFTMAXEND SOFTMAX
-#pragma kernel LogSumExpEnd LOGSUMEXPEND SOFTMAX
 #pragma kernel HardmaxEnd HARDMAXEND HARDMAX
 
 #include "Tensor.cginc"
@@ -29,7 +28,7 @@ void LogSoftmaxEnd(uint3 dispatchThreadID : SV_DispatchThreadID)
         int x = threadIdx % innerLength;
         int z = ((threadIdx / innerLength) / reduceLength);
 
-        Optr[threadIdx] = (Xptr[threadIdx] - Bptr[z * innerLength + x]) - log(Sptr[z * innerLength + x]);
+        Optr[threadIdx] = Xptr[threadIdx] - Bptr[z * innerLength + x];
     }
 }
 #endif
@@ -46,19 +45,6 @@ void SoftmaxEnd(uint3 dispatchThreadID : SV_DispatchThreadID)
         int z = ((threadIdx / innerLength) / reduceLength);
 
         Optr[threadIdx] = exp(Xptr[threadIdx] - Bptr[z * innerLength + x]) / Sptr[z * innerLength + x];
-    }
-}
-#endif
-
-#ifdef LOGSUMEXPEND
-[numthreads(64, 1, 1)]
-void LogSumExpEnd(uint3 dispatchThreadID : SV_DispatchThreadID)
-{
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
-    {
-        Optr[threadIdx] = log(Sptr[threadIdx]) + Bptr[threadIdx];
     }
 }
 #endif

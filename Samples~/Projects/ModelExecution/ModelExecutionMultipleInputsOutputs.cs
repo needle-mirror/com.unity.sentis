@@ -30,8 +30,8 @@ public class ModelExecutionMultipleInputsOutputs : MonoBehaviour
         // model has multiple output, so to know which output to get we need to specify which one we are referring to
         var outputTensor0 = m_Engine.PeekOutput("output0") as TensorFloat;
         var outputTensor1 = m_Engine.PeekOutput("output1") as TensorFloat;
-        outputTensor0.PrepareCacheForAccess(blocking: true);
-        outputTensor1.PrepareCacheForAccess(blocking: true);
+        outputTensor0.MakeReadable();
+        outputTensor1.MakeReadable();
 
         // Data is now ready to read.
         // See async examples for non-blocking readback.

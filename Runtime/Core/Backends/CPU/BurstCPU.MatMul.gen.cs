@@ -15,7 +15,7 @@ using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Mathematics;
 
 namespace Unity.Sentis {
-public partial class CPUOps
+public partial class CPUBackend
 {
 #if UNITY_WEBGL || WEBGL_MATMUL_OVERRIDE
     // Note: This is a copy of an older version of the kernel that did not use v256. The inline expansion

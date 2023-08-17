@@ -3,8 +3,8 @@
 To do operations on tensors, follow these steps:
 
 1. Create an `ITensorAllocator` allocator, which manages a pool of allocated tensors.
-3. Use [`WorkerFactory.CreateOps`](xref:Unity.Sentis.WorkerFactory.CreateOps(Unity.Sentis.BackendType,Unity.Sentis.ITensorAllocator)) to create an `IOps` object with the allocator.
-4. Use a method of the `IOps` object to do an operation on a tensor.
+2. Use [`WorkerFactory.CreateOps`](xref:Unity.Sentis.WorkerFactory.CreateOps(Unity.Sentis.BackendType,Unity.Sentis.ITensorAllocator)) to create an `Ops` object with the allocator.
+3. Use a method of the `Ops` object to do an operation on a tensor.
 
 The following example uses the `ArgMax` operation. `ArgMax` returns the index of the maximum value in a tensor, for example the prediction with the highest probability in a classification model.
 
@@ -16,7 +16,7 @@ public class RunOperatorOnTensor : MonoBehaviour
 {
     TensorFloat inputTensor;
     ITensorAllocator allocator;
-    IOps ops;
+    Ops ops;
 
     void Start()
     {
@@ -26,8 +26,8 @@ public class RunOperatorOnTensor : MonoBehaviour
         // Create an allocator.
         allocator = new TensorCachingAllocator();
 
-        // Create an IOps object. The object uses Sentis compute shaders to do operations on the GPU.
-        IOps ops = WorkerFactory.CreateOps(BackendType.GPUCompute, allocator);
+        // Create an Ops object. The object uses Sentis compute shaders to do operations on the GPU.
+        ops = WorkerFactory.CreateOps(BackendType.GPUCompute, allocator);
 
         // Run the ArgMax operator on the input tensor.
         TensorInt result = ops.ArgMax(inputTensor, axis: 0, keepdim: true);
@@ -38,7 +38,7 @@ public class RunOperatorOnTensor : MonoBehaviour
 
     void OnDisable()
     {
-        // Tell the GPU we're finished with the memory the input tensor, allocator and IOps object used.
+        // Tell the GPU we're finished with the memory the input tensor, allocator and Ops object used.
         inputTensor.Dispose();
         allocator.Dispose();
         ops.Dispose();
@@ -46,7 +46,7 @@ public class RunOperatorOnTensor : MonoBehaviour
 }
 ```
 
-Refer to the `ExecuteOperatorOnTensor` example in the [sample scripts](package-samples.md) for a working example.
+Refer to the `ExecuteOperatorOnTensor` example in the [sample scripts](package-samples.md) for an example.
 
 Refer to [Create an engine to run a model](create-an-engine.md) for more information about back end types.
 

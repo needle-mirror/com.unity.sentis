@@ -1,9 +1,9 @@
 {
   "name": "com.unity.sentis",
   "displayName": "Sentis",
-  "version": "1.0.0-exp.6",
+  "version": "1.1.0-exp.2",
   "unity": "2021.3",
-  "description": "Sentis is lightweight and cross-platform Neural Net inference library. Sentis supports inference both on GPU and CPU.",
+  "description": "The Sentis package is a neural network inference library for Unity. You can use Sentis to import trained neural network models into Unity, then run them in real time locally on any platform Unity supports and in the Editor. You can run models on the GPU or the CPU.\n\nYou can use Sentis to run models that do style transfer, generate assets, automate non-player character (NPC) logic, and much more\n\nVisit https://discussions.unity.com/c/10 for updates and resources on the Sentis beta, including a full sample project.",
   "dependencies": {
     "com.unity.burst": "1.8.4",
     "com.unity.modules.jsonserialize": "1.0.0",
@@ -37,7 +37,7 @@
     },
     {
       "displayName": "Do an operation on a tensor",
-      "description": "An example of using IOps to do an operation on a tensor.",
+      "description": "An example of using Ops to do an operation on a tensor.",
       "path": "Samples~/Projects/ExecuteOperatorOnTensor"
     },
     {
@@ -72,15 +72,15 @@
     }
   ],
   "_upm": {
-    "changelog": "### Added\n- Adding samples in package"
+    "changelog": "### Changed \n - Documentation was updated to 1.1.0"
   },
   "upmCi": {
-    "footprint": "0bfbefac4b9bae2399ba1b947d94f3f468c62e08"
+    "footprint": "c28498f47a63ca7418068f89ee5d8df84cbeb863"
   },
-  "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.sentis@1.0/manual/index.html",
+  "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.sentis@1.1/manual/index.html",
   "repository": {
     "url": "https://github.cds.internal.unity3d.com/unity/UnityInferenceEngine.git",
     "type": "git",
-    "revision": "7254ee1e27538837d15c427c516ba830233f6c9c"
+    "revision": "ce9cf13fb4ddbd9113fa99fce2162e815e49e8ab"
   }
 }

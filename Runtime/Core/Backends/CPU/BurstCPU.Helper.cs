@@ -18,17 +18,17 @@ static class BurstSchedulingHelper
         void* ptrW,
         void* ptrO,
         int arrayLength, int innerloopBatchCount)
-        where T : struct, IJobParallelFor, CPUOps.IJobResourceDeclarationXSBWO
+        where T : struct, IJobParallelFor, CPUBackend.IJobResourceDeclarationXSBWO
     {
         Logger.AssertIsTrue(ptrO != ptrX, "BurstCPU.ScheduleJob.ValueError: output must be different from inputX");
         Logger.AssertIsTrue(ptrO != ptrS, "BurstCPU.ScheduleJob.ValueError: output must be different from inputS");
         Logger.AssertIsTrue(ptrO != ptrB, "BurstCPU.ScheduleJob.ValueError: output must be different from inputB");
         Logger.AssertIsTrue(ptrO != ptrW, "BurstCPU.ScheduleJob.ValueError: output must be different from inputW");
-        jobData.X = new CPUOps.ReadOnlyMemResource() { ptr = ptrX };
-        jobData.S = new CPUOps.ReadOnlyMemResource() { ptr = ptrS };
-        jobData.B = new CPUOps.ReadOnlyMemResource() { ptr = ptrB };
-        jobData.W = new CPUOps.ReadOnlyMemResource() { ptr = ptrW };
-        jobData.O = new CPUOps.ReadWriteMemResource() { ptr = ptrO };
+        jobData.X = new CPUBackend.ReadOnlyMemResource() { ptr = ptrX };
+        jobData.S = new CPUBackend.ReadOnlyMemResource() { ptr = ptrS };
+        jobData.B = new CPUBackend.ReadOnlyMemResource() { ptr = ptrB };
+        jobData.W = new CPUBackend.ReadOnlyMemResource() { ptr = ptrW };
+        jobData.O = new CPUBackend.ReadWriteMemResource() { ptr = ptrO };
         return jobData.Schedule(arrayLength, innerloopBatchCount, fenceBeforeJobStart);
     }
 
@@ -39,15 +39,15 @@ static class BurstSchedulingHelper
         void* ptrB,
         void* ptrO,
         int arrayLength, int innerloopBatchCount)
-        where T : struct, IJobParallelFor, CPUOps.IJobResourceDeclarationXSBO
+        where T : struct, IJobParallelFor, CPUBackend.IJobResourceDeclarationXSBO
     {
         Logger.AssertIsTrue(ptrO != ptrX, "BurstCPU.ScheduleJob.ValueError: output must be different from inputX");
         Logger.AssertIsTrue(ptrO != ptrS, "BurstCPU.ScheduleJob.ValueError: output must be different from inputS");
         Logger.AssertIsTrue(ptrO != ptrB, "BurstCPU.ScheduleJob.ValueError: output must be different from inputB");
-        jobData.X = new CPUOps.ReadOnlyMemResource() { ptr = ptrX };
-        jobData.S = new CPUOps.ReadOnlyMemResource() { ptr = ptrS };
-        jobData.B = new CPUOps.ReadOnlyMemResource() { ptr = ptrB };
-        jobData.O = new CPUOps.ReadWriteMemResource() { ptr = ptrO };
+        jobData.X = new CPUBackend.ReadOnlyMemResource() { ptr = ptrX };
+        jobData.S = new CPUBackend.ReadOnlyMemResource() { ptr = ptrS };
+        jobData.B = new CPUBackend.ReadOnlyMemResource() { ptr = ptrB };
+        jobData.O = new CPUBackend.ReadWriteMemResource() { ptr = ptrO };
         return jobData.Schedule(arrayLength, innerloopBatchCount, fenceBeforeJobStart);
     }
 
@@ -57,13 +57,13 @@ static class BurstSchedulingHelper
         void* ptrB,
         void* ptrO,
         int arrayLength, int innerloopBatchCount)
-        where T : struct, IJobParallelFor, CPUOps.IJobResourceDeclarationXBO
+        where T : struct, IJobParallelFor, CPUBackend.IJobResourceDeclarationXBO
     {
         Logger.AssertIsTrue(ptrO != ptrX, "BurstCPU.ScheduleJob.ValueError: output must be different from inputX");
         Logger.AssertIsTrue(ptrO != ptrB, "BurstCPU.ScheduleJob.ValueError: output must be different from inputB");
-        jobData.X = new CPUOps.ReadOnlyMemResource() { ptr = ptrX };
-        jobData.B = new CPUOps.ReadOnlyMemResource() { ptr = ptrB };
-        jobData.O = new CPUOps.ReadWriteMemResource() { ptr = ptrO };
+        jobData.X = new CPUBackend.ReadOnlyMemResource() { ptr = ptrX };
+        jobData.B = new CPUBackend.ReadOnlyMemResource() { ptr = ptrB };
+        jobData.O = new CPUBackend.ReadWriteMemResource() { ptr = ptrO };
         return jobData.Schedule(arrayLength, innerloopBatchCount, fenceBeforeJobStart);
     }
 
@@ -73,13 +73,13 @@ static class BurstSchedulingHelper
         void* ptrB,
         void* ptrO,
         int arrayLength, int innerloopBatchCount)
-        where T : struct, IParallelForBatch, CPUOps.IJobResourceDeclarationXBO
+        where T : struct, IParallelForBatch, CPUBackend.IJobResourceDeclarationXBO
     {
         Logger.AssertIsTrue(ptrO != ptrX, "BurstCPU.ScheduleJob.ValueError: output must be different from inputX");
         Logger.AssertIsTrue(ptrO != ptrB, "BurstCPU.ScheduleJob.ValueError: output must be different from inputB");
-        jobData.X = new CPUOps.ReadOnlyMemResource() { ptr = ptrX };
-        jobData.B = new CPUOps.ReadOnlyMemResource() { ptr = ptrB };
-        jobData.O = new CPUOps.ReadWriteMemResource() { ptr = ptrO };
+        jobData.X = new CPUBackend.ReadOnlyMemResource() { ptr = ptrX };
+        jobData.B = new CPUBackend.ReadOnlyMemResource() { ptr = ptrB };
+        jobData.O = new CPUBackend.ReadWriteMemResource() { ptr = ptrO };
         return jobData.ScheduleBatch(arrayLength, innerloopBatchCount, fenceBeforeJobStart);
     }
 
@@ -90,14 +90,14 @@ static class BurstSchedulingHelper
         void* ptrB,
         void* ptrO,
         int arrayLength, int innerloopBatchCount)
-        where T : struct, IParallelForBatch, CPUOps.IJobResourceDeclarationXSBO
+        where T : struct, IParallelForBatch, CPUBackend.IJobResourceDeclarationXSBO
     {
         Logger.AssertIsTrue(ptrO != ptrX, "BurstCPU.ScheduleJob.ValueError: output must be different from inputX");
         Logger.AssertIsTrue(ptrO != ptrB, "BurstCPU.ScheduleJob.ValueError: output must be different from inputB");
-        jobData.X = new CPUOps.ReadOnlyMemResource() { ptr = ptrX };
-        jobData.S = new CPUOps.ReadOnlyMemResource() { ptr = ptrS };
-        jobData.B = new CPUOps.ReadOnlyMemResource() { ptr = ptrB };
-        jobData.O = new CPUOps.ReadWriteMemResource() { ptr = ptrO };
+        jobData.X = new CPUBackend.ReadOnlyMemResource() { ptr = ptrX };
+        jobData.S = new CPUBackend.ReadOnlyMemResource() { ptr = ptrS };
+        jobData.B = new CPUBackend.ReadOnlyMemResource() { ptr = ptrB };
+        jobData.O = new CPUBackend.ReadWriteMemResource() { ptr = ptrO };
         return jobData.ScheduleBatch(arrayLength, innerloopBatchCount, fenceBeforeJobStart);
     }
 
@@ -106,11 +106,11 @@ static class BurstSchedulingHelper
         void* ptrX,
         void* ptrO,
         int arrayLength, int innerloopBatchCount)
-        where T : struct, IJobParallelFor, CPUOps.IJobResourceDeclarationXO
+        where T : struct, IJobParallelFor, CPUBackend.IJobResourceDeclarationXO
     {
         Logger.AssertIsTrue(ptrO != ptrX, "BurstCPU.ScheduleJob.ValueError: output must be different from inputX");
-        jobData.X = new CPUOps.ReadOnlyMemResource() { ptr = ptrX };
-        jobData.O = new CPUOps.ReadWriteMemResource() { ptr = ptrO };
+        jobData.X = new CPUBackend.ReadOnlyMemResource() { ptr = ptrX };
+        jobData.O = new CPUBackend.ReadWriteMemResource() { ptr = ptrO };
         return jobData.Schedule(arrayLength, innerloopBatchCount, fenceBeforeJobStart);
     }
 
@@ -119,11 +119,11 @@ static class BurstSchedulingHelper
         void* ptrX,
         void* ptrO,
         int arrayLength, int innerloopBatchCount)
-        where T : struct, IParallelForBatch, CPUOps.IJobResourceDeclarationXO
+        where T : struct, IParallelForBatch, CPUBackend.IJobResourceDeclarationXO
     {
         Logger.AssertIsTrue(ptrO != ptrX, "BurstCPU.ScheduleJob.ValueError: output must be different from inputX");
-        jobData.X = new CPUOps.ReadOnlyMemResource() { ptr = ptrX };
-        jobData.O = new CPUOps.ReadWriteMemResource() { ptr = ptrO };
+        jobData.X = new CPUBackend.ReadOnlyMemResource() { ptr = ptrX };
+        jobData.O = new CPUBackend.ReadWriteMemResource() { ptr = ptrO };
         return jobData.ScheduleBatch(arrayLength, innerloopBatchCount, fenceBeforeJobStart);
     }
 
@@ -131,20 +131,20 @@ static class BurstSchedulingHelper
         JobHandle fenceBeforeJobStart,
         void* ptrX,
         void* ptrO)
-        where T : struct, IJob, CPUOps.IJobResourceDeclarationXO
+        where T : struct, IJob, CPUBackend.IJobResourceDeclarationXO
     {
         Logger.AssertIsTrue(ptrO != ptrX, "BurstCPU.ScheduleJob.ValueError: output must be different from inputX");
-        jobData.X = new CPUOps.ReadOnlyMemResource() { ptr = ptrX };
-        jobData.O = new CPUOps.ReadWriteMemResource() { ptr = ptrO };
+        jobData.X = new CPUBackend.ReadOnlyMemResource() { ptr = ptrX };
+        jobData.O = new CPUBackend.ReadWriteMemResource() { ptr = ptrO };
         return jobData.Schedule(fenceBeforeJobStart);
     }
 
     static unsafe JobHandle ScheduleOInternal<T>(ref this T jobData,
         JobHandle fenceBeforeJobStart,
         void* ptrO)
-        where T : struct, IJob, CPUOps.IJobResourceDeclarationO
+        where T : struct, IJob, CPUBackend.IJobResourceDeclarationO
     {
-        jobData.O = new CPUOps.ReadWriteMemResource() { ptr = ptrO };
+        jobData.O = new CPUBackend.ReadWriteMemResource() { ptr = ptrO };
         return jobData.Schedule(fenceBeforeJobStart);
     }
 
@@ -152,9 +152,9 @@ static class BurstSchedulingHelper
         JobHandle fenceBeforeJobStart,
         void* ptrO,
         int arrayLength, int innerloopBatchCount)
-        where T : struct, IJobParallelFor, CPUOps.IJobResourceDeclarationO
+        where T : struct, IJobParallelFor, CPUBackend.IJobResourceDeclarationO
     {
-        jobData.O = new CPUOps.ReadWriteMemResource() { ptr = ptrO };
+        jobData.O = new CPUBackend.ReadWriteMemResource() { ptr = ptrO };
         return jobData.Schedule(arrayLength, innerloopBatchCount, fenceBeforeJobStart);
     }
 
@@ -253,7 +253,7 @@ static class BurstSchedulingHelper
         IDependableMemoryResource W,
         IDependableMemoryResource O,
         int arrayLength, int innerloopBatchCount)
-        where T : struct, IJobParallelFor, CPUOps.IJobResourceDeclarationXSBWO
+        where T : struct, IJobParallelFor, CPUBackend.IJobResourceDeclarationXSBWO
     {
         var fenceBeforeJobStart = GetFenceBeforeJobStartXSBWO(X, S, B, W, O);
         var jobFence = jobData.ScheduleXSBWOInternal(fenceBeforeJobStart, X.rawPtr, S.rawPtr, B.rawPtr, W.rawPtr, O.rawPtr, arrayLength, innerloopBatchCount);
@@ -267,7 +267,7 @@ static class BurstSchedulingHelper
         IDependableMemoryResource B,
         IDependableMemoryResource O,
         int arrayLength, int innerloopBatchCount)
-        where T : struct, IJobParallelFor, CPUOps.IJobResourceDeclarationXSBO
+        where T : struct, IJobParallelFor, CPUBackend.IJobResourceDeclarationXSBO
     {
         var fenceBeforeJobStart = GetFenceBeforeJobStartXSBO(X, S, B, O);
         var jobFence = jobData.ScheduleXSBOInternal(fenceBeforeJobStart, X.rawPtr, S.rawPtr, B.rawPtr, O.rawPtr, arrayLength, innerloopBatchCount);
@@ -280,7 +280,7 @@ static class BurstSchedulingHelper
         IDependableMemoryResource B,
         IDependableMemoryResource O,
         int arrayLength, int innerloopBatchCount)
-        where T : struct, IJobParallelFor, CPUOps.IJobResourceDeclarationXBO
+        where T : struct, IJobParallelFor, CPUBackend.IJobResourceDeclarationXBO
     {
         var fenceBeforeJobStart = GetFenceBeforeJobStartXBO(X, B, O);
         var jobFence = jobData.ScheduleXBOInternal(fenceBeforeJobStart, X.rawPtr, B.rawPtr, O.rawPtr, arrayLength, innerloopBatchCount);
@@ -293,7 +293,7 @@ static class BurstSchedulingHelper
         IDependableMemoryResource B,
         IDependableMemoryResource O,
         int arrayLength, int innerloopBatchCount)
-        where T : struct, IParallelForBatch, CPUOps.IJobResourceDeclarationXBO
+        where T : struct, IParallelForBatch, CPUBackend.IJobResourceDeclarationXBO
     {
         var fenceBeforeJobStart = GetFenceBeforeJobStartXBO(X, B, O);
         var jobFence = jobData.ScheduleBatchXBOInternal(fenceBeforeJobStart, X.rawPtr, B.rawPtr, O.rawPtr, arrayLength, innerloopBatchCount);
@@ -307,7 +307,7 @@ static class BurstSchedulingHelper
         IDependableMemoryResource B,
         IDependableMemoryResource O,
         int arrayLength, int innerloopBatchCount)
-        where T : struct, IParallelForBatch, CPUOps.IJobResourceDeclarationXSBO
+        where T : struct, IParallelForBatch, CPUBackend.IJobResourceDeclarationXSBO
     {
         var fenceBeforeJobStart = GetFenceBeforeJobStartXSBO(X, S, B, O);
         var jobFence = jobData.ScheduleBatchXSBOInternal(fenceBeforeJobStart, X.rawPtr, S.rawPtr, B.rawPtr, O.rawPtr, arrayLength, innerloopBatchCount);
@@ -317,7 +317,7 @@ static class BurstSchedulingHelper
 
     public static unsafe JobHandle ScheduleO<T>(ref this T jobData,
         IDependableMemoryResource O)
-        where T : struct, IJob, CPUOps.IJobResourceDeclarationO
+        where T : struct, IJob, CPUBackend.IJobResourceDeclarationO
     {
         var fenceBeforeJobStart = O.reuse;
         var jobFence = jobData.ScheduleOInternal(fenceBeforeJobStart, O.rawPtr);
@@ -329,7 +329,7 @@ static class BurstSchedulingHelper
         IDependableMemoryResource X,
         IDependableMemoryResource O,
         int arrayLength, int innerloopBatchCount)
-        where T : struct, IJobParallelFor, CPUOps.IJobResourceDeclarationXO
+        where T : struct, IJobParallelFor, CPUBackend.IJobResourceDeclarationXO
     {
         var fenceBeforeJobStart = GetFenceBeforeJobStartXO(X, O);
         var jobFence = jobData.ScheduleXOInternal(fenceBeforeJobStart, X.rawPtr, O.rawPtr, arrayLength, innerloopBatchCount);
@@ -341,7 +341,7 @@ static class BurstSchedulingHelper
         IDependableMemoryResource X,
         IDependableMemoryResource O,
         int arrayLength, int innerloopBatchCount)
-        where T : struct, IParallelForBatch, CPUOps.IJobResourceDeclarationXO
+        where T : struct, IParallelForBatch, CPUBackend.IJobResourceDeclarationXO
     {
         var fenceBeforeJobStart = GetFenceBeforeJobStartXO(X, O);
         var jobFence = jobData.ScheduleBatchXOInternal(fenceBeforeJobStart, X.rawPtr, O.rawPtr, arrayLength, innerloopBatchCount);
@@ -352,7 +352,7 @@ static class BurstSchedulingHelper
     public static unsafe JobHandle ScheduleO<T>(ref this T jobData,
         BurstTensorData pinO,
         int arrayLength, int innerloopBatchCount)
-        where T : struct, IJobParallelFor, CPUOps.IJobResourceDeclarationO
+        where T : struct, IJobParallelFor, CPUBackend.IJobResourceDeclarationO
     {
         var fenceBeforeJobStart = pinO.reuse;
         var jobFence = jobData.ScheduleOInternal(fenceBeforeJobStart, pinO.rawPtr, arrayLength, innerloopBatchCount);
@@ -363,7 +363,7 @@ static class BurstSchedulingHelper
     public static unsafe JobHandle ScheduleXO<T>(ref this T jobData,
         IDependableMemoryResource X,
         IDependableMemoryResource O)
-        where T : struct, IJob, CPUOps.IJobResourceDeclarationXO
+        where T : struct, IJob, CPUBackend.IJobResourceDeclarationXO
     {
         var fenceBeforeJobStart = GetFenceBeforeJobStartXO(X, O);
         var jobFence = jobData.ScheduleXOInternal(fenceBeforeJobStart, X.rawPtr, O.rawPtr);
@@ -420,7 +420,7 @@ unsafe class FencedMemoryAlloc : IDependableMemoryResource
     public FencedMemoryAlloc() { }
 }
 
-public partial class CPUOps
+public partial class CPUBackend
 {
     /// <summary>
     /// Utility structure to iterate the tensor offset for a broadcast operation.
@@ -762,7 +762,7 @@ public partial class CPUOps
         public fixed int pad[TensorShape.maxRank];
         public int lastIndex;
 
-        internal void Prepare(TensorShape shapeX, int[] pad)
+        internal void Prepare(TensorShape shapeX, ReadOnlySpan<int> pad)
         {
             int rank = shapeX.rank;
             int lastIndex = 0;
@@ -826,7 +826,7 @@ public partial class CPUOps
         public fixed int stridedSteps[TensorShape.maxRank];
         public int lastIndex;
 
-        internal void Prepare(TensorShape shapeX, TensorShape shapeO, int[] starts, int[] axes, int[] steps)
+        internal void Prepare(TensorShape shapeX, TensorShape shapeO, ReadOnlySpan<int> starts, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps)
         {
             int* startsLocal = stackalloc int[TensorShape.maxRank];
             int* stepsLocal = stackalloc int[TensorShape.maxRank];

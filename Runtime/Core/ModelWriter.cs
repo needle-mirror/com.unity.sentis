@@ -34,10 +34,7 @@ namespace Unity.Sentis
             }
         }
 
-        /// <summary>
-        /// Saves the model description to a file.
-        /// </summary>
-        public static void SaveModelDesc(MemoryStream stream, Model model)
+        internal static void SaveModelDesc(MemoryStream stream, Model model)
         {
             Profiler.BeginSample("Sentis.ModelWriter.SaveModelDesc");
 
@@ -127,10 +124,7 @@ namespace Unity.Sentis
             Profiler.EndSample();
         }
 
-        /// <summary>
-        /// Saves the model weights to a file.
-        /// </summary>
-        public static void SaveModelWeights(List<MemoryStream> streams, Model model)
+        internal static void SaveModelWeights(List<MemoryStream> streams, Model model)
         {
             Profiler.BeginSample("Sentis.ModelWriter.SaveModelWeights");
             streams.Clear();
@@ -144,6 +138,8 @@ namespace Unity.Sentis
             for (var l = 0; l < model.constants.Count; ++l)
             {
                 var constant = model.constants[l];
+                if (constant.weights == null)
+                    continue;
                 var sizeOfDataItem = constant.weights.SizeOfType;
                 int memorySize = constant.length * sizeOfDataItem;
                 if (writtenLength + (long)memorySize >= (long)Int32.MaxValue)

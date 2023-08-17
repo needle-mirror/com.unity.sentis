@@ -5,11 +5,11 @@ After you run a model, you can read the output from a model asynchronously. This
 Follow these steps:
 
 1. Get a reference to the tensor output data using `PeekOutput`.
-2. Use the [`Tensor.PrepareCacheForAccess`](xref:Unity.Sentis.Tensor.PrepareCacheForAccess(System.Boolean)) method and set the `blocking` parameter to `false`.
-3. Use `Tensor.PrepareCacheForAccess` again to check if the data is complete.
-4. The method returns `true` when the data is complete. You can then access the data.
+2. Use the [`Tensor.AsyncReadbackRequest`](xref:Unity.Sentis.Tensor.AsyncReadbackRequest(Action<bool>)) method and provide a callback.
+3. Sentis invokes the callback when the readback is complete. The boolean argument is `true` when readback was successful.
+4. Use [`Tensor.MakeReadable`](xref:Unity.Sentis.Tensor.MakeReadable()) to put the downloaded data into a readable state.
 
-Refer to the `AsyncReadback/AsyncReadbackCompute` example in the [sample scripts](package-samples.md) for a working example.
+Refer to the `AsyncReadback/AsyncReadbackCompute` example in the [sample scripts](package-samples.md) for an example.
 
 ## Additional resources
 

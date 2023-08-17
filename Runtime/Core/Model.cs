@@ -13,7 +13,7 @@ public class Model
     /// <summary>
     /// The version of the model. The value increments each time the data structure changes.
     /// </summary>
-    public const int Version = 26;
+    public const int Version = 27;
     internal const int WeightsAlignment = 16;
 
     /// <summary>
@@ -212,32 +212,6 @@ public class Model
             $"\n{layers.Count} layers, {totalUniqueWeights:n0} weights: \n{string.Join("\n", layers.Select(i => $"{i.GetType()} ({i})"))}";
     }
 
-    internal void RoundDenormalWeights()
-    {
-        foreach (var constant in constants)
-        {
-            if (constant.weights == null || constant.dataType != DataType.Float)
-                continue;
-            unsafe
-            {
-                uint* ptr = (uint*)constant.weights.RawPtr;
-                for (int i = 0; i < constant.weights.Length; i++)
-                {
-                    // Perform the equivalent of Single.IsSubnormal which is not available in the
-                    // .NET profile used by the Unity 2020.3 editor. Treat the float buffer as
-                    // unsigned integers and use bit checks to detect denormal numbers. Denormals
-                    // have a zero exponent field and a non-zero fraction field. The sign bit is
-                    // ignored. Replace denormals with a zero (same bit pattern for integer versus
-                    // float).
-                    //
-                    // IEEE-754 float: SEEE'EEEE'EFFF'FFFF'FFFF'FFFF'FFFF'FFFF (sign/exponent/fraction)
-                    if (((ptr[i] & 0x7f800000) == 0) && ((ptr[i] & 0x007fffff) != 0))
-                        ptr[i] = 0;
-                }
-            }
-        }
-    }
-
     /// <summary>
     /// Given a symbolic tensor shape return a pretty print string
     /// with the original names of the named param dims
@@ -321,7 +295,7 @@ public class Model
 
         for (var i = 0; i < shape.rank; i++)
         {
-            if (input.shape[i].isValue && input.shape[i].value != shape[i])
+            if (input.shape[i] != shape[i])
                 D.LogWarning($"Given input shape: {shape} has different dimension from model input shape: {GetSymbolicTensorShapeAsString(input.shape)} for input: {input.name} at axis: {i}");
         }
     }
@@ -362,6 +336,12 @@ public class Model
     internal void SetRemapNamedDims(Dictionary<char, string> remapNamedDims)
     {
         RemapNamedDims = remapNamedDims;
+    }
+
+    internal void DisposeWeights()
+    {
+        foreach (var constant in constants)
+            constant.weights?.Dispose();
     }
 }
 } // namespace Unity.Sentis

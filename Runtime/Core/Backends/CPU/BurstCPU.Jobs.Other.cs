@@ -12,7 +12,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace Unity.Sentis {
-public partial class CPUOps
+public partial class CPUBackend
 {
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
     unsafe struct CopyJob : IJob, IJobResourceDeclarationXO
@@ -30,7 +30,7 @@ public partial class CPUOps
     }
 
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
-    unsafe struct CopyStrideJob : IJob, IJobResourceDeclarationXO
+    unsafe struct CopyStrideJob : IJobParallelFor, IJobResourceDeclarationXO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
         public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
@@ -38,30 +38,37 @@ public partial class CPUOps
         public int strideO;
         public int offsetX;
         public int offsetO;
-        public int count;
         public int length;
 
-        public void Execute()
+        public void Execute(int i)
         {
-            UnsafeUtility.MemCpyStride(destination: Optr + offsetO, destinationStride: strideO * sizeof(int),
-                source: Xptr + offsetX, sourceStride: strideX * sizeof(int),
-                elementSize: length * sizeof(int), count: count);
+            UnsafeUtility.MemCpy(destination: Optr + offsetO + i * strideO, source: Xptr + offsetX + i * strideX, size: length * sizeof(int));
         }
     }
 
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
-    unsafe struct SetJob : IJob, IJobResourceDeclarationO
+    unsafe struct ClearJob : IJob, IJobResourceDeclarationO
     {
         public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
 
-        public int offsetO;
         public int length;
-        public int memValue;
 
         public void Execute()
         {
-            var localValue = memValue;
-            UnsafeUtility.MemCpyStride(destination: Optr + offsetO, destinationStride: sizeof(int), source: &localValue, sourceStride: 0, elementSize: sizeof(int), count: length);
+            UnsafeUtility.MemClear(destination: Optr, size: length * sizeof(int));
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    unsafe struct SetJob : IJobParallelFor, IJobResourceDeclarationO
+    {
+        public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+
+        public int memValue;
+
+        public void Execute(int i)
+        {
+            Optr[i] = memValue;
         }
     }
 
@@ -1130,58 +1137,102 @@ public partial class CPUOps
     }
 
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
-    unsafe struct Conv2DTransJob : IJobParallelFor, IJobResourceDeclarationXBO
+    unsafe struct ConvTransposeJob : IJobParallelFor, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+        public bool useBias;
+        const int k_MaxSpatialDims = 2;
+
         public int offsetO;
-        public int inputHeight;
-        public int inputWidth;
-        public int outputHeight;
-        public int outputWidth;
-        public int kernelHeight;
-        public int kernelWidth;
-        public int strideHeight;
-        public int strideWidth;
-        public int padTop;
-        public int padLeft;
-        const int dilationHeight = 1;
-        const int dilationWidth = 1;
+        public int inputSize;
+        public int kernelSize;
+        public int outputSize;
+        fixed int inputShape[k_MaxSpatialDims];
+        fixed int kernelShape[k_MaxSpatialDims];
+        fixed int outputShape[k_MaxSpatialDims];
+        fixed int stride[k_MaxSpatialDims];
+        fixed int padLeft[k_MaxSpatialDims];
+        fixed int dilation[k_MaxSpatialDims];
+
+        public void Prepare(TensorShape shapeX, TensorShape shapeW, TensorShape shapeO, Span<int> stride, Span<int> pad)
+        {
+            var spatialDims = shapeX.rank - 2;
+
+            // Implement ConvTranspose1D using the ConvTranspose2D path by unsqueezing the shapes.
+            if (spatialDims == 1)
+            {
+                inputShape[0] = 1;
+                inputShape[1] = shapeX[2];
+                kernelShape[0] = 1;
+                kernelShape[1] = shapeW[2];
+                outputShape[0] = 1;
+                outputShape[1] = shapeO[2];
+                this.stride[0] = 1;
+                this.stride[1] = stride[0];
+                padLeft[0] = 0;
+                padLeft[1] = pad[0];
+            }
+            else
+            {
+                inputShape[0] = shapeX[2];
+                inputShape[1] = shapeX[3];
+                kernelShape[0] = shapeW[2];
+                kernelShape[1] = shapeW[3];
+                outputShape[0] = shapeO[2];
+                outputShape[1] = shapeO[3];
+                this.stride[0] = stride[0];
+                this.stride[1] = stride[1];
+                padLeft[0] = pad[0];
+                padLeft[1] = pad[1];
+            }
+            dilation[0] = 1;
+            dilation[1] = 1;
+
+            inputSize = inputShape[0] * inputShape[1];
+            kernelSize = kernelShape[0] * kernelShape[1];
+            outputSize = outputShape[0] * outputShape[1];
+        }
 
         public void Execute(int i)
         {
-            int inputSize = inputHeight * inputWidth;
-            int outputSize = outputHeight * outputWidth;
-
-            float* Xp = Xptr + i * inputSize * kernelHeight * kernelWidth;
-            float* Bp = Bptr + i;
+            float* Xp = Xptr + i * inputSize * kernelSize;
+            float* Bp = useBias ? Bptr + i : null;
             float* Op = Optr + offsetO + i * outputSize;
 
-            // Initialize the output image with the channel bias.
-            for (int ohw = 0; ohw < outputSize; ohw++)
-                Op[ohw] = Bp[0];
+            if (useBias)
+            {
+                // Initialize the output image with the channel bias.
+                for (int ohw = 0; ohw < outputSize; ohw++)
+                    Op[ohw] = Bp[0];
+            }
+            else
+            {
+                UnsafeUtility.MemClear(destination: Op, size: outputSize * sizeof(float));
+            }
 
             // Perform a col2im operation (see https://onnx.ai/onnx/operators/onnx__Col2Im.html).
             // The column buffer has the format: [kernelHeight][kernelWidth][inputHeight][inputWidth].
             // Walk over each column buffer element and accumulate into the output image.
-            for (int kh = 0; kh < kernelHeight; kh++)
+            for (int kh = 0; kh < kernelShape[0]; kh++)
             {
-                for (int kw = 0; kw < kernelWidth; kw++)
+                for (int kw = 0; kw < kernelShape[1]; kw++)
                 {
-                    for (int ih = 0; ih < inputHeight; ih++)
+                    for (int ih = 0; ih < inputShape[0]; ih++)
                     {
-                        int oh = ih * strideHeight + kh * dilationHeight - padTop;
+                        int oh = ih * stride[0] + kh * dilation[0] - padLeft[0];
 
-                        if ((uint)oh < (uint)outputHeight)
+                        if ((uint)oh < (uint)outputShape[0])
                         {
-                            for (int iw = 0; iw < inputWidth; iw++)
+                            for (int iw = 0; iw < inputShape[1]; iw++)
                             {
-                                int ow = iw * strideWidth + kw * dilationWidth - padLeft;
+                                int ow = iw * stride[1] + kw * dilation[1] - padLeft[1];
 
-                                if ((uint)ow < (uint)outputWidth)
+                                if ((uint)ow < (uint)outputShape[1])
                                 {
-                                    Op[oh * outputWidth + ow] += Xp[0];
+                                    Op[oh * outputShape[1] + ow] += Xp[0];
                                 }
 
                                 Xp += 1;
@@ -1189,7 +1240,7 @@ public partial class CPUOps
                         }
                         else
                         {
-                            Xp += inputWidth;
+                            Xp += inputShape[1];
                         }
                     }
                 }

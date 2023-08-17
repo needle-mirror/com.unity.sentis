@@ -20,7 +20,7 @@ Shader "Hidden/Sentis/TextureConversion/TensorToTexture"
             #include "../PixelShaders/CommonVertexShader.cginc"
             #include "../PixelShaders/CommonPixelShader.cginc"
 
-            DECLARE_TENSOR(X);
+            DECLARE_TENSOR(X, float);
 
             uint WidthO, HeightO;
             uint WidthX, HeightX;
@@ -36,8 +36,8 @@ Shader "Hidden/Sentis/TextureConversion/TensorToTexture"
 
             float4 SampleTextureColor(uint x, uint y)
             {
-                uint pixelX = Stride0X * x + Stride1X * y;
-                float4 colorX = SampleBlockX(pixelX);
+                uint blockIndexX = Stride0X * x + Stride1X * y;
+                float4 colorX = SampleBlockX(blockIndexX);
                 float4 colorO = 0;
             #ifdef RGBA
                 if (Channels >= 1)

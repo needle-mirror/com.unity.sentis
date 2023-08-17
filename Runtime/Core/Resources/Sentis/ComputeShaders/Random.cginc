@@ -1,70 +1,71 @@
-﻿
-// Based on: https://stackoverflow.com/questions/5149544/can-i-generate-a-random-number-inside-a-pixel-shader
-// Output: Random number: [0,1), that is between 0.0 and 0.999999... inclusive.
-// Author: Michael Pohoreski
-// Copyright: Copyleft 2012 :-)
-float RandomUsingCos(float4 seed)
+// following Unity.Mathematics.Random
+inline uint WangHash(uint n)
 {
-    float4 K1 = float4(         // Transcendental numbers:
-        0.64341054629,          // (Cahen's constant)
-        23.14069263277926,      // e^pi (Gelfond's constant)
-        2.665144142690225,      // 2^sqrt(2) (Gelfond-Schneider constant)
-        3.14159265359           // pi
-    );
-    return frac(cos(dot(seed, K1)) * 12345.6789);
+    // https://gist.github.com/badboy/6267743#hash-function-construction-principles
+    // Wang hash: this has the property that none of the outputs will
+    // collide with each other, which is important for the purposes of
+    // seeding a random number generator.  This was verified empirically
+    // by checking all 2^32 uints.
+    n = (n ^ 61u) ^ (n >> 16);
+    n *= 9u;
+    n = n ^ (n >> 4);
+    n *= 0x27d4eb2du;
+    n = n ^ (n >> 15);
+
+    return n;
 }
 
-// Based on: https://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
-// Author: Spatial
-// 05 July 2013
-
-// A single iteration of Bob Jenkins' One-At-A-Time hashing algorithm.
-uint hash(uint x)
+inline uint4 WangHash(uint4 n)
 {
-    x += ( x << 10u );
-    x ^= ( x >>  6u );
-    x += ( x <<  3u );
-    x ^= ( x >> 11u );
-    x += ( x << 15u );
-    return x;
-}
-uint hash( uint2 v ) { return hash( v.x ^ hash(v.y)                         ); }
-uint hash( uint3 v ) { return hash( v.x ^ hash(v.y) ^ hash(v.z)             ); }
-uint hash( uint4 v ) { return hash( v.x ^ hash(v.y) ^ hash(v.z) ^ hash(v.w) ); }
+    // https://gist.github.com/badboy/6267743#hash-function-construction-principles
+    // Wang hash: this has the property that none of the outputs will
+    // collide with each other, which is important for the purposes of
+    // seeding a random number generator.  This was verified empirically
+    // by checking all 2^32 uints.
+    n = (n ^ 61u) ^ (n >> 16);
+    n *= 9u;
+    n = n ^ (n >> 4);
+    n *= 0x27d4eb2du;
+    n = n ^ (n >> 15);
 
-// Construct a float with half-open range [0:1] using low 23 bits.
-// All zeroes yields 0.0, all ones yields the next smallest representable value below 1.0.
-float floatConstruct(uint m)
-{
-    const uint ieeeMantissa = 0x007FFFFFu;  // binary32 mantissa bitmask
-    const uint ieeeOne      = 0x3F800000u;  // 1.0 in IEEE binary32
-
-    m &= ieeeMantissa;                      // Keep only mantissa bits (fractional part)
-    m |= ieeeOne;                           // Add fractional part to 1.0
-
-    float  f = asfloat(m);                  // Range [1:2]
-    return f - 1.0;                         // Range [0:1]
+    return n;
 }
 
-// Pseudo-random value in half-open range [0:1].
-float RandomUsingHash(float4 seed)
+inline uint NextState(uint state)
 {
-    return floatConstruct(hash(asuint(seed)));
+    state ^= state << 13;
+    state ^= state >> 17;
+    state ^= state << 5;
+    return state;
 }
 
-
-// More alternatives:
-// https://github.com/ashima/webgl-noise
-// https://www.shadertoy.com/view/4djSRW
-
-// ------------------------------------------------------------------------------------------
-
-float Random(float4 seed)
+inline uint4 NextState(uint4 state)
 {
-    return RandomUsingCos(seed);
+    state ^= state << 13;
+    state ^= state >> 17;
+    state ^= state << 5;
+    return state;
 }
 
-float Bernoulli(float4 seed, float p)
+inline float ToFloat(uint state)
 {
-    return Random(seed) <= p ? 1: 0;
+    return asfloat(0x3f800000 | state >> 9) - 1.0f;
+}
+
+inline float4 ToFloat4(uint4 state)
+{
+    return asfloat(0x3f800000 | state >> 9) - 1.0f;
+}
+
+inline float GetRandomNormal(uint state)
+{
+    float u, v, s;
+    do {
+        state = NextState(state);
+        u = ToFloat(state) * 2 - 1;
+        state = NextState(state);
+        v = ToFloat(state) * 2 - 1;
+        s = u * u + v * v;
+    } while (s >= 1 || s == 0);
+    return u * sqrt(-2.0f * log(s) / s);
 }

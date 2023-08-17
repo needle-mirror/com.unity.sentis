@@ -41,6 +41,8 @@ public class RunModelOnFullScreen : MonoBehaviour
 
     void Update()
     {
+        // readback tensor from GPU to CPU to use tensor indexing
+        m_TensorY.MakeReadable();
         m_TensorY[0] = Mathf.Sin(Time.timeSinceLevelLoad);
     }
 

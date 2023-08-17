@@ -38,31 +38,6 @@ namespace Unity.Sentis.Compiler.Analyser
 
             return requireStorage;
         }
-
-        public static TensorShape? FindLargestNecessaryTensorShape(Model model, IDictionary<string, TensorShape> inputShapes)
-        {
-            var ctx = new ShapeInferenceContext();
-
-            foreach (var item in inputShapes)
-            {
-                ctx.AddShape(item.Key, item.Value);
-            }
-
-            ShapeInferenceAnalysis.InferModelConstantShapes(model, ctx);
-            ShapeInferenceAnalysis.InferModelLayerShapes(model, ctx);
-
-            var maxTensorShape = new TensorShape();
-            foreach(var symbolicTensorShape in ctx.SymbolicTensorShapes.Values)
-            {
-                if (!symbolicTensorShape.IsFullyKnown())
-                    return null;
-                var tensorShape = symbolicTensorShape.ToTensorShape();
-                if (tensorShape.length > maxTensorShape.length)
-                    maxTensorShape = tensorShape;
-            }
-
-            return maxTensorShape;
-        }
     }
 }
 

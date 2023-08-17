@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using UnityEngine;
 
 namespace Unity.Sentis.Layers
@@ -160,22 +161,16 @@ namespace Unity.Sentis.Layers
             this.toType = toType;
         }
 
-        internal override PartialTensor InferPartialTensor(PartialTensor[] partialTensors, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            if (toType == DataType.Int)
-                return partialTensors[0];
-            return PartialTensor.Unknown;
-        }
-
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
-        {
-            return inputShapes[0];
+            return new PartialTensor(toType, inputTensors[0].shape);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Cast(inputTensors[0], toType);
+            return ctx.backend.Cast(inputTensors[0], toType);
         }
 
         internal override string profilerTag => "Cast";
@@ -200,15 +195,17 @@ namespace Unity.Sentis.Layers
             inputs = new[] { input, targetType };
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return inputShapes[0];
+            var toType = inputTensors[1].dataType;
+            return new PartialTensor(toType, inputTensors[0].shape);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Cast(inputTensors[0], inputTensors[1].dataType);
+            return ctx.backend.Cast(inputTensors[0], inputTensors[1].dataType);
         }
 
         internal override string profilerTag => "CastLike";
@@ -238,20 +235,71 @@ namespace Unity.Sentis.Layers
             this.axis = axis;
         }
 
-        internal override PartialTensor InferPartialTensor(PartialTensor[] partialTensors, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return PartialInferenceHelper.Concat(partialTensors, axis);
-        }
+            Logger.AssertIsTrue(inputTensors.Length > 0, "Concat.InputError: can't broadcast shapes array of size 0");
+            var dataType = inputTensors[0].dataType;
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
-        {
-            return SymbolicInference.Concat(inputShapes, axis);
+            var rank = SymbolicTensorDim.Unknown;
+            foreach (var tensorInput in inputTensors)
+            {
+                if (tensorInput.shape.hasRank)
+                    rank = SymbolicTensorDim.MaxDefinedDim(rank, new SymbolicTensorDim(tensorInput.shape.rank));
+            }
+
+            if (rank.isUnknown)
+                return new PartialTensor(dataType, SymbolicTensorShape.UnknownShape);
+
+            foreach (var tensorInput in inputTensors)
+            {
+                tensorInput.shape.DeclareRank(rank.value);
+            }
+
+            var shapeOut = SymbolicTensorShape.UnknownOfRank(rank.value);
+            var axisOut = shapeOut.Axis(axis);
+
+            for (var i = 0; i < shapeOut.rank; i++)
+            {
+                if (i == axisOut)
+                {
+                    shapeOut[i] = SymbolicTensorDim.Zero;
+                    foreach (var tensorInput in inputTensors)
+                    {
+                        shapeOut[i] += tensorInput.shape[i];
+                    }
+                }
+                else
+                {
+                    shapeOut[i] = SymbolicTensorDim.Unknown;
+                    foreach (var tensorInput in inputTensors)
+                    {
+                        shapeOut[i] = SymbolicTensorDim.MaxDefinedDim(shapeOut[i], tensorInput.shape[i]);
+                    }
+                }
+            }
+
+            var tensorOut = new PartialTensor(dataType, shapeOut);
+
+            if (shapeOut.rank != 1 || !tensorOut.isPartiallyKnown)
+                return tensorOut;
+
+            var index = 0;
+            foreach (var X in inputTensors)
+            {
+                for (var i = 0; i < X.length; i++)
+                {
+                    tensorOut[index++] = X[i];
+                }
+            }
+
+            return tensorOut;
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Concat(inputTensors, axis);
+            return ctx.backend.Concat(inputTensors, axis);
         }
 
         /// <inheritdoc/>
@@ -293,15 +341,18 @@ namespace Unity.Sentis.Layers
             this.mode = mode;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return SymbolicInference.DepthToSpace(inputShapes[0], blocksize);
+            var shapeX = inputTensors[0].shape;
+            shapeX.DeclareRank(4);
+            return new PartialTensor(inputTensors[0].dataType, new SymbolicTensorShape(shapeX[0], shapeX[1] / (blocksize * blocksize), shapeX[2] * blocksize, shapeX[3] * blocksize));
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.DepthToSpace(inputTensors[0] as TensorFloat, blocksize, mode);
+            return ctx.backend.DepthToSpace(inputTensors[0] as TensorFloat, blocksize, mode);
         }
 
         /// <inheritdoc/>
@@ -332,26 +383,17 @@ namespace Unity.Sentis.Layers
             this.inputs = new[] { input, shape };
         }
 
-        internal override PartialTensor InferPartialTensor(PartialTensor[] partialTensors, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            ctx.AddShape(name, SymbolicInference.Expand(ctx.GetSymbolicTensorShape(inputs[0]), partialTensors[1]));
-            return base.InferPartialTensor(partialTensors, ctx);
-        }
-
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
-        {
-            var partialTensor = ctx.GetPartialTensor(inputs[1]);
-            if (partialTensor.isPartiallyKnown)
-                return SymbolicInference.Broadcast(new[] { inputShapes[0], partialTensor.ToSymbolicTensorShape() });
-
-            return SymbolicInference.Expand(inputShapes[0], inputShapes[1]);
+            return new PartialTensor(inputTensors[0].dataType, inputTensors[1].ToSymbolicTensorShape().Broadcast(inputTensors[0].shape));
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var shape = (inputTensors[1] as TensorInt).ToReadOnlyArray();
-            return ctx.ops.Expand(inputTensors[0], new TensorShape(shape));
+            var shape = inputTensors[1].ToReadOnlySpan<int>();
+            return ctx.backend.Expand(inputTensors[0], new TensorShape(shape));
         }
 
         internal override string profilerTag => "Expand";
@@ -381,9 +423,30 @@ namespace Unity.Sentis.Layers
             this.axis = axis;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return SymbolicInference.Flatten(inputShapes[0], axis);
+            var shapeX = inputTensors[0].shape;
+            if (!shapeX.hasRank)
+            {
+                if (axis == 0)
+                    return inputTensors[0].Reshape(new SymbolicTensorShape(SymbolicTensorDim.One, inputTensors[0].shape.Length()));
+                return inputTensors[0].Reshape(SymbolicTensorShape.UnknownOfRank(2));
+            }
+
+            var axisX = axis >= 0 ? axis : shapeX.rank + axis;
+
+            var shapeOut = SymbolicTensorShape.Ones(2);
+            for (var i = 0; i < axisX; i++)
+            {
+                shapeOut[0] *= shapeX[i];
+            }
+            for (var i = axisX; i < shapeX.rank; i++)
+            {
+                shapeOut[1] *= shapeX[i];
+            }
+
+            return inputTensors[0].Reshape(shapeOut);
         }
 
         /// <inheritdoc/>
@@ -391,7 +454,7 @@ namespace Unity.Sentis.Layers
         {
             Tensor X = inputTensors[0];
 
-            return ctx.ops.Reshape(X, X.shape.Flatten(axis));
+            return ctx.backend.Reshape(X, X.shape.Flatten(axis));
         }
 
         /// <inheritdoc/>
@@ -420,15 +483,16 @@ namespace Unity.Sentis.Layers
             inputs = new[] { input };
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return inputShapes[0];
+            return inputTensors[0];
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Copy(inputTensors[0]);
+            return ctx.backend.Copy(inputTensors[0]);
         }
 
         internal override string profilerTag => "Identity";
@@ -475,18 +539,42 @@ namespace Unity.Sentis.Layers
             padMode = mode;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            var pads = ctx.GetPartialTensor(inputs[1]);
-            return SymbolicInference.Pad(inputShapes[0], inputShapes[1], pads);
+            var pads = inputTensors[1];
+            var shapeX = inputTensors[0].shape;
+            var shapePads = pads.shape;
+            if (shapePads.hasRank)
+            {
+                Logger.AssertIsTrue(shapePads.rank == 1, "Pad.ValueError: pads must be rank 1");
+                if (shapePads[0].isValue)
+                {
+                    Logger.AssertIsTrue(shapePads[0].value % 2 == 0, "Pad.ValueError: length of pads must divide by 2");
+                    shapeX.DeclareRank(shapePads[0].value / 2);
+                }
+            }
+
+            if (!shapeX.hasRank)
+                return new PartialTensor(inputTensors[0].dataType);
+
+            var shapeOut = SymbolicTensorShape.UnknownOfRank(shapeX.rank);
+
+            for (var i = 0; i < shapeOut.rank; i++)
+            {
+                var dimPad = pads[i] + pads[i + shapeOut.rank];
+                shapeOut[i] = shapeX[i] + (SymbolicTensorDim)dimPad;
+            }
+
+            return new PartialTensor(inputTensors[0].dataType, shapeOut);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var pads = (inputTensors[1] as TensorInt).ToReadOnlyArray();
-            var constantValue = inputTensors.Length > 2 && inputTensors[2] != null ? (inputTensors[2] as TensorFloat)[0] : 0f;
-            return ctx.ops.Pad(inputTensors[0] as TensorFloat, pads, padMode, constantValue);
+            var pads = inputTensors[1].ToReadOnlySpan<int>();
+            var constantValue = inputTensors.Length > 2 && inputTensors[2] != null ? inputTensors[2].ToReadOnlySpan<float>()[0] : 0f;
+            return ctx.backend.Pad(inputTensors[0] as TensorFloat, pads, padMode, constantValue);
         }
 
         internal override string profilerTag => "Pad";
@@ -498,7 +586,6 @@ namespace Unity.Sentis.Layers
     /// Only one of the elements of the shape can be -1. The layer infers the size of this dimension from the remaining dimensions and the length of the input tensor.
     /// </summary>
     [Serializable]
-
     [Optimization.CPUFallback.CPUReadInputs(1)]
     public class Reshape : Layer
     {
@@ -527,36 +614,70 @@ namespace Unity.Sentis.Layers
             this.allowZero = allowZero;
         }
 
-        internal override PartialTensor InferPartialTensor(PartialTensor[] partialTensors, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            var shape = partialTensors[1];
-            var outputShape = SymbolicInference.Reshape(ctx.GetSymbolicTensorShape(inputs[0]), ctx.GetSymbolicTensorShape(inputs[1]), ref shape, allowZero);
-            ctx.AddShape(name, outputShape);
+            var X = inputTensors[0];
+            var shape = inputTensors[1];
+            var shapeX = X.shape;
+            shape.shape.DeclareRank(1);
 
-            if (shape.IsFullyKnown())
+            if (!shape.isPartiallyKnown)
             {
-                ctx.AddPartialTensor(inputs[1], shape);
+                if (shape.shape[0].isValue)
+                    return X.Reshape(SymbolicTensorShape.UnknownOfRank(shape.shape[0].value));
+
+                return X.Reshape(SymbolicTensorShape.UnknownShape);
             }
 
-            return PartialTensor.Unknown;
-        }
+            var shapeOut = SymbolicTensorShape.UnknownOfRank(shape.length);
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
-        {
-            var shape = ctx.GetPartialTensor(inputs[1]);
-            var outputShape = SymbolicInference.Reshape(inputShapes[0], inputShapes[1], ref shape, allowZero);
-            if (shape.IsFullyKnown())
+            var containsMinusOne = false;
+
+            for (var i = 0; i < shapeOut.rank; i++)
             {
-                ctx.AddPartialTensor(inputs[1], shape);
+                if (shape[i] == -1)
+                    containsMinusOne = true;
             }
-            return outputShape;
+
+            for (var i = 0; i < shapeOut.rank; i++)
+            {
+                if (shape[i].isUnknown)
+                    continue;
+
+                var dim = (SymbolicTensorDim)shape[i];
+                if (shape[i].isParam)
+                {
+                    if (allowZero || (shapeX.hasRank && i >= shapeX.rank) || shapeX[i] == dim)
+                        shapeOut[i] = dim;
+                    else if (containsMinusOne)
+                    {
+                        for (var j = 0; j < shapeX.rank; j++)
+                        {
+                            if (shapeX[j] == dim)
+                            {
+                                shapeOut[i] = dim;
+                                break;
+                            }
+                        }
+                    }
+                    continue;
+                }
+
+                if (shape[i].intValue > 0)
+                    shapeOut[i] = dim;
+                else if (shape[i].intValue == 0)
+                    shapeOut[i] = allowZero ? SymbolicTensorDim.Zero : shapeX[i];
+            }
+
+            return X.Reshape(shapeOut, !containsMinusOne);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var size = (inputTensors[1] as TensorInt).ToReadOnlyArray();
-            return ctx.ops.Reshape(inputTensors[0], inputTensors[0].shape.Reshape(size, allowZero));
+            var size = inputTensors[1].ToReadOnlySpan<int>();
+            return ctx.backend.Reshape(inputTensors[0], inputTensors[0].shape.Reshape(size, allowZero));
         }
 
         /// <inheritdoc/>
@@ -612,36 +733,72 @@ namespace Unity.Sentis.Layers
             this.nearestMode = nearestMode;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            if (scaleMode == ScaleMode.Sizes)
-                return SymbolicInference.ResizeSizes(inputShapes[0], inputShapes[1], ctx.GetPartialTensor(inputs[1]));
+            var dataType = inputTensors[0].dataType;
+            var shapeX = inputTensors[0].shape;
 
-            return SymbolicInference.ResizeScales(inputShapes[0], inputShapes[1], (ctx.GetKnownTensor(inputs[1]) as TensorFloat)?.ToReadOnlyArray());
+            if (scaleMode == ScaleMode.Sizes)
+            {
+                PartialTensor sizes = inputTensors[1];
+                sizes.shape.DeclareRank(1);
+                shapeX.DeclareRank(sizes.shape[0]);
+
+                if (sizes.isPartiallyKnown)
+                    return new PartialTensor(dataType, sizes.ToSymbolicTensorShape());
+
+                return new PartialTensor(dataType, SymbolicTensorShape.UnknownOfRankLike(shapeX));
+            }
+
+            var scales = inputTensors[1];
+            scales.shape.DeclareRank(1);
+            shapeX.DeclareRank(scales.shape[0]);
+
+            if (!scales.isPartiallyKnown)
+                return new PartialTensor(dataType, SymbolicTensorShape.UnknownOfRankLike(shapeX));
+
+            shapeX.DeclareRank(scales.length);
+
+            var shapeOut = SymbolicTensorShape.UnknownOfRank(shapeX.rank);
+
+            for (var i = 0; i < shapeOut.rank; i++)
+            {
+                var dimX = shapeX[i];
+                var scale = scales[i];
+                if (!scale.isFloatValue)
+                    shapeOut[i] = SymbolicTensorDim.Unknown;
+                else if (scale.floatValue == 1f)
+                    shapeOut[i] = dimX;
+                else if (dimX.isValue)
+                    shapeOut[i] = new SymbolicTensorDim(Mathf.RoundToInt(dimX.value * scale.floatValue));
+                else
+                    shapeOut[i] = SymbolicTensorDim.Unknown;
+            }
+
+            return new PartialTensor(dataType, shapeOut);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            float[] scales;
             if (scaleMode == ScaleMode.Sizes)
             {
                 var inputShape = inputTensors[0].shape;
-                scales = new float[inputShape.rank];
+                Span<float> scales = stackalloc float[inputShape.rank];
 
-                var sizes = (inputTensors[1] as TensorInt).ToReadOnlyArray();
+                var sizes = inputTensors[1].ToReadOnlySpan<int>();
 
                 for (var i = 0; i < scales.Length; i++)
                 {
                     scales[i] = sizes[i] / (float)inputShape[i];
                 }
+                return ctx.backend.Resize(inputTensors[0] as TensorFloat, scales, mode, nearestMode, coordTransformMode);
             }
             else
             {
-                scales = (inputTensors[1] as TensorFloat).ToReadOnlyArray();
+                return ctx.backend.Resize(inputTensors[0] as TensorFloat, inputTensors[1].ToReadOnlySpan<float>(), mode, nearestMode, coordTransformMode);
             }
-
-            return ctx.ops.Resize(inputTensors[0] as TensorFloat, scales, mode, nearestMode, coordTransformMode);
         }
 
         /// <inheritdoc/>
@@ -702,34 +859,74 @@ namespace Unity.Sentis.Layers
             inputs = new[] { input, starts, ends, axes, steps };
         }
 
-        internal override PartialTensor InferPartialTensor(PartialTensor[] partialTensors, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            if (inputs.Length == 3)
-                return PartialInferenceHelper.Slice(partialTensors[0], partialTensors[1], partialTensors[2]);
-            if (inputs.Length == 4)
-                return PartialInferenceHelper.Slice(partialTensors[0], partialTensors[1], partialTensors[2], partialTensors[3]);
-            return PartialInferenceHelper.Slice(partialTensors[0], partialTensors[1], partialTensors[2], partialTensors[3], partialTensors[4]);
-        }
+            var dataType = inputTensors[0].dataType;
+            var shapeData = inputTensors[0].shape;
+            if (!shapeData.hasRank)
+                return new PartialTensor(dataType);
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
-        {
-            var starts = ctx.GetPartialTensor(inputs[1]);
-            var ends = ctx.GetPartialTensor(inputs[2]);
-            if (inputs.Length == 3)
-                return SymbolicInference.Slice(inputShapes, starts, ends);
-            var axes = ctx.GetPartialTensor(inputs[3]);
-            if (inputs.Length == 4)
-                return SymbolicInference.Slice(inputShapes, starts, ends, axes);
-            var steps = ctx.GetPartialTensor(inputs[4]);
-            return SymbolicInference.Slice(inputShapes, starts, ends, axes, steps);
+            var data = inputTensors[0];
+            var starts = inputTensors[1];
+            var ends = inputTensors[2];
+            var axes = (inputTensors.Length > 3 ? inputTensors[3] : null) ?? PartialTensor.Range(0, shapeData.rank);
+            var steps = (inputTensors.Length > 4 ? inputTensors[4] : null) ?? PartialTensor.Ones(starts.shape);
+
+            if (data.isPartiallyKnown && data.shape.rank == 1 && starts[0].isIntValue && ends[0].isIntValue && steps[0].isIntValue)
+            {
+                var dim = data.shape[0].value;
+                var start = starts[0].intValue;
+                var end = ends[0].intValue;
+                var step = steps[0].intValue;
+
+                var clampAdjustDirection = step < 0 ? -1 : 0;
+
+                start = start < 0 ? dim + start : start;
+                start = Mathf.Clamp(start, 0, dim + clampAdjustDirection);
+
+                end = end < 0 ? dim + end : end;
+                end = Mathf.Clamp(end, clampAdjustDirection, dim);
+
+                var length = (int)Math.Ceiling((end - start) / (double)step);
+                length = Mathf.Max(length, 0);
+
+                var tensorOut = new PartialTensor(dataType, new SymbolicTensorShape(length));
+
+                for (var i = 0; i < length; i++)
+                {
+                    tensorOut[i] = data[start + i * step];
+                }
+
+                return tensorOut;
+            }
+
+            if (!axes.isPartiallyKnown)
+                return new PartialTensor(dataType, SymbolicTensorShape.UnknownOfRank(shapeData.rank));
+
+            var shapeOut = new SymbolicTensorShape(shapeData);
+
+            for (var i = 0; i < axes.length; i++)
+            {
+                var axisElement = axes[i];
+                if (!axisElement.isIntValue)
+                {
+                    shapeOut = SymbolicTensorShape.UnknownOfRank(shapeData.rank);
+                    continue;
+                }
+                var axis = shapeOut.Axis(axisElement.intValue);
+                shapeOut[axis] = shapeData[axis].Slice(starts[i], ends[i], steps[i]);
+            }
+
+            return new PartialTensor(dataType, shapeOut);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var axes = inputTensors.Length > 3 && inputTensors[3] != null ? (inputTensors[3] as TensorInt).ToReadOnlyArray() : null;
-            var steps = inputTensors.Length > 4 && inputTensors[4] != null ? (inputTensors[4] as TensorInt).ToReadOnlyArray() : null;
-            return ctx.ops.Slice(inputTensors[0], (inputTensors[1] as TensorInt).ToReadOnlyArray(), (inputTensors[2] as TensorInt).ToReadOnlyArray(), axes, steps);
+            var axes = inputTensors.Length > 3 && inputTensors[3] != null ? inputTensors[3].ToReadOnlySpan<int>() : null;
+            var steps = inputTensors.Length > 4 && inputTensors[4] != null ? inputTensors[4].ToReadOnlySpan<int>() : null;
+            return ctx.backend.Slice(inputTensors[0], inputTensors[1].ToReadOnlySpan<int>(), inputTensors[2].ToReadOnlySpan<int>(), axes, steps);
         }
 
         internal override string profilerTag => "Slice";
@@ -759,15 +956,18 @@ namespace Unity.Sentis.Layers
             this.blocksize = blocksize;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return SymbolicInference.SpaceToDepth(inputShapes[0], blocksize);
+            var shapeX = inputTensors[0].shape;
+            shapeX.DeclareRank(4);
+            return new PartialTensor(inputTensors[0].dataType, new SymbolicTensorShape(shapeX[0], shapeX[1] * (blocksize * blocksize), shapeX[2] / blocksize, shapeX[3] / blocksize));
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.SpaceToDepth(inputTensors[0] as TensorFloat, blocksize);
+            return ctx.backend.SpaceToDepth(inputTensors[0] as TensorFloat, blocksize);
         }
 
         /// <inheritdoc/>
@@ -831,35 +1031,49 @@ namespace Unity.Sentis.Layers
             this.axis = axis;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            // initialize split lengths along axis to Unknown
-            PartialTensor symbolicSplit;
+            PartialTensor partialSplit;
             if (inputs.Length == 2)
             {
-                // set split lengths along axis to values from partial tensor
-                symbolicSplit = ctx.GetPartialTensor(inputs[1]);
+                partialSplit = inputTensors[1];
             }
             else
             {
-                // set split lengths along axis to split dim length divided by numOutputs
-                symbolicSplit = SymbolicInference.SplitDim(inputShapes[0][axis], numOutputs);
+                partialSplit = new PartialTensor(DataType.Int, new SymbolicTensorShape(numOutputs));
+
+                var dim = inputTensors[0].shape[axis];
+                if (dim.isParam && numOutputs == 1)
+                {
+                    partialSplit[0] = new PartialTensorElement(dim.param);
+                }
+                else if (dim.isValue)
+                {
+                    var splitLength = Mathf.CeilToInt(dim.value / (float)numOutputs);
+                    for (var i = 0; i < numOutputs - 1; i++)
+                    {
+                        partialSplit[i] = new PartialTensorElement(splitLength);
+                    }
+
+                    // final split length is the (possible smaller) remainder along the axis
+                    var lastSplitLength = dim.value - (splitLength * (numOutputs - 1));
+                    Logger.AssertIsTrue(lastSplitLength >= 0, "Split.InputError: split axis too small for numOutputs");
+                    partialSplit[numOutputs - 1] = new PartialTensorElement(lastSplitLength);
+                }
             }
 
-            // calculate first output shape to return
-            var retShape = new SymbolicTensorShape(inputShapes[0]);
-            if (retShape.hasRank)
-                retShape[axis] = symbolicSplit[0].ToSymbolicTensorDim();
+            var shapeOut = new SymbolicTensorShape(inputTensors[0].shape);
+            if (shapeOut.hasRank)
+                shapeOut[axis] = (SymbolicTensorDim)partialSplit[0];
             for (var i = 1; i < outputs.Length; i++)
             {
-                // calculate and store other output shapes
-                var outputShape = new SymbolicTensorShape(inputShapes[0]);
-                if (outputShape.hasRank)
-                    outputShape[axis] = symbolicSplit[i].ToSymbolicTensorDim();
-                ctx.AddShape(outputs[i], outputShape);
+                var outputShape = new SymbolicTensorShape(inputTensors[0].shape);
+                outputShape[axis] = (SymbolicTensorDim)partialSplit[i];
+                ctx.AddPartialTensor(outputs[i], new PartialTensor(inputTensors[0].dataType, outputShape));
             }
 
-            return retShape;
+            return new PartialTensor(inputTensors[0].dataType, shapeOut);
         }
 
         /// <inheritdoc/>
@@ -872,9 +1086,9 @@ namespace Unity.Sentis.Layers
             var start = 0;
             for (var i = 0; i < outputs.Length; i++)
             {
-                var end = start + (inputTensors.Length == 2 ? (inputTensors[1] as TensorInt)[i] : equalSplitLength);
+                var end = start + (inputTensors.Length == 2 ? inputTensors[1].ToReadOnlySpan<int>()[i] : equalSplitLength);
                 end = Math.Min(end, dim);
-                var output = ctx.ops.Split(inputTensors[0], axis, start, end);
+                var output = ctx.backend.Split(inputTensors[0], axis, start, end);
                 if (i == 0)
                     firstOutput = output;
                 else
@@ -923,23 +1137,21 @@ namespace Unity.Sentis.Layers
             inputs = new[] { input, axes };
         }
 
-        internal override PartialTensor InferPartialTensor(PartialTensor[] partialTensors, ShapeInferenceContext ctx)
-        {
-            if (inputs.Length == 2)
-                return PartialInferenceHelper.Squeeze(partialTensors[0], partialTensors[1]);
-
-            return PartialInferenceHelper.Squeeze(partialTensors[0]);
-        }
-
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
             if (inputs.Length == 2)
             {
-                var axes = ctx.GetPartialTensor(inputs[1]);
-                return SymbolicInference.Squeeze(inputShapes[0], axes);
+                var x = inputTensors[0];
+                var axes = inputTensors[1];
+                if (!axes.isPartiallyKnown)
+                    return x.Reshape(SymbolicTensorShape.UnknownShape);
+                if (!axes.IsFullyKnown())
+                    return x.Reshape(SymbolicTensorShape.UnknownOfRank(x.shape.rank - axes.length));
+                return x.Reshape(x.shape.Squeeze(axes));
             }
 
-            return inputShapes[0].Squeeze();
+            return inputTensors[0].Reshape(inputTensors[0].shape.Squeeze());
         }
 
         /// <inheritdoc/>
@@ -948,11 +1160,11 @@ namespace Unity.Sentis.Layers
             var X = inputTensors[0];
             if (inputTensors.Length == 2)
             {
-                var axes = (inputTensors[1] as TensorInt).ToReadOnlyArray();
-                return ctx.ops.Reshape(X, X.shape.Squeeze(axes));
+                var axes = inputTensors[1].ToReadOnlySpan<int>();
+                return ctx.backend.Reshape(X, X.shape.Squeeze(axes));
             }
 
-            return ctx.ops.Reshape(X, X.shape.Squeeze());
+            return ctx.backend.Reshape(X, X.shape.Squeeze());
         }
 
         internal override string profilerTag => "Squeeze";
@@ -977,23 +1189,37 @@ namespace Unity.Sentis.Layers
             inputs = new[] { input, repeats };
         }
 
-        internal override PartialTensor InferPartialTensor(PartialTensor[] partialTensors, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            var outputShape = SymbolicInference.Tile(ctx.GetSymbolicTensorShape(inputs[0]), ctx.GetSymbolicTensorShape(inputs[1]), partialTensors[1]);
-            ctx.AddShape(name, outputShape);
-            return PartialTensor.Unknown;
-        }
+            var dataType = inputTensors[0].dataType;
+            var shapeX = inputTensors[0].shape;
+            var repeats = inputTensors[1];
+            repeats.shape.DeclareRank(1);
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
-        {
-            return SymbolicInference.Tile(inputShapes[0], inputShapes[1], ctx.GetPartialTensor(inputs[1]));
+            if (!repeats.isPartiallyKnown)
+            {
+                if (repeats.shape[0].isValue && !shapeX.hasRank)
+                    shapeX = SymbolicTensorShape.UnknownOfRank(repeats.shape[0].value);
+                Logger.AssertIsFalse(repeats.shape[0] != shapeX.rank, "Tile.InputError: repeats value must be equal to input rank");
+                return new PartialTensor(dataType, SymbolicTensorShape.UnknownOfRankLike(shapeX));
+            }
+
+            shapeX.DeclareRank(repeats.length);
+
+            var shapeOut = new SymbolicTensorShape(shapeX);
+            for (var i = 0; i < shapeOut.rank; i++)
+            {
+                shapeOut[i] *= (SymbolicTensorDim)repeats[i];
+            }
+            return new PartialTensor(dataType, shapeOut);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var repeats = (inputTensors[1] as TensorInt).ToReadOnlyArray();
-            return ctx.ops.Tile(inputTensors[0], repeats);
+            var repeats = inputTensors[1].ToReadOnlySpan<int>();
+            return ctx.backend.Tile(inputTensors[0], repeats);
         }
 
         internal override string profilerTag => "Tile";
@@ -1025,18 +1251,48 @@ namespace Unity.Sentis.Layers
             this.permutations = permutations;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return SymbolicInference.Transpose(inputShapes[0], permutations);
+            var shapeX = inputTensors[0].shape;
+            if (permutations != null)
+                shapeX.DeclareRank(permutations.Length);
+
+            if (!shapeX.hasRank)
+                return new PartialTensor(inputTensors[0].dataType);
+
+            var shapeOut = SymbolicTensorShape.UnknownOfRank(shapeX.rank);
+
+            if (permutations == null || permutations.Length == 0)
+            {
+                // reverse axes
+                for (var i = 0; i < shapeX.rank; i++)
+                {
+                    shapeOut[i] = shapeX[shapeX.rank - 1 - i];
+                }
+            }
+            else
+            {
+                uint axesBitMask = 0;
+                for (var i = 0; i < permutations.Length; i++)
+                {
+                    var axis = shapeX.Axis(permutations[i]);
+                    Logger.AssertIsTrue(((axesBitMask >> axis) & 1U) == 0, "Transpose.ValueError: permutation must be a permutation of the axis (0, rank-1)");
+                    axesBitMask |= 1U << axis;
+                    shapeOut[i] = shapeX[axis];
+                }
+            }
+
+            return new PartialTensor(inputTensors[0].dataType, shapeOut);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (permutations == null)
-                return ctx.ops.Transpose(inputTensors[0]);
+                return ctx.backend.Transpose(inputTensors[0]);
             else
-                return ctx.ops.Transpose(inputTensors[0], permutations);
+                return ctx.backend.Transpose(inputTensors[0], permutations);
         }
 
         /// <inheritdoc/>
@@ -1090,19 +1346,20 @@ namespace Unity.Sentis.Layers
             this.mode = mode;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return inputShapes[0];
+            return new PartialTensor(inputTensors[0].dataType, inputTensors[0].shape);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            int k = inputTensors.Length == 1 ? 0 : (inputTensors[1] as TensorInt)[0];
+            int k = inputTensors.Length == 1 ? 0 : inputTensors[1].ToReadOnlySpan<int>()[0];
             if (mode == TriluMode.Upper)
-                return ctx.ops.Triu(inputTensors[0], k);
+                return ctx.backend.Triu(inputTensors[0], k);
             else
-                return ctx.ops.Tril(inputTensors[0], k);
+                return ctx.backend.Tril(inputTensors[0], k);
         }
 
         /// <inheritdoc/>
@@ -1133,23 +1390,18 @@ namespace Unity.Sentis.Layers
             inputs = new[] { input, axes };
         }
 
-        internal override PartialTensor InferPartialTensor(PartialTensor[] partialTensors, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return PartialInferenceHelper.Unsqueeze(partialTensors[0], partialTensors[1]);
-        }
-
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
-        {
-            var axes = ctx.GetPartialTensor(inputs[1]);
-            return SymbolicInference.Unsqueeze(inputShapes[0], axes);
+            return inputTensors[0].Reshape(inputTensors[0].shape.Unsqueeze(inputTensors[1]));
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             Tensor X = inputTensors[0];
-            var axes = (inputTensors[1] as TensorInt).ToReadOnlyArray();
-            return ctx.ops.Reshape(X, X.shape.Unsqueeze(axes));
+            var axes = inputTensors[1].ToReadOnlySpan<int>();
+            return ctx.backend.Reshape(X, X.shape.Unsqueeze(axes));
         }
 
         internal override string profilerTag => "Unsqueeze";

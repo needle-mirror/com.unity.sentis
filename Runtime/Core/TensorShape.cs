@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("Unity.Sentis.Tests")]
 [assembly: InternalsVisibleTo("Unity.Sentis.EditorTests")]
-[assembly: InternalsVisibleTo("Unity.Sentis.CPUOps")]
+[assembly: InternalsVisibleTo("Unity.Sentis.CPUBackend")]
 
 namespace Unity.Sentis {
 
@@ -221,7 +221,7 @@ public unsafe struct TensorShape
     /// <summary>
     /// Initializes and returns an instance of `TensorShape` with a given shape. For example: `TensorShape(new [] {3, 4, 5, 6})` returns a tensor with a shape of (3, 4, 5, 6).
     /// </summary>
-    public TensorShape(int[] shape)
+    public TensorShape(ReadOnlySpan<int> shape)
         : this()
     {
         Logger.AssertIsTrue(shape.Length <= maxRank, "ValueError: TensorShape are capped to rank=8, cannot create tensorshape of rank {0}", shape.Length);
@@ -359,6 +359,8 @@ public unsafe struct TensorShape
     {
         if (start >= rank)
             return 1;
+        if (start < -rank)
+            return length;
 
         start = Axis(start);
         int l = 1;
@@ -378,8 +380,12 @@ public unsafe struct TensorShape
     /// </summary>
     public int Length(int start, int end)
     {
-        if (start >= rank)
+        if (start >= rank || end < -rank)
             return 1;
+        if (start < -rank)
+            start = 0;
+        if (end > rank)
+            end = rank;
 
         start = Axis(start);
         if (end < rank)
@@ -516,7 +522,7 @@ public unsafe struct TensorShape
     /// <summary>
     /// Creates a `TensorShape` by duplicating `this` and removing the given axes of size 1. For example, if `this` is (5, 1, 3, 1), and `axes` is {1, -1}, the method returns (5, 3).
     /// </summary>
-    public TensorShape Squeeze(int[] axes)
+    public TensorShape Squeeze(ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
             return Squeeze();
@@ -596,7 +602,7 @@ public unsafe struct TensorShape
     /// <summary>
     /// Creates a `TensorShape` by duplicating `this` and inserting dimensions of size one at the given axes. For example if `this` is (2), and `axes` is {0, 1}, the method returns (1, 1, 2).
     /// </summary>
-    public TensorShape Unsqueeze(int[] axes)
+    public TensorShape Unsqueeze(ReadOnlySpan<int> axes)
     {
         Logger.AssertIsTrue(rank + axes.Length <= maxRank, "ValueError: TensorShape are capped to rank=8, cannot unsqueeze tensorshape {0} to rank greater than 8", this);
 
@@ -637,7 +643,7 @@ public unsafe struct TensorShape
     /// If a dimension in the shape array is -1, Sentis infers the value from the size of the `TensorShape` and the remaining dimensions. Only one dimension can be -1.
     /// </summary>
     /// <param name="allowZero">When the value is `true`, Sentis sets a dimension to zero if the new shape includes a zero. Otherwise Sentis retains the corresponding size at that axis from the original shape.</param>
-    public TensorShape Reshape(int[] shape, bool allowZero = false)
+    public TensorShape Reshape(ReadOnlySpan<int> shape, bool allowZero = false)
     {
         Logger.AssertIsTrue(shape.Length <= maxRank, "ValueError: TensorShape are capped to rank=8, cannot create tensorshape of rank {0}", shape.Length);
 
@@ -813,7 +819,7 @@ public unsafe struct TensorShape
     /// <summary>
     /// Creates a `TensorShape` by repeating this `TensorShape` a number of times along each axis.
     /// </summary>
-    public TensorShape Tile(int[] repeats)
+    public TensorShape Tile(ReadOnlySpan<int> repeats)
     {
         TensorShape mul = new TensorShape();
         mul.m_Rank = Math.Max(rank, repeats.Length);
@@ -895,7 +901,7 @@ public unsafe struct TensorShape
     /// Creates a `TensorShape` by removing the dimensions at `axes`. For example, if `this` is (2, 3, 4, 5), `axis` is {1, 2} and the value of `keepDim` is `true`, the method returns (2, 1, 1, 5).
     /// </summary>
     /// <param name="keepDim">When the value is `true`, Sentis replaces the reduced axes with 1. Otherwise Sentis removes the reduced axes.</param>
-    public TensorShape Reduce(int[] axes, bool keepDim = true)
+    public TensorShape Reduce(ReadOnlySpan<int> axes, bool keepDim = true)
     {
         if (axes == null || axes.Length == 0)
             return keepDim ? Ones(rank) : new TensorShape();
@@ -972,7 +978,7 @@ public unsafe struct TensorShape
     /// Creates a `TensorShape` by padding axes. For example, if `this` is (1, 2, 3), and `pads` is {0, 0, 1, 0, 2, 2}, the method returns (1, 3, 7).
     /// </summary>
     /// <param name="pads">The lower and upper padding values for each dimension. For example [pad_left, pad_right] for 1D, or [pad_top, pad_bottom, pad_left, pad_right] for 2D.</param>
-    public TensorShape Pad(int[] pads)
+    public TensorShape Pad(ReadOnlySpan<int> pads)
     {
         Logger.AssertAreEqual(rank * 2, pads.Length, "ValueError: shape ranks and pad length do not match {0}, {1}", this, pads.Length);
 
@@ -992,6 +998,11 @@ public unsafe struct TensorShape
     /// </summary>
     public TensorShape MatMul(TensorShape other)
     {
+        if (other.rank == 1)
+            return MatMul(new TensorShape(other[0], 1)).Squeeze(-1);
+        if (rank == 1)
+            return new TensorShape(1, this[0]).MatMul(other).Squeeze(-2);
+
         Logger.AssertIsTrue(this[-1] == other[-2], "ValueError: dimension does not match for matmul {0}, {1}", this, other);
 
         TensorShape matmul = new TensorShape();
@@ -1026,7 +1037,7 @@ public unsafe struct TensorShape
     /// <summary>
     /// Creates a `TensorShape` that results from slicing `this` along given axes with given starts, ends, and steps.
     /// </summary>
-    public TensorShape Slice(int[] starts, int[] ends, int[] axes, int[] steps)
+    public TensorShape Slice(ReadOnlySpan<int> starts, ReadOnlySpan<int> ends, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps)
     {
         Logger.AssertAreEqual(starts.Length, ends.Length, "ValueError: starts and ends length do not match {0}, {1}", starts.Length, ends.Length);
         if (axes != null)

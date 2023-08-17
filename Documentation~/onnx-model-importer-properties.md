@@ -13,7 +13,6 @@ To access this window, select an imported model asset in the Project window.
 |-|-|
 |**Open**|Open the model in the default application for ONNX files. Refer to [Open a model as a graph](inspect-a-model.md#open-a-model-as-a-graph) for more information.|
 |**Optimize Model**|When enabled, Sentis [optimizes the model](models-concept.md#how-sentis-optimizes-a-model) when you import it. The default is enabled.|
-|**Round Denormal Weights to 0**|When enabled, Sentis rounds very small float values (denormals) to 0. If you disable this setting, values in a model might be less precise but the model might run more slowly. The default is enabled.|
 |**Apply**|Save changes you've made to the settings.|
 |**Revert**|Revert changes you've made to the settings.|
 
@@ -41,6 +40,7 @@ This section shows the total number of outputs the model has, and a list of the 
 |-|-|
 |**name**|The name of the output.|
 |**shape**|The tensor shape of the output. Sentis tries to precalculate this shape from the model. If a dimension in the shape is a question mark (**?**), Sentis can't calculate the size of the dimension, or the size depends on the input (a dynamic output). If the entire tensor shape is **Unknown**, Sentis can't calculate the number of dimensions, or the number of dimensions is dynamic. |
+|**dataType**|The data type of the output. The possible values are `float` and `int`.|
 
 ### Layers
 
@@ -75,7 +75,7 @@ This section only appears if there was a problem when Sentis imported and optimi
 
 This section only appears if there was a problem when Sentis imported and optimized the model. You can usually still run the model, but you might get unexpected results.
 
-You can add a custom layer to implement a missing operator. Refer to the `CustomLayer` example in the [sample scripts](package-samples.md) for a working example.
+You can add a custom layer to implement a missing operator. Refer to the `CustomLayer` example in the [sample scripts](package-samples.md) for an example.
 
 ## Additional resources
 

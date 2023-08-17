@@ -150,6 +150,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
@@ -164,7 +165,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f92b9289f8e61bb43847199e5a1b1a2c, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  modelAsset: {fileID: 5022602860645237092, guid: 91ef5899d4c543447b002ca01892f017, type: 3}
-  workerType: 512
+  m_Name: 
+  m_EditorClassIdentifier: 
+  modelAsset: {fileID: 5022602860645237092, guid: b5ffae9035e935e4f96d689a8dadbd44,
+    type: 3}
+  backendType: 512

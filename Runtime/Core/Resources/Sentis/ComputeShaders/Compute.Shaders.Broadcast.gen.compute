@@ -66,6 +66,8 @@ uint shapeY[8];
 uint stridesY[8];
 uint2 unrolledDispatchArgs;
 int rank;
+uint LengthO;
+uint MaxBlockIndexX;
 
 #ifdef MEANFLOAT
 float alpha;
@@ -92,29 +94,75 @@ RWStructuredBuffer<float> Optr;
 #ifdef POWFLOAT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastPowFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastPowFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     float y = Bptr[0];
-    Optr[threadIdx] = SignedPow(x, y);
+    float4 O = SignedPow(x, y);
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastPowFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastPowFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
-    float y = Bptr[threadIdx];
-    Optr[threadIdx] = SignedPow(x, y);
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    float4 y = float4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    float4 O = SignedPow(x, y);
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
@@ -143,29 +191,75 @@ void ElementwisePowFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef ADDFLOAT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastAddFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastAddFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     float y = Bptr[0];
-    Optr[threadIdx] = x + y;
+    float4 O = x + y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastAddFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastAddFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
-    float y = Bptr[threadIdx];
-    Optr[threadIdx] = x + y;
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    float4 y = float4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    float4 O = x + y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
@@ -194,29 +288,75 @@ void ElementwiseAddFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef SUBFLOAT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastSubFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastSubFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     float y = Bptr[0];
-    Optr[threadIdx] = x - y;
+    float4 O = x - y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastSubFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastSubFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
-    float y = Bptr[threadIdx];
-    Optr[threadIdx] = x - y;
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    float4 y = float4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    float4 O = x - y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
@@ -245,29 +385,75 @@ void ElementwiseSubFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef MULFLOAT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastMulFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastMulFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     float y = Bptr[0];
-    Optr[threadIdx] = x * y;
+    float4 O = x * y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastMulFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastMulFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
-    float y = Bptr[threadIdx];
-    Optr[threadIdx] = x * y;
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    float4 y = float4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    float4 O = x * y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
@@ -296,29 +482,75 @@ void ElementwiseMulFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef DIVFLOAT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastDivFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastDivFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     float y = Bptr[0];
-    Optr[threadIdx] = x / y;
+    float4 O = x / y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastDivFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastDivFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
-    float y = Bptr[threadIdx];
-    Optr[threadIdx] = x / y;
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    float4 y = float4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    float4 O = x / y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
@@ -347,29 +579,75 @@ void ElementwiseDivFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef MINFLOAT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastMinFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastMinFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     float y = Bptr[0];
-    Optr[threadIdx] = min(x, y);
+    float4 O = min(x, y);
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastMinFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastMinFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
-    float y = Bptr[threadIdx];
-    Optr[threadIdx] = min(x, y);
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    float4 y = float4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    float4 O = min(x, y);
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
@@ -398,29 +676,75 @@ void ElementwiseMinFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef MAXFLOAT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastMaxFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastMaxFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     float y = Bptr[0];
-    Optr[threadIdx] = max(x, y);
+    float4 O = max(x, y);
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastMaxFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastMaxFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
-    float y = Bptr[threadIdx];
-    Optr[threadIdx] = max(x, y);
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    float4 y = float4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    float4 O = max(x, y);
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
@@ -449,29 +773,75 @@ void ElementwiseMaxFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef MEANFLOAT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastMeanFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastMeanFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     float y = Bptr[0];
-    Optr[threadIdx] = alpha * x + beta * y;
+    float4 O = alpha * x + beta * y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastMeanFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastMeanFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
-    float y = Bptr[threadIdx];
-    Optr[threadIdx] = alpha * x + beta * y;
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    float4 y = float4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    float4 O = alpha * x + beta * y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
@@ -500,29 +870,75 @@ void ElementwiseMeanFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef FMODFLOAT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastFModFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastFModFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     float y = Bptr[0];
-    Optr[threadIdx] = fmod(x, y);
+    float4 O = fmod(x, y);
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastFModFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastFModFloat(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
-    float y = Bptr[threadIdx];
-    Optr[threadIdx] = fmod(x, y);
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    float4 y = float4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    float4 O = fmod(x, y);
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
@@ -551,29 +967,75 @@ void ElementwiseFModFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef POWINT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastPowInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastPowInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     int y = Bptr[0];
-    Optr[threadIdx] = SignedPow(x, y);
+    float4 O = SignedPow(x, y);
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastPowInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastPowInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    float x = Xptr[threadIdx];
-    int y = Bptr[threadIdx];
-    Optr[threadIdx] = SignedPow(x, y);
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    int4 y = int4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    float4 O = SignedPow(x, y);
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
@@ -602,29 +1064,75 @@ void ElementwisePowInt(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef ADDINT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastAddInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastAddInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    int x = Xptr[threadIdx];
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     int y = Bptr[0];
-    Optr[threadIdx] = x + y;
+    int4 O = x + y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastAddInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastAddInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    int x = Xptr[threadIdx];
-    int y = Bptr[threadIdx];
-    Optr[threadIdx] = x + y;
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    int4 y = int4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    int4 O = x + y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
@@ -653,29 +1161,75 @@ void ElementwiseAddInt(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef SUBINT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastSubInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastSubInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    int x = Xptr[threadIdx];
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     int y = Bptr[0];
-    Optr[threadIdx] = x - y;
+    int4 O = x - y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastSubInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastSubInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    int x = Xptr[threadIdx];
-    int y = Bptr[threadIdx];
-    Optr[threadIdx] = x - y;
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    int4 y = int4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    int4 O = x - y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
@@ -704,29 +1258,75 @@ void ElementwiseSubInt(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef MULINT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastMulInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastMulInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    int x = Xptr[threadIdx];
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     int y = Bptr[0];
-    Optr[threadIdx] = x * y;
+    int4 O = x * y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastMulInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastMulInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    int x = Xptr[threadIdx];
-    int y = Bptr[threadIdx];
-    Optr[threadIdx] = x * y;
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    int4 y = int4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    int4 O = x * y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
@@ -755,29 +1355,75 @@ void ElementwiseMulInt(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef DIVINT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastDivInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastDivInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    int x = Xptr[threadIdx];
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     int y = Bptr[0];
-    Optr[threadIdx] = x / y;
+    int4 O = x / y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastDivInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastDivInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    int x = Xptr[threadIdx];
-    int y = Bptr[threadIdx];
-    Optr[threadIdx] = x / y;
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    int4 y = int4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    int4 O = x / y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
@@ -806,29 +1452,75 @@ void ElementwiseDivInt(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef MININT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastMinInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastMinInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    int x = Xptr[threadIdx];
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     int y = Bptr[0];
-    Optr[threadIdx] = min(x, y);
+    int4 O = min(x, y);
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastMinInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastMinInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    int x = Xptr[threadIdx];
-    int y = Bptr[threadIdx];
-    Optr[threadIdx] = min(x, y);
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    int4 y = int4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    int4 O = min(x, y);
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
@@ -857,29 +1549,75 @@ void ElementwiseMinInt(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef MAXINT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastMaxInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastMaxInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    int x = Xptr[threadIdx];
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     int y = Bptr[0];
-    Optr[threadIdx] = max(x, y);
+    int4 O = max(x, y);
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastMaxInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastMaxInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    int x = Xptr[threadIdx];
-    int y = Bptr[threadIdx];
-    Optr[threadIdx] = max(x, y);
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    int4 y = int4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    int4 O = max(x, y);
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
@@ -908,29 +1646,75 @@ void ElementwiseMaxInt(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef MODINT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastModInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastModInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    int x = Xptr[threadIdx];
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     int y = Bptr[0];
-    Optr[threadIdx] = ((x % y) + y) % y;
+    int4 O = ((x % y) + y) % y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastModInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastModInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    int x = Xptr[threadIdx];
-    int y = Bptr[threadIdx];
-    Optr[threadIdx] = ((x % y) + y) % y;
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    int4 y = int4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    int4 O = ((x % y) + y) % y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
@@ -959,29 +1743,75 @@ void ElementwiseModInt(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef FMODINT
 #ifdef SCALARBROADCAST
 [numthreads(64, 1, 1)]
-void ScalarBroadcastFModInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void ScalarBroadcastFModInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    int x = Xptr[threadIdx];
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
     int y = Bptr[0];
-    Optr[threadIdx] = x % y;
+    int4 O = x % y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 
 #ifdef BROADCAST
 [numthreads(64, 1, 1)]
-void BroadcastFModInt(uint3 dispatchThreadID : SV_DispatchThreadID)
+void BroadcastFModInt(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
 
-    int x = Xptr[threadIdx];
-    int y = Bptr[threadIdx];
-    Optr[threadIdx] = x % y;
+    int4 x = int4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    int4 y = int4(Bptr[idx.x], Bptr[idx.y], Bptr[idx.z], Bptr[idx.w]);
+    int4 O = x % y;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
 }
 #endif
 

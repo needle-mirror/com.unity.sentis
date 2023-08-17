@@ -44,7 +44,7 @@ RWStructuredBuffer<float> Optr;
 #if defined(HARDSWISH) || defined(SOFTSIGN) || defined(TAN) || defined(SINH) || defined(SIN) || defined(COSH) || defined(COS) || defined(ATANH) || defined(ATAN) || defined(ASINH) || defined(ASIN) || defined(ACOSH) || defined(ACOS) || defined(SQRT) || defined(LOG) || defined(EXP) || defined(RECIPROCAL) || defined(ROUND) || defined(FLOOR) || defined(CEIL) || defined(SOFTPLUS)
 inline float Apply(float v){
 #ifdef SOFTPLUS
-{ return log(exp(v) + 1.0f); }
+{ return log(1 + exp(-abs(v))) + max(v, 0); }
 #endif
 #ifdef CEIL
 { return ceil(v); }

@@ -53,17 +53,19 @@ namespace Unity.Sentis.Layers
             this.centerPointBox = centerPointBox;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return new SymbolicTensorShape(SymbolicTensorDim.Unknown, new SymbolicTensorDim(3));
+            var shape = new SymbolicTensorShape(SymbolicTensorDim.Unknown, new SymbolicTensorDim(3));
+            return new PartialTensor(DataType.Int, shape);
         }
 
         public override Tensor Execute(Tensor[] inputs, ExecutionContext ctx)
         {
-            float scoreThreshold = inputs.Length > 4 && inputs[4] != null ? (inputs[4] as TensorFloat)[0] : 0f;
-            float iouThreshold = inputs.Length > 3 && inputs[3] != null ? (inputs[3] as TensorFloat)[0] : 0f;
-            int maxOutputBoxesPerClass = inputs.Length > 2 && inputs[2] != null ? (inputs[2] as TensorInt)[0] : 0;
-            return ctx.ops.NonMaxSuppression(inputs[0] as TensorFloat, inputs[1] as TensorFloat, maxOutputBoxesPerClass, iouThreshold, scoreThreshold, centerPointBox);
+            float scoreThreshold = inputs.Length > 4 && inputs[4] != null ? inputs[4].ToReadOnlySpan<float>()[0] : 0f;
+            float iouThreshold = inputs.Length > 3 && inputs[3] != null ? inputs[3].ToReadOnlySpan<float>()[0] : 0f;
+            int maxOutputBoxesPerClass = inputs.Length > 2 && inputs[2] != null ? inputs[2].ToReadOnlySpan<int>()[0] : 0;
+            return ctx.backend.NonMaxSuppression(inputs[0] as TensorFloat, inputs[1] as TensorFloat, maxOutputBoxesPerClass, iouThreshold, scoreThreshold, centerPointBox);
         }
 
         internal override string profilerTag => "NonMaxSuppression";
@@ -134,15 +136,34 @@ namespace Unity.Sentis.Layers
             this.spatialScale = spatialScale;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return SymbolicInference.RoiAlign(inputShapes[0], inputShapes[1], inputShapes[2], outputHeight, outputWidth);
+            var shapeX = inputTensors[0].shape;
+            var shapeRois = inputTensors[1].shape;
+            var shapeIndices = inputTensors[2].shape;
+            var shapeOut = SymbolicTensorShape.UnknownOfRank(4);
+
+            shapeRois.DeclareRank(2);
+            Logger.AssertIsFalse(shapeRois[1] != 4, "RoiAlign.ValueError: incorrect number of num_rois, expecting 4");
+            shapeOut[0] = shapeRois[0];
+
+            shapeX.DeclareRank(4);
+            shapeOut[1] = shapeX[1];
+
+            shapeIndices.DeclareRank(1);
+            shapeOut[0] = SymbolicTensorDim.MaxDefinedDim(shapeOut[0], shapeIndices[0]);
+
+            shapeOut[2] = new SymbolicTensorDim(outputHeight);
+            shapeOut[3] = new SymbolicTensorDim(outputWidth);
+
+            return new PartialTensor(DataType.Float, shapeOut);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.RoiAlign(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorInt, mode, outputHeight, outputWidth, samplingRatio, spatialScale);
+            return ctx.backend.RoiAlign(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorInt, mode, outputHeight, outputWidth, samplingRatio, spatialScale);
         }
 
         /// <inheritdoc/>

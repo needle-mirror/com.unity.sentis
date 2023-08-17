@@ -58,7 +58,7 @@ float Activation(float v, uint activation, float alpha, float beta)
         case 9:
             return v / (1.0f + abs(v)); // Softsign
         case 10:
-            return log(exp(clamp(v, -60.0f, 60.0f)) + 1.0f); // Softplus
+            return log(1 + exp(-abs(v))) + max(v, 0); // Softplus
         default:
             return v;
     }

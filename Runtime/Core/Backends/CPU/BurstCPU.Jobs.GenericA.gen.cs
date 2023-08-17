@@ -15,38 +15,8 @@ using static Unity.Mathematics.math;
 
 namespace Unity.Sentis
 {
-public partial class CPUOps
+public partial class CPUBackend
 {
-
-
-[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
-internal unsafe struct ScaleBiasJob : IJobParallelFor, IJobResourceDeclarationXSBO
-{
-    
-    public int batch;
-    public int channels;
-    public int spatialDims;
-    public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
-    public ReadOnlyMemResource S { get; set; } float* Sptr => (float*)S.ptr;
-    public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
-    public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-
-    public void Execute(int threadIdx)
-    {
-        for (int j = 0; j < batch; j++)
-        for (int k = 0; k < spatialDims; k++)
-        {
-            float v = Xptr[j * spatialDims * channels + threadIdx * spatialDims + k];
-            float beta = Bptr[threadIdx];
-            float gamma = Sptr[threadIdx];
-
-            v = v * gamma + beta;
-
-            Optr[j * spatialDims * channels + threadIdx * spatialDims + k] = v;
-        }
-    }
-}
-
 
 
 [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]

@@ -15,7 +15,7 @@ using static Unity.Mathematics.math;
 
 namespace Unity.Sentis
 {
-public partial class CPUOps
+public partial class CPUBackend
 {
 
 

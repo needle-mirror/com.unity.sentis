@@ -1,3 +1,23 @@
+# What's new in Sentis 1.1
+
+This is a summary of the changes from Sentis 1.0 to Sentis 1.1.
+
+## Added
+
+- GPUPixel backend now supports TensorInts and many more operators.
+- Models can now be exported to `StreamingAssets`.
+- Interface for asynchronous readback of GPU tensors with callback.
+- Ops utility methods for float mathematics and getting and setting slices of tensors. 
+
+## Updated
+
+- Improved compatibility for many operators including Conv, ConvTranspose and BatchNormalization.
+- Improved performance of many operators on GPUCompute and GPUCommandBuffer backends.
+- Reduced allocation when executing worker.
+- Improved import times.
+- Improved shape and data type inference to optimize models better.
+- Inference accuracy fixes.
+
 # What's new in Sentis 1.0
 
 Sentis is the new name for the [Barracuda package](https://docs.unity3d.com/Packages/com.unity.barracuda@3.0/manual/index.html).
@@ -8,7 +28,7 @@ For information on how to upgrade, refer to the [Upgrade Guide](upgrade-guide.md
 
 ## Added
 
-- You can now override model layers in your code, and add your own layers. Refer to the `CustomLayer` example in the [sample scripts](package-samples.md) for a working example.
+- You can now override model layers in your code, and add your own layers. Refer to the `CustomLayer` example in the [sample scripts](package-samples.md) for an example.
 
 
 ## Updated

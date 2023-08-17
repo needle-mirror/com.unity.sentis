@@ -29,7 +29,7 @@ The shape of the tensor and the new shape must have the same number of elements.
 
 The result of `ShallowReshape` is a shallow copy that points to the same memory as the original output.
 
-Don't use `ShallowReshape`if you use `BackendType.GPUPixel`, because `ShallowReshape` isn't compatible with the way Sentis stores tensor data in textures.
+**Note:** Don't use `ShallowReshape`if you use `BackendType.GPUPixel`, because `ShallowReshape` isn't compatible with the way Sentis stores tensor data in textures.
 
 ## Additional resources
 

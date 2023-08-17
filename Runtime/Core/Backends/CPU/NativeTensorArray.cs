@@ -263,16 +263,45 @@ public class NativeTensorArray : IDisposable
     /// </summary>
     public NativeArray<T> GetNativeArrayHandle<T>() where T : unmanaged
     {
-        NativeArray<T> nativeArray;
         unsafe
         {
-            nativeArray = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<T>(RawPtr, m_Length, m_Allocator);
+            NativeArray<T> nativeArray = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<T>(RawPtr, m_Length, m_Allocator);
             #if ENABLE_UNITY_COLLECTIONS_CHECKS
             NativeArrayUnsafeUtility.SetAtomicSafetyHandle(ref nativeArray, AtomicSafetyHandle.Create());
             #endif
+            return nativeArray;
         }
+    }
 
-        return nativeArray;
+    public NativeArray<T>.ReadOnly GetReadOnlyNativeArrayHandle<T>(int dstCount, int srcOffset = 0) where T : unmanaged
+    {
+        unsafe
+        {
+            NativeArray<T> nativeArray = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<T>((byte*)RawPtr + srcOffset * sizeof(T), dstCount, m_Allocator);
+            #if ENABLE_UNITY_COLLECTIONS_CHECKS
+            NativeArrayUnsafeUtility.SetAtomicSafetyHandle(ref nativeArray, AtomicSafetyHandle.Create());
+            #endif
+            return nativeArray.AsReadOnly();
+        }
+    }
+
+    public ReadOnlySpan<T> AsReadOnlySpan<T>(int dstCount, int srcOffset = 0) where T : unmanaged
+    {
+        unsafe
+        {
+            #if ENABLE_UNITY_COLLECTIONS_CHECKS
+            AtomicSafetyHandle.CheckReadAndThrow(AtomicSafetyHandle.Create());
+            #endif
+
+            return new ReadOnlySpan<T>((byte*)RawPtr + srcOffset * sizeof(T), dstCount);
+        }
+    }
+
+    public T[] ToArray<T>(int dstCount, int srcOffset = 0) where T : unmanaged
+    {
+        var array = new T[dstCount];
+        Copy(this, srcOffset, array, 0, dstCount);
+        return array;
     }
 
     /// <summary>
@@ -286,17 +315,27 @@ public class NativeTensorArray : IDisposable
     /// <summary>
     /// Copies the data from a source `NativeTensorArray` to a destination `NativeTensorArray` up to a given length.
     /// </summary>
-    public static void Copy(NativeTensorArray sourceArray, NativeTensorArray destinationArray, int length = -1)
+    public static void Copy(NativeTensorArray sourceArray, NativeTensorArray destinationArray, int length = -1, int srcIndex = 0)
     {
-        Copy(sourceArray, 0, destinationArray, 0, length);
+        Copy(sourceArray, srcIndex, destinationArray, 0, length);
     }
 
     /// <summary>
     /// Copies the data from a source array to a destination `NativeTensorArray` up to a given length.
     /// </summary>
-    public static void Copy<T>(T[] sourceArray, NativeTensorArray destinationArray, int length = -1) where T : unmanaged
+    public static void Copy<T>(T[] sourceArray, NativeTensorArray destinationArray, int length = -1, int srcIndex = 0) where T : unmanaged
     {
-        Copy(sourceArray, 0, destinationArray, 0, length);
+        Copy(sourceArray, srcIndex, destinationArray, 0, length);
+    }
+
+    public static void Copy<T>(NativeArray<T> sourceArray, NativeTensorArray destinationArray, int length = -1, int srcIndex = 0) where T : unmanaged
+    {
+        Copy(sourceArray, srcIndex, destinationArray, 0, length);
+    }
+
+    public static void Copy<T>(NativeTensorArray sourceArray, T[] destinationArray, int length = -1, int srcIndex = 0) where T : unmanaged
+    {
+        Copy(sourceArray, srcIndex, destinationArray, 0, length);
     }
 
     /// <summary>
@@ -340,6 +379,81 @@ public class NativeTensorArray : IDisposable
             UnsafeUtility.MemCpy(dstPtr, srcPtr, length * itemSize);
         }
     }
+
+    public static unsafe void Copy<T>(NativeTensorArray sourceArray, int sourceIndex, NativeArray<T> destinationArray, int destinationIndex, int length) where T : unmanaged
+    {
+        if (length < 0)
+            length = sourceArray.Length;
+        if (length == 0)
+            return;
+        if (sourceIndex + length > sourceArray.Length)
+            throw new ArgumentException($"Cannot copy {length} element from sourceIndex {sourceIndex} and Sentis array of length {sourceArray.Length}.");
+        if (destinationIndex + length > destinationArray.Length)
+            throw new ArgumentException($"Cannot copy {length} element to sourceIndex {destinationIndex} and array of length {destinationArray.Length}.");
+
+        int itemSize = sourceArray.DataItemSize();
+        void* srcPtr = (byte*)sourceArray.RawPtr + sourceIndex * itemSize;
+        void* dstPtr = (byte*)destinationArray.GetUnsafeReadOnlyPtr<T>() + destinationIndex * itemSize;
+
+        UnsafeUtility.MemCpy(dstPtr, srcPtr, length * itemSize);
+    }
+
+    /// <summary>
+    /// Copies the data from a source array to a destination `NativeTensorArray` up to a given length starting from given indexes.
+    /// </summary>
+    public static unsafe void Copy<T>(T[] sourceArray, int sourceIndex, NativeTensorArray destinationArray, int destinationIndex, int length) where T : unmanaged
+    {
+        if (length < 0)
+            length = sourceArray.Length;
+        if (length == 0)
+            return;
+        if (sourceIndex + length > sourceArray.Length)
+            throw new ArgumentException($"Cannot copy {length} element from sourceIndex {sourceIndex} and Sentis array of length {sourceArray.Length}.");
+        if (destinationIndex + length > destinationArray.Length)
+            throw new ArgumentException($"Cannot copy {length} element to sourceIndex {destinationIndex} and Sentis array of length {destinationArray.Length}.");
+
+        fixed (void* srcPtr = &sourceArray[sourceIndex])
+        {
+            int itemSize = destinationArray.DataItemSize();
+            void* dstPtr = (byte*)destinationArray.RawPtr + destinationIndex * itemSize;
+            UnsafeUtility.MemCpy(dstPtr, srcPtr, length * itemSize);
+        }
+    }
+
+    public static unsafe void Copy<T>(NativeArray<T> sourceArray, int sourceIndex, NativeTensorArray destinationArray, int destinationIndex, int length) where T : unmanaged
+    {
+        if (length < 0)
+            length = sourceArray.Length;
+        if (length == 0)
+            return;
+        if (sourceIndex + length > sourceArray.Length)
+            throw new ArgumentException($"Cannot copy {length} element from sourceIndex {sourceIndex} and Sentis array of length {sourceArray.Length}.");
+        if (destinationIndex + length > destinationArray.Length)
+            throw new ArgumentException($"Cannot copy {length} element to sourceIndex {destinationIndex} and Sentis array of length {destinationArray.Length}.");
+
+        int itemSize = destinationArray.DataItemSize();
+        void* srcPtr = (byte*)sourceArray.GetUnsafeReadOnlyPtr<T>() + sourceIndex * itemSize;
+        void* dstPtr = (byte*)destinationArray.RawPtr + destinationIndex * itemSize;
+        UnsafeUtility.MemCpy(dstPtr, srcPtr, length * itemSize);
+    }
+
+    public static unsafe void Copy<T>(NativeArray<T>.ReadOnly sourceArray, int sourceIndex, NativeTensorArray destinationArray, int destinationIndex, int length) where T : unmanaged
+    {
+        if (length < 0)
+            length = sourceArray.Length;
+        if (length == 0)
+            return;
+        if (sourceIndex + length > sourceArray.Length)
+            throw new ArgumentException($"Cannot copy {length} element from sourceIndex {sourceIndex} and Sentis array of length {sourceArray.Length}.");
+        if (destinationIndex + length > destinationArray.Length)
+            throw new ArgumentException($"Cannot copy {length} element to sourceIndex {destinationIndex} and Sentis array of length {destinationArray.Length}.");
+
+        int itemSize = destinationArray.DataItemSize();
+        void* srcPtr = (byte*)sourceArray.GetUnsafeReadOnlyPtr<T>() + sourceIndex * itemSize;
+        void* dstPtr = (byte*)destinationArray.RawPtr + destinationIndex * itemSize;
+        UnsafeUtility.MemCpy(dstPtr, srcPtr, length * itemSize);
+    }
+
 
     /// <summary>
     /// Copies the data from a source `NativeTensorArray` to a destination byte array up to a given length starting from given offsets.
@@ -389,37 +503,6 @@ public class NativeTensorArray : IDisposable
             UnsafeUtility.MemCpy(dstPtr, srcPtr, lengthInBytes);
         }
     }
-
-    /// <summary>
-    /// Copies the data from a source array to a destination `NativeTensorArray` up to a given length starting from given indexes.
-    /// </summary>
-    public static unsafe void Copy<T>(T[] sourceArray, int sourceIndex, NativeTensorArray destinationArray, int destinationIndex, int length) where T : unmanaged
-    {
-        if (length < 0)
-            length = sourceArray.Length;
-        if (length == 0)
-            return;
-        if (sourceIndex + length > sourceArray.Length)
-            throw new ArgumentException($"Cannot copy {length} element from sourceIndex {sourceIndex} and Sentis array of length {sourceArray.Length}.");
-        if (destinationIndex + length > destinationArray.Length)
-            throw new ArgumentException($"Cannot copy {length} element to sourceIndex {destinationIndex} and Sentis array of length {destinationArray.Length}.");
-
-        fixed (void* srcPtr = &sourceArray[sourceIndex])
-        {
-            int itemSize = destinationArray.DataItemSize();
-            void* dstPtr = (byte*)destinationArray.RawPtr + destinationIndex * itemSize;
-            UnsafeUtility.MemCpy(dstPtr, srcPtr, length * itemSize);
-        }
-    }
 }
-
-static class NativeTensorArrayExtensionHelper
-{
-    public static void CopyToNativeTensorArray<T>(this T[] sourceArray, NativeTensorArray destinationArray, int destinationIndex) where T : unmanaged
-    {
-        NativeTensorArray.Copy(sourceArray, 0, destinationArray, destinationIndex, sourceArray.Length);
-    }
-}
-
 
 } // namespace Unity.Sentis

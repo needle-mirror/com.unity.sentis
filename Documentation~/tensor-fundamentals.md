@@ -29,7 +29,7 @@ A model usually needs an input tensor in a certain format. For example, a model 
 
 If your tensor doesn't match the format the model needs, you might get unexpected results. 
 
-You can use [IOps.Transpose](xref:Unity.Sentis.IOps.Transpose(Unity.Sentis.Tensor)) to convert a tensor to a different format. Refer to [Create and modify tensors](do-basic-tensor-operations.md) for more information.
+You can use [Ops.Transpose](xref:Unity.Sentis.Ops.Transpose(Unity.Sentis.Tensor)) to convert a tensor to a different format. Refer to [Create and modify tensors](do-basic-tensor-operations.md) for more information.
 
 Refer to [Create input for a model](create-an-input-tensor.md) for more information if you need to convert a texture to a tensor in a specific format.
 
@@ -39,11 +39,13 @@ Sentis stores tensor data in GPU memory or CPU memory.
 
 Sentis usually stores tensors in the memory that matches the [back end type](create-an-engine.md#back-end-types) you use. For example if you use the `BackendType.GPUCompute` back end type, Sentis usually stores tensors in GPU memory.
 
-You usually can't directly access the memory directly. If you read from or write to a tensor with an indexing method, for example you use `myTensor[0]`, Sentis has to download the tensor data from memory to a copy of the tensor (a cache) in CPU memory first. This usually blocks the main code thread, so it can cause performance issues.
+You can only read from and write to the elements of a tensor directly if the tensor is on the CPU, and it can be slow. It's faster if you use the optimized methods in the `Ops` API.
 
-To avoid Sentis downloading to the cache, you can use a compute shader, Burst or a native array to read from and write to the tensor data directly in memory instead. Refer to [Access tensor data directly](access-tensor-data-directly.md) for more information.
+If you need to read from and write to the elements of a tensor directly, use `Tensor.MakeReadable()`. Sentis performs a blocking readback of the tensor to the CPU. The next time you use this tensor in a model or operation on the GPU there will be an automatic blocking upload.   
 
-When you need to read an output tensor, you can also download to the cache asynchronously, so Sentis doesn't block the main code thread while it waits for the model to finish then downloads the whole tensor. Refer to [Read output from a model asynchronously](read-output-async.md) for more information.
+To avoid Sentis performing a blocking readback and upload, you can also use a compute shader, Burst or a native array to read from and write to the tensor data directly in memory. Refer to [Access tensor data directly](access-tensor-data-directly.md) for more information.
+
+When you need to read an output tensor, you can also do an asynchronous readback, so Sentis doesn't block the main code thread while it waits for the model to finish then downloads the whole tensor. Refer to [Read output from a model asynchronously](read-output-async.md) for more information.
 
 ## Additional resources
 

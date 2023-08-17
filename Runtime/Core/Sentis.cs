@@ -145,28 +145,26 @@ public interface IWorker : IDisposable
     ///
     /// The reference is valid only until you call `Execute()` or `Dispose()` on the worker.
     ///
-    /// If you want to dispose of the worker but keep the tensor, use `CopyOutput()` instead, or use `TakeOwnership()` on the output tensor.
+    /// If you want to dispose of the worker but keep the tensor, use `FinishExecutionAndDownloadOutput()` instead, or use `TakeOwnership()` on the output tensor.
     /// </summary>
-    /// <param name="prepareCacheForAccess">Schedules a non-blocking download from the GPU to the CPU.</param>
-    Tensor PeekOutput(bool prepareCacheForAccess = false);
+    Tensor PeekOutput();
 
     /// <summary>
     /// Returns a reference to an output tensor with a given `name`. This is non-blocking.
     ///
     /// The reference is valid only until you call `Execute()` or `Dispose()` on the worker.
     ///
-    /// If you want to dispose of the worker but keep the tensor, use `CopyOutput()` instead, or use `TakeOwnership()` on the output tensor.
+    /// If you want to dispose of the worker but keep the tensor, use `FinishExecutionAndDownloadOutput()` instead, or use `TakeOwnership()` on the output tensor.
     /// </summary>
     /// <param name="name">The name of the output tensor to peek.</param>
-    /// <param name="prepareCacheForAccess">Whether to schedule a non-blocking download to the CPU.</param>
-    Tensor PeekOutput(string name, bool prepareCacheForAccess = false);
+    Tensor PeekOutput(string name);
 
     /// <summary>
     /// Returns a summary of the execution of the model.
     /// </summary>
     string Summary();
 
-    IOps GetOps();
+    IBackend GetBackend();
 }
 
 /// <summary>
@@ -174,31 +172,13 @@ public interface IWorker : IDisposable
 /// </summary>
 public static class WorkerExtensions
 {
-    // @TODO: add optional targetDevice argument of type Device
     /// <summary>
     /// Returns a CPU copy of the first output tensor. This is a blocking method, so the rest of your code waits until the model fully executes.
     /// </summary>
-    public static Tensor CopyOutput(this IWorker worker)
+    public static Tensor FinishExecutionAndDownloadOutput(this IWorker worker, string name = null)
     {
-        // @TODO: implement as PeekOutput()+DeepCopy() instead of Unpin()+TakeOwnership()
-        var output = worker.PeekOutput();
-        output.DetachFromDevice(); // detach will readback to CPU and
-                                   // give allocator a chance to reuse allocated buffer
-        output.TakeOwnership();
-        return output;
-    }
-
-    // @TODO: add optional targetDevice argument of type Device
-    /// <summary>
-    /// Returns a CPU copy of a given output tensor `name`. This is a blocking method, so the rest of your code waits until the model fully executes.
-    /// </summary>
-    public static Tensor CopyOutput(this IWorker worker, string name)
-    {
-        // @TODO: implement as PeekOutput()+DeepCopy() instead of Unpin()+TakeOwnership()
-        var output = worker.PeekOutput(name);
-        output.DetachFromDevice(); // detach will readback to CPU and
-                                   // give allocator a chance to reuse allocated buffer
-        output.TakeOwnership();
+        var output = name == null ? worker.PeekOutput() : worker.PeekOutput(name);
+        output.MakeReadable();
         return output;
     }
 
@@ -210,9 +190,9 @@ public static class WorkerExtensions
     /// <param name="inputs">input Tensors</param>
     public static void ExecuteWorker(this CommandBuffer cb, IWorker worker, Dictionary<string, Tensor> inputs)
     {
-        var ops = worker.GetOps();
-        Assert.IsTrue(ops is GPUCommandBufferOps);
-        (ops as GPUCommandBufferOps).cb = cb;
+        var backend = worker.GetBackend();
+        Assert.IsTrue(backend is GPUCommandBufferBackend);
+        (backend as GPUCommandBufferBackend).cb = cb;
         worker.Execute(inputs);
     }
 
@@ -224,9 +204,9 @@ public static class WorkerExtensions
     /// <param name="input">Input Tensor</param>
     public static void ExecuteWorker(this CommandBuffer cb, IWorker worker, Tensor input)
     {
-        var ops = worker.GetOps();
-        Assert.IsTrue(ops is GPUCommandBufferOps);
-        (ops as GPUCommandBufferOps).cb = cb;
+        var backend = worker.GetBackend();
+        Assert.IsTrue(backend is GPUCommandBufferBackend);
+        (backend as GPUCommandBufferBackend).cb = cb;
         worker.Execute(input);
     }
 }
@@ -264,9 +244,9 @@ public class WorkerFactory
     }
 
     /// <summary>
-    /// Initializes and returns an instance of `IOps` on a given back end.
+    /// Initializes and returns an instance of `Ops` on a given back end.
     /// </summary>
-    public static IOps CreateOps(BackendType backendType, ITensorAllocator allocator)
+    public static Ops CreateOps(BackendType backendType, ITensorAllocator allocator)
     {
         return BackendFactory.CreateOps(backendType, allocator, false);
     }
@@ -325,41 +305,6 @@ public class WorkerFactory
             default:
                 return BackendType.CPU;
         }
-    }
-}
-
-/// <summary>
-/// Provides methods for suspending the execution of coroutines until the worker completes execution on a device,
-/// and Sentis downloads the contents of the specified tensor to the main CPU memory.
-///
-/// You usually shouldn't use `WaitForCompletion`, unless you access tensor contents on the CPU.
-///
-/// You can only use `WaitForCompletion` with a `yield` statement in coroutines.
-/// </summary>
-public class WaitForCompletion : CustomYieldInstruction
-{
-    private Tensor m_Tensor;
-
-    /// <summary>
-    /// Checks if the results of model execution are ready. Returns `true` when the results are ready.
-    /// </summary>
-    public override bool keepWaiting
-    {
-        get
-        {
-            bool cpuCacheIsReady = m_Tensor.PrepareCacheForAccess(blocking:false);
-            return !cpuCacheIsReady;
-        }
-    }
-
-    /// <summary>
-    /// Suspends the execution of coroutines until the worker completes execution on a device,
-    /// and Sentis downloads the contents of the specified tensor to the main CPU memory.
-    /// </summary>
-    /// <param name="tensor">`Tensor` that will be downloaded once worker execution is finished</param>
-    public WaitForCompletion(Tensor tensor)
-    {
-        m_Tensor = tensor;
     }
 }
 

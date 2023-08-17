@@ -23,6 +23,16 @@ float SignedPow(float f, float e)
     return v * s;
 }
 
+float4 SignedPow(float4 A, float4 B)
+{
+    float4 O;
+    O.x = SignedPow(A.x, B.x);
+    O.y = SignedPow(A.y, B.y);
+    O.z = SignedPow(A.z, B.z);
+    O.w = SignedPow(A.w, B.w);
+    return O;
+}
+
 // @TODO: move all code below into a separate and appropriately named file(s)
 //
 #define FLT_MAX asfloat(0x7F7FFFFF) //  3.402823466 E + 38

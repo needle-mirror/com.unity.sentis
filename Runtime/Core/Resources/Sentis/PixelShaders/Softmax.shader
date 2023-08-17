@@ -19,9 +19,9 @@ Shader "Hidden/Sentis/Softmax"
             #include "CommonVertexShader.cginc"
             #include "CommonPixelShader.cginc"
 
-            DECLARE_TENSOR(X);
-            DECLARE_TENSOR(S);
-            DECLARE_TENSOR(B);
+            DECLARE_TENSOR(X, float);
+            DECLARE_TENSOR(S, float);
+            DECLARE_TENSOR(B, float);
 
             uint StrideAxisX, DimAxisX;
 

@@ -6,6 +6,8 @@
 #pragma kernel GroupedConv2D_GroupLower64 GCONV_KERNEL_NAME=GroupedConv2D_GroupLower64 GCONV2D GROUP_LOWER_64
 #pragma kernel GroupedConv1D_GroupLower64 GCONV_KERNEL_NAME=GroupedConv1D_GroupLower64 GCONV1D GROUP_LOWER_64
 
+#pragma multi_compile _ USEBIAS
+
 #include "Tensor.cginc"
 
 StructuredBuffer<float> Xptr;
@@ -73,10 +75,17 @@ void GCONV_KERNEL_NAME(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 group
     uint4 readChannelsX = channelsX * strideX;
     #endif
 
+    #ifdef USEBIAS
     float4 dst0 = Bptr[x | 0];
     float4 dst1 = Bptr[x | 1];
     float4 dst2 = Bptr[x | 2];
     float4 dst3 = Bptr[x | 3];
+    #else
+    float4 dst0 = 0;
+    float4 dst1 = 0;
+    float4 dst2 = 0;
+    float4 dst3 = 0;
+    #endif
 
     uint weightOffsetK = 0;
     #if defined(GCONV3D)

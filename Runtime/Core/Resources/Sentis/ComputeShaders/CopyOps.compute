@@ -8,6 +8,7 @@
 #pragma kernel RangeInt
 #pragma kernel CastToFloat
 #pragma kernel CastToInt
+#pragma kernel Transpose2D
 
 #define TILE_DIM 32
 #define BLOCK_ROWS 8
@@ -62,7 +63,7 @@ void MemCopyStride(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThre
         Optr[o4.w] = Xptr[x4.w];
 }
 
-float memValue;
+float memValueFloat;
 uint O_width;
 
 [numthreads(TILE_DIM * BLOCK_ROWS, 1, 1)]
@@ -73,13 +74,13 @@ void MemSet(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : 
     uint4 o4 = x4 + offsetO;
 
     if (x4.x < count)
-        Optr[o4.x] = memValue;
+        Optr[o4.x] = memValueFloat;
     if (x4.y < count)
-        Optr[o4.y] = memValue;
+        Optr[o4.y] = memValueFloat;
     if (x4.z < count)
-        Optr[o4.z] = memValue;
+        Optr[o4.z] = memValueFloat;
     if (x4.w < count)
-        Optr[o4.w] = memValue;
+        Optr[o4.w] = memValueFloat;
 }
 
 uint lengthO;
@@ -214,4 +215,32 @@ void RangeInt(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID 
         OIntptr[x4.z] = v4.z;
     if (x4.w < O_length)
         OIntptr[x4.w] = v4.w;
+}
+
+
+#define BLOCK_DIM 16
+
+groupshared float LDS_BLOCK[BLOCK_DIM][BLOCK_DIM + 1];
+
+[numthreads(BLOCK_DIM, BLOCK_DIM, 1)]
+void Transpose2D(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint threadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
+{
+    uint x = groupID.x * BLOCK_DIM + groupThreadID.x;
+    uint y = groupID.y * BLOCK_DIM + groupThreadID.y;
+
+    #if defined(SHADER_API_MOBILE)
+    LDS_BLOCK[groupThreadID.y][groupThreadID.x] = (x < X_width && y < X_height) ? Xptr[min(y * X_width + x, X_height * X_width - 1)] : 0.0f;
+    #else
+    LDS_BLOCK[groupThreadID.y][groupThreadID.x] = (x < X_width && y < X_height) ? Xptr[y * X_width + x] : 0.0f;
+    #endif
+    
+    GroupMemoryBarrierWithGroupSync();
+    
+    x = groupID.y * BLOCK_DIM + groupThreadID.x;
+    y = groupID.x * BLOCK_DIM + groupThreadID.y;
+    
+    if (x < X_height && y < X_width)
+    {
+        Optr[y * X_height + x] = LDS_BLOCK[groupThreadID.x][groupThreadID.y];
+    }
 }

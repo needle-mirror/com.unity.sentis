@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine.Assertions;
 
@@ -38,7 +39,7 @@ public interface IDependableMemoryResource
 /// <summary>
 /// Represents Burst-specific internal data storage for a `Tensor`.
 /// </summary>
-public class BurstTensorData : ITensorData, IDependableMemoryResource, IConvertibleToComputeTensorData, IConvertibleToArrayTensorData
+public class BurstTensorData : ITensorData, IDependableMemoryResource, IConvertibleToComputeTensorData, IConvertibleToArrayTensorData, IReadableTensorData
 {
     JobHandle m_ReadFence;
     JobHandle m_WriteFence;
@@ -129,6 +130,12 @@ public class BurstTensorData : ITensorData, IDependableMemoryResource, IConverti
         Logger.AssertIsTrue(m_Offset + m_Count <= m_Array.Length, "BurstTensorData.ValueError: offset + count {0} is bigger than input buffer size {1}, copy will result in a out of bound memory access", m_Offset + m_Count, m_Array.Length);
     }
 
+    /// <inheritdoc/>
+    public ITensorData Clone()
+    {
+        return new BurstTensorData(m_Shape, m_Array, m_Offset);
+    }
+
     /// <summary>
     /// Finalizes the `BurstTensorData`.
     /// </summary>
@@ -144,11 +151,12 @@ public class BurstTensorData : ITensorData, IDependableMemoryResource, IConverti
     public void Dispose()
     {
         // It isn't safe to Complete jobs from a finalizer thread, so
-        if (Thread.CurrentThread == CPUOps.MainThread)
+        if (Thread.CurrentThread == CPUBackend.MainThread)
             CompleteAllPendingOperations();
     }
 
-    internal void CompleteAllPendingOperations()
+    /// <inheritdoc/>
+    public void CompleteAllPendingOperations()
     {
         fence.Complete();
         reuse.Complete();
@@ -177,7 +185,7 @@ public class BurstTensorData : ITensorData, IDependableMemoryResource, IConverti
     /// <summary>
     /// Uploads data to internal storage.
     /// </summary>
-    public void Upload<T>(T[] data, int srcCount, int srcOffset = 0) where T : unmanaged
+    public void Upload<T>(NativeArray<T> data, int srcCount, int srcOffset = 0) where T : unmanaged
     {
         CompleteAllPendingOperations();
 
@@ -193,7 +201,7 @@ public class BurstTensorData : ITensorData, IDependableMemoryResource, IConverti
     /// <summary>
     /// Returns data from internal storage.
     /// </summary>
-    public T[] Download<T>(int dstCount, int srcOffset = 0) where T : unmanaged
+    public NativeArray<T> Download<T>(int dstCount, int srcOffset = 0) where T : unmanaged
     {
         // Download() as optimization gives direct access to the internal buffer
         // thus need to prepare internal buffer for potential writes
@@ -202,24 +210,44 @@ public class BurstTensorData : ITensorData, IDependableMemoryResource, IConverti
         var downloadCount = dstCount;
         Logger.AssertIsTrue(m_Count >= downloadCount, "SharedArrayTensorData.Download.ValueError: cannot download {0} items from tensor of size {1}", downloadCount, m_Count);
 
-        var dest = new T[downloadCount];
+        var dest = new NativeArray<T>(downloadCount, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
         NativeTensorArray.Copy(m_Array, srcOffset + m_Offset, dest, 0, downloadCount);
         return dest;
     }
 
-    /// <summary>
-    /// Returns the backing data and outputs the offset.
-    /// </summary>
-    /// <param name="offset">The integer offset in the backing data.</param>
-    /// <returns>The internal `NativeTensorArray` backing data.</returns>
-    public NativeTensorArray SharedAccess(out int offset)
+    /// <inheritdoc/>
+    public T Get<T>(int index) where T : unmanaged
     {
-        // SharedAccess() by design gives direct access to the interna
-        // thus need to prepare internal buffer for potential writes
         CompleteAllPendingOperations();
+        return m_Array.Get<T>(m_Offset + index);
+    }
 
-        offset = m_Offset;
-        return m_Array;
+    /// <inheritdoc/>
+    public void Set<T>(int index, T value) where T : unmanaged
+    {
+        CompleteAllPendingOperations();
+        m_Array.Set<T>(m_Offset + index, value);
+    }
+
+    /// <inheritdoc/>
+    public ReadOnlySpan<T> ToReadOnlySpan<T>(int dstCount, int srcOffset = 0) where T : unmanaged
+    {
+        CompleteAllPendingOperations();
+        return m_Array.AsReadOnlySpan<T>(dstCount, m_Offset + srcOffset);
+    }
+
+    /// <inheritdoc/>
+    public NativeArray<T>.ReadOnly GetReadOnlyNativeArrayHandle<T>(int dstCount, int srcOffset = 0) where T : unmanaged
+    {
+        CompleteAllPendingOperations();
+        return m_Array.GetReadOnlyNativeArrayHandle<T>(dstCount, m_Offset + srcOffset);
+    }
+
+    /// <inheritdoc/>
+    public T[] ToArray<T>(int dstCount, int srcOffset = 0) where T : unmanaged
+    {
+        CompleteAllPendingOperations();
+        return m_Array.ToArray<T>(dstCount, m_Offset + srcOffset);
     }
 
     /// <inheritdoc/>
@@ -233,16 +261,20 @@ public class BurstTensorData : ITensorData, IDependableMemoryResource, IConverti
     public ArrayTensorData ConvertToArrayTensorData(TensorShape shape)
     {
         CompleteAllPendingOperations();
-        return new ArrayTensorData(shape, array, offset);
+        return new ArrayTensorData(shape, array, offset, clearOnInit: false);
     }
 
-    /// <summary>
-    /// Schedules asynchronous download of internal data.
-    /// </summary>
-    /// <returns>`true` if the download has finished.</returns>
-    public bool ScheduleAsyncDownload()
+    /// <inheritdoc/>
+    public bool IsAsyncReadbackRequestDone()
     {
         return fence.IsCompleted;
+    }
+
+    /// <inheritdoc/>
+    public void AsyncReadbackRequest(Action<bool> callback = null)
+    {
+        fence.Complete();
+        callback?.Invoke(true);
     }
 
     /// <summary>
@@ -257,26 +289,23 @@ public class BurstTensorData : ITensorData, IDependableMemoryResource, IConverti
     /// Moves a tensor into memory on the CPU backend device.
     /// </summary>
     /// <param name="X">The `Tensor` to move to the CPU.</param>
-    /// <param name="uploadCache">Whether to also move the existing tensor data to the CPU. The default value is `true`.</param>
-    public static BurstTensorData Pin(Tensor X, bool uploadCache = true)
+    /// <param name="clearOnInit">Whether to initialize the backend data. The default value is `true`.</param>
+    public static BurstTensorData Pin(Tensor X, bool clearOnInit = true)
     {
-        X.FlushCache(uploadCache);
-
         var onDevice = X.tensorOnDevice;
+        if (onDevice == null)
+        {
+            X.AttachToDevice(new BurstTensorData(X.shape, clearOnInit));
+            return X.tensorOnDevice as BurstTensorData;
+        }
+
         if (onDevice is BurstTensorData)
             return onDevice as BurstTensorData;
 
         if (onDevice is IConvertibleToBurstTensorData asConvertible)
-        {
             X.AttachToDevice(asConvertible.ConvertToBurstTensorData(X.shape));
-        }
         else
-        {
-            if (uploadCache)
-                X.UploadToDevice(new BurstTensorData(X.shape)); // device is not compatible, create new array and upload
-            else
-                X.AllocateOnDevice(new BurstTensorData(X.shape, false)); // device is not compatible, create new array but do not upload nor 0-fill
-        }
+            X.UploadToDevice(new BurstTensorData(X.shape, clearOnInit: false)); // device is not compatible, create new array and upload
 
         return X.tensorOnDevice as BurstTensorData;
     }

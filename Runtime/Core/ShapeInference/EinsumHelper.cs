@@ -502,7 +502,7 @@ namespace Unity.Sentis
                 }
 
                 // calculate the output indices and shape
-                var outputDims = new SymbolicTensorDim[outputRank];
+                var outputDims = SymbolicTensorShape.UnknownOfRank(outputRank);
                 outputIndices = TensorIndex.Zeros(outputRank);
 
                 for (var i = 0; i < outputRank; i++)
@@ -511,7 +511,7 @@ namespace Unity.Sentis
                     outputDims[i] = indexSize[outputIndicesArray[i]];
                 }
 
-                return new SymbolicTensorShape(outputDims);
+                return outputDims;
             }
         }
     }

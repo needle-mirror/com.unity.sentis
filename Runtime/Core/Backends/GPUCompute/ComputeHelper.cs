@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.CompilerServices;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
@@ -102,6 +103,16 @@ static class ComputeHelper
         fn.shader.SetBool(nameID, data);
     }
 
+    public static void EnableKeyword(this ComputeFunc fn, string keyword)
+    {
+        fn.shader.EnableKeyword(keyword);
+    }
+
+    public static void DisableKeyword(this ComputeFunc fn, string keyword)
+    {
+        fn.shader.DisableKeyword(keyword);
+    }
+
     public static unsafe void SetTensorShapeStrides(this ComputeFunc fn, int shapeNameID, int strideNameID, TensorShape shape)
     {
         int* pShape = stackalloc int[TensorShape.maxRank];
@@ -112,13 +123,24 @@ static class ComputeHelper
         fn.SetInt8(strideNameID, pStrides);
     }
 
+    // for setting uint4 and int4 values, no padding required
+    static readonly int[] s_scratchPadInt4 = new int[4];
+
+    public static void SetInt4(this ComputeFunc fn, int nameID, Span<int> ptr)
+    {
+        for (int i = 0; i < ptr.Length && i < 4; i++)
+            s_scratchPadInt4[i] = ptr[i];
+
+        fn.shader.SetInts(nameID, s_scratchPadInt4);
+    }
+
     //See https://docs.unity3d.com/2020.2/Documentation/ScriptReference/ComputeShader.SetInts.html
     //SetInts API need CPU side to be padded
     static readonly int[] s_scratchPadInt16 = new int[16*4];
     static readonly int[] s_scratchPadInt8 = new int[8*4];
     static readonly int[] s_scratchPadInt6 = new int[6*4];
 
-    public static void SetInt16(this ComputeFunc fn, int nameID, int[] ptr)
+    public static void SetInt16(this ComputeFunc fn, int nameID, ReadOnlySpan<int> ptr)
     {
         Logger.AssertIsTrue(ptr.Length <= 16, "cannot pin array > 16, got {0}", ptr.Length);
         for (int i = 0; i < ptr.Length; i++)

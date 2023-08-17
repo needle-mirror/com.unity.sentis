@@ -15,7 +15,7 @@ using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Mathematics;
 
 namespace Unity.Sentis {
-public partial class CPUOps
+public partial class CPUBackend
 {
 
 

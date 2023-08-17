@@ -2,6 +2,8 @@
 
 To import an ONNX model file, drag the file from your computer into the **Assets** folder of the Project window.
 
+## Supported models
+
 You can import most ONNX model files with an [opset version](https://github.com/onnx/onnx/blob/main/docs/Versioning.md#released-versions) between 7 and 15. Versions below 7 or above 15 might still import into Sentis, but you might get unexpected results. 
 
 Sentis doesn't support the following:
@@ -20,11 +22,12 @@ When you import a model file, Sentis optimizes the model. Refer to [Understand m
 To use an imported model, you must use `ModelLoader.Load` to create a runtime `Model` object.
 
 ```
-public ModelAsset modelAsset;
-private Model runtimeModel;
 
 public class CreateRuntimeModel : MonoBehaviour {
-    
+
+    public ModelAsset modelAsset;
+    private Model runtimeModel;
+
     void Start()
     {   
         runtimeModel = ModelLoader.Load(modelAsset);
@@ -37,7 +40,7 @@ You can then [create an engine to run a model](create-an-engine.md).
 
 ## Import errors
 
-If the [Model Asset Import Settings](onnx-model-importer-properties.md) window displays a warning that your model contains unsupported operators, you can add a custom layer to implement the missing operator. Refer to the `CustomLayer` example in the [sample scripts](package-samples.md) for a working example.
+If the [Model Asset Import Settings](onnx-model-importer-properties.md) window displays a warning that your model contains unsupported operators, you can add a custom layer to implement the missing operator. Refer to the `CustomLayer` example in the [sample scripts](package-samples.md) for an example.
 
 ## Additional resources
 

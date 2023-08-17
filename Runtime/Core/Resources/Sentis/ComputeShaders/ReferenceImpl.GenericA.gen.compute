@@ -1,7 +1,6 @@
 // This is auto-generated -- do not modify directly
 
 #pragma kernel Transpose TRANSPOSE
-#pragma kernel ScaleBias SCALEBIAS
 #pragma kernel InstanceNormalizationTail INSTANCENORMALIZATIONTAIL
 #include "Tensor.cginc"
 
@@ -11,7 +10,6 @@ int permutations[8];
 uint2 unrolledDispatchArgs;
 float epsilon;
 int rank;
-int batch;
 int channels;
 int spatialDims;
 StructuredBuffer<float> Xptr;
@@ -40,30 +38,6 @@ void Transpose(uint3 dispatchThreadID : SV_DispatchThreadID)
         }
 
         Optr[idx] = Xptr[threadIdx];
-    }
-}
-#endif
-
-
-#ifdef SCALEBIAS
-[numthreads(64, 1, 1)]
-void ScaleBias(uint3 dispatchThreadID : SV_DispatchThreadID)
-{
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
-    {
-        for (int j = 0; j < batch; j++)
-        for (int k = 0; k < spatialDims; k++)
-        {
-            float v = Xptr[j * spatialDims * channels + threadIdx * spatialDims + k];
-            float beta = Bptr[threadIdx];
-            float gamma = Sptr[threadIdx];
-
-            v = v * gamma + beta;
-
-            Optr[j * spatialDims * channels + threadIdx * spatialDims + k] = v;
-        }
     }
 }
 #endif

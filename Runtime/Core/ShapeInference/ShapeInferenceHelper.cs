@@ -1,16 +1,24 @@
 using System;
+using Unity.Sentis.Layers;
 using UnityEngine;
 
 namespace Unity.Sentis
 {
     static class ShapeInference
     {
-        public static TensorShape MatMul2D(TensorShape X, bool transposeX, TensorShape Y, bool transposeY)
+        /// <summary>
+        /// Calculates the output shape of a generalized 2D matrix multiplication operation with optional transposes.
+        /// This does not support numpy-style broadcasting of shapes, however this method accepts tensor shapes with leading 1s before the final two dimensions.
+        /// </summary>
+        public static TensorShape Gemm(TensorShape X, TensorShape Y, bool transposeX, bool transposeY)
         {
-            Logger.AssertAreEqual(2, X.rank, "MatMul2D.RankError: incorrect rank for input, expecting 2, got {0}", X.rank);
-            Logger.AssertAreEqual(2, Y.rank, "MatMul2D.RankError: incorrect rank for input, expecting 2, got {0}", Y.rank);
+            Logger.AssertAreEqual(1, X.Length(0, -2), "Gemm.ShapeError: incorrect shape for X, must be rank 2 or have leading dimensions of 1");
+            Logger.AssertAreEqual(1, Y.Length(0, -2), "Gemm.ShapeError: incorrect shape for Y, must be rank 2 or have leading dimensions of 1");
 
-            return new TensorShape(transposeX ? X[1] : X[0], transposeY ? Y[0] : Y[1]);
+            var shape = TensorShape.Ones(Mathf.Max(X.rank, Y.rank));
+            shape[-2] = transposeX ? X[-1] : X[-2];
+            shape[-1] = transposeY ? Y[-2] : Y[-1];
+            return shape;
         }
 
         /// <summary>
@@ -97,21 +105,21 @@ namespace Unity.Sentis
         /// updates pad values so that output_shape[i] = ceil(input_shape[i] / strides[i])
         /// N.B: pad int[] needs to be previously allocated with 2*#of spatial dimensions
         /// </summary>
-        public static void UpdatePadForConvAutoPadding(TensorShape shape, TensorShape kernel, int[] stride, int[] dilation, Layers.AutoPad autopad, int[] pad)
+        public static void UpdatePadForConvAutoPadding(TensorShape shape, TensorShape kernel, Span<int> strides, Span<int> dilations, AutoPad autopad, Span<int> pads)
         {
             if (autopad == Layers.AutoPad.NotSet)
                 return;
 
-            int featureCount = stride.Length;
-            Logger.AssertAreEqual(2 * featureCount, pad.Length, "ComputeConvAutoPadding.LengthError: incorrect length for pad, expecting {0}, got {1}", 2 * featureCount, pad.Length);
-            Logger.AssertAreEqual(featureCount, dilation.Length, "ComputeConvAutoPadding.LengthError: incorrect length for dilation, expecting {0}, got {1}", featureCount, dilation.Length);
+            int featureCount = strides.Length;
+            Logger.AssertAreEqual(2 * featureCount, pads.Length, "ComputeConvAutoPadding.LengthError: incorrect length for pad, expecting {0}, got {1}", 2 * featureCount, pads.Length);
+            Logger.AssertAreEqual(featureCount, dilations.Length, "ComputeConvAutoPadding.LengthError: incorrect length for dilation, expecting {0}, got {1}", featureCount, dilations.Length);
 
             for (var i = 0; i < featureCount; ++i)
             {
                 if (autopad == Layers.AutoPad.Valid)
                 {
-                    pad[i] = 0;
-                    pad[i + featureCount] = 0;
+                    pads[i] = 0;
+                    pads[i + featureCount] = 0;
                     continue;
                 }
 
@@ -119,52 +127,49 @@ namespace Unity.Sentis
                 //        https://github.com/onnx/onnx/blob/master/docs/Operators.md
                 // and TensorFlow docs:
                 //         https://www.tensorflow.org/api_guides/python/nn#Notes_on_SAME_Convolution_Padding
-                int outputDim = (shape[2 + i] - 1) / stride[i] + 1;
-                int padAlongFeature = outputDim * stride[i] + (dilation[i] * (kernel[2 + i] - 1) + 1) - (shape[2 + i] + 1);
+                int outputDim = (shape[2 + i] - 1) / strides[i] + 1;
+                int padAlongFeature = outputDim * strides[i] + (dilations[i] * (kernel[2 + i] - 1) + 1) - (shape[2 + i] + 1);
 
                 var featureSmall = padAlongFeature / 2;
                 var featureLarge = padAlongFeature - featureSmall;
 
                 if (autopad == Layers.AutoPad.SameUpper)
                 {
-                    pad[i] = featureSmall;
-                    pad[i + featureCount] = featureLarge;
+                    pads[i] = featureSmall;
+                    pads[i + featureCount] = featureLarge;
                 }
                 else
                 {
-                    pad[i] = featureLarge;
-                    pad[i + featureCount] = featureSmall;
+                    pads[i] = featureLarge;
+                    pads[i + featureCount] = featureSmall;
                 }
             }
         }
 
-        public static TensorShape ApplyConvKernel(TensorShape shape, TensorShape kernel, int[] stride, int[] pad, int[] dilation)
+        static TensorShape ApplyConvKernel(TensorShape shape, TensorShape kernel, Span<int> strides, Span<int> pads, Span<int> dilations)
         {
-            int featureCount = stride.Length;
-            Logger.AssertIsTrue(stride.Length != 0, "ApplyConvKernel.LengthError: stride should not be an empty array");
-            Logger.AssertAreEqual(pad.Length, stride.Length * 2, "ApplyConvKernel.LengthError incorrect length match between strides: {0} and pad: {1}", stride.Length, pad.Length);
-            Logger.AssertAreEqual((shape.rank - 2), featureCount, "ApplyConvKernel.LengthError incorrect length match between strides: {0} and shape: {1}", stride.Length, shape.rank);
-
+            var featureCount = shape.rank - 2;
             var newShape = new TensorShape(shape);
             for (var i = 0; i < featureCount; ++i)
             {
-                newShape[2 + i] = (shape[2 + i] + (pad[i] + pad[i + featureCount]) - dilation[i] * (kernel[2 + i] - 1) - 1) / stride[i] + 1;
+                newShape[2 + i] = (shape[2 + i] + (pads[i] + pads[i + featureCount]) - dilations[i] * (kernel[2 + i] - 1) - 1) / strides[i] + 1;
             }
             newShape[1] = kernel[0];
 
             return newShape;
         }
 
-        public static TensorShape Conv(TensorShape shape, TensorShape kernel, TensorShape bias, int groups, int[] stride, int[] pad, int[] dilation)
+        public static TensorShape Conv(TensorShape shape, TensorShape kernel, int groups, Span<int> stride, Span<int> pad, Span<int> dilation)
         {
             Logger.AssertIsTrue(shape.rank >= 3, "Conv.RankError: incorrect rank for input, expecting >= 3, got {0}", shape.rank);
             Logger.AssertIsTrue(kernel.rank >= 3, "Conv.RankError: incorrect rank for kernel, expecting >= 3, got {0}", kernel.rank);
-            Logger.AssertAreEqual(1, bias.rank, "Conv.RankError: incorrect rank for bias, expecting 1, got {0}", bias.rank);
-            Logger.AssertAreEqual(bias[0], kernel[0], "Conv.ValueError: incorrect shape match between kernel: {0}, and bias {1}", kernel, bias);
 
-            Logger.AssertAreEqual(shape.rank - 2, stride.Length, "Conv.LengthError: incorrect length for stride, expecting rank-2, got {0}", stride.Length);
-            Logger.AssertAreEqual((shape.rank - 2) * 2, pad.Length, "Conv.LengthError: incorrect length for pad, expecting (rank-2)*2, got {0}", pad.Length);
-            Logger.AssertAreEqual(shape.rank - 2, dilation.Length, "Conv.LengthError: incorrect length for dilation, expecting rank-2, got {0}", dilation.Length);
+            if (stride != null)
+                Logger.AssertAreEqual(shape.rank - 2, stride.Length, "Conv.LengthError: incorrect length for stride, expecting rank-2, got {0}", stride.Length);
+            if (pad != null)
+                Logger.AssertAreEqual((shape.rank - 2) * 2, pad.Length, "Conv.LengthError: incorrect length for pad, expecting (rank-2)*2, got {0}", pad.Length);
+            if (dilation != null)
+                Logger.AssertAreEqual(shape.rank - 2, dilation.Length, "Conv.LengthError: incorrect length for dilation, expecting rank-2, got {0}", dilation.Length);
 
             Logger.AssertIsTrue(shape[1] % groups == 0, "Conv.ValueError: input channels {0} must be divisible by group count {1}", shape[1], groups);
             Logger.AssertIsTrue(kernel[0] % groups == 0, "Conv.ValueError: output features {0} must be divisible by group count {1}", kernel[0], groups);
@@ -185,7 +190,7 @@ namespace Unity.Sentis
         /// updates pad values so that output_shape[i] = input_shape[i] * strides[i]
         /// N.B: pad int[] needs to be previously allocated with 2*#of spatial dimensions
         /// </summary>
-        public static void UpdatePadForConvTransAutoPadding(TensorShape shape, TensorShape kernel, int[] stride, Layers.AutoPad autopad, int[] outputPadding, int[] pad)
+        public static void UpdatePadForConvTransAutoPadding(TensorShape shape, TensorShape kernel, Span<int> stride, AutoPad autopad, Span<int> outputPadding, Span<int> pad)
         {
             if (autopad == Layers.AutoPad.NotSet)
                 return;
@@ -223,7 +228,7 @@ namespace Unity.Sentis
             }
         }
 
-        public static TensorShape ApplyKernelInverse(TensorShape shape, TensorShape kernel, int[] stride, int[] pad, int[] outputAdjustment)
+        public static TensorShape ApplyKernelInverse(TensorShape shape, TensorShape kernel, Span<int> stride, Span<int> pad, Span<int> outputAdjustment)
         {
             Logger.AssertIsTrue(stride.Length != 0, "ApplyKernelInverse.LengthError: stride should not be an empty array");
             Logger.AssertAreEqual(pad.Length, stride.Length * 2, "ApplyKernelInverse.LengthError incorrect length match between strides: {0} and pad: {1}", stride.Length, pad.Length);
@@ -252,18 +257,15 @@ namespace Unity.Sentis
             return newShape;
         }
 
-        public static TensorShape ConvTranspose(TensorShape shape, TensorShape kernel, TensorShape bias, int[] stride, int[] pad, int[] outputAdjustment)
+        public static TensorShape ConvTranspose(TensorShape shapeX, TensorShape shapeW, Span<int> strides, Span<int> pads, Span<int> outputPadding)
         {
-            Logger.AssertAreEqual(4, shape.rank, "ConvTranspose.RankError: incorrect rank for input, expecting 4, got {0}", shape.rank);
-            Logger.AssertAreEqual(4, kernel.rank, "ConvTranspose.RankError: incorrect rank for kernel, expecting 4, got {0}", kernel.rank);
-            Logger.AssertAreEqual(1, bias.rank, "ConvTranspose.RankError: incorrect rank for bias, expecting 1, got {0}", bias.rank);
-            Logger.AssertAreEqual(shape[1], kernel[0], "ConvTranspose.ValueError: incorrect shape match between kernel: {0} and input: {1}", kernel, shape);
-            Logger.AssertAreEqual(bias[0], kernel[1], "ConvTranspose.ValueError: incorrect shape match between kernel: {0}, and bias {1}", kernel, bias);
+            Logger.AssertIsTrue(shapeX.rank >= 3, "ConvTranspose.RankError: incorrect rank for input, expecting >= 3, got {0}", shapeX.rank);
+            Logger.AssertIsTrue(shapeW.rank >= 3, "ConvTranspose.RankError: incorrect rank for kernel, expecting >= 3, got {0}", shapeW.rank);
 
-            Logger.AssertAreEqual(2, stride.Length, "ConvTranspose.LengthError: incorrect length for stride, expecting 2, got {0}", stride.Length);
-            Logger.AssertAreEqual(2 * 2, pad.Length, "ConvTranspose.LengthError: incorrect length for pad, expecting 4, got {0}", pad.Length);
+            Logger.AssertAreEqual(shapeX.rank - 2, strides.Length, "ConvTranspose.LengthError: incorrect length for stride, expecting rank-2, got {0}", strides.Length);
+            Logger.AssertAreEqual((shapeX.rank - 2) * 2, pads.Length, "ConvTranspose.LengthError: incorrect length for pad, expecting (rank-2)*2, got {0}", pads.Length);
 
-            return ApplyKernelInverse(shape, kernel, stride, pad, outputAdjustment);
+            return ApplyKernelInverse(shapeX, shapeW, strides, pads, outputPadding);
         }
 
         public static TensorShape Dense(TensorShape X, TensorShape W, TensorShape B)
@@ -312,7 +314,7 @@ namespace Unity.Sentis
             return output;
         }
 
-        public static TensorShape Resize(TensorShape shape, float[] scale)
+        public static TensorShape Resize(TensorShape shape, ReadOnlySpan<float> scale)
         {
             Logger.AssertIsTrue(!shape.HasZeroDims(), "Resize.InputError: zero dimensions are not supported");
 

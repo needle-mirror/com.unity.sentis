@@ -1,5 +1,9 @@
 fileFormatVersion: 2
+<<<<<<<< HEAD:com.unity.sentis/Samples~/Projects/ModelExecution/MultipleInputMultipleOuput.onnx.meta
+guid: b5ffae9035e935e4f96d689a8dadbd44
+========
 guid: 91ef5899d4c543447b002ca01892f017
+>>>>>>>> dev:com.unity.sentis/Samples~/Projects/CustomLayer/binarizer_single_layer.onnx.meta
 ScriptedImporter:
   internalIDToNameTable: []
   externalObjects: {}

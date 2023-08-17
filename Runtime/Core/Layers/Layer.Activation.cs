@@ -14,9 +14,10 @@ namespace Unity.Sentis.Layers
             this.inputs = new[] { input };
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return inputShapes[0];
+            return new PartialTensor(inputTensors[0].dataType, inputTensors[0].shape);
         }
     }
 
@@ -46,7 +47,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Celu(inputTensors[0] as TensorFloat, alpha);
+            return ctx.backend.Celu(inputTensors[0] as TensorFloat, alpha);
         }
 
         /// <inheritdoc/>
@@ -84,7 +85,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Elu(inputTensors[0] as TensorFloat, alpha);
+            return ctx.backend.Elu(inputTensors[0] as TensorFloat, alpha);
         }
 
         /// <inheritdoc/>
@@ -113,7 +114,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Gelu(inputTensors[0] as TensorFloat);
+            return ctx.backend.Gelu(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Gelu";
@@ -136,7 +137,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Erf(inputTensors[0] as TensorFloat);
+            return ctx.backend.Erf(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Erf";
@@ -168,7 +169,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Hardmax(inputTensors[0] as TensorFloat, axis);
+            return ctx.backend.Hardmax(inputTensors[0] as TensorFloat, axis);
         }
 
         /// <inheritdoc/>
@@ -212,7 +213,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.HardSigmoid(inputTensors[0] as TensorFloat, alpha, beta);
+            return ctx.backend.HardSigmoid(inputTensors[0] as TensorFloat, alpha, beta);
         }
 
         /// <inheritdoc/>
@@ -241,7 +242,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.HardSwish(inputTensors[0] as TensorFloat);
+            return ctx.backend.HardSwish(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "HardSwish";
@@ -273,7 +274,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.LeakyRelu(inputTensors[0] as TensorFloat, alpha);
+            return ctx.backend.LeakyRelu(inputTensors[0] as TensorFloat, alpha);
         }
 
         /// <inheritdoc/>
@@ -307,15 +308,34 @@ namespace Unity.Sentis.Layers
         }
 
         /// <inheritdoc/>
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return SymbolicInference.PRelu(inputShapes[0], inputShapes[1]);
+            var shapeX = inputTensors[0].shape;
+            var shapeSlope = inputTensors[1].shape;
+            if (!shapeX.hasRank)
+                return new PartialTensor(DataType.Float);
+
+            if (!shapeSlope.hasRank)
+                return new PartialTensor(DataType.Float, shapeX);
+
+            Logger.AssertIsTrue(shapeSlope.rank <= shapeX.rank, "PRelu.InputError: slope shape must be unidirectional broadcastable to input");
+            var numInitialDims = shapeX.rank - shapeSlope.rank;
+            var shapeOut = new SymbolicTensorShape(shapeX);
+
+            for (var i = 0; i < shapeSlope.rank; i++)
+            {
+                if (shapeSlope[i] == 1)
+                    continue;
+                shapeOut[numInitialDims + i] = SymbolicTensorDim.MaxDefinedDim(shapeOut[numInitialDims + i], shapeSlope[i]);
+            }
+
+            return new PartialTensor(DataType.Float, shapeOut);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.PRelu(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+            return ctx.backend.PRelu(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
         }
 
         internal override string profilerTag => "PRelu";
@@ -338,7 +358,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Relu(inputTensors[0] as TensorFloat);
+            return ctx.backend.Relu(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Relu";
@@ -361,7 +381,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Relu6(inputTensors[0] as TensorFloat);
+            return ctx.backend.Relu6(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Relu6";
@@ -399,7 +419,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Selu(inputTensors[0] as TensorFloat, alpha, gamma);
+            return ctx.backend.Selu(inputTensors[0] as TensorFloat, alpha, gamma);
         }
 
         /// <inheritdoc/>
@@ -428,7 +448,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Sigmoid(inputTensors[0] as TensorFloat);
+            return ctx.backend.Sigmoid(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Sigmoid";
@@ -451,7 +471,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Softplus(inputTensors[0] as TensorFloat);
+            return ctx.backend.Softplus(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Softplus";
@@ -474,7 +494,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Softsign(inputTensors[0] as TensorFloat);
+            return ctx.backend.Softsign(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Softsign";
@@ -497,7 +517,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Swish(inputTensors[0] as TensorFloat);
+            return ctx.backend.Swish(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Swish";
@@ -520,7 +540,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.Tanh(inputTensors[0] as TensorFloat);
+            return ctx.backend.Tanh(inputTensors[0] as TensorFloat);
         }
 
         internal override string profilerTag => "Tanh";
@@ -552,7 +572,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.ops.ThresholdedRelu(inputTensors[0] as TensorFloat, alpha);
+            return ctx.backend.ThresholdedRelu(inputTensors[0] as TensorFloat, alpha);
         }
 
         /// <inheritdoc/>

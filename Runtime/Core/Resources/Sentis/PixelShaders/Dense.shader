@@ -20,10 +20,11 @@ Shader "Hidden/Sentis/Dense"
             #include "CommonVertexShader.cginc"
             #include "CommonPixelShader.cginc"
 
-            DECLARE_TENSOR(X);
-            DECLARE_TENSOR(W);
-            DECLARE_TENSOR(B);
+            DECLARE_TENSOR(X, float);
+            DECLARE_TENSOR(W, float);
+            DECLARE_TENSOR(B, float);
 
+            uint DimAxisX;
             uint DimBlockedO, DimBlockedX, DimBlockedW;
 
             float4 ApplyFusedActivation(float4 v)
@@ -49,9 +50,10 @@ Shader "Hidden/Sentis/Dense"
 
                 for (uint cDiv4 = 0; cDiv4 < DimBlockedX; cDiv4++)
                 {
-                    float4 v = SampleBlockX(cDiv4 + xOffset);
-
                     uint4 c4 = UnblockAxis(cDiv4);
+                    float4 mask = c4 < DimAxisX ? 1 : 0;
+                    float4 v = mask * SampleBlockX(cDiv4 + xOffset);
+
                     uint4 kIndex = kDiv4 + DimBlockedW * c4;
                     float4 w0 = SampleBlockW(kIndex.x);
                     float4 w1 = SampleBlockW(kIndex.y);

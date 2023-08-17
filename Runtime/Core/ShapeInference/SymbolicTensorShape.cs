@@ -2,7 +2,6 @@ using System;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Assertions;
-using Object = System.Object;
 
 namespace Unity.Sentis
 {
@@ -105,7 +104,7 @@ namespace Unity.Sentis
 
             var length = SymbolicTensorDim.One;
 
-            for (var i = 0; i < rank && length != SymbolicTensorDim.Unknown && length != SymbolicTensorDim.Zero; i++)
+            for (var i = 0; i < rank && !(length == 0); i++)
                 length *= this[i];
 
             return length;
@@ -287,6 +286,18 @@ namespace Unity.Sentis
             m_Rank = 1;
         }
 
+        public SymbolicTensorShape(int d0)
+            : this(new SymbolicTensorDim(d0)) { }
+
+        public SymbolicTensorShape(int d0, int d1)
+            : this(new SymbolicTensorDim(d0), new SymbolicTensorDim(d1)) { }
+
+        public SymbolicTensorShape(int d0, int d1, int d2)
+            : this(new SymbolicTensorDim(d0), new SymbolicTensorDim(d1), new SymbolicTensorDim(d2)) { }
+
+        public SymbolicTensorShape(int d0, int d1, int d2, int d3)
+            : this(new SymbolicTensorDim(d0), new SymbolicTensorDim(d1), new SymbolicTensorDim(d2), new SymbolicTensorDim(d3)) { }
+
         /// <summary>
         /// Initializes and returns an instance of `SymbolicTensorShape` of unknown rank.
         /// </summary>
@@ -297,40 +308,6 @@ namespace Unity.Sentis
                 var shape = new SymbolicTensorShape();
                 shape.m_IsRankUnknown = true;
                 return shape;
-            }
-        }
-
-        /// <summary>
-        /// Initializes and returns an instance of `SymbolicTensorShape` with a given shape, and no unknown or dynamic dimensions. For example: `SymbolicTensorShape(new [] {3, 4, 5, 6})` returns a symbolic tensor shape of (3, 4, 5, 6).
-        /// </summary>
-        public SymbolicTensorShape(int[] shape)
-            : this()
-        {
-            Logger.AssertIsTrue(shape.Length <= TensorShape.maxRank, "ValueError: SymbolicTensorShape are capped to rank=8, cannot create SymbolicTensorShape of rank {0}", shape.Length);
-
-            m_IsRankUnknown = false;
-            m_Rank = shape.Length;
-
-            for (var i = 0; i < shape.Length; i++)
-            {
-                this[i] = new SymbolicTensorDim(shape[i]);
-            }
-        }
-
-        /// <summary>
-        /// Initializes and returns an instance of `SymbolicTensorShape` with a given shape, including unknown or dynamic dimensions. For example: `SymbolicTensorShape(new [] { new SymbolicTensorDim(3), new SymbolicTensorDim('A'), SymbolicTensorDim.Unknown } )` returns a symbolic tensor shape of (3, 'A', ?).
-        /// </summary>
-        public SymbolicTensorShape(SymbolicTensorDim[] shape)
-            : this()
-        {
-            Logger.AssertIsTrue(shape.Length <= TensorShape.maxRank, "ValueError: SymbolicTensorShape are capped to rank=8, cannot create SymbolicTensorShape of rank {0}", shape.Length);
-
-            m_IsRankUnknown = false;
-            m_Rank = shape.Length;
-
-            for (var i = 0; i < shape.Length; i++)
-            {
-                this[i] = shape[i];
             }
         }
 
@@ -406,6 +383,12 @@ namespace Unity.Sentis
 
             m_IsRankUnknown = false;
             m_Rank = newRank;
+        }
+
+        internal void DeclareRank(SymbolicTensorDim dim)
+        {
+            if (dim.isValue)
+                DeclareRank(dim.value);
         }
 
         /// <summary>
@@ -523,25 +506,25 @@ namespace Unity.Sentis
         /// <summary>
         /// Removes axes if their length is 1. For example, if `SymbolicTensorShape` is (5, 1, 3, 1) and `axes` is {1, -1}, the method returns (5, 3).
         /// </summary>
-        internal SymbolicTensorShape Squeeze(int[] axes)
+        internal SymbolicTensorShape Squeeze(PartialTensor axes)
         {
-            if (axes == null || axes.Length == 0)
+            if (axes == null)
                 return Squeeze();
 
-            if (!hasRank)
+            if (!axes.IsFullyKnown() || !hasRank)
                 return UnknownShape;
 
             uint axesBitMask = 0;
-            for (var i = 0; i < axes.Length; i++)
+            for (var i = 0; i < axes.length; i++)
             {
-                var axis = Axis(axes[i]);
+                var axis = Axis(axes[i].intValue);
                 Logger.AssertIsTrue(((axesBitMask >> axis) & 1U) == 0, "ValueError: can't squeeze on same axis multiple times");
                 axesBitMask |= 1U << axis;
                 var dim = this[axis];
                 Logger.AssertIsTrue(!dim.isValue || dim == SymbolicTensorDim.One, "ValueError: cannot squeeze axis with value != 1");
             }
 
-            var shapeOut = UnknownOfRank(rank - axes.Length);
+            var shapeOut = UnknownOfRank(rank - axes.length);
             var index = 0;
             for (var i = 0; i < rank; i++)
             {
@@ -580,19 +563,22 @@ namespace Unity.Sentis
         /// <summary>
         /// Inserts new axes at `axes` positions. For example if `SymbolicTensorShape` is (2) and `axes` is {0, 1}, the method returns (1, 1, 2).
         /// </summary>
-        internal SymbolicTensorShape Unsqueeze(int[] axes)
+        internal SymbolicTensorShape Unsqueeze(PartialTensor axes)
         {
-            if (!hasRank)
+            if (!hasRank || !axes.isPartiallyKnown)
                 return UnknownShape;
 
-            Logger.AssertIsTrue(rank + axes.Length <= TensorShape.maxRank, "ValueError: TensorShape are capped to rank=8, cannot unsqueeze SymbolicTensorShape {0} to rank greater than 8", this);
+            Logger.AssertIsTrue(rank + axes.length <= TensorShape.maxRank, "ValueError: TensorShape are capped to rank=8, cannot unsqueeze SymbolicTensorShape {0} to rank greater than 8", this);
 
-            var shapeOut = UnknownOfRank(rank + axes.Length);
+            var shapeOut = UnknownOfRank(rank + axes.length);
+
+            if (!axes.IsFullyKnown())
+                return shapeOut;
 
             uint axesBitMask = 0;
-            for (var i = 0; i < axes.Length; i++)
+            for (var i = 0; i < axes.length; i++)
             {
-                var axis = shapeOut.Axis(axes[i]);
+                var axis = shapeOut.Axis(axes[i].intValue);
                 Logger.AssertIsTrue(((axesBitMask >> axis) & 1U) == 0, "ValueError: can't unsqueeze on same axis multiple times");
                 axesBitMask |= 1U << axis;
             }
@@ -644,8 +630,13 @@ namespace Unity.Sentis
             if (!hasRank || !other.hasRank)
                 return UnknownShape;
 
-            Assert.IsTrue(rank >= 2, "MatMul.ValueError: Rank of tensor must be at least 2");
-            Assert.IsTrue(other.rank >= 2, "MatMul.ValueError: Rank of tensor must be at least 2");
+            Assert.IsTrue(rank >= 1, "MatMul.ValueError: Rank of tensor must be at least 1");
+            Assert.IsTrue(other.rank >= 1, "MatMul.ValueError: Rank of tensor must be at least 1");
+
+            if (other.rank == 1)
+                return MatMul(new SymbolicTensorShape(other[0], SymbolicTensorDim.One)).Squeeze(-1);
+            if (rank == 1)
+                return new SymbolicTensorShape(SymbolicTensorDim.One, this[0]).MatMul(other).Squeeze(-2);
 
             // broadcast along the dimensions not used in the matmul
             var outRank = Mathf.Max(rank, other.rank);
@@ -676,11 +667,39 @@ namespace Unity.Sentis
         }
 
         /// <summary>
+        /// Creates two new shapes for input shapes 'a' and 'b' with value dims and optionally param dims divided through
+        /// on both sides where possible.
+        /// </summary>
+        internal static void ReduceCommonFactors(SymbolicTensorShape a, SymbolicTensorShape b, out SymbolicTensorShape reducedA, out SymbolicTensorShape reducedB, bool reduceParams)
+        {
+            reducedA = new SymbolicTensorShape(a);
+            reducedB = new SymbolicTensorShape(b);
+
+            if (reducedA.m_IsRankUnknown || reducedB.m_IsRankUnknown)
+                return;
+
+            for (var i = 0; i < reducedA.rank; i++)
+            {
+                if (!reduceParams && reducedA[i].isParam)
+                    continue;
+                for (var j = 0; j < reducedB.rank && (reducedA[i].isParam || reducedA[i] > 1); j++)
+                {
+                    var gcd = SymbolicTensorDim.GCD(reducedA[i], reducedB[j]);
+                    if (gcd.isParam || gcd > 1)
+                    {
+                        reducedA[i] /= gcd;
+                        reducedB[j] /= gcd;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Compares two `SymbolicTensorShape` objects. Returns `true` if the two objects have the same rank, and all their dimensions are equal.
         /// </summary>
         public static bool operator ==(SymbolicTensorShape a, SymbolicTensorShape b)
         {
-            if (a.hasRank != b.hasRank)
+            if (!a.hasRank || !b.hasRank)
                 return false;
             if (a.rank != b.rank)
                 return false;
@@ -703,6 +722,9 @@ namespace Unity.Sentis
             return true;
         }
 
+        /// <summary>
+        /// Compares two `SymbolicTensorShape` objects. Returns `true` if the two shapes have a different or unknown rank, or at least one of their dimensions are not equal.
+        /// </summary>
         public static bool operator !=(SymbolicTensorShape a, SymbolicTensorShape b)
         {
             return !(a == b);
@@ -731,11 +753,31 @@ namespace Unity.Sentis
                 return false;
             for (var i = 0; i < a.rank; i++)
             {
-                if (!SymbolicTensorDim.IsCompatible(a[i], b[i]))
+                if (a[i] != b[i])
                     return false;
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Returns a symbolic shape with the most known rank and dims from two
+        /// given shapes that are known to be equal. Asserts if the shapes cannot be equal
+        /// </summary>
+        internal static SymbolicTensorShape MaxDefinedShape(SymbolicTensorShape a, SymbolicTensorShape b)
+        {
+            if (!a.hasRank)
+                return b;
+            if (!b.hasRank)
+                return a;
+            Logger.AssertIsTrue(a.rank == b.rank, "InputError: incompatible tensor shapes");
+            var shapeOut = SymbolicTensorShape.UnknownOfRank(a.rank);
+            for (var i = 0; i < shapeOut.rank; i++)
+            {
+                shapeOut[i] = SymbolicTensorDim.MaxDefinedDim(a[i], b[i]);
+            }
+
+            return shapeOut;
         }
 
         /// <summary>

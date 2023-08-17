@@ -24,7 +24,7 @@ public class ModelExecution : MonoBehaviour
 
         // model has a single output, so no ambiguity due to its name
         var outputTensor = m_Engine.PeekOutput() as TensorFloat;
-        outputTensor.PrepareCacheForAccess(blocking: true);
+        outputTensor.MakeReadable();
 
         // Data is now ready to read.
         // See async examples for non-blocking readback.

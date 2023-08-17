@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/Activation"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile None Relu Selu Abs Neg Ceil Floor Round Reciprocal Swish Tanh Softplus Sigmoid HardSigmoid Relu6 Elu LeakyRelu Exp Log Sqrt Acos Acosh Asin Asinh Atan Atanh Cos Cosh Sin Sinh Tan Pow Clip Erf Sign Square Celu HardSwish Softsign ThresholdedRelu Gelu
+            #pragma multi_compile Relu Selu Abs Neg Ceil Floor Round Reciprocal Swish Tanh Softplus Sigmoid HardSigmoid Relu6 Elu LeakyRelu Exp Log Sqrt Acos Acosh Asin Asinh Atan Atanh Cos Cosh Sin Sinh Tan Pow Clip Erf Sign Square Celu HardSwish Softsign ThresholdedRelu Gelu Shrink
 
             #pragma vertex vert
             #pragma fragment frag
@@ -21,10 +21,10 @@ Shader "Hidden/Sentis/Activation"
 
             DECLARE_TENSOR_BLOCK_STRIDE_O;
 
-            DECLARE_TENSOR(X);
-
             float Alpha;
             float Beta;
+
+            DECLARE_TENSOR(X, float);
 
             float4 erf(float4 v)
             {
@@ -66,7 +66,7 @@ Shader "Hidden/Sentis/Activation"
                 int3 lowerAxisUpper = UnravelO(blockIndexO);
                 uint4 unblocked4 = UnblockAxis(lowerAxisUpper[1]);
                 uint4 index4 = lowerAxisUpper[0] + StrideAxisO * (unblocked4 + DimAxisO * lowerAxisUpper[2]);
-                bool4 mask4 = (index4 < LengthO && unblocked4 < DimAxisO) ? 1.0f : 0.0f;
+                bool4 mask4 = (index4 < LengthO && unblocked4 < DimAxisO) ? 1 : 0;
                 float4 v = SampleBlockX(blockIndexO);
                 #ifdef Relu
                     v = 0.5f * (v + abs(v));
@@ -208,15 +208,21 @@ Shader "Hidden/Sentis/Activation"
                 #ifdef Gelu
                     v = gelu(v);
                 #endif
+                #ifdef Shrink
+                    float4 vOut = 0;
+                    vOut = v < -Beta ? v + Alpha : vOut;
+                    vOut = v > Beta ? v - Alpha : vOut;
+                    v = vOut;
+                #endif
 
                 if (!mask4.x)
-                    v.x = 0.0;
+                    v.x = 0;
                 if (!mask4.y)
-                    v.y = 0.0;
+                    v.y = 0;
                 if (!mask4.z)
-                    v.z = 0.0;
+                    v.z = 0;
                 if (!mask4.w)
-                    v.w = 0.0;
+                    v.w = 0;
 
                 return v;
             }

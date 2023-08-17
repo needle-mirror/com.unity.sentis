@@ -178,7 +178,7 @@ class TestSet
         DataType dataType = GetInputDataType(idx);
 
         var data = new ArrayTensorData(shape);
-        data.Upload<byte>(array, shape.length, 0);
+        NativeTensorArray.Copy(array, data.array, shape.length);
 
         switch (dataType)
         {
@@ -211,7 +211,7 @@ class TestSet
         DataType dataType = GetOutputDataType(idx);
 
         var data = new ArrayTensorData(shape);
-        data.Upload<byte>(array, shape.length, 0);
+        NativeTensorArray.Copy(array, data.array, shape.length);
 
         switch (dataType)
         {

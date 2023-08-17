@@ -12,23 +12,30 @@ Shader "Hidden/Sentis/Split"
         {
             CGPROGRAM
             #pragma multi_compile _ BLOCKWISE
+            #pragma multi_compile _ INT
             #pragma vertex vert
             #pragma fragment frag
 
             #include "CommonVertexShader.cginc"
             #include "CommonPixelShader.cginc"
 
-            DECLARE_TENSOR(X);
+            #ifdef INT
+            #define DTYPE4 int4
+            DECLARE_TENSOR(X, int);
+            #else
+            #define DTYPE4 float4
+            DECLARE_TENSOR(X, float);
+            #endif
 
             uint StrideAxis, DimAxisX;
             uint SplitStart, SplitLength;
 
-            float4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
+            DTYPE4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
                 uint blockIndexO = GetBlockIndexO(screenPos);
                 uint3 lowerAxisUpper = Unravel(uint2(StrideAxis, SplitLength), blockIndexO);
 
-                float4 v = 0;
+                DTYPE4 v = 0;
                 #ifdef BLOCKWISE
                 lowerAxisUpper[1] += SplitStart;
                 uint blockIndexX = Ravel(uint2(StrideAxis, DimAxisX), lowerAxisUpper);

@@ -14,7 +14,7 @@ To use Sentis to run a neural network in Unity, follow these steps:
 Add the following to the top of your script:
 
 ```
-using Unity.Sentis 
+using Unity.Sentis;
 ```
 
 ## Load a model
@@ -84,7 +84,51 @@ The following example classifies a handwritten digit.
 
 Follow these steps:
 
-1. Attach the script to a GameObject in your scene.
+1. Attach the following script to a GameObject in your scene.
+
+    ```
+    using UnityEngine;
+    using Unity.Sentis;
+    
+    public class ClassifyHandwrittenDigit : MonoBehaviour
+    {
+        public Texture2D inputTexture;
+        public ModelAsset modelAsset;
+        Model runtimeModel;
+        IWorker worker;
+        public float[] results;
+    
+        void Start()
+        {
+            // Create the runtime model
+            runtimeModel = ModelLoader.Load(modelAsset);
+    
+            // Create input data as a tensor
+            Tensor inputTensor = TextureConverter.ToTensor(inputTexture);
+    
+            // Create an engine
+            worker = WorkerFactory.CreateWorker(BackendType.GPUCompute, runtimeModel);
+    
+            // Run the model with the input data
+            worker.Execute(inputTensor);
+    
+            // Get the result
+            TensorFloat outputTensor = worker.PeekOutput() as TensorFloat;
+    
+            // Move the tensor data to the CPU before reading it
+            outputTensor.MakeReadable();
+    
+            results = outputTensor.ToReadOnlyArray();
+        }
+    
+        void OnDisable()
+        {
+            // Tell the GPU we're finished with the memory the engine used
+            worker.Dispose();
+        }
+    }
+    ```
+
 2. Download a handwriting recognition ONNX model file, for example the [MNIST Handwritten Digit Recognition model](https://github.com/onnx/models/tree/main/vision/classification/mnist) from the ONNX Model Zoo, and drag it into the `Assets` folder of the Project window.
 3. Drag the model asset into the **modelAsset** field in the Inspector window of the GameObject.
 4. Download the `digit.png` image below and drag it into the `Assets` folder of the Project window.
@@ -93,46 +137,6 @@ Follow these steps:
 
 5. Drag the **digit** asset into the **inputTexture** field in the Inspector window of the GameObject.
 6. Run the project. In the Inspector window of the GameObject, each item of the **results** array shows how highly the model predicts the image is a digit. For example, item 0 of the array is how highly the model predicts the image is a handwritten zero.
-
-```
-using UnityEngine;
-using Unity.Sentis;
-
-public class ClassifyHandwrittenDigit : MonoBehaviour
-{
-
-    public Texture2D inputTexture;
-    public ModelAsset modelAsset;
-    Model runtimeModel;
-    IWorker worker;
-    public float[] results;
-    
-    void Start()
-    {
-        // Create the runtime model
-        runtimeModel = ModelLoader.Load(modelAsset);
-
-        // Create input data as a tensor
-        Tensor inputTensor = TextureConverter.ToTensor(inputTexture);
-
-        // Create an engine
-        worker = WorkerFactory.CreateWorker(BackendType.GPUCompute, runtimeModel);
-
-        // Run the model with the input data
-        worker.Execute(inputTensor);
-
-        // Get the result
-        TensorFloat outputTensor = worker.PeekOutput() as TensorFloat;
-        results = outputTensor.ToReadOnlyArray();
-    }
-
-    void OnDisable()
-    {
-        // Tell the GPU we're finished with the memory the engine used 
-        worker.Dispose();
-    }
-}
-```
 
 ## Additional resources
 

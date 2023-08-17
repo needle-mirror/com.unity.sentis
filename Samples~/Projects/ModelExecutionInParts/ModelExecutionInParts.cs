@@ -43,7 +43,7 @@ public class ModelExecutionInParts : MonoBehaviour
         } while (m_HasMoreWork);
 
         var outputTensor = m_Engine.PeekOutput() as TensorFloat;
-        outputTensor.PrepareCacheForAccess(blocking: true);
+        outputTensor.MakeReadable();
 
         // Data is now ready to read.
         // See async examples for non-blocking readback.

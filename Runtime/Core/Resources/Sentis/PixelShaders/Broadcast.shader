@@ -11,8 +11,8 @@ Shader "Hidden/Sentis/Broadcast"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile _ BLOCKEDDIM_RANK1_A BLOCKEDDIM_RANK1_B
-            #pragma multi_compile Add Sub Mul Div Pow Min Max FMod Mean
+            // TODO: use Scriban to generate variants
+            #pragma multi_compile Add Sub Mul Div Pow Min Max FMod Mean AddInt SubInt MulInt DivInt PowInt MinInt MaxInt ModInt FModInt And Equal Greater GreaterOrEqual Less LessOrEqual EqualInt GreaterInt GreaterOrEqualInt LessInt LessOrEqualInt Or Xor PRelu
 
             #pragma vertex vert
             #pragma fragment frag
@@ -20,18 +20,42 @@ Shader "Hidden/Sentis/Broadcast"
             #include "CommonVertexShader.cginc"
             #include "CommonPixelShader.cginc"
 
-            DECLARE_TENSOR(A);
-            DECLARE_TENSOR(B);
+            #if defined(AddInt) | defined(SubInt) | defined(MulInt) | defined(DivInt) | defined(MinInt) | defined(MaxInt) | defined(ModInt) | defined(FModInt) | defined(And) | defined(EqualInt) | defined(GreaterInt) | defined(GreaterOrEqualInt) | defined(LessInt) | defined(LessOrEqualInt) | defined(Or) | defined(Xor)
+            #define O_DTYPE4 int4
+            #define A_DTYPE4 int4
+            #define B_DTYPE4 int4
+            DECLARE_TENSOR(A, int);
+            DECLARE_TENSOR(B, int);
+            #elif defined(Equal) | defined(Greater) | defined(GreaterOrEqual) | defined(Less) | defined(LessOrEqual)
+            #define O_DTYPE4 int4
+            #define A_DTYPE4 float4
+            #define B_DTYPE4 float4
+            DECLARE_TENSOR(A, float);
+            DECLARE_TENSOR(B, float);
+            #elif defined(PowInt)
+            #define O_DTYPE4 float4
+            #define A_DTYPE4 float4
+            #define B_DTYPE4 int4
+            DECLARE_TENSOR(A, float);
+            DECLARE_TENSOR(B, int);
+            #else
+            #define O_DTYPE4 float4
+            #define A_DTYPE4 float4
+            #define B_DTYPE4 float4
+            DECLARE_TENSOR(A, float);
+            DECLARE_TENSOR(B, float);
+            #endif
 
             uint DimO[8];
             uint StridesA[8];
             uint StridesB[8];
+            uint DimAxisA, DimAxisB;
 
             #ifdef Mean
             float alpha, beta;
             #endif
 
-            float4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
+            O_DTYPE4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
                 uint blockIndexO = GetBlockIndexO(screenPos);
                 uint blockIndexA = 0;
@@ -46,39 +70,46 @@ Shader "Hidden/Sentis/Broadcast"
                     blockIndexB += k * StridesB[j];
                 }
 
-                float4 v = 0.0f;
+                O_DTYPE4 v = 0;
 
-                float4 va = SampleBlockA(blockIndexA);
-                float4 vb = SampleBlockB(blockIndexB);
+                A_DTYPE4 va = SampleBlockA(blockIndexA);
+                B_DTYPE4 vb = SampleBlockB(blockIndexB);
 
-                #ifdef BLOCKEDDIM_RANK1_A
-                va = va.x;
-                #endif
-                #ifdef BLOCKEDDIM_RANK1_B
-                vb = vb.x;
-                #endif
+                va = DimAxisA == 1 ? va.x : va;
+                vb = DimAxisB == 1 ? vb.x : vb;
 
-                #ifdef Add
+                #if defined(Add) | defined(AddInt)
                     v = va + vb;
                 #endif
-                #ifdef Sub
+                #if defined(Sub) | defined(SubInt)
                     v = va - vb;
                 #endif
-                #ifdef Mul
+                #if defined(Mul) | defined(MulInt)
                     v = va * vb;
                 #endif
-                #ifdef Pow
-                    float4 u = pow(va, vb);
+                #ifdef Div
+                    float4 u = va / vb;
+                    bool4 vNaN = vb == 0.0f;
+                    v.x = vNaN.x ? 0.0f : u.x;
+                    v.y = vNaN.y ? 0.0f : u.y;
+                    v.z = vNaN.z ? 0.0f : u.z;
+                    v.w = vNaN.w ? 0.0f : u.w;
+                #endif
+                #ifdef DivInt
+                    v = va / vb;
+                #endif
+                #if defined(Pow) | defined(PowInt)
+                    O_DTYPE4 u = pow(va, vb);
                     bool4 vNaN = (va < 0.0f && floor(vb) == vb) || (va == 0.0f && vb == 0.0f);
                     v.x = vNaN.x ? 0.0f : u.x;
                     v.y = vNaN.y ? 0.0f : u.y;
                     v.z = vNaN.z ? 0.0f : u.z;
                     v.w = vNaN.w ? 0.0f : u.w;
                 #endif
-                #ifdef Min
+                #if defined(Min) | defined(MinInt)
                     v = min(va, vb);
                 #endif
-                #ifdef Max
+                #if defined(Max) | defined(MaxInt)
                     v = max(va, vb);
                 #endif
                 #ifdef Mean
@@ -92,13 +123,38 @@ Shader "Hidden/Sentis/Broadcast"
                     v.z = vNaN.z ? 0.0f : u.z;
                     v.w = vNaN.w ? 0.0f : u.w;
                 #endif
-                #ifdef Div
-                    float4 u = va / vb;
-                    bool4 vNaN = vb == 0.0f;
-                    v.x = vNaN.x ? 0.0f : u.x;
-                    v.y = vNaN.y ? 0.0f : u.y;
-                    v.z = vNaN.z ? 0.0f : u.z;
-                    v.w = vNaN.w ? 0.0f : u.w;
+                #ifdef FModInt
+                    v = va % vb;
+                #endif
+                #ifdef ModInt
+                    v = ((va % vb) + vb) % vb;
+                #endif
+                #ifdef And
+                    v = va & vb;
+                #endif
+                #if defined(Equal) | defined(EqualInt)
+                    v = va == vb;
+                #endif
+                #if defined(Greater) | defined(GreaterInt)
+                    v = va > vb;
+                #endif
+                #if defined(GreaterOrEqual) | defined(GreaterOrEqualInt)
+                    v = va >= vb;
+                #endif
+                #if defined(Less) | defined(LessInt)
+                    v = va < vb;
+                #endif
+                #if defined(LessOrEqual) | defined(LessOrEqualInt)
+                    v = va <= vb;
+                #endif
+                #ifdef Or
+                    v = va | vb;
+                #endif
+                #ifdef Xor
+                    v = va ^ vb;
+                #endif
+                #ifdef PRelu
+                    v = (0.5f * (1.0f + vb)) * va + (0.5f * (1.0f - vb)) * abs(va);
                 #endif
 
                 return v;

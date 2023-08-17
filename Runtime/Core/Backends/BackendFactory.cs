@@ -5,7 +5,7 @@ namespace Unity.Sentis {
 
 static class BackendFactory
 {
-    public static IOps CreateOps(BackendType backendType, ITensorAllocator allocator, bool verbose)
+    public static Ops CreateOps(BackendType backendType, ITensorAllocator allocator, bool verbose)
     {
         switch (backendType)
         {
@@ -17,6 +17,21 @@ static class BackendFactory
                 return new GPUPixelOps(allocator);
             default:
                 return new CPUOps(allocator);
+        }
+    }
+
+    public static IBackend CreateBackend(BackendType backendType, ITensorAllocator allocator, bool verbose)
+    {
+        switch (backendType)
+        {
+            case BackendType.GPUCompute:
+                return new GPUComputeBackend(allocator);
+            case BackendType.GPUCommandBuffer:
+                return new GPUCommandBufferBackend(allocator);
+            case BackendType.GPUPixel:
+                return new GPUPixelBackend(allocator);
+            default:
+                return new CPUBackend(allocator);
         }
     }
 
@@ -43,9 +58,9 @@ static class BackendFactory
         if (workerConfiguration.verbose)
             D.Log($"Storage type: {vars.GetType()}. Allocator type: {allocator.GetType()}.");
 
-        IOps ops = CreateOps(backendType, allocator, workerConfiguration.verbose);
+        var backend = CreateBackend(backendType, allocator, workerConfiguration.verbose);
 
-        return new GenericWorker(model, ops, vars, workerConfiguration.verbose, workerConfiguration.takeoverWeights);
+        return new GenericWorker(model, backend, vars, workerConfiguration.verbose, workerConfiguration.takeoverWeights);
     }
 }
 } // namespace Unity.Sentis

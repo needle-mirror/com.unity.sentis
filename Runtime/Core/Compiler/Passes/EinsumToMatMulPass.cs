@@ -136,9 +136,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
         public void Run(ref Model model)
         {
             var einsumLayers = model.layers.Where(l => l is Einsum).ToList();
+            if (einsumLayers.Count == 0)
+                return;
 
-            var ctx = new ShapeInferenceContext();
-            ShapeInferenceAnalysis.InferModelShapes(model, ctx);
+            var ctx = PartialInferenceAnalysis.InferModelPartialTensors(model, true);
 
             foreach (var layer in einsumLayers)
             {
@@ -154,7 +155,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 var operandShapes = new SymbolicTensorShape[numOperands];
                 for (var i = 0; i < numOperands && isInputShapes; i++)
                 {
-                    var shape = ctx.GetSymbolicTensorShape(layer.inputs[i]);
+                    var shape = ctx.GetPartialTensor(layer.inputs[i]).shape;
                     if (shape.hasRank)
                         operandShapes[i] = shape;
                     else
@@ -253,13 +254,13 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 var transformedDimsOut = broadcastDimsIndex.rank > 0 ? new[] { broadcastDimsIndex, outputOperandDimsAIndex, outputOperandDimsBIndex } : new[] { outputOperandDimsAIndex, outputOperandDimsBIndex };
 
                 // insert permute and reshape layers to take inputs to desired matmul inputs
-                if (!InsertPermuteReshapeLayers(newModel, einsumLayer, 0, operandIndices[0], transformedDims0, ctx.SymbolicTensorShapes[einsumLayer.inputs[0]]))
+                if (!InsertPermuteReshapeLayers(newModel, einsumLayer, 0, operandIndices[0], transformedDims0, ctx.GetPartialTensor(einsumLayer.inputs[0]).shape))
                     return;
-                if (!InsertPermuteReshapeLayers(newModel, einsumLayer, 1, operandIndices[1], transformedDims1, ctx.SymbolicTensorShapes[einsumLayer.inputs[1]]))
+                if (!InsertPermuteReshapeLayers(newModel, einsumLayer, 1, operandIndices[1], transformedDims1, ctx.GetPartialTensor(einsumLayer.inputs[1]).shape))
                     return;
 
                 // insert reshape and permute layers to get desired output from matmul output
-                if (!InsertInversePermuteReshapeLayers(newModel, einsumLayer, outputIndices, transformedDimsOut, ctx.SymbolicTensorShapes[einsumLayer.name]))
+                if (!InsertInversePermuteReshapeLayers(newModel, einsumLayer, outputIndices, transformedDimsOut, ctx.GetPartialTensor(einsumLayer.name).shape))
                     return;
 
                 model = newModel;

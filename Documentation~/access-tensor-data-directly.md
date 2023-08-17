@@ -1,10 +1,10 @@
 # Access tensor data directly
 
-To avoid Sentis downloading a tensor to a cache when you access a tensor, or when you need to pass a tensor between multiple models, you can read from and write to the tensor data directly in memory instead.
+To avoid having to do a slow readback of a tensor from a device when you want to access a tensor, or when you need to pass a tensor between multiple models, you can read from and write to the tensor data directly in memory instead.
 
 Refer to [Tensor fundamentals in Sentis](tensor-fundamentals.md#memory-location) for more information about how Sentis stores tensor data.
 
-You can also use `IOps` methods to do complicated tensor operations with a Sentis back end type that uses compute shaders or Burst. For example, you can use `IOps` to do matrix multiplication. Refer to [Do operations on tensors](do-complex-tensor-operations.md) for more information.
+You can also use `Ops` methods to do complicated tensor operations with a Sentis back end type that uses compute shaders or Burst. For example, you can use `Ops` to do matrix multiplication. Refer to [Do operations on tensors](do-complex-tensor-operations.md) for more information.
 
 ## Check where the data for a tensor is stored
 
@@ -69,13 +69,13 @@ To access a tensor in GPU memory, first get the tensor data as a `ComputeTensorD
 
 You can then use the `buffer` property of the `ComputeTensorData` object and a compute shader to access the tensor data in the compute buffer directly. Refer to [`ComputeBuffer`](https://docs.unity3d.com/ScriptReference/ComputeBuffer.html) in the Unity API reference for more information about how to access a compute buffer.
 
-Refer to the `AsyncReadback/AsyncReadBackCompute` example in the [sample scripts](package-samples.md) for a working example.
+Refer to the `AsyncReadback/AsyncReadBackCompute` example in the [sample scripts](package-samples.md) for an example.
 
 ## Access a tensor in CPU memory
 
 To access a tensor in CPU memory, first get the tensor data as a `BurstTensorData` or `ArrayTensorData` object.
 
-### Get a `BurstTensorData` object
+### Get a BurstTensorData object
 
 You can do either of the following to get a `BurstTensorData` object:
 
@@ -86,10 +86,10 @@ You can then use the object in a Burst function like `IJobParallelFor` to read f
 
 Refer to the following:
 
-- The `CSharpJob` example in the [sample scripts](package-samples.md) for a working example.
+- The `CSharpJob` example in the [sample scripts](package-samples.md) for an example.
 - The [Burst documentation](https://docs.unity3d.com/Packages/com.unity.burst@latest).
 
-### Get an `ArrayTensorData` object
+### Get an ArrayTensorData object
 
 You can do either of the following to get an `ArrayTensorData` object:
 

@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/GlobalPool"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile AVGPOOL MAXPOOL
+            #pragma multi_compile AVGPOOL MAXPOOL AVGSQUAREPOOL
 
             #pragma vertex vert
             #pragma fragment frag
@@ -21,7 +21,7 @@ Shader "Hidden/Sentis/GlobalPool"
 
             #define FLT_MIN -3.402823466e+38F
 
-            DECLARE_TENSOR(X);
+            DECLARE_TENSOR(X, float);
 
             uint SpatialSizeX, DimAxis;
             float Normalization;
@@ -32,7 +32,7 @@ Shader "Hidden/Sentis/GlobalPool"
                 uint cDiv4 = blockIndexO % DimAxis;
                 uint n = blockIndexO / DimAxis;
 
-                #if defined(AVGPOOL)
+                #if defined(AVGPOOL) | defined(AVGSQUAREPOOL)
                 float4 acc4 = 0.0f;
                 #elif defined(MAXPOOL)
                 float4 acc4 = FLT_MIN;
@@ -46,11 +46,13 @@ Shader "Hidden/Sentis/GlobalPool"
                     float4 v = SampleBlockX(blockIndexX);
                     #if defined(AVGPOOL)
                     acc4 += v;
+                    #elif defined(AVGSQUAREPOOL)
+                    acc4 += v * v;
                     #elif defined(MAXPOOL)
                     acc4 = max(v, acc4);
                     #endif
                 }
-                #if defined(AVGPOOL)
+                #if defined(AVGPOOL) | defined(AVGSQUAREPOOL)
                 acc4 *= Normalization;
                 #endif
 

@@ -1,17 +1,18 @@
 # Use output data
 
-After you [get the output from a model](get-the-output.md) as a tensor, you can postprocess the data to use it in your project.
+After you [get the output from a model](get-the-output.md) as a tensor, you can post-process the data to use it in your project.
 
 You can also use [WorkerFactory.CreateOps](do-complex-tensor-operations.md) to do calculations on tensor outputs.
 
 ## Convert to a flattened 1D array
 
-Use `ToReadOnlyArray` to convert tensor data to a flattened 1D array of floats or ints.
+Use `MakeReadable` to move a tensor on the GPU to the CPU before you read it. Use `ToReadOnlyArray` to convert tensor data to a flattened 1D array of floats or ints.
 
 For example:
 
 ```
 TensorFloat outputTensor = worker.Execute(inputTensor).PeekOutput() as TensorFloat;
+outputTensor.MakeReadable();
 float[] outputData = outputTensor.ToReadOnlyArray();
 ```
 
@@ -95,7 +96,7 @@ using UnityEngine;
 using Unity.Sentis;
 
 public class StyleTransfer : MonoBehaviour
-{        
+{
     public ModelAsset modelAsset;
     public Model runtimeModel;
     private IWorker worker;
@@ -104,7 +105,7 @@ public class StyleTransfer : MonoBehaviour
 
     void Start()
     {
-        runtimeModel = ModelLoader.Load(modelAsset); 
+        runtimeModel = ModelLoader.Load(modelAsset);
         worker = WorkerFactory.CreateWorker(BackendType.GPUCompute, runtimeModel);
     }
 
@@ -118,9 +119,8 @@ public class StyleTransfer : MonoBehaviour
         TensorFloat outputTensor = worker.PeekOutput() as TensorFloat;
 
         // Create a tensor operation to divide the output values by 255, to remap to the (0-1) color range
-        IOps ops = WorkerFactory.CreateOps(BackendType.GPUCompute, new TensorCachingAllocator());
-        TensorFloat divideAmount = new TensorFloat(255f);
-        TensorFloat tensorScaled = ops.Div(outputTensor, divideAmount); 
+        Ops ops = WorkerFactory.CreateOps(BackendType.GPUCompute, new TensorCachingAllocator());
+        TensorFloat tensorScaled = ops.Div(outputTensor, 255f);
 
         // Copy the rescaled tensor to the screen as a texture
         TextureConverter.RenderToScreen(tensorScaled);
@@ -136,7 +136,7 @@ public class StyleTransfer : MonoBehaviour
 
 If you use the Universal Render Pipeline (URP) or the High-Definition Render Pipeline (HDRP), you must call `RenderToScreen` in the `RenderPipelineManager.endFrameRendering` or `RenderPipelineManager.endContextRendering` callbacks. Refer to [Rendering.RenderPipelineManager](https://docs.unity3d.com/ScriptReference/Rendering.RenderPipelineManager.html) for more information.
 
-Refer to the `RunModelOnFullScreen` example in the [sample scripts](package-samples.md) for a working example.
+Refer to the `RunModelOnFullScreen` example in the [sample scripts](package-samples.md) for an example.
 
 ## Override shape and layout
 

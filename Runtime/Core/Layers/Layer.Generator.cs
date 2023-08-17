@@ -50,28 +50,29 @@ namespace Unity.Sentis.Layers
             this.dataType = DataType.Int;
         }
 
-        internal override PartialTensor InferPartialTensor(PartialTensor[] partialTensors, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            var outputSymbolicShape = partialTensors[0].ToSymbolicTensorShape();
-            ctx.AddShape(name, outputSymbolicShape);
-            if (outputSymbolicShape.IsFullyKnown() && outputSymbolicShape.rank <= 1 && dataType == DataType.Int)
-                return PartialTensor.ConstantOfShape(outputSymbolicShape.ToTensorShape(), intValue);
-            return PartialTensor.Unknown;
-        }
+            var shape = inputTensors[0].ToSymbolicTensorShape();
+            var tensorOut = new PartialTensor(dataType, shape);
+            if (!tensorOut.isPartiallyKnown)
+                return tensorOut;
+            for (var i = 0; i < tensorOut.length; i++)
+            {
+                tensorOut[i] = dataType == DataType.Float ? new PartialTensorElement(floatValue) : new PartialTensorElement(intValue);
+            }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
-        {
-            return SymbolicInference.FromShape(inputShapes[0]);
+            return tensorOut;
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            TensorShape shape = new TensorShape((inputTensors[0] as TensorInt).ToReadOnlyArray());
+            TensorShape shape = new TensorShape(inputTensors[0].ToReadOnlySpan<int>());
             if (dataType == DataType.Int)
-                return ctx.ops.ConstantOfShape(shape, intValue);
+                return ctx.backend.ConstantOfShape(shape, intValue);
             else
-                return ctx.ops.ConstantOfShape(shape, floatValue);
+                return ctx.backend.ConstantOfShape(shape, floatValue);
         }
 
         /// <inheritdoc/>
@@ -110,17 +111,25 @@ namespace Unity.Sentis.Layers
             this.axis = axis;
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            var depth = ctx.GetPartialTensor(inputs[1]);
-            return SymbolicInference.OneHot(inputShapes[0], axis, depth);
+            var dataType = inputTensors[2].dataType;
+            var shapeX = inputTensors[0].shape;
+            if (!shapeX.hasRank)
+                return new PartialTensor(dataType);
+
+            var shapeOut = shapeX.Unsqueeze(axis);
+            shapeOut[axis] = (SymbolicTensorDim)inputTensors[1][0];
+
+            return new PartialTensor(dataType, shapeOut);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             var values = inputTensors[2] as TensorInt;
-            return ctx.ops.OneHot(inputTensors[0] as TensorInt, axis, (inputTensors[1] as TensorInt)[0], values[0], values[1]);
+            return ctx.backend.OneHot(inputTensors[0] as TensorInt, axis, inputTensors[1].ToReadOnlySpan<int>()[0], values[0], values[1]);
         }
 
         /// <inheritdoc/>
@@ -152,22 +161,23 @@ namespace Unity.Sentis.Layers
             this.inputs = new[] { start, limit, delta };
         }
 
-        internal override SymbolicTensorShape InferOutputShape(SymbolicTensorShape[] inputShapes, ShapeInferenceContext ctx)
+        /// <inheritdoc/>
+        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            var start = ctx.GetPartialTensor(inputs[0]);
-            var limit = ctx.GetPartialTensor(inputs[1]);
-            var delta = ctx.GetPartialTensor(inputs[2]);
+            var start = inputTensors[0];
+            var limit = inputTensors[1];
+            var delta = inputTensors[2];
 
-            inputShapes[0].DeclareRank(0);
-            inputShapes[1].DeclareRank(0);
-            inputShapes[2].DeclareRank(0);
+            inputTensors[0].shape.DeclareRank(0);
+            inputTensors[1].shape.DeclareRank(0);
+            inputTensors[2].shape.DeclareRank(0);
 
             var shape = SymbolicTensorShape.UnknownOfRank(1);
 
             if (start[0] == 0 && delta[0] == 1)
-                shape[0] = limit[0].ToSymbolicTensorDim();
+                shape[0] = (SymbolicTensorDim)limit[0];
 
-            return shape;
+            return new PartialTensor(inputTensors[0].dataType, shape);
         }
 
         /// <inheritdoc/>
@@ -175,17 +185,17 @@ namespace Unity.Sentis.Layers
         {
             if (inputTensors[0] is TensorInt)
             {
-                int start = (inputTensors[0] as TensorInt)[0];
-                int limit = (inputTensors[1] as TensorInt)[0];
-                int delta = (inputTensors[2] as TensorInt)[0];
-                return ctx.ops.Range(start, limit, delta);
+                int start = inputTensors[0].ToReadOnlySpan<int>()[0];
+                int limit = inputTensors[1].ToReadOnlySpan<int>()[0];
+                int delta = inputTensors[2].ToReadOnlySpan<int>()[0];
+                return ctx.backend.Range(start, limit, delta);
             }
             else
             {
-                float start = (inputTensors[0] as TensorFloat)[0];
-                float limit = (inputTensors[1] as TensorFloat)[0];
-                float delta = (inputTensors[2] as TensorFloat)[0];
-                return ctx.ops.Range(start, limit, delta);
+                float start = inputTensors[0].ToReadOnlySpan<float>()[0];
+                float limit = inputTensors[1].ToReadOnlySpan<float>()[0];
+                float delta = inputTensors[2].ToReadOnlySpan<float>()[0];
+                return ctx.backend.Range(start, limit, delta);
             }
         }
 

@@ -18,7 +18,7 @@ The result of `PeekOutput` is a shallow copy that points to the same memory as t
 To take ownership of the original tensor instead, do either of the following:
 
 - Use `TakeOwnership` on the tensor after you use `PeekOutput`.
-- Use `CopyOutput` instead of `PeekOutput`. Sentis downloads the tensor from native memory.
+- Use `FinishExecutionAndDownloadOutput` instead of `PeekOutput`. Sentis downloads the tensor from native memory.
 
 If you use either method, you must `Dispose` of the tensor when you're finished with it.
 
@@ -44,7 +44,6 @@ public class GetMultipleOutputs : MonoBehaviour
 
     void Start()
     {
-
         // Create an input tensor
         TensorFloat inputTensor = new TensorFloat(new TensorShape(4), new[] { 2.0f, 1.0f, 3.0f, 0.0f });
 
@@ -59,7 +58,9 @@ public class GetMultipleOutputs : MonoBehaviour
         foreach (var outputName in runtimeModel.outputs)
         {
             TensorFloat outputTensor = worker.PeekOutput(outputName) as TensorFloat;
-            Debug.Log(outputTensor.ToReadOnlyArray());
+            // Make the tensor readable by downloading it to the CPU
+            outputTensor.MakeReadable();
+            outputTensor.PrintDataPart(10);
         }
     }
 }

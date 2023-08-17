@@ -5,6 +5,8 @@ using System;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Collections;
 using System.Threading;
+using Unity.Jobs;
+using UnityEngine.Experimental.Rendering;
 using static Unity.Sentis.ShaderPropertyID;
 
 namespace Unity.Sentis
@@ -51,6 +53,7 @@ namespace Unity.Sentis
         int m_WidthShift;
         int m_WidthMask;
 
+        DataType m_DataType;
         TensorShape m_Shape;
         TensorShape m_BlockedShape;
         int m_BlockAxis;
@@ -71,6 +74,10 @@ namespace Unity.Sentis
         /// </summary>
         public int widthMask => m_WidthMask;
 
+        /// <summary>
+        /// Returns the data type of the associated tensor.
+        /// </summary>
+        public DataType dataType => m_DataType;
         /// <summary>
         /// Returns the shape of the associated tensor.
         /// </summary>
@@ -102,22 +109,30 @@ namespace Unity.Sentis
 
         static int MaxTextureSize => Mathf.Min(SystemInfo.maxTextureSize, 16384);
 
+        static RenderTexture CreateRenderTexture(int width, int height, RenderTextureFormat renderTextureFormat)
+        {
+            var renderTexture = new RenderTexture(width, height, 0, renderTextureFormat);
+            renderTexture.Create();
+            return renderTexture;
+        }
+
         /// <summary>
         /// Initializes and returns an instance of `TextureTensorData` with given shape and blocked axis. A `RenderTexture` is allocated to the correct size.
         /// </summary>
+        /// <param name="dataType">The data type of the tensor.</param>
         /// <param name="shape">The (unblocked) shape of the tensor.</param>
         /// <param name="axis">The axis on which to block the shape.</param>
         /// <param name="clearOnInit">Whether to zero the data on allocation. The default value is `true`.</param>
-        public TextureTensorData(TensorShape shape, int axis, bool clearOnInit = true)
+        public TextureTensorData(DataType dataType, TensorShape shape, int axis, bool clearOnInit = true)
         {
+            m_DataType = dataType;
             SetShape(shape, axis);
             var numPixels = m_BlockedShape.length;
             CalculateTextureDimensions(numPixels, out var newWidthShift, out var width, out var height);
             m_WidthShift = newWidthShift;
             m_WidthMask = (1 << widthShift) - 1;
             Logger.AssertIsTrue(width <= MaxTextureSize && height <= MaxTextureSize, "Tensor of shape {0} is too big to be allocated as a TextureTensorData", m_Shape);
-            m_BufferAsTexture = new RenderTexture(width, height, 0, RenderTextureFormat.ARGBFloat);
-            m_BufferAsTexture.Create();
+            m_BufferAsTexture = CreateRenderTexture(width, height, dataType == DataType.Int ? RenderTextureFormat.ARGBInt : RenderTextureFormat.ARGBFloat);
 
             if (clearOnInit)
             {
@@ -130,7 +145,7 @@ namespace Unity.Sentis
             m_DisposeBufferAfterUse = true;
         }
 
-        void SetShape(TensorShape newShape, int newBlockedAxis)
+        internal void SetShape(TensorShape newShape, int newBlockedAxis)
         {
             m_Shape = newShape;
             m_BlockAxis = newBlockedAxis;
@@ -168,6 +183,20 @@ namespace Unity.Sentis
             height = ComputeHelper.IDivC(numPixels, width);
         }
 
+        /// <inheritdoc/>
+        public ITensorData Clone()
+        {
+            var copy = new TextureTensorData(m_DataType, m_Shape, m_BlockAxis);
+
+            var func = new PixelFunc("Hidden/Sentis/Copy");
+            if (dataType == DataType.Int)
+                func.EnableKeyword("INT");
+            func.SetTensor(k_TensorPropertiesX, this);
+            func.Dispatch(copy);
+
+            return copy;
+        }
+
         /// <summary>
         /// Finalizes the `TextureTensorData`.
         /// </summary>
@@ -187,7 +216,7 @@ namespace Unity.Sentis
         public void Dispose()
         {
             // It isn't safe to Release RT from a finalizer thread
-            if (Thread.CurrentThread == CPUOps.MainThread)
+            if (Thread.CurrentThread == CPUBackend.MainThread)
             {
                 if (m_DisposeBufferAfterUse)
                 {
@@ -211,13 +240,22 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public bool ScheduleAsyncDownload()
+        public bool IsAsyncReadbackRequestDone()
         {
-            return false;
+            return true;
         }
 
         /// <inheritdoc/>
-        public void Upload<T>(T[] data, int srcCount, int srcOffset = 0) where T : unmanaged
+        public void AsyncReadbackRequest(Action<bool> task = null)
+        {
+            task?.Invoke(true);
+        }
+
+        /// <inheritdoc/>
+        public void CompleteAllPendingOperations() { }
+
+        /// <inheritdoc/>
+        public void Upload<T>(NativeArray<T> data, int srcCount, int srcOffset = 0) where T : unmanaged
         {
             if (data.Length == 0)
                 return;
@@ -228,20 +266,40 @@ namespace Unity.Sentis
             Assert.IsTrue(srcOffset >= 0);
             Assert.IsTrue(numItemToCopy <= numItemAvailableInData);
 
-            var numPixels = ComputeHelper.IDivC(shape.length, 4);
+            var numPixels = ComputeHelper.IDivC(numItemToCopy, 4);
             CalculateTextureDimensions(numPixels, out var linearWidthShift, out var linearWidth, out var linearHeight);
 
-            var texture = new Texture2D(linearWidth, linearHeight, TextureFormat.RGBAFloat, false);
-            var textureData = texture.GetRawTextureData<T>();
+            var texture = new Texture2D(linearWidth, linearHeight, GraphicsFormat.R32G32B32A32_SFloat, TextureCreationFlags.None);
+
             unsafe
             {
-                UnsafeUtility.MemSet(textureData.GetUnsafePtr(), 0, sizeof(float) * textureData.Length);
+                void* dataPtr = (byte*)data.GetUnsafeReadOnlyPtr() + sizeof(float) * srcOffset;
+                var dest = texture.GetRawTextureData<float>();
+                switch (dataType)
+                {
+                    case DataType.Float:
+                        UnsafeUtility.MemCpy(dest.GetUnsafePtr(), dataPtr, sizeof(float) * srcCount);
+                        break;
+                    case DataType.Int:
+                    {
+                        var job = new GPUPixelBurstJobs.IntBytesAsFloatJob
+                        {
+                            src = (int*)dataPtr,
+                            dest = dest
+                        };
+                        var jobHandle = job.Schedule(srcCount, 1024);
+                        jobHandle.Complete();
+                        break;
+                    }
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(dataType), dataType, null);
+                }
             }
 
-            NativeArray<T>.Copy(data, srcOffset, textureData, 0, shape.length);
             texture.Apply();
 
-            var func = new PixelFunc("Hidden/Sentis/LayoutLinearToBlocked");
+            var func = new PixelFunc("Hidden/Sentis/TextureTensorDataUpload");
+            func.EnableKeyword(dataType == DataType.Int ? "Int" : "Float");
 
             func.SetTexture(k_ID_Xptr, texture);
             func.SetInt(k_TensorPropertiesX.k_ID_WidthShift, linearWidthShift);
@@ -253,7 +311,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public T[] Download<T>(int dstCount, int srcOffset = 0) where T : unmanaged
+        public NativeArray<T> Download<T>(int dstCount, int srcOffset = 0) where T : unmanaged
         {
             var count = shape.length;
 
@@ -261,16 +319,17 @@ namespace Unity.Sentis
             Assert.IsTrue(maxCapacity >= count);
 
             var linearRenderTexture = bufferAsTexture;
-            if (!(strideAxis == 1 && dimAxis % 4 == 0))
+            var numValues = shape.length;
+
+            if (dataType != DataType.Float || strideAxis != 1 || (dimAxis % 4 != 0 && count != dimAxis))
             {
-                // texture is not linear, get linear layout texture
-                var numPixels = ComputeHelper.IDivC(shape.length, 4);
+                var numPixels = ComputeHelper.IDivC(numValues, 4);
                 CalculateTextureDimensions(numPixels, out var linearWidthShift, out var linearWidth, out var linearHeight);
 
-                linearRenderTexture = new RenderTexture(linearWidth, linearHeight, 0, RenderTextureFormat.ARGBFloat);
-                linearRenderTexture.Create();
+                linearRenderTexture = CreateRenderTexture(linearWidth, linearHeight, RenderTextureFormat.ARGBFloat);
 
-                var func = new PixelFunc("Hidden/Sentis/LayoutBlockedToLinear");
+                var func = new PixelFunc("Hidden/Sentis/TextureTensorDataDownload");
+                func.EnableKeyword(dataType == DataType.Int ? "Int" : "Float");
                 func.SetTensor(k_TensorPropertiesX, this);
                 func.SetTensorBlockStride(k_TensorPropertiesX, this);
                 func.SetInt(k_TensorPropertiesO.k_ID_WidthShift, linearWidthShift);
@@ -284,8 +343,33 @@ namespace Unity.Sentis
             texture.ReadPixels(new Rect(0, 0, linearRenderTexture.width, linearRenderTexture.height), 0, 0);
             texture.Apply();
 
-            var data = new T[count];
-            Buffer.BlockCopy(texture.GetRawTextureData(), 0, data, 0, count * sizeof(float));
+            var data = new NativeArray<T>(count, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+
+            unsafe
+            {  
+                void* dataPtr = (byte*)data.GetUnsafeReadOnlyPtr() + srcOffset * sizeof(float);
+                var src = texture.GetRawTextureData<float>();
+
+                switch (dataType)
+                {
+                    case DataType.Float:
+                        UnsafeUtility.MemCpy(dataPtr, src.GetUnsafePtr(), sizeof(float) * numValues);
+                        break;
+                    case DataType.Int:
+                    {
+                        var job = new GPUPixelBurstJobs.FloatBytesAsIntJob
+                        {
+                            src = src,
+                            dest = (int*)dataPtr
+                        };
+                        var jobHandle = job.Schedule(numValues, 1024);
+                        jobHandle.Complete();
+                        break;
+                    }
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(dataType), dataType, null);
+                }
+            }
 
             RenderTexture.active = previousActiveRT;
 
@@ -297,28 +381,26 @@ namespace Unity.Sentis
         /// Moves the tensor into GPU memory on the `GPUPixel` back end device.
         /// </summary>
         /// <param name="blockAxis">Which axis to block the tensor shape on.</param>
-        /// <param name="uploadCache">Whether to also move the existing tensor data to the GPU. The default value is `true`.</param>
-        public static TextureTensorData Pin(Tensor X, int blockAxis, bool uploadCache = true)
+        public static TextureTensorData Pin(Tensor X, int blockAxis, bool clearOnInit = true)
         {
-            X.FlushCache(uploadCache);
+            var onDevice = X.tensorOnDevice;
+            if (onDevice == null)
+            {
+                X.AttachToDevice(new TextureTensorData(X.dataType, X.shape, blockAxis, clearOnInit));
+                return X.tensorOnDevice as TextureTensorData;
+            }
 
-            if (X.tensorOnDevice is TextureTensorData textureTensorData)
+            if (onDevice is TextureTensorData textureTensorData)
             {
                 var newTextureTensorData = textureTensorData.SwitchBlockedLayout(X.shape, blockAxis);
                 X.AttachToDevice(newTextureTensorData);
-            }
-            else
-            {
-                if (uploadCache)
-                    X.UploadToDevice(new TextureTensorData(X.shape, blockAxis)); // device is not compatible, create new array and upload
-                else
-                    X.AllocateOnDevice(new TextureTensorData(X.shape, blockAxis, false)); // device is not compatible, create new array but do not upload nor 0-fill
+                return X.tensorOnDevice as TextureTensorData;
             }
 
-            var tensorOnDevice = X.tensorOnDevice as TextureTensorData;
-
-            Assert.IsNotNull(tensorOnDevice?.bufferAsTexture);
-            Assert.AreEqual(X.shape, tensorOnDevice.shape);
+            // TODO as IConvertibleToTextureTensorData
+            //if (onDevice is IConvertibleToTextureTensorData asConvertible)
+            //else
+            X.UploadToDevice(new TextureTensorData(X.dataType, X.shape, blockAxis, clearOnInit: false)); // device is not compatible, create new array and upload
 
             return X.tensorOnDevice as TextureTensorData;
         }
@@ -336,8 +418,9 @@ namespace Unity.Sentis
                 return this;
             }
 
-            var textureTensorData = new TextureTensorData(newShape, newBlockedAxis, false);
+            var textureTensorData = new TextureTensorData(m_DataType, newShape, newBlockedAxis, false);
             var func = new PixelFunc("Hidden/Sentis/LayoutSwitchBlockedAxis");
+            func.EnableKeyword(dataType == DataType.Float ? "FLOAT" : "INT");
             func.SetTensor(k_TensorPropertiesX, this);
             func.SetTensorBlockStride(k_TensorPropertiesX, this);
             func.SetTensorBlockStride(k_TensorPropertiesO, textureTensorData);

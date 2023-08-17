@@ -1,6 +1,6 @@
 # Sample scripts
 
-The Sentis package comes with a set of sample scripts that show working examples of using the API.
+The Sentis package comes with a set of sample scripts that show examples of using the API.
 
 To find the sample scripts:
 
@@ -13,10 +13,10 @@ To find the sample scripts:
 |**Add a custom layer**|An example of adding a custom layer to implement a custom ONNX operator.|
 |**Check the metadata of a model**|An example of checking the metadata of a model.|
 |**Convert tensors to textures**|Examples of converting tensors to textures. Refer to [Use output data](use-model-output.md) for more information. | 
-|**Convert textures to tensors**|Examples of converting textures to textures. Refer to [Create input for a model](create-an-input-tensor.md) for more information. |
+|**Convert textures to tensors**|Examples of converting textures to tensors. Refer to [Create input for a model](create-an-input-tensor.md) for more information. |
 |**Copy a texture tensor to the screen**|An example of using `TextureConverter.RenderToScreen` to copy a texture tensor to the screen. Refer to [Use output data](use-model-output.md) for more information. |
-|**Do an operation on a tensor**|An example of using `IOps` to do an operation on a tensor. Refer to [Do operations on tensors](do-complex-tensor-operations.md) for more information. |
-|**Read output asynchronously**|Examples of reading the output from a model asynchronously, using compute shaders or Burst. Refer to [Read output from a model asynchronously](read-output-async.md) for more information. |
+|**Do an operation on a tensor**|An example of using `Ops` to do an operation on a tensor. Refer to [Do operations on tensors](do-complex-tensor-operations.md) for more information. |
+|**Read output asynchronously**|Examples of reading the output from a model asynchronously using compute shaders. Refer to [Read output from a model asynchronously](read-output-async.md) for more information. |
 |**Run a model a layer at a time**|An example of using `StartManualSchedule` to run a model a layer a time. Refer to [Run a model](run-a-model.md) for more information.|`
 |**Run a model**|Examples of running models with different numbers of inputs and outputs. Refer to [Run a model](run-a-model.md) for more information.|
 |**Use a compute buffer**|An example of using a compute shader to write data to a tensor on the GPU. |
