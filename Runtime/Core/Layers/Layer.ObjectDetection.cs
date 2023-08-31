@@ -60,12 +60,27 @@ namespace Unity.Sentis.Layers
             return new PartialTensor(DataType.Int, shape);
         }
 
-        public override Tensor Execute(Tensor[] inputs, ExecutionContext ctx)
+        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            float scoreThreshold = inputs.Length > 4 && inputs[4] != null ? inputs[4].ToReadOnlySpan<float>()[0] : 0f;
-            float iouThreshold = inputs.Length > 3 && inputs[3] != null ? inputs[3].ToReadOnlySpan<float>()[0] : 0f;
-            int maxOutputBoxesPerClass = inputs.Length > 2 && inputs[2] != null ? inputs[2].ToReadOnlySpan<int>()[0] : 0;
-            return ctx.backend.NonMaxSuppression(inputs[0] as TensorFloat, inputs[1] as TensorFloat, maxOutputBoxesPerClass, iouThreshold, scoreThreshold, centerPointBox);
+            var maxOutputBoxesPerClass = 0;
+            if (inputTensors.Length > 2 && inputTensors[2] != null)
+            {
+                inputTensors[2].MakeReadable();
+                maxOutputBoxesPerClass = inputTensors[2].ToReadOnlySpan<int>()[0];
+            }
+            var iouThreshold = 0f;
+            if (inputTensors.Length > 3 && inputTensors[3] != null)
+            {
+                inputTensors[3].MakeReadable();
+                iouThreshold = inputTensors[3].ToReadOnlySpan<float>()[0];
+            }
+            var scoreThreshold = 0f;
+            if (inputTensors.Length > 4 && inputTensors[4] != null)
+            {
+                inputTensors[4].MakeReadable();
+                scoreThreshold = inputTensors[4].ToReadOnlySpan<float>()[0];
+            }
+            return ctx.backend.NonMaxSuppression(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, maxOutputBoxesPerClass, iouThreshold, scoreThreshold, centerPointBox);
         }
 
         internal override string profilerTag => "NonMaxSuppression";

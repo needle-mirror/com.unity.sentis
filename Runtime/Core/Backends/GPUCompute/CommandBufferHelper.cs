@@ -68,6 +68,16 @@ static class CommandBufferHelper
         cb.SetComputeIntParam(fn.shader, nameID, data ? 1 : 0);
     }
 
+    public static void EnableKeyword(this CommandBuffer cb, ComputeFunc fn, string keyword)
+    {
+        cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, keyword));
+    }
+
+    public static void DisableKeyword(this CommandBuffer cb, ComputeFunc fn, string keyword)
+    {
+        cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, keyword));
+    }
+
     // for setting uint4 and int4 values, no padding required
     static readonly int[] s_scratchPadInt4 = new int[4];
 

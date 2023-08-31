@@ -598,6 +598,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
+            inputTensors[1].MakeReadable();
             Tensor[] Y = ctx.backend.TopK(inputTensors[0] as TensorFloat, inputTensors[1].ToReadOnlySpan<int>()[0], axis, largest, sorted);
 
             ctx.vars.Store(outputs[1], Y[1]);

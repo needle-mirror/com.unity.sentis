@@ -1,6 +1,6 @@
 * [Sentis package](index.md)
-    * [What's new in Sentis 1.0](whats-new.md)
-    * [Upgrade from Barracuda 3.0 to Sentis 1.0](upgrade-guide.md)
+    * [What's new in Sentis 1.1](whats-new.md)
+    * [Upgrade from Sentis 1.0 to Sentis 1.1](upgrade-guide.md)
 * [Get started](get-started.md)
     * [Understand the Sentis workflow](understand-sentis-workflow.md)
     * [Sample scripts](package-samples.md)

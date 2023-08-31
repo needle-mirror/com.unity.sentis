@@ -59,21 +59,8 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                         break;
                     }
 
-                    var layerShape = ctx.GetPartialTensor(layer.name).shape;
-                    var inputShape = ctx.GetPartialTensor(layer.inputs[0]).shape;
-
                     if (nopTranspose)
-                    {
                         model.layers[l] = new Layers.Identity(transposeLayer.name, transposeLayer.inputs[0]);
-                        continue;
-                    }
-                    if (layerShape.Squeeze() == inputShape.Squeeze() && layerShape.IsFullyKnown())
-                    {
-                        var shapeName = model.GetUniqueName(transposeLayer.name + "_reshape");
-                        model.AddConstant(new Layers.Constant(shapeName, layerShape.ToTensorShape().ToArray()));
-                        model.layers[l] = new Layers.Reshape(transposeLayer.name, transposeLayer.inputs[0], shapeName);
-                        continue;
-                    }
                     continue;
                 }
                 if (layer is Layers.Reshape reshapeLayer)
@@ -113,7 +100,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                         var isIdentity = true;
                         for (var i = 0; i < outputShape.rank && isIdentity; i++)
                         {
-                            if (i < shapeTensor.length && shapeTensor[i] == PartialTensorElement.One)
+                            if (i < shapeTensor.length && shapeTensor[i] == 1)
                                 continue;
                             if (!(outputShape[i] == inputShape[i]))
                                 isIdentity = false;
@@ -146,7 +133,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     var allOnes = true;
                     for (var i = 0; i < repeats.length; i++)
                     {
-                        allOnes &= repeats[i] == PartialTensorElement.One;
+                        allOnes &= repeats[i] == 1;
                     }
                     if (!allOnes)
                         continue;
@@ -233,12 +220,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     using var mean = c3.DataSetToTensorView() as TensorFloat;
                     using var variance = c4.DataSetToTensorView() as TensorFloat;
 
-                    using var epsilonTensor = op.ConstantOfShape(new TensorShape(1), bnLayer.epsilon);
-                    using var add = op.Add(variance, epsilonTensor);
-                    using var sqrtVar = op.Sqrt(add);
-                    using var scale = op.Div(gamma, sqrtVar);
-                    using var mul = op.Mul(scale, mean);
-                    using var bias = op.Sub(beta, mul);
+                    var epsilonTensor = op.ConstantOfShape(new TensorShape(1), bnLayer.epsilon);
+                    var sqrtVar = op.Sqrt(op.Add(variance, epsilonTensor));
+                    var scale = op.Div(gamma, sqrtVar);
+                    var bias = op.Sub(beta, op.Mul(scale, mean));
 
                     var scaleConstantName = model.GetUniqueName($"{bnLayer.name}_Scale");
                     var biasConstantName = model.GetUniqueName($"{bnLayer.name}_Bias");

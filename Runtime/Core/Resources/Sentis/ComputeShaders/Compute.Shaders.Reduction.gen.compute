@@ -112,10 +112,17 @@ void SUFFIX_REDUCEMAXFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 g
     // half the number of blocks (x and y) replaced with 4 loads
     uint s = gs * POOL_SIZE * 4 + gts;
 
+    #if defined(SHADER_API_MOBILE)
+    float v0 = s + 0 * POOL_SIZE >= ReducedDim ? FLT_MIN : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v1 = s + 1 * POOL_SIZE >= ReducedDim ? FLT_MIN : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v2 = s + 2 * POOL_SIZE >= ReducedDim ? FLT_MIN : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v3 = s + 3 * POOL_SIZE >= ReducedDim ? FLT_MIN : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    #else
     float v0 = s + 0 * POOL_SIZE >= ReducedDim ? FLT_MIN : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
     float v1 = s + 1 * POOL_SIZE >= ReducedDim ? FLT_MIN : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
     float v2 = s + 2 * POOL_SIZE >= ReducedDim ? FLT_MIN : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? FLT_MIN : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+    #endif
 
     
     LDS_AccumulationBuffer[gts] = rda_maxf(v0, rda_maxf(v1, rda_maxf(v2, v3)));
@@ -180,10 +187,17 @@ void SUFFIX_REDUCEMINFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 g
     // half the number of blocks (x and y) replaced with 4 loads
     uint s = gs * POOL_SIZE * 4 + gts;
 
+    #if defined(SHADER_API_MOBILE)
+    float v0 = s + 0 * POOL_SIZE >= ReducedDim ? FLT_MAX : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v1 = s + 1 * POOL_SIZE >= ReducedDim ? FLT_MAX : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v2 = s + 2 * POOL_SIZE >= ReducedDim ? FLT_MAX : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v3 = s + 3 * POOL_SIZE >= ReducedDim ? FLT_MAX : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    #else
     float v0 = s + 0 * POOL_SIZE >= ReducedDim ? FLT_MAX : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
     float v1 = s + 1 * POOL_SIZE >= ReducedDim ? FLT_MAX : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
     float v2 = s + 2 * POOL_SIZE >= ReducedDim ? FLT_MAX : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? FLT_MAX : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+    #endif
 
     
     LDS_AccumulationBuffer[gts] = rda_minf(v0, rda_minf(v1, rda_minf(v2, v3)));
@@ -248,10 +262,17 @@ void SUFFIX_REDUCESUMFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 g
     // half the number of blocks (x and y) replaced with 4 loads
     uint s = gs * POOL_SIZE * 4 + gts;
 
+    #if defined(SHADER_API_MOBILE)
+    float v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    #else
     float v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
     float v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
     float v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+    #endif
 
     
     LDS_AccumulationBuffer[gts] = rda_sumf(v0, rda_sumf(v1, rda_sumf(v2, v3)));
@@ -321,10 +342,17 @@ void SUFFIX_REDUCESUMSQUAREFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, u
     // half the number of blocks (x and y) replaced with 4 loads
     uint s = gs * POOL_SIZE * 4 + gts;
 
+    #if defined(SHADER_API_MOBILE)
+    float v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    #else
     float v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
     float v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
     float v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+    #endif
 
             
     v0 = rdi_sum2f(v0);
@@ -394,10 +422,17 @@ void SUFFIX_REDUCEMEANFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 
     // half the number of blocks (x and y) replaced with 4 loads
     uint s = gs * POOL_SIZE * 4 + gts;
 
+    #if defined(SHADER_API_MOBILE)
+    float v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    #else
     float v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
     float v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
     float v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+    #endif
 
     
     LDS_AccumulationBuffer[gts] = rda_meanf(v0, rda_meanf(v1, rda_meanf(v2, v3)));
@@ -462,10 +497,17 @@ void SUFFIX_REDUCEPRODFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 
     // half the number of blocks (x and y) replaced with 4 loads
     uint s = gs * POOL_SIZE * 4 + gts;
 
+    #if defined(SHADER_API_MOBILE)
+    float v0 = s + 0 * POOL_SIZE >= ReducedDim ? 1.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v1 = s + 1 * POOL_SIZE >= ReducedDim ? 1.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v2 = s + 2 * POOL_SIZE >= ReducedDim ? 1.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 1.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    #else
     float v0 = s + 0 * POOL_SIZE >= ReducedDim ? 1.0f : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
     float v1 = s + 1 * POOL_SIZE >= ReducedDim ? 1.0f : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
     float v2 = s + 2 * POOL_SIZE >= ReducedDim ? 1.0f : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 1.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+    #endif
 
     
     LDS_AccumulationBuffer[gts] = rda_prodf(v0, rda_prodf(v1, rda_prodf(v2, v3)));
@@ -535,10 +577,17 @@ void SUFFIX_REDUCEL1FLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 gr
     // half the number of blocks (x and y) replaced with 4 loads
     uint s = gs * POOL_SIZE * 4 + gts;
 
+    #if defined(SHADER_API_MOBILE)
+    float v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    #else
     float v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
     float v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
     float v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+    #endif
 
             
     v0 = rdi_l1f(v0);
@@ -613,10 +662,17 @@ void SUFFIX_REDUCEL2FLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 gr
     // half the number of blocks (x and y) replaced with 4 loads
     uint s = gs * POOL_SIZE * 4 + gts;
 
+    #if defined(SHADER_API_MOBILE)
+    float v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    #else
     float v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
     float v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
     float v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+    #endif
 
             
     v0 = rdi_l2f(v0);
@@ -686,10 +742,17 @@ void SUFFIX_REDUCESQRTFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 
     // half the number of blocks (x and y) replaced with 4 loads
     uint s = gs * POOL_SIZE * 4 + gts;
 
+    #if defined(SHADER_API_MOBILE)
+    float v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    #else
     float v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
     float v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
     float v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+    #endif
 
     
     LDS_AccumulationBuffer[gts] = rda_sqrtf(v0, rda_sqrtf(v1, rda_sqrtf(v2, v3)));
@@ -754,10 +817,17 @@ void SUFFIX_REDUCELOGSUMFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint
     // half the number of blocks (x and y) replaced with 4 loads
     uint s = gs * POOL_SIZE * 4 + gts;
 
+    #if defined(SHADER_API_MOBILE)
+    float v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    #else
     float v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
     float v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
     float v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+    #endif
 
     
     LDS_AccumulationBuffer[gts] = rda_logsumf(v0, rda_logsumf(v1, rda_logsumf(v2, v3)));
@@ -829,17 +899,31 @@ void SUFFIX_REDUCELOGSUMEXPFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, u
     float v0, v1, v2, v3;
     if (IsFirstDispatch)
     {
+        #if defined(SHADER_API_MOBILE)
+        v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : exp(Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner] - maxV);
+        v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : exp(Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner] - maxV);
+        v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : exp(Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner] - maxV);
+        v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : exp(Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner] - maxV);
+        #else
         v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : exp(Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner] - maxV);
         v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : exp(Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner] - maxV);
         v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : exp(Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner] - maxV);
         v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : exp(Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner] - maxV);
+        #endif
     }
     else
     {
+        #if defined(SHADER_API_MOBILE)
+        v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+        v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+        v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+        v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+        #else
         v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
         v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
         v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
         v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+        #endif
     }
 
     
@@ -912,17 +996,31 @@ void SUFFIX_REDUCESUMEXPFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint
     float v0, v1, v2, v3;
     if (IsFirstDispatch)
     {
+        #if defined(SHADER_API_MOBILE)
+        v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : exp(Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner] - maxV);
+        v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : exp(Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner] - maxV);
+        v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : exp(Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner] - maxV);
+        v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : exp(Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner] - maxV);
+        #else
         v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : exp(Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner] - maxV);
         v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : exp(Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner] - maxV);
         v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : exp(Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner] - maxV);
         v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : exp(Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner] - maxV);
+        #endif
     }
     else
     {
+        #if defined(SHADER_API_MOBILE)
+        v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+        v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+        v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+        v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+        #else
         v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
         v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
         v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
         v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+        #endif
     }
 
     
@@ -988,10 +1086,17 @@ void SUFFIX_REDUCEMAXINT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 gro
     // half the number of blocks (x and y) replaced with 4 loads
     uint s = gs * POOL_SIZE * 4 + gts;
 
+    #if defined(SHADER_API_MOBILE)
+    int v0 = s + 0 * POOL_SIZE >= ReducedDim ? INT_MIN : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v1 = s + 1 * POOL_SIZE >= ReducedDim ? INT_MIN : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v2 = s + 2 * POOL_SIZE >= ReducedDim ? INT_MIN : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v3 = s + 3 * POOL_SIZE >= ReducedDim ? INT_MIN : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    #else
     int v0 = s + 0 * POOL_SIZE >= ReducedDim ? INT_MIN : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
     int v1 = s + 1 * POOL_SIZE >= ReducedDim ? INT_MIN : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
     int v2 = s + 2 * POOL_SIZE >= ReducedDim ? INT_MIN : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
     int v3 = s + 3 * POOL_SIZE >= ReducedDim ? INT_MIN : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+    #endif
 
     
     LDS_AccumulationBuffer[gts] = rda_maxi(v0, rda_maxi(v1, rda_maxi(v2, v3)));
@@ -1056,10 +1161,17 @@ void SUFFIX_REDUCEMININT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 gro
     // half the number of blocks (x and y) replaced with 4 loads
     uint s = gs * POOL_SIZE * 4 + gts;
 
+    #if defined(SHADER_API_MOBILE)
+    int v0 = s + 0 * POOL_SIZE >= ReducedDim ? INT_MAX : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v1 = s + 1 * POOL_SIZE >= ReducedDim ? INT_MAX : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v2 = s + 2 * POOL_SIZE >= ReducedDim ? INT_MAX : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v3 = s + 3 * POOL_SIZE >= ReducedDim ? INT_MAX : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    #else
     int v0 = s + 0 * POOL_SIZE >= ReducedDim ? INT_MAX : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
     int v1 = s + 1 * POOL_SIZE >= ReducedDim ? INT_MAX : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
     int v2 = s + 2 * POOL_SIZE >= ReducedDim ? INT_MAX : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
     int v3 = s + 3 * POOL_SIZE >= ReducedDim ? INT_MAX : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+    #endif
 
     
     LDS_AccumulationBuffer[gts] = rda_mini(v0, rda_mini(v1, rda_mini(v2, v3)));
@@ -1124,10 +1236,17 @@ void SUFFIX_REDUCESUMINT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 gro
     // half the number of blocks (x and y) replaced with 4 loads
     uint s = gs * POOL_SIZE * 4 + gts;
 
+    #if defined(SHADER_API_MOBILE)
+    int v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    #else
     int v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
     int v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
     int v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
     int v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+    #endif
 
     
     LDS_AccumulationBuffer[gts] = rda_sumi(v0, rda_sumi(v1, rda_sumi(v2, v3)));
@@ -1197,10 +1316,17 @@ void SUFFIX_REDUCESUMSQUAREINT(uint3 dispatchThreadID : SV_DispatchThreadID, uin
     // half the number of blocks (x and y) replaced with 4 loads
     uint s = gs * POOL_SIZE * 4 + gts;
 
+    #if defined(SHADER_API_MOBILE)
+    int v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    #else
     int v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
     int v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
     int v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
     int v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+    #endif
 
             
     v0 = rdi_sum2i(v0);
@@ -1270,10 +1396,17 @@ void SUFFIX_REDUCEPRODINT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 gr
     // half the number of blocks (x and y) replaced with 4 loads
     uint s = gs * POOL_SIZE * 4 + gts;
 
+    #if defined(SHADER_API_MOBILE)
+    int v0 = s + 0 * POOL_SIZE >= ReducedDim ? 1 : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v1 = s + 1 * POOL_SIZE >= ReducedDim ? 1 : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v2 = s + 2 * POOL_SIZE >= ReducedDim ? 1 : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v3 = s + 3 * POOL_SIZE >= ReducedDim ? 1 : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    #else
     int v0 = s + 0 * POOL_SIZE >= ReducedDim ? 1 : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
     int v1 = s + 1 * POOL_SIZE >= ReducedDim ? 1 : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
     int v2 = s + 2 * POOL_SIZE >= ReducedDim ? 1 : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
     int v3 = s + 3 * POOL_SIZE >= ReducedDim ? 1 : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+    #endif
 
     
     LDS_AccumulationBuffer[gts] = rda_prodi(v0, rda_prodi(v1, rda_prodi(v2, v3)));
@@ -1343,10 +1476,17 @@ void SUFFIX_REDUCEL1INT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 grou
     // half the number of blocks (x and y) replaced with 4 loads
     uint s = gs * POOL_SIZE * 4 + gts;
 
+    #if defined(SHADER_API_MOBILE)
+    int v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + min(s + 0 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + min(s + 1 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + min(s + 2 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    int v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + min(s + 3 * POOL_SIZE, ReducedDim) * InnerDim + inner];
+    #else
     int v0 = s + 0 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + (s + 0 * POOL_SIZE) * InnerDim + inner];
     int v1 = s + 1 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + (s + 1 * POOL_SIZE) * InnerDim + inner];
     int v2 = s + 2 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + (s + 2 * POOL_SIZE) * InnerDim + inner];
     int v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
+    #endif
 
             
     v0 = rdi_l1i(v0);

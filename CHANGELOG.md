@@ -4,10 +4,33 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+
+## [1.1.1-exp.2] - 2023-08-31
+
+### Fixed
+- Fixed inference with multiple Conv layers with different attributes in same model
+- Fixed inference for AveragePool and MaxPool with large channel counts on GPUPixel
+- Fixed batched MatMul inference on GPUCompute and GPUCommandBuffer
+- Fixed Conv inference with no bias on GPUCompute and GPUCommandBuffer
+- Fixed inspector view when model can't be loaded
+- Made Mode.Load(FileStream) added
+
+
+## [1.1.1-exp.1] - 2023-08-31
+
+### Fixed
+- Fixed faulty Transpose optimization
+- Fixed documentation titles
+- Fixed problem in BatchNormalization optimization pass
+- Fixed ReduceMean inference error
+- Fixed Reduce issues on Unity 2021.3.30f on iOS devices
+
+
 ## [1.1.0-exp.2] - 2023-08-17
 
 ### Changed 
  - Documentation was updated to 1.1.0
+
  
 ## [1.1.0-exp.1] - 2023-08-14
 

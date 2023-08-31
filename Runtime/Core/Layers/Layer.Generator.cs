@@ -68,6 +68,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
+            inputTensors[0].MakeReadable();
             TensorShape shape = new TensorShape(inputTensors[0].ToReadOnlySpan<int>());
             if (dataType == DataType.Int)
                 return ctx.backend.ConstantOfShape(shape, intValue);
@@ -128,7 +129,9 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var values = inputTensors[2] as TensorInt;
+            inputTensors[1].MakeReadable();
+            inputTensors[2].MakeReadable();
+            var values = inputTensors[2].ToReadOnlySpan<int>();
             return ctx.backend.OneHot(inputTensors[0] as TensorInt, axis, inputTensors[1].ToReadOnlySpan<int>()[0], values[0], values[1]);
         }
 
@@ -183,6 +186,9 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
+            inputTensors[0].MakeReadable();
+            inputTensors[1].MakeReadable();
+            inputTensors[2].MakeReadable();
             if (inputTensors[0] is TensorInt)
             {
                 int start = inputTensors[0].ToReadOnlySpan<int>()[0];

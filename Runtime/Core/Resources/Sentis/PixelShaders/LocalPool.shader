@@ -42,7 +42,7 @@ Shader "Hidden/Sentis/LocalPool"
                 uint cDiv4 = n % O_channelsDiv4;
                 n /= O_channelsDiv4;
 
-                uint4 indexX = X_width * X_height * (cDiv4 + X_channelsDiv4 * n);
+                uint4 indexX = X_width * (cDiv4 + X_channelsDiv4 * n);
 
                 float counter = 0.0f;
                 float4 accVal = 0.0f;
@@ -50,6 +50,7 @@ Shader "Hidden/Sentis/LocalPool"
                 accVal = FLT_MIN;
                 #endif
                 #if defined(POOL2D)
+                indexX *= X_height;
                 for (int dy = 0; dy < PoolY; ++dy)
                 {
                 uint oy = (h * StrideY + dy) - PadY;

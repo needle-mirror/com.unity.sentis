@@ -115,30 +115,32 @@ public partial class GPUComputeBackend : CPUBackend
         int workItemsX, workItemsY, workItemsZ;
         string kernel;
 
-        if (N % 64 == 0 && M % 16 == 0)
+        if (N % 64 == 0 && K % 16 == 0)
         {
             kernel = "GemmBatched_T16x16_R4x4";
-            workItemsX = ComputeHelper.IDivC(N, 4); workItemsY = ComputeHelper.IDivC(M, 4); workItemsZ = batch;
+            workItemsX = ComputeHelper.IDivC(N, 4);
+            workItemsY = ComputeHelper.IDivC(M, 4);
+            workItemsZ = batch;
         }
         else
         {
             kernel = "GemmBatched_T8x8_R4x4";
-            workItemsX = ComputeHelper.IDivC(N, 4); workItemsY = ComputeHelper.IDivC(M, 4); workItemsZ = batch;
+            workItemsX = ComputeHelper.IDivC(N, 4);
+            workItemsY = ComputeHelper.IDivC(M, 4);
+            workItemsZ = batch;
         }
 
-        ComputeFunc fn = new ComputeFunc(kernel);
+        var fn = new ComputeFunc(kernel);
 
         fn.SetInt(k_ID_maxXIndex, X.shape.length - 1);
         fn.SetInt(k_ID_maxWIndex, Y.shape.length - 1);
         fn.SetInt(k_ID_X_width, K);
-        fn.SetInt(k_ID_X_height, M);
+        fn.SetInt(k_ID_W_width, N);
         fn.SetInt(k_ID_O_width, N);
         fn.SetInt(k_ID_O_height, M);
-        fn.SetInt(k_ID_W_width, N);
-        fn.SetInt(k_ID_W_height, K);
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
         fn.SetTensorAsBuffer(k_ID_Wptr, Pin(Y));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
 
         fn.Dispatch(workItemsX, workItemsY, workItemsZ);
     }
@@ -257,6 +259,10 @@ public partial class GPUComputeBackend : CPUBackend
                 fn.EnableKeyword("USEBIAS");
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
             }
+            else
+            {
+                fn.DisableKeyword("USEBIAS");
+            }
             fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
             fn.SetInt(k_ID_O_batch, O.shape[0]); fn.SetInt(k_ID_O_channels, O.shape[1]);
             fn.SetInt(k_ID_X_channels, X.shape[1]);
@@ -288,6 +294,10 @@ public partial class GPUComputeBackend : CPUBackend
             {
                 fn.EnableKeyword("USEBIAS");
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
+            }
+            else
+            {
+                fn.DisableKeyword("USEBIAS");
             }
             fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
             fn.SetInt(k_ID_inputChannels, X.shape[1]);
@@ -329,6 +339,10 @@ public partial class GPUComputeBackend : CPUBackend
             {
                 fn.EnableKeyword("USEBIAS");
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
+            }
+            else
+            {
+                fn.DisableKeyword("USEBIAS");
             }
             fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
             fn.SetInt(k_ID_inputChannels, X.shape[1]);
@@ -416,6 +430,10 @@ public partial class GPUComputeBackend : CPUBackend
             fn.EnableKeyword("USEBIAS");
             fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
         }
+        else
+        {
+            fn.DisableKeyword("USEBIAS");
+        }
         fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
         fn.SetInt(k_ID_O_batch, O.shape[0]); fn.SetInt(k_ID_O_channels, O.shape[1]);
         fn.SetInt(k_ID_X_channels, X.shape[1]);
@@ -465,6 +483,10 @@ public partial class GPUComputeBackend : CPUBackend
         {
             fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
             fn.EnableKeyword("USEBIAS");
+        }
+        else
+        {
+            fn.DisableKeyword("USEBIAS");
         }
         fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
         fn.SetInt(k_ID_inputChannels, X.shape[1]);
@@ -556,6 +578,10 @@ public partial class GPUComputeBackend : CPUBackend
             fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
             fn.SetInt(k_ID_maxBIndex, B.shape.length - 1);
             fn.EnableKeyword("USEBIAS");
+        }
+        else
+        {
+            fn.DisableKeyword("USEBIAS");
         }
         fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
 
@@ -837,6 +863,8 @@ public partial class GPUComputeBackend : CPUBackend
             var fnUnrolled = new ComputeFunc(fallbackKernel);
             fnUnrolled.SetInt(k_ID_ReducedDim, reduceLength);
             fnUnrolled.SetInt(k_ID_InnerDim, innerLength);
+            fnUnrolled.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+
             if (Xmax != null)
                 fnUnrolled.ScheduleXBO(Pin(X), Pin(Xmax), Pin(O, clearOnInit: false), outerLength * innerLength);
             else
@@ -1029,6 +1057,10 @@ public partial class GPUComputeBackend : CPUBackend
             fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
             fn.EnableKeyword("USEBIAS");
         }
+        else
+        {
+            fn.DisableKeyword("USEBIAS");
+        }
         fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
         fn.SetInt(k_ID_O_channels, O.shape[1]);
         fn.SetInt(k_ID_X_channels, X.shape[1]);
@@ -1099,6 +1131,10 @@ public partial class GPUComputeBackend : CPUBackend
         {
             fn.EnableKeyword("USEBIAS");
             fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
+        }
+        else
+        {
+            fn.DisableKeyword("USEBIAS");
         }
         fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
         fn.SetInt(k_ID_X_channels, X.shape[1]);

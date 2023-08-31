@@ -9,7 +9,7 @@ namespace Unity.Sentis
     /// <summary>
     /// Provides methods for saving models.
     /// </summary>
-    static class ModelWriter
+    public static class ModelWriter
     {
         /// <summary>
         /// Saves the model description and weights to a file.

@@ -123,7 +123,12 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var axes = inputs.Length > 1 ? inputTensors[1].ToReadOnlySpan<int>() : null;
+            ReadOnlySpan<int> axes = null;
+            if (inputTensors.Length > 1 && inputTensors[1] != null)
+            {
+                inputTensors[1].MakeReadable();
+                axes = inputTensors[1].ToReadOnlySpan<int>();
+            }
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
             if (inputTensors[0] is TensorInt)
@@ -154,7 +159,12 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var axes = inputs.Length > 1 ? inputTensors[1].ToReadOnlySpan<int>() : null;
+            ReadOnlySpan<int> axes = null;
+            if (inputTensors.Length > 1 && inputTensors[1] != null)
+            {
+                inputTensors[1].MakeReadable();
+                axes = inputTensors[1].ToReadOnlySpan<int>();
+            }
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
             return ctx.backend.ReduceL2(inputTensors[0] as TensorFloat, axes, keepdims);
@@ -182,7 +192,12 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var axes = inputs.Length > 1 ? inputTensors[1].ToReadOnlySpan<int>() : null;
+            ReadOnlySpan<int> axes = null;
+            if (inputTensors.Length > 1 && inputTensors[1] != null)
+            {
+                inputTensors[1].MakeReadable();
+                axes = inputTensors[1].ToReadOnlySpan<int>();
+            }
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
             return ctx.backend.ReduceLogSum(inputTensors[0] as TensorFloat, axes, keepdims);
@@ -210,7 +225,12 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var axes = inputs.Length > 1 ? inputTensors[1].ToReadOnlySpan<int>() : null;
+            ReadOnlySpan<int> axes = null;
+            if (inputTensors.Length > 1 && inputTensors[1] != null)
+            {
+                inputTensors[1].MakeReadable();
+                axes = inputTensors[1].ToReadOnlySpan<int>();
+            }
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
             return ctx.backend.ReduceLogSumExp(inputTensors[0] as TensorFloat, axes, keepdims);
@@ -238,7 +258,12 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var axes = inputs.Length > 1 ? inputTensors[1].ToReadOnlySpan<int>() : null;
+            ReadOnlySpan<int> axes = null;
+            if (inputTensors.Length > 1 && inputTensors[1] != null)
+            {
+                inputTensors[1].MakeReadable();
+                axes = inputTensors[1].ToReadOnlySpan<int>();
+            }
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
             if (inputTensors[0] is TensorInt)
@@ -269,7 +294,12 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var axes = inputs.Length > 1 ? inputTensors[1].ToReadOnlySpan<int>() : null;
+            ReadOnlySpan<int> axes = null;
+            if (inputTensors.Length > 1 && inputTensors[1] != null)
+            {
+                inputTensors[1].MakeReadable();
+                axes = inputTensors[1].ToReadOnlySpan<int>();
+            }
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
             return ctx.backend.ReduceMean(inputTensors[0] as TensorFloat, axes, keepdims);
@@ -297,7 +327,12 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var axes = inputs.Length > 1 ? inputTensors[1].ToReadOnlySpan<int>() : null;
+            ReadOnlySpan<int> axes = null;
+            if (inputTensors.Length > 1 && inputTensors[1] != null)
+            {
+                inputTensors[1].MakeReadable();
+                axes = inputTensors[1].ToReadOnlySpan<int>();
+            }
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
             if (inputTensors[0] is TensorInt)
@@ -328,7 +363,12 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var axes = inputs.Length > 1 ? inputTensors[1].ToReadOnlySpan<int>() : null;
+            ReadOnlySpan<int> axes = null;
+            if (inputTensors.Length > 1 && inputTensors[1] != null)
+            {
+                inputTensors[1].MakeReadable();
+                axes = inputTensors[1].ToReadOnlySpan<int>();
+            }
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
             if (inputTensors[0] is TensorInt)
@@ -359,7 +399,12 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var axes = inputs.Length > 1 ? inputTensors[1].ToReadOnlySpan<int>() : null;
+            ReadOnlySpan<int> axes = null;
+            if (inputTensors.Length > 1 && inputTensors[1] != null)
+            {
+                inputTensors[1].MakeReadable();
+                axes = inputTensors[1].ToReadOnlySpan<int>();
+            }
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
             if (inputTensors[0] is TensorInt)
@@ -390,7 +435,12 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var axes = inputs.Length > 1 ? inputTensors[1].ToReadOnlySpan<int>() : null;
+            ReadOnlySpan<int> axes = null;
+            if (inputTensors.Length > 1 && inputTensors[1] != null)
+            {
+                inputTensors[1].MakeReadable();
+                axes = inputTensors[1].ToReadOnlySpan<int>();
+            }
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
             if (inputTensors[0] is TensorInt)

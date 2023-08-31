@@ -53,6 +53,16 @@ public static class ModelLoader
         return model;
     }
 
+    public static Model Load(FileStream fileStream)
+    {
+        Model model = new Model();
+
+        LoadModelDesc(fileStream, ref model);
+        LoadModelWeights(fileStream, ref model);
+
+        return model;
+    }
+
     public static void LoadModelDesc(ModelAsset modelAsset, ref Model model)
     {
         MemoryStream descStream = Open(modelAsset.modelAssetData.value);

@@ -134,11 +134,21 @@ namespace Unity.Sentis.Layers
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputs, ExecutionContext ctx)
+        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var min = inputs.Length > 1 && inputs[1] != null ? inputs[1].ToReadOnlySpan<float>()[0] : float.MinValue;
-            var max = inputs.Length > 2 && inputs[2] != null ? inputs[2].ToReadOnlySpan<float>()[0] : float.MaxValue;
-            return ctx.backend.Clip(inputs[0] as TensorFloat, min, max);
+            var min = float.MinValue;
+            var max = float.MaxValue;
+            if (inputTensors.Length > 1 && inputTensors[1] != null)
+            {
+                inputTensors[1].MakeReadable();
+                min = inputTensors[1].ToReadOnlySpan<float>()[0];
+            }
+            if (inputTensors.Length > 2 && inputTensors[2] != null)
+            {
+                inputTensors[2].MakeReadable();
+                max = inputTensors[2].ToReadOnlySpan<float>()[0];
+            }
+            return ctx.backend.Clip(inputTensors[0] as TensorFloat, min, max);
         }
 
         internal override string profilerTag => "Clip";
@@ -185,10 +195,12 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
+            inputTensors[1].MakeReadable();
+            var axis = inputTensors[1].ToReadOnlySpan<int>()[0];
             if (inputTensors[0] is TensorInt)
-                return ctx.backend.CumSum(inputTensors[0] as TensorInt, inputTensors[1].ToReadOnlySpan<int>()[0], reverse, exclusive);
+                return ctx.backend.CumSum(inputTensors[0] as TensorInt, axis, reverse, exclusive);
             else
-                return ctx.backend.CumSum(inputTensors[0] as TensorFloat, inputTensors[1].ToReadOnlySpan<int>()[0], reverse, exclusive);
+                return ctx.backend.CumSum(inputTensors[0] as TensorFloat, axis, reverse, exclusive);
         }
 
         /// <inheritdoc/>

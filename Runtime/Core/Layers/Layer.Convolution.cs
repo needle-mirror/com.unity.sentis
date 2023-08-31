@@ -31,10 +31,6 @@ namespace Unity.Sentis.Layers
     [Serializable]
     public class Conv : FusedActivation
     {
-        static int[] s_DefaultStrides = { 1, 1, 1, 1, 1, 1 };
-        static int[] s_DefaultPads = new int[12];
-        static int[] s_DefaultDilations = { 1, 1, 1, 1, 1, 1 };
-
         /// <summary>
         /// The auto padding mode of the convolution as an `AutoPad`.
         /// </summary>
@@ -81,10 +77,10 @@ namespace Unity.Sentis.Layers
             this.name = name;
             inputs = new[] { X, W, B };
             this.autoPad = autoPad;
-            this.dilations = dilations;
+            this.dilations = dilations ?? new[] { 1, 1, 1, 1, 1, 1 };
             this.group = group;
-            this.pads = pads;
-            this.strides = strides;
+            this.pads = pads ?? new int[12];
+            this.strides = strides ?? new[] { 1, 1, 1, 1, 1, 1 };
             this.kernelShape = kernelShape;
             this.fusedActivation = fusedActivation;
         }
@@ -104,10 +100,6 @@ namespace Unity.Sentis.Layers
 
             shapeKernel.DeclareRank(shapeX.rank);
             shapeBias.DeclareRank(1);
-
-            Logger.AssertIsTrue(strides == null || shapeX.rank - 2 == strides.Length, "Conv.InputError: strides must be the same length as the spatial dimensions or be null");
-            Logger.AssertIsTrue(pads == null || 2 * (shapeX.rank - 2) == pads.Length, "Conv.InputError: padding must have two values per spatial dimension or be null");
-            Logger.AssertIsTrue(dilations == null || shapeX.rank - 2 == dilations.Length, "Conv.InputError: dilations must be the same length as the spatial dimensions or be null");
 
             var shapeOut = SymbolicTensorShape.UnknownOfRank(shapeX.rank);
 
@@ -136,9 +128,9 @@ namespace Unity.Sentis.Layers
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             var numSpatialDims = inputTensors[0].shape.rank - 2;
-            var stridesSpan = strides ?? s_DefaultStrides.AsSpan(0, numSpatialDims);
-            var padsSpan = pads ?? s_DefaultPads.AsSpan(0, 2 * numSpatialDims);
-            var dilationsSpan = dilations ?? s_DefaultDilations.AsSpan(0, numSpatialDims);
+            var stridesSpan = strides.AsSpan(0, numSpatialDims);
+            var padsSpan = pads.AsSpan(0, 2 * numSpatialDims);
+            var dilationsSpan = dilations.AsSpan(0, numSpatialDims);
             ShapeInference.UpdatePadForConvAutoPadding(inputTensors[0].shape, inputTensors[1].shape, stridesSpan, dilationsSpan, autoPad, padsSpan);
             return ctx.backend.Conv(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors.Length > 2 ? inputTensors[2] as TensorFloat : null, group, stridesSpan, padsSpan, dilationsSpan, fusedActivation);
         }
@@ -146,7 +138,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override string ToString()
         {
-            return $"{base.ToString()}, group: {group}, strides: [{(strides == null ? "null" : string.Join(", ", strides))}], pads: [{(pads == null ? "null" : string.Join(", ", pads))}], dilations: [{(dilations == null ? "null" : string.Join(", ", dilations))}], autoPad: {autoPad}, kernelShape: [{(kernelShape == null ? "null" : string.Join(", ", kernelShape))}], fusedActivation: {fusedActivation}";
+            return $"{base.ToString()}, group: {group}, strides: [{(string.Join(", ", strides))}], pads: [{(string.Join(", ", pads))}], dilations: [{(string.Join(", ", dilations))}], autoPad: {autoPad}, kernelShape: [{(kernelShape == null ? "null" : string.Join(", ", kernelShape))}], fusedActivation: {fusedActivation}";
         }
 
         internal override string profilerTag => "Conv";
@@ -158,10 +150,6 @@ namespace Unity.Sentis.Layers
     [Serializable]
     public class ConvTranspose : FusedActivation
     {
-        static int[] s_DefaultStrides = { 1, 1, 1, 1, 1, 1 };
-        static int[] s_DefaultPads = new int[12];
-        static int[] s_DefaultOutputPadding = new int[6];
-
         /// <summary>
         /// The auto padding mode of the transpose convolution.
         /// </summary>
@@ -205,9 +193,9 @@ namespace Unity.Sentis.Layers
             this.name = name;
             inputs = new[] { input, kernel, bias };
             this.autoPad = autoPad;
-            this.outputPadding = outputPadding;
-            this.pads = pads;
-            this.strides = strides;
+            this.outputPadding = outputPadding ?? new int[6];
+            this.pads = pads ?? new int[12];
+            this.strides = strides ?? new[] { 1, 1, 1, 1, 1, 1 };
             this.kernelShape = kernelShape;
             this.fusedActivation = fusedActivation;
         }
@@ -226,10 +214,6 @@ namespace Unity.Sentis.Layers
                 return new PartialTensor(DataType.Float);
 
             shapeKernel.DeclareRank(shapeX.rank);
-
-            Logger.AssertIsTrue(strides == null || shapeX.rank - 2 == strides.Length, "ConvTranspose.InputError: strides must have two less values than the rank of input or be null");
-            Logger.AssertIsTrue(pads == null || 2 * (shapeX.rank - 2) == pads.Length, "ConvTranspose.InputError: padding must have two values per spatial dimension or be null");
-            Logger.AssertIsTrue(outputPadding == null || shapeX.rank - 2 == outputPadding.Length, "ConvTranspose.InputError: outputPadding must have two values per spatial dimension or be null");
 
             var shapeOut = SymbolicTensorShape.Ones(shapeX.rank);
 
@@ -257,9 +241,9 @@ namespace Unity.Sentis.Layers
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             var numSpatialDims = inputTensors[0].shape.rank - 2;
-            var stridesSpan = strides ?? s_DefaultStrides.AsSpan(0, numSpatialDims);
-            var padsSpan = pads ?? s_DefaultPads.AsSpan(0, 2 * numSpatialDims);
-            var outputPaddingSpan = outputPadding ?? s_DefaultOutputPadding.AsSpan(0, numSpatialDims);
+            var stridesSpan = strides.AsSpan(0, numSpatialDims);
+            var padsSpan = pads.AsSpan(0, 2 * numSpatialDims);
+            var outputPaddingSpan = outputPadding.AsSpan(0, numSpatialDims);
             ShapeInference.UpdatePadForConvTransAutoPadding(inputTensors[0].shape, inputTensors[1].shape, stridesSpan, autoPad, outputPaddingSpan, padsSpan);
             return ctx.backend.ConvTranspose(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors.Length > 2 ? inputTensors[2] as TensorFloat : null, stridesSpan, padsSpan, outputPaddingSpan, fusedActivation);
         }
