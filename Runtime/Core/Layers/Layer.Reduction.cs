@@ -71,10 +71,7 @@ namespace Unity.Sentis.Layers
                 var tensorOut = new PartialTensor(dataType, reducedShape);
                 if (!keepdims)
                 {
-                    if (!axes.IsFullyKnown())
-                        tensorOut = tensorOut.Reshape(SymbolicTensorShape.UnknownOfRank(tensorOut.shape.rank - axes.length));
-                    else
-                        tensorOut = tensorOut.Reshape(tensorOut.shape.Squeeze(axes));
+                    tensorOut = tensorOut.Reshape(!axes.IsFullyKnown() ? SymbolicTensorShape.UnknownOfRank(tensorOut.shape.rank - axes.length) : tensorOut.shape.Squeeze(axes));
                 }
 
                 return tensorOut;
@@ -123,18 +120,17 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            ReadOnlySpan<int> axes = null;
-            if (inputTensors.Length > 1 && inputTensors[1] != null)
-            {
-                inputTensors[1].MakeReadable();
-                axes = inputTensors[1].ToReadOnlySpan<int>();
-            }
+            var axes = inputTensors.Length > 1 && inputTensors[1] != null ? inputTensors[1].ToReadOnlySpan<int>() : null;
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape.Reduce(axes, keepdims), inputTensors[0].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
             if (inputTensors[0] is TensorInt)
-                return ctx.backend.ReduceL1(inputTensors[0] as TensorInt, axes, keepdims);
+                ctx.backend.ReduceL1(inputTensors[0] as TensorInt, O as TensorInt, axes, keepdims);
             else
-                return ctx.backend.ReduceL1(inputTensors[0] as TensorFloat, axes, keepdims);
+                ctx.backend.ReduceL1(inputTensors[0] as TensorFloat, O as TensorFloat, axes, keepdims);
+            return O;
         }
 
         internal override string profilerTag => "ReduceL1";
@@ -159,15 +155,14 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            ReadOnlySpan<int> axes = null;
-            if (inputTensors.Length > 1 && inputTensors[1] != null)
-            {
-                inputTensors[1].MakeReadable();
-                axes = inputTensors[1].ToReadOnlySpan<int>();
-            }
+            var axes = inputTensors.Length > 1 && inputTensors[1] != null ? inputTensors[1].ToReadOnlySpan<int>() : null;
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
-            return ctx.backend.ReduceL2(inputTensors[0] as TensorFloat, axes, keepdims);
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape.Reduce(axes, keepdims), inputTensors[0].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.ReduceL2(inputTensors[0] as TensorFloat, O as TensorFloat, axes, keepdims);
+            return O;
         }
 
         internal override string profilerTag => "ReduceL2";
@@ -192,15 +187,14 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            ReadOnlySpan<int> axes = null;
-            if (inputTensors.Length > 1 && inputTensors[1] != null)
-            {
-                inputTensors[1].MakeReadable();
-                axes = inputTensors[1].ToReadOnlySpan<int>();
-            }
+            var axes = inputTensors.Length > 1 && inputTensors[1] != null ? inputTensors[1].ToReadOnlySpan<int>() : null;
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
-            return ctx.backend.ReduceLogSum(inputTensors[0] as TensorFloat, axes, keepdims);
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape.Reduce(axes, keepdims), inputTensors[0].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.ReduceLogSum(inputTensors[0] as TensorFloat, O as TensorFloat, axes, keepdims);
+            return O;
         }
 
         internal override string profilerTag => "ReduceLogSum";
@@ -225,15 +219,14 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            ReadOnlySpan<int> axes = null;
-            if (inputTensors.Length > 1 && inputTensors[1] != null)
-            {
-                inputTensors[1].MakeReadable();
-                axes = inputTensors[1].ToReadOnlySpan<int>();
-            }
+            var axes = inputTensors.Length > 1 && inputTensors[1] != null ? inputTensors[1].ToReadOnlySpan<int>() : null;
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
-            return ctx.backend.ReduceLogSumExp(inputTensors[0] as TensorFloat, axes, keepdims);
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape.Reduce(axes, keepdims), inputTensors[0].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.ReduceLogSumExp(inputTensors[0] as TensorFloat, O as TensorFloat, axes, keepdims);
+            return O;
         }
 
         internal override string profilerTag => "ReduceLogSumExp";
@@ -258,18 +251,17 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            ReadOnlySpan<int> axes = null;
-            if (inputTensors.Length > 1 && inputTensors[1] != null)
-            {
-                inputTensors[1].MakeReadable();
-                axes = inputTensors[1].ToReadOnlySpan<int>();
-            }
+            var axes = inputTensors.Length > 1 && inputTensors[1] != null ? inputTensors[1].ToReadOnlySpan<int>() : null;
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape.Reduce(axes, keepdims), inputTensors[0].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
             if (inputTensors[0] is TensorInt)
-                return ctx.backend.ReduceMax(inputTensors[0] as TensorInt, axes, keepdims);
+                ctx.backend.ReduceMax(inputTensors[0] as TensorInt, O as TensorInt, axes, keepdims);
             else
-                return ctx.backend.ReduceMax(inputTensors[0] as TensorFloat, axes, keepdims);
+                ctx.backend.ReduceMax(inputTensors[0] as TensorFloat, O as TensorFloat, axes, keepdims);
+            return O;
         }
 
         internal override string profilerTag => "ReduceMax";
@@ -294,15 +286,14 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            ReadOnlySpan<int> axes = null;
-            if (inputTensors.Length > 1 && inputTensors[1] != null)
-            {
-                inputTensors[1].MakeReadable();
-                axes = inputTensors[1].ToReadOnlySpan<int>();
-            }
+            var axes = inputTensors.Length > 1 && inputTensors[1] != null ? inputTensors[1].ToReadOnlySpan<int>() : null;
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
-            return ctx.backend.ReduceMean(inputTensors[0] as TensorFloat, axes, keepdims);
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape.Reduce(axes, keepdims), inputTensors[0].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.ReduceMean(inputTensors[0] as TensorFloat, O as TensorFloat, axes, keepdims);
+            return O;
         }
 
         internal override string profilerTag => "ReduceMean";
@@ -327,18 +318,17 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            ReadOnlySpan<int> axes = null;
-            if (inputTensors.Length > 1 && inputTensors[1] != null)
-            {
-                inputTensors[1].MakeReadable();
-                axes = inputTensors[1].ToReadOnlySpan<int>();
-            }
+            var axes = inputTensors.Length > 1 && inputTensors[1] != null ? inputTensors[1].ToReadOnlySpan<int>() : null;
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape.Reduce(axes, keepdims), inputTensors[0].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
             if (inputTensors[0] is TensorInt)
-                return ctx.backend.ReduceMin(inputTensors[0] as TensorInt, axes, keepdims);
+                ctx.backend.ReduceMin(inputTensors[0] as TensorInt, O as TensorInt, axes, keepdims);
             else
-                return ctx.backend.ReduceMin(inputTensors[0] as TensorFloat, axes, keepdims);
+                ctx.backend.ReduceMin(inputTensors[0] as TensorFloat, O as TensorFloat, axes, keepdims);
+            return O;
         }
 
         internal override string profilerTag => "ReduceMin";
@@ -363,18 +353,17 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            ReadOnlySpan<int> axes = null;
-            if (inputTensors.Length > 1 && inputTensors[1] != null)
-            {
-                inputTensors[1].MakeReadable();
-                axes = inputTensors[1].ToReadOnlySpan<int>();
-            }
+            var axes = inputTensors.Length > 1 && inputTensors[1] != null ? inputTensors[1].ToReadOnlySpan<int>() : null;
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape.Reduce(axes, keepdims), inputTensors[0].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
             if (inputTensors[0] is TensorInt)
-                return ctx.backend.ReduceProd(inputTensors[0] as TensorInt, axes, keepdims);
+                ctx.backend.ReduceProd(inputTensors[0] as TensorInt, O as TensorInt, axes, keepdims);
             else
-                return ctx.backend.ReduceProd(inputTensors[0] as TensorFloat, axes, keepdims);
+                ctx.backend.ReduceProd(inputTensors[0] as TensorFloat, O as TensorFloat, axes, keepdims);
+            return O;
         }
 
         internal override string profilerTag => "ReduceProd";
@@ -399,18 +388,17 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            ReadOnlySpan<int> axes = null;
-            if (inputTensors.Length > 1 && inputTensors[1] != null)
-            {
-                inputTensors[1].MakeReadable();
-                axes = inputTensors[1].ToReadOnlySpan<int>();
-            }
+            var axes = inputTensors.Length > 1 && inputTensors[1] != null ? inputTensors[1].ToReadOnlySpan<int>() : null;
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape.Reduce(axes, keepdims), inputTensors[0].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
             if (inputTensors[0] is TensorInt)
-                return ctx.backend.ReduceSum(inputTensors[0] as TensorInt, axes, keepdims);
+                ctx.backend.ReduceSum(inputTensors[0] as TensorInt, O as TensorInt, axes, keepdims);
             else
-                return ctx.backend.ReduceSum(inputTensors[0] as TensorFloat, axes, keepdims);
+                ctx.backend.ReduceSum(inputTensors[0] as TensorFloat, O as TensorFloat, axes, keepdims);
+            return O;
         }
 
         internal override string profilerTag => "ReduceSum";
@@ -435,18 +423,17 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            ReadOnlySpan<int> axes = null;
-            if (inputTensors.Length > 1 && inputTensors[1] != null)
-            {
-                inputTensors[1].MakeReadable();
-                axes = inputTensors[1].ToReadOnlySpan<int>();
-            }
+            var axes = inputTensors.Length > 1 && inputTensors[1] != null ? inputTensors[1].ToReadOnlySpan<int>() : null;
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
                 return inputTensors[0].ShallowCopy();
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape.Reduce(axes, keepdims), inputTensors[0].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
             if (inputTensors[0] is TensorInt)
-                return ctx.backend.ReduceSumSquare(inputTensors[0] as TensorInt, axes, keepdims);
+                ctx.backend.ReduceSumSquare(inputTensors[0] as TensorInt, O as TensorInt, axes, keepdims);
             else
-                return ctx.backend.ReduceSumSquare(inputTensors[0] as TensorFloat, axes, keepdims);
+                ctx.backend.ReduceSumSquare(inputTensors[0] as TensorFloat, O as TensorFloat, axes, keepdims);
+            return O;
         }
 
         internal override string profilerTag => "ReduceSumSquare";

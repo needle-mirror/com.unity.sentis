@@ -47,7 +47,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.ScaleBias(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat);
+            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.ScaleBias(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat, O);
+            return O;
         }
 
         internal override string profilerTag => "ScaleBias";
@@ -76,6 +80,8 @@ namespace Unity.Sentis.Layers
         {
             this.name = name;
             inputs = new[] { input, scale, bias };
+            if (epsilon == 0)
+                epsilon = Mathf.Epsilon; // safety check to prevent division by zero
             this.epsilon = epsilon;
         }
 
@@ -107,13 +113,11 @@ namespace Unity.Sentis.Layers
         {
             // @TODO: support other types of Normalization at test time.
             // Currently supported only pool=1 (InstanceNormalization)
-
-            // NOTE: beta is used to retrieve epsilon value
-            // because beta is 0 by default (while alpha is 1 by default)
-            // 0 value is more inline with very small epsilon
-            if (epsilon == 0)
-                epsilon = Mathf.Epsilon; // safety check to prevent division by zero
-            return ctx.backend.InstanceNormalization(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat, epsilon);
+            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.InstanceNormalization(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat, O, epsilon);
+            return O;
         }
 
         /// <inheritdoc/>
@@ -126,10 +130,10 @@ namespace Unity.Sentis.Layers
     }
 
     /// <summary>
-    /// Represents an `AxisNormalization` normalization layer. This computes the mean variance on the last dimension of the input tensor and normalizes it according to `scale` and `bias` tensors.
+    /// Represents an `LayerNormalization` normalization layer. This computes the mean variance on the last dimension of the input tensor and normalizes it according to `scale` and `bias` tensors.
     /// </summary>
     [Serializable]
-    public class AxisNormalization : Layer
+    public class LayerNormalization : Layer
     {
         /// <summary>
         /// The epsilon value the layer uses to avoid division by zero.
@@ -137,14 +141,14 @@ namespace Unity.Sentis.Layers
         public float epsilon;
 
         /// <summary>
-        /// Initializes and returns an instance of `AxisNormalization` normalization layer.
+        /// Initializes and returns an instance of `LayerNormalization` normalization layer.
         /// </summary>
         /// <param name="name">The name to use for the output tensor of the layer.</param>
         /// <param name="input">The name to use for the input tensor of the layer.</param>
         /// <param name="scale">The name to use for the scale tensor of the layer.</param>
         /// <param name="bias">The name to use for the bias tensor of the layer.</param>
         /// <param name="epsilon">The epsilon value the layer uses to avoid division by zero. The default value is 1e-5f.</param>
-        public AxisNormalization(string name, string input, string scale, string bias, float epsilon = 1e-5f)
+        public LayerNormalization(string name, string input, string scale, string bias, float epsilon = 1e-5f)
         {
             this.name = name;
             inputs = new[] { input, scale, bias };
@@ -177,7 +181,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.AxisNormalization(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat, epsilon);
+            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.LayerNormalization(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat, O, epsilon);
+            return O;
         }
 
         /// <inheritdoc/>
@@ -186,7 +194,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, epsilon: {epsilon}";
         }
 
-        internal override string profilerTag => "AxisNormalization";
+        internal override string profilerTag => "LayerNormalization";
     }
 
     /// <summary>
@@ -234,14 +242,19 @@ namespace Unity.Sentis.Layers
             shapeVar.DeclareRank(1);
 
             var shape = new SymbolicTensorShape(shapeX);
-            shape[1] = SymbolicTensorDim.MaxDefinedDim(shape[1], SymbolicTensorDim.MaxDefinedDim(shapeScale[0], SymbolicTensorDim.MaxDefinedDim(shapeBias[0], SymbolicTensorDim.MaxDefinedDim(shapeMean[0], shapeVar[0]))));
+            if (shapeX.rank > 1)
+                shape[1] = SymbolicTensorDim.MaxDefinedDim(shape[1], SymbolicTensorDim.MaxDefinedDim(shapeScale[0], SymbolicTensorDim.MaxDefinedDim(shapeBias[0], SymbolicTensorDim.MaxDefinedDim(shapeMean[0], shapeVar[0]))));
             return new PartialTensor(inputTensors[0].dataType, shape);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.BatchNormalization(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat, inputTensors[3] as TensorFloat, inputTensors[4] as TensorFloat, epsilon);
+            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.BatchNormalization(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat, inputTensors[3] as TensorFloat, inputTensors[4] as TensorFloat, O, epsilon);
+            return O;
         }
 
         /// <inheritdoc/>
@@ -307,7 +320,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.LRN(inputTensors[0] as TensorFloat, alpha, beta, bias, count);
+            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.LRN(inputTensors[0] as TensorFloat, O, alpha, beta, bias, count);
+            return O;
         }
 
         /// <inheritdoc/>

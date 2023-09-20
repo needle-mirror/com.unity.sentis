@@ -283,20 +283,35 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
+            var X = inputTensors[0] as TensorFloat;
+            var W = inputTensors[1] as TensorFloat;
+            var R = inputTensors[2] as TensorFloat;
             var B = inputTensors.Length > 3 ? inputTensors[3] as TensorFloat : null;
             var sequenceLens = inputTensors.Length > 4 ? inputTensors[4] as TensorInt : null;
             var initialH = inputTensors.Length > 5 ? inputTensors[5] as TensorFloat : null;
             var initialC = inputTensors.Length > 6 ? inputTensors[6] as TensorFloat : null;
             var P = inputTensors.Length > 7 ? inputTensors[7] as TensorFloat : null;
 
-            var ret = ctx.backend.LSTM(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat, B, sequenceLens, initialH, initialC, P, direction, activations, activationAlpha, activationBeta, inputForget, clip, layout);
+            ShapeInference.LSTM(X.shape, W.shape, R.shape, layout, out var shapeY, out var shapeY_h, out var shapeY_c);
+            var Y = ctx.backend.NewOutputTensorFloat(shapeY);
+            var Y_h = ctx.backend.NewOutputTensorFloat(shapeY_h);
+            var Y_c = ctx.backend.NewOutputTensorFloat(shapeY_c);
+            if (Y.shape.HasZeroDims())
+            {
+                if (outputs.Length > 1 && !string.IsNullOrEmpty(outputs[1]))
+                    ctx.vars.Store(outputs[1], Y_h);
+                if (outputs.Length > 2 && !string.IsNullOrEmpty(outputs[2]))
+                    ctx.vars.Store(outputs[2], Y_c);
+                return Y;
+            }
+
+            ctx.backend.LSTM(X, W, R, B, sequenceLens, initialH, initialC, P, Y, Y_h, Y_c, direction, activations, activationAlpha, activationBeta, inputForget, clip, layout);
 
             if (outputs.Length > 1 && !string.IsNullOrEmpty(outputs[1]))
-                ctx.vars.Store(outputs[1], ret[1]);
+                ctx.vars.Store(outputs[1], Y_h);
             if (outputs.Length > 2 && !string.IsNullOrEmpty(outputs[2]))
-                ctx.vars.Store(outputs[2], ret[2]);
-
-            return ret[0];
+                ctx.vars.Store(outputs[2], Y_c);
+            return Y;
         }
 
         /// <inheritdoc/>

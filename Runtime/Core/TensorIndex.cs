@@ -12,7 +12,7 @@ namespace Unity.Sentis {
 /// Represents a set of indices corresponding to each axis of a tensor
 /// </summary>
 [Serializable]
-unsafe struct TensorIndex
+public unsafe struct TensorIndex
 {
     /// <summary>
     /// TensorIndex cannot have a bigger rank than maxRank

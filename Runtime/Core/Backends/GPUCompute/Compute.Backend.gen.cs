@@ -13,15 +13,11 @@ namespace Unity.Sentis
         // Binary Broadcast
 
         /// <inheritdoc/>
-        public override TensorFloat Pow(TensorFloat A, TensorFloat B)
+        public override void Pow(TensorFloat A, TensorFloat B, TensorFloat O)
         {
-            var O = NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(A, B));
-            if (O.shape.HasZeroDims())
-                return O;
-
             if (A.shape == O.shape && B.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastPowFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastPowFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -34,7 +30,7 @@ namespace Unity.Sentis
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastPowFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastPowFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -47,7 +43,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwisePowFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwisePowFloat");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
@@ -55,19 +51,14 @@ namespace Unity.Sentis
 
                 fn.ScheduleXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
             }
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorFloat Add(TensorFloat A, TensorFloat B)
+        public override void Add(TensorFloat A, TensorFloat B, TensorFloat O)
         {
-            var O = NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(A, B));
-            if (O.shape.HasZeroDims())
-                return O;
-
             if (A.shape == O.shape && B.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastAddFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastAddFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -80,7 +71,7 @@ namespace Unity.Sentis
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastAddFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastAddFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -93,7 +84,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwiseAddFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseAddFloat");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
@@ -101,19 +92,14 @@ namespace Unity.Sentis
 
                 fn.ScheduleXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
             }
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorFloat Sub(TensorFloat A, TensorFloat B)
+        public override void Sub(TensorFloat A, TensorFloat B, TensorFloat O)
         {
-            var O = NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(A, B));
-            if (O.shape.HasZeroDims())
-                return O;
-
             if (A.shape == O.shape && B.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastSubFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastSubFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -126,7 +112,7 @@ namespace Unity.Sentis
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastSubFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastSubFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -139,7 +125,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwiseSubFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseSubFloat");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
@@ -147,19 +133,14 @@ namespace Unity.Sentis
 
                 fn.ScheduleXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
             }
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorFloat Mul(TensorFloat A, TensorFloat B)
+        public override void Mul(TensorFloat A, TensorFloat B, TensorFloat O)
         {
-            var O = NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(A, B));
-            if (O.shape.HasZeroDims())
-                return O;
-
             if (A.shape == O.shape && B.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastMulFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastMulFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -172,7 +153,7 @@ namespace Unity.Sentis
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastMulFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastMulFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -185,7 +166,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwiseMulFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseMulFloat");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
@@ -193,19 +174,14 @@ namespace Unity.Sentis
 
                 fn.ScheduleXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
             }
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorFloat Div(TensorFloat A, TensorFloat B)
+        public override void Div(TensorFloat A, TensorFloat B, TensorFloat O)
         {
-            var O = NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(A, B));
-            if (O.shape.HasZeroDims())
-                return O;
-
             if (A.shape == O.shape && B.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastDivFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastDivFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -218,7 +194,7 @@ namespace Unity.Sentis
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastDivFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastDivFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -231,7 +207,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwiseDivFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseDivFloat");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
@@ -239,19 +215,14 @@ namespace Unity.Sentis
 
                 fn.ScheduleXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
             }
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorFloat FMod(TensorFloat A, TensorFloat B)
+        public override void FMod(TensorFloat A, TensorFloat B, TensorFloat O)
         {
-            var O = NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(A, B));
-            if (O.shape.HasZeroDims())
-                return O;
-
             if (A.shape == O.shape && B.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastFModFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastFModFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -264,7 +235,7 @@ namespace Unity.Sentis
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastFModFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastFModFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -277,7 +248,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwiseFModFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseFModFloat");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
@@ -285,19 +256,14 @@ namespace Unity.Sentis
 
                 fn.ScheduleXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
             }
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorFloat Pow(TensorFloat A, TensorInt B)
+        public override void Pow(TensorFloat A, TensorInt B, TensorFloat O)
         {
-            var O = NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(A, B));
-            if (O.shape.HasZeroDims())
-                return O;
-
             if (A.shape == O.shape && B.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastPowInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastPowInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -310,7 +276,7 @@ namespace Unity.Sentis
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastPowInt");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastPowInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -323,7 +289,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwisePowInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwisePowInt");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
@@ -331,19 +297,14 @@ namespace Unity.Sentis
 
                 fn.ScheduleXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
             }
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorInt Add(TensorInt A, TensorInt B)
+        public override void Add(TensorInt A, TensorInt B, TensorInt O)
         {
-            var O = NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
-            if (O.shape.HasZeroDims())
-                return O;
-
             if (A.shape == O.shape && B.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastAddInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastAddInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -356,7 +317,7 @@ namespace Unity.Sentis
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastAddInt");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastAddInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -369,7 +330,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwiseAddInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseAddInt");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
@@ -377,19 +338,14 @@ namespace Unity.Sentis
 
                 fn.ScheduleXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
             }
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorInt Sub(TensorInt A, TensorInt B)
+        public override void Sub(TensorInt A, TensorInt B, TensorInt O)
         {
-            var O = NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
-            if (O.shape.HasZeroDims())
-                return O;
-
             if (A.shape == O.shape && B.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastSubInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastSubInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -402,7 +358,7 @@ namespace Unity.Sentis
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastSubInt");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastSubInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -415,7 +371,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwiseSubInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseSubInt");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
@@ -423,19 +379,14 @@ namespace Unity.Sentis
 
                 fn.ScheduleXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
             }
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorInt Mul(TensorInt A, TensorInt B)
+        public override void Mul(TensorInt A, TensorInt B, TensorInt O)
         {
-            var O = NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
-            if (O.shape.HasZeroDims())
-                return O;
-
             if (A.shape == O.shape && B.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastMulInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastMulInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -448,7 +399,7 @@ namespace Unity.Sentis
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastMulInt");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastMulInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -461,7 +412,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwiseMulInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseMulInt");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
@@ -469,19 +420,14 @@ namespace Unity.Sentis
 
                 fn.ScheduleXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
             }
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorInt Div(TensorInt A, TensorInt B)
+        public override void Div(TensorInt A, TensorInt B, TensorInt O)
         {
-            var O = NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
-            if (O.shape.HasZeroDims())
-                return O;
-
             if (A.shape == O.shape && B.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastDivInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastDivInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -494,7 +440,7 @@ namespace Unity.Sentis
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastDivInt");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastDivInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -507,7 +453,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwiseDivInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseDivInt");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
@@ -515,19 +461,14 @@ namespace Unity.Sentis
 
                 fn.ScheduleXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
             }
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorInt Mod(TensorInt A, TensorInt B)
+        public override void Mod(TensorInt A, TensorInt B, TensorInt O)
         {
-            var O = NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
-            if (O.shape.HasZeroDims())
-                return O;
-
             if (A.shape == O.shape && B.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastModInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastModInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -540,7 +481,7 @@ namespace Unity.Sentis
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastModInt");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastModInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -553,7 +494,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwiseModInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseModInt");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
@@ -561,19 +502,14 @@ namespace Unity.Sentis
 
                 fn.ScheduleXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
             }
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorInt FMod(TensorInt A, TensorInt B)
+        public override void FMod(TensorInt A, TensorInt B, TensorInt O)
         {
-            var O = NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
-            if (O.shape.HasZeroDims())
-                return O;
-
             if (A.shape == O.shape && B.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastFModInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastFModInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -586,7 +522,7 @@ namespace Unity.Sentis
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastFModInt");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastFModInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -599,7 +535,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwiseFModInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseFModInt");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
@@ -607,16 +543,15 @@ namespace Unity.Sentis
 
                 fn.ScheduleXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
             }
-            return O;
         }
 
         // Variadic Broadcast
 
-        void BroadcastMin(TensorFloat O, TensorFloat X, TensorFloat Y)
+        void BroadcastMin(TensorFloat X, TensorFloat Y, TensorFloat O)
         {
             if (X.shape == O.shape && Y.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastMinFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastMinFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(Y));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -629,7 +564,7 @@ namespace Unity.Sentis
             }
             else if (X.shape == O.shape && Y.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastMinFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastMinFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(Y));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -642,7 +577,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwiseMinFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseMinFloat");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, Y.shape);
@@ -653,33 +588,27 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override TensorFloat Min(TensorFloat[] tensors)
+        public override void Min(TensorFloat[] tensors, TensorFloat O)
         {
-            var O = NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(tensors));
-            if (O.shape.HasZeroDims())
-                return O;
-
             var Otmp = (tensors.Length > 2) ? NewTempTensorFloat(O.shape) : null;
 
             var curX = tensors[0];
             var curO = tensors.Length % 2 == 0 ? O : Otmp;
             for (var t = 1; t < tensors.Length; t++)
             {
-                BroadcastMin(curO, curX, tensors[t]);
+                BroadcastMin(curX, tensors[t], curO);
                 curX = curO;
                 curO = curO == O ? Otmp : O;
             }
 
             Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
-
-            return O;
         }
 
-        void BroadcastMax(TensorFloat O, TensorFloat X, TensorFloat Y)
+        void BroadcastMax(TensorFloat X, TensorFloat Y, TensorFloat O)
         {
             if (X.shape == O.shape && Y.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastMaxFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastMaxFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(Y));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -692,7 +621,7 @@ namespace Unity.Sentis
             }
             else if (X.shape == O.shape && Y.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastMaxFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastMaxFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(Y));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -705,7 +634,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwiseMaxFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseMaxFloat");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, Y.shape);
@@ -716,33 +645,27 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override TensorFloat Max(TensorFloat[] tensors)
+        public override void Max(TensorFloat[] tensors, TensorFloat O)
         {
-            var O = NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(tensors));
-            if (O.shape.HasZeroDims())
-                return O;
-
             var Otmp = (tensors.Length > 2) ? NewTempTensorFloat(O.shape) : null;
 
             var curX = tensors[0];
             var curO = tensors.Length % 2 == 0 ? O : Otmp;
             for (var t = 1; t < tensors.Length; t++)
             {
-                BroadcastMax(curO, curX, tensors[t]);
+                BroadcastMax(curX, tensors[t], curO);
                 curX = curO;
                 curO = curO == O ? Otmp : O;
             }
 
             Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
-
-            return O;
         }
 
-        void BroadcastMean(TensorFloat O, TensorFloat X, TensorFloat Y, float normalizationX, float normalizationY)
+        void BroadcastMean(TensorFloat X, TensorFloat Y, TensorFloat O, float normalizationX, float normalizationY)
         {
             if (X.shape == O.shape && Y.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastMeanFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastMeanFloat");
                 fn.SetFloat(k_ID_alpha, normalizationX);
                 fn.SetFloat(k_ID_beta, normalizationY);
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
@@ -757,7 +680,7 @@ namespace Unity.Sentis
             }
             else if (X.shape == O.shape && Y.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastMeanFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastMeanFloat");
                 fn.SetFloat(k_ID_alpha, normalizationX);
                 fn.SetFloat(k_ID_beta, normalizationY);
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
@@ -772,7 +695,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwiseMeanFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseMeanFloat");
                 fn.SetFloat(k_ID_alpha, normalizationX);
                 fn.SetFloat(k_ID_beta, normalizationY);
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
@@ -785,33 +708,27 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override TensorFloat Mean(TensorFloat[] tensors)
+        public override void Mean(TensorFloat[] tensors, TensorFloat O)
         {
-            var O = NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(tensors));
-            if (O.shape.HasZeroDims())
-                return O;
-
             var Otmp = (tensors.Length > 2) ? NewTempTensorFloat(O.shape) : null;
 
             var curX = tensors[0];
             var curO = tensors.Length % 2 == 0 ? O : Otmp;
             for (var t = 1; t < tensors.Length; t++)
             {
-                BroadcastMean(curO, curX, tensors[t], t == 1 ? 1.0f / tensors.Length : 1.0f, 1.0f / tensors.Length);
+                BroadcastMean(curX, tensors[t], curO, t == 1 ? 1.0f / tensors.Length : 1.0f, 1.0f / tensors.Length);
                 curX = curO;
                 curO = curO == O ? Otmp : O;
             }
 
             Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
-
-            return O;
         }
 
-        void BroadcastSum(TensorFloat O, TensorFloat X, TensorFloat Y)
+        void BroadcastSum(TensorFloat X, TensorFloat Y, TensorFloat O)
         {
             if (X.shape == O.shape && Y.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastAddFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastAddFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(Y));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -824,7 +741,7 @@ namespace Unity.Sentis
             }
             else if (X.shape == O.shape && Y.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastAddFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastAddFloat");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(Y));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -837,7 +754,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwiseAddFloat");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseAddFloat");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, Y.shape);
@@ -848,33 +765,27 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override TensorFloat Sum(TensorFloat[] tensors)
+        public override void Sum(TensorFloat[] tensors, TensorFloat O)
         {
-            var O = NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(tensors));
-            if (O.shape.HasZeroDims())
-                return O;
-
             var Otmp = (tensors.Length > 2) ? NewTempTensorFloat(O.shape) : null;
 
             var curX = tensors[0];
             var curO = tensors.Length % 2 == 0 ? O : Otmp;
             for (var t = 1; t < tensors.Length; t++)
             {
-                BroadcastSum(curO, curX, tensors[t]);
+                BroadcastSum(curX, tensors[t], curO);
                 curX = curO;
                 curO = curO == O ? Otmp : O;
             }
 
             Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
-
-            return O;
         }
 
-        void BroadcastMin(TensorInt O, TensorInt X, TensorInt Y)
+        void BroadcastMin(TensorInt X, TensorInt Y, TensorInt O)
         {
             if (X.shape == O.shape && Y.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastMinInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastMinInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(Y));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -887,7 +798,7 @@ namespace Unity.Sentis
             }
             else if (X.shape == O.shape && Y.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastMinInt");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastMinInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(Y));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -900,7 +811,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwiseMinInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseMinInt");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, Y.shape);
@@ -911,33 +822,27 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override TensorInt Min(TensorInt[] tensors)
+        public override void Min(TensorInt[] tensors, TensorInt O)
         {
-            var O = NewOutputTensorInt(TensorShapeHelper.BroadcastShape(tensors));
-            if (O.shape.HasZeroDims())
-                return O;
-
             var Otmp = (tensors.Length > 2) ? NewTempTensorInt(O.shape) : null;
 
             var curX = tensors[0];
             var curO = tensors.Length % 2 == 0 ? O : Otmp;
             for (var t = 1; t < tensors.Length; t++)
             {
-                BroadcastMin(curO, curX, tensors[t]);
+                BroadcastMin(curX, tensors[t], curO);
                 curX = curO;
                 curO = curO == O ? Otmp : O;
             }
 
             Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
-
-            return O;
         }
 
-        void BroadcastMax(TensorInt O, TensorInt X, TensorInt Y)
+        void BroadcastMax(TensorInt X, TensorInt Y, TensorInt O)
         {
             if (X.shape == O.shape && Y.shape.length == 1)
             {
-                var fn = new ComputeFunc("ScalarBroadcastMaxInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastMaxInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(Y));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -950,7 +855,7 @@ namespace Unity.Sentis
             }
             else if (X.shape == O.shape && Y.shape == O.shape)
             {
-                var fn = new ComputeFunc("BroadcastMaxInt");
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastMaxInt");
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
                 fn.SetTensorAsBuffer(k_ID_Bptr, Pin(Y));
                 fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
@@ -963,7 +868,7 @@ namespace Unity.Sentis
             }
             else
             {
-                var fn = new ComputeFunc("ElementwiseMaxInt");
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseMaxInt");
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
                 fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, Y.shape);
@@ -974,42 +879,31 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override TensorInt Max(TensorInt[] tensors)
+        public override void Max(TensorInt[] tensors, TensorInt O)
         {
-            var O = NewOutputTensorInt(TensorShapeHelper.BroadcastShape(tensors));
-            if (O.shape.HasZeroDims())
-                return O;
-
             var Otmp = (tensors.Length > 2) ? NewTempTensorInt(O.shape) : null;
 
             var curX = tensors[0];
             var curO = tensors.Length % 2 == 0 ? O : Otmp;
             for (var t = 1; t < tensors.Length; t++)
             {
-                BroadcastMax(curO, curX, tensors[t]);
+                BroadcastMax(curX, tensors[t], curO);
                 curX = curO;
                 curO = curO == O ? Otmp : O;
             }
 
             Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
-
-            return O;
         }
 
         // Reduction
 
         /// <inheritdoc/>
-        public override TensorFloat ReduceMin(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
+        public override void ReduceMin(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
-            TensorShape Oshape = X.shape.Reduce(axes, keepdim);
-            var O = NewOutputTensorFloat(Oshape);
-            if (Oshape.HasZeroDims())
-                return O;
-
             if (axes == null || axes.Length == 0)
             {
                 Reduce(X, O, 1, X.shape.length, 1, "ReduceMinFloat", "GlobalReduceMinFloat", "UnrolledReduceMinFloat");
-                return O;
+                return;
             }
 
             // Accumulate reduce axis until non contiguity
@@ -1056,22 +950,15 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceMinFloat", "GlobalReduceMinFloat", "UnrolledReduceMinFloat");
             }
-
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorFloat ReduceMax(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
+        public override void ReduceMax(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
-            TensorShape Oshape = X.shape.Reduce(axes, keepdim);
-            var O = NewOutputTensorFloat(Oshape);
-            if (Oshape.HasZeroDims())
-                return O;
-
             if (axes == null || axes.Length == 0)
             {
                 Reduce(X, O, 1, X.shape.length, 1, "ReduceMaxFloat", "GlobalReduceMaxFloat", "UnrolledReduceMaxFloat");
-                return O;
+                return;
             }
 
             // Accumulate reduce axis until non contiguity
@@ -1118,22 +1005,15 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceMaxFloat", "GlobalReduceMaxFloat", "UnrolledReduceMaxFloat");
             }
-
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorFloat ReduceSum(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
+        public override void ReduceSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
-            TensorShape Oshape = X.shape.Reduce(axes, keepdim);
-            var O = NewOutputTensorFloat(Oshape);
-            if (Oshape.HasZeroDims())
-                return O;
-
             if (axes == null || axes.Length == 0)
             {
                 Reduce(X, O, 1, X.shape.length, 1, "ReduceSumFloat", "GlobalReduceSumFloat", "UnrolledReduceSumFloat");
-                return O;
+                return;
             }
 
             // Accumulate reduce axis until non contiguity
@@ -1180,22 +1060,15 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceSumFloat", "GlobalReduceSumFloat", "UnrolledReduceSumFloat");
             }
-
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorFloat ReduceSumSquare(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
+        public override void ReduceSumSquare(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
-            TensorShape Oshape = X.shape.Reduce(axes, keepdim);
-            var O = NewOutputTensorFloat(Oshape);
-            if (Oshape.HasZeroDims())
-                return O;
-
             if (axes == null || axes.Length == 0)
             {
                 Reduce(X, O, 1, X.shape.length, 1, "ReduceSumSquareFloat", "GlobalReduceSumSquareFloat", "UnrolledReduceSumSquareFloat");
-                return O;
+                return;
             }
 
             // Accumulate reduce axis until non contiguity
@@ -1260,22 +1133,15 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceSumFloat", "GlobalReduceSumFloat", "UnrolledReduceSumFloat");
             }
-
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorFloat ReduceMean(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
+        public override void ReduceMean(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
-            TensorShape Oshape = X.shape.Reduce(axes, keepdim);
-            var O = NewOutputTensorFloat(Oshape);
-            if (Oshape.HasZeroDims())
-                return O;
-
             if (axes == null || axes.Length == 0)
             {
                 Reduce(X, O, 1, X.shape.length, 1, "ReduceMeanFloat", "GlobalReduceMeanFloat", "UnrolledReduceMeanFloat");
-                return O;
+                return;
             }
 
             // Accumulate reduce axis until non contiguity
@@ -1322,22 +1188,15 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceMeanFloat", "GlobalReduceMeanFloat", "UnrolledReduceMeanFloat");
             }
-
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorFloat ReduceProd(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
+        public override void ReduceProd(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
-            TensorShape Oshape = X.shape.Reduce(axes, keepdim);
-            var O = NewOutputTensorFloat(Oshape);
-            if (Oshape.HasZeroDims())
-                return O;
-
             if (axes == null || axes.Length == 0)
             {
                 Reduce(X, O, 1, X.shape.length, 1, "ReduceProdFloat", "GlobalReduceProdFloat", "UnrolledReduceProdFloat");
-                return O;
+                return;
             }
 
             // Accumulate reduce axis until non contiguity
@@ -1384,22 +1243,15 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceProdFloat", "GlobalReduceProdFloat", "UnrolledReduceProdFloat");
             }
-
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorFloat ReduceL1(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
+        public override void ReduceL1(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
-            TensorShape Oshape = X.shape.Reduce(axes, keepdim);
-            var O = NewOutputTensorFloat(Oshape);
-            if (Oshape.HasZeroDims())
-                return O;
-
             if (axes == null || axes.Length == 0)
             {
                 Reduce(X, O, 1, X.shape.length, 1, "ReduceL1Float", "GlobalReduceL1Float", "UnrolledReduceL1Float");
-                return O;
+                return;
             }
 
             // Accumulate reduce axis until non contiguity
@@ -1464,22 +1316,15 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceSumFloat", "GlobalReduceSumFloat", "UnrolledReduceSumFloat");
             }
-
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorFloat ReduceL2(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
+        public override void ReduceL2(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
-            TensorShape Oshape = X.shape.Reduce(axes, keepdim);
-            var O = NewOutputTensorFloat(Oshape);
-            if (Oshape.HasZeroDims())
-                return O;
-
             if (axes == null || axes.Length == 0)
             {
                 Reduce(X, O, 1, X.shape.length, 1, "ReduceL2Float", "GlobalReduceL2Float", "UnrolledReduceL2Float");
-                return O;
+                return;
             }
 
             // Accumulate reduce axis until non contiguity
@@ -1544,22 +1389,15 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceSqrtFloat", "GlobalReduceSqrtFloat", "UnrolledReduceSqrtFloat");
             }
-
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorFloat ReduceLogSum(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
+        public override void ReduceLogSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
-            TensorShape Oshape = X.shape.Reduce(axes, keepdim);
-            var O = NewOutputTensorFloat(Oshape);
-            if (Oshape.HasZeroDims())
-                return O;
-
             if (axes == null || axes.Length == 0)
             {
                 Reduce(X, O, 1, X.shape.length, 1, "ReduceLogSumFloat", "GlobalReduceLogSumFloat", "UnrolledReduceLogSumFloat");
-                return O;
+                return;
             }
 
             // Accumulate reduce axis until non contiguity
@@ -1606,24 +1444,17 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceLogSumFloat", "GlobalReduceLogSumFloat", "UnrolledReduceLogSumFloat");
             }
-
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorFloat ReduceLogSumExp(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
+        public override void ReduceLogSumExp(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
-            TensorShape Oshape = X.shape.Reduce(axes, keepdim);
-            var O = NewOutputTensorFloat(Oshape);
-            if (Oshape.HasZeroDims())
-                return O;
-
             if (axes == null || axes.Length == 0)
             {
-                var Xmax = NewTempTensorFloat(Oshape);
+                var Xmax = NewTempTensorFloat(O.shape);
                 Reduce(X, Xmax, 1, X.shape.length, 1, "ReduceMaxFloat", "GlobalReduceMaxFloat", "UnrolledReduceMaxFloat");
                 Reduce(X, Xmax, O, 1, X.shape.length, 1, "ReduceLogSumExpFloat", "GlobalReduceLogSumExpFloat", "UnrolledReduceLogSumExpFloat");
-                return O;
+                return;
             }
 
             // Accumulate reduce axis until non contiguity
@@ -1674,22 +1505,15 @@ namespace Unity.Sentis
                 Reduce(X, Xmax, outerLength, reduceLength, innerLength, "ReduceMaxFloat", "GlobalReduceMaxFloat", "UnrolledReduceMaxFloat");
                 Reduce(X, Xmax, O, outerLength, reduceLength, innerLength, "ReduceLogSumExpFloat", "GlobalReduceLogSumExpFloat", "UnrolledReduceLogSumExpFloat");
             }
-
-            return O;
         }
 
         /// <inheritdoc/>
-        public TensorFloat ReduceSumExp(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceSumExp(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
-            TensorShape Oshape = X.shape.Reduce(axes, keepdim);
-            var O = NewOutputTensorFloat(Oshape);
-            if (Oshape.HasZeroDims())
-                return O;
-
             if (axes == null || axes.Length == 0)
             {
                 Reduce(X, O, 1, X.shape.length, 1, "ReduceSumExpFloat", "GlobalReduceSumExpFloat", "UnrolledReduceSumExpFloat");
-                return O;
+                return;
             }
 
             // Accumulate reduce axis until non contiguity
@@ -1736,22 +1560,15 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceSumExpFloat", "GlobalReduceSumExpFloat", "UnrolledReduceSumExpFloat");
             }
-
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorInt ReduceMin(TensorInt X, ReadOnlySpan<int> axes, bool keepdim)
+        public override void ReduceMin(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
-            TensorShape Oshape = X.shape.Reduce(axes, keepdim);
-            var O = NewOutputTensorInt(Oshape);
-            if (Oshape.HasZeroDims())
-                return O;
-
             if (axes == null || axes.Length == 0)
             {
                 Reduce(X, O, 1, X.shape.length, 1, "ReduceMinInt", "GlobalReduceMinInt", "UnrolledReduceMinInt");
-                return O;
+                return;
             }
 
             // Accumulate reduce axis until non contiguity
@@ -1798,22 +1615,15 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceMinInt", "GlobalReduceMinInt", "UnrolledReduceMinInt");
             }
-
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorInt ReduceMax(TensorInt X, ReadOnlySpan<int> axes, bool keepdim)
+        public override void ReduceMax(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
-            TensorShape Oshape = X.shape.Reduce(axes, keepdim);
-            var O = NewOutputTensorInt(Oshape);
-            if (Oshape.HasZeroDims())
-                return O;
-
             if (axes == null || axes.Length == 0)
             {
                 Reduce(X, O, 1, X.shape.length, 1, "ReduceMaxInt", "GlobalReduceMaxInt", "UnrolledReduceMaxInt");
-                return O;
+                return;
             }
 
             // Accumulate reduce axis until non contiguity
@@ -1860,22 +1670,15 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceMaxInt", "GlobalReduceMaxInt", "UnrolledReduceMaxInt");
             }
-
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorInt ReduceSum(TensorInt X, ReadOnlySpan<int> axes, bool keepdim)
+        public override void ReduceSum(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
-            TensorShape Oshape = X.shape.Reduce(axes, keepdim);
-            var O = NewOutputTensorInt(Oshape);
-            if (Oshape.HasZeroDims())
-                return O;
-
             if (axes == null || axes.Length == 0)
             {
                 Reduce(X, O, 1, X.shape.length, 1, "ReduceSumInt", "GlobalReduceSumInt", "UnrolledReduceSumInt");
-                return O;
+                return;
             }
 
             // Accumulate reduce axis until non contiguity
@@ -1922,22 +1725,15 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceSumInt", "GlobalReduceSumInt", "UnrolledReduceSumInt");
             }
-
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorInt ReduceSumSquare(TensorInt X, ReadOnlySpan<int> axes, bool keepdim)
+        public override void ReduceSumSquare(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
-            TensorShape Oshape = X.shape.Reduce(axes, keepdim);
-            var O = NewOutputTensorInt(Oshape);
-            if (Oshape.HasZeroDims())
-                return O;
-
             if (axes == null || axes.Length == 0)
             {
                 Reduce(X, O, 1, X.shape.length, 1, "ReduceSumSquareInt", "GlobalReduceSumSquareInt", "UnrolledReduceSumSquareInt");
-                return O;
+                return;
             }
 
             // Accumulate reduce axis until non contiguity
@@ -2002,22 +1798,15 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceSumInt", "GlobalReduceSumInt", "UnrolledReduceSumInt");
             }
-
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorInt ReduceProd(TensorInt X, ReadOnlySpan<int> axes, bool keepdim)
+        public override void ReduceProd(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
-            TensorShape Oshape = X.shape.Reduce(axes, keepdim);
-            var O = NewOutputTensorInt(Oshape);
-            if (Oshape.HasZeroDims())
-                return O;
-
             if (axes == null || axes.Length == 0)
             {
                 Reduce(X, O, 1, X.shape.length, 1, "ReduceProdInt", "GlobalReduceProdInt", "UnrolledReduceProdInt");
-                return O;
+                return;
             }
 
             // Accumulate reduce axis until non contiguity
@@ -2064,22 +1853,15 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceProdInt", "GlobalReduceProdInt", "UnrolledReduceProdInt");
             }
-
-            return O;
         }
 
         /// <inheritdoc/>
-        public override TensorInt ReduceL1(TensorInt X, ReadOnlySpan<int> axes, bool keepdim)
+        public override void ReduceL1(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
-            TensorShape Oshape = X.shape.Reduce(axes, keepdim);
-            var O = NewOutputTensorInt(Oshape);
-            if (Oshape.HasZeroDims())
-                return O;
-
             if (axes == null || axes.Length == 0)
             {
                 Reduce(X, O, 1, X.shape.length, 1, "ReduceL1Int", "GlobalReduceL1Int", "UnrolledReduceL1Int");
-                return O;
+                return;
             }
 
             // Accumulate reduce axis until non contiguity
@@ -2144,8 +1926,24 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceSumInt", "GlobalReduceSumInt", "UnrolledReduceSumInt");
             }
+        }
 
-            return O;
+        /// <inheritdoc/>
+        public override void ScalarMad(TensorFloat X, TensorFloat O, float s, float b)
+        {
+            if (X.shape.HasZeroDims())
+                return;
+            var fn = new ComputeFunc("ScalarMad");
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetFloat(k_ID_s, s);
+            fn.SetFloat(k_ID_b, b);
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+            fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+            var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
+            var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
+            var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
+            fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
+            fn.Dispatch(numBlocksX, numBlocksY, 1);
         }
     }
 }

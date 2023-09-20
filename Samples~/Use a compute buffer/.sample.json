@@ -1,0 +1,4 @@
+{
+  "displayName": "Use a compute buffer",
+  "description": "An example of using a compute shader to write data to a tensor on the GPU."
+}

@@ -1,3 +1,7 @@
+#pragma kernel Upsample1D_Nearest_Floor NEAREST SUFFIX=Nearest FLOOR MODE=Floor
+#pragma kernel Upsample1D_Nearest_Ceil NEAREST SUFFIX=Nearest CEIL MODE=Ceil
+#pragma kernel Upsample1D_Linear_None LINEAR SUFFIX=Linear MODE=None
+
 #pragma kernel Upsample2D_Nearest_Floor NEAREST SUFFIX=Nearest FLOOR MODE=Floor
 #pragma kernel Upsample2D_Nearest_Ceil NEAREST SUFFIX=Nearest CEIL MODE=Ceil
 #pragma kernel Upsample2D_Linear_None LINEAR SUFFIX=Linear MODE=None
@@ -25,6 +29,40 @@ float BilinearInterpolation(float fracSrcPosX, float fracSrcPosY, float p00, flo
               p11 * fracSrcPosX       * fracSrcPosY;
     return v;
 }
+
+#define FUNC_NAME(KERNEL, SIZE) Upsample1D_##KERNEL##_##SIZE
+
+[numthreads(1, 8, 1)]
+void FUNC_NAME(SUFFIX, MODE)(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint bc = dispatchThreadID.x;
+    uint x = dispatchThreadID.y;
+
+    if (x >= (uint)outWidth) return;
+
+    float srcPosX = x * scale[0] + bias[0];
+
+    #if defined(LINEAR)
+        float floorSrcPosX = floor(srcPosX);
+        float fracSrcPosX = srcPosX - floorSrcPosX;
+
+        //from https://www.scratchapixel.com/lessons/mathematics-physics-for-computer-graphics/interpolation/trilinear-interpolation
+        float p0 = Xptr[bc * inWidth + clamp((int)floorSrcPosX + 0, 0, inWidth - 1)];
+        float p1 = Xptr[bc * inWidth + clamp((int)floorSrcPosX + 1, 0, inWidth - 1)];
+        Optr[bc * outWidth + x] = p1 * fracSrcPosX + p0 * (1 - fracSrcPosX);
+    #endif
+    #if defined(NEAREST)
+        int ox;
+        #if defined(FLOOR)
+            ox = (int)floor(srcPosX);
+        #elif defined(CEIL)
+            ox = (int)ceil(srcPosX);
+        #endif
+        Optr[bc * outWidth + x] = Xptr[bc * inWidth + clamp(ox, 0, inWidth - 1)];
+    #endif
+}
+
+#undef FUNC_NAME
 
 #define FUNC_NAME(KERNEL, SIZE) Upsample2D_##KERNEL##_##SIZE
 

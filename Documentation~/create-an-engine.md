@@ -16,7 +16,6 @@ using Unity.Sentis;
 
 public class CreateWorker : MonoBehaviour
 {
-
     ModelAsset modelAsset;
     Model runtimeModel;
     IWorker worker;

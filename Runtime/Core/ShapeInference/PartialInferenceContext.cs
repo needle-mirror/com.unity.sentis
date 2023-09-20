@@ -55,15 +55,5 @@ namespace Unity.Sentis
         {
             return string.IsNullOrEmpty(name) ? null : m_PartialTensors[name];
         }
-
-        internal bool TryGetPartialTensor(string name, out PartialTensor partialTensor)
-        {
-            if (string.IsNullOrEmpty(name))
-            {
-                partialTensor = null;
-                return false;
-            }
-            return m_PartialTensors.TryGetValue(name, out partialTensor);
-        }
     }
 }

@@ -1,0 +1,4 @@
+{
+  "displayName": "Run a model a layer at a time",
+  "description": "An example of using StartManualSchedule to run a model a layer a time."
+}

@@ -38,7 +38,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.And(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+            var O = ctx.backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(inputTensors[0], inputTensors[1]));
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.And(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt, O);
+            return O;
         }
 
         internal override string profilerTag => "And";
@@ -107,9 +111,34 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            if (hasAxis)
-                return ctx.backend.Compress(inputTensors[0], inputTensors[1] as TensorInt, axis);
-            return ctx.backend.Compress(ctx.backend.Reshape(inputTensors[0], new TensorShape(inputTensors[0].shape.length)), inputTensors[1] as TensorInt, 0);
+            var X = inputTensors[0];
+            if (!hasAxis)
+            {
+                var flattenedShape = new TensorShape(X.shape.length);
+                X = ctx.backend.NewTensor(flattenedShape, X.dataType, AllocScope.InternalToLayer);
+                ctx.backend.Reshape(inputTensors[0], X);
+            }
+
+            var condition = inputTensors[1] as TensorInt;
+            var numCondition = condition.shape.length;
+
+            var indices = ctx.backend.NewTempTensorInt(condition.shape);
+            ArrayTensorData.Pin(indices, clearOnInit: false);
+
+            var numIndices = 0;
+            for (var i = 0; i < numCondition; i++)
+            {
+                if (condition[i] == 0)
+                    continue;
+                indices[numIndices] = i;
+                numIndices++;
+            }
+
+            var O = ctx.backend.NewOutputTensor(ShapeInference.Compress(X.shape, numIndices, axis), X.dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.CompressWithIndices(X, indices, O, numIndices, axis);
+            return O;
         }
 
         /// <inheritdoc/>
@@ -141,10 +170,14 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
+            var O = ctx.backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(inputTensors[0], inputTensors[1]));
+            if (O.shape.HasZeroDims())
+                return O;
             if (inputTensors[0] is TensorInt)
-                return ctx.backend.Equal(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+                ctx.backend.Equal(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt, O);
             else
-                return ctx.backend.Equal(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+                ctx.backend.Equal(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, O);
+            return O;
         }
 
         internal override string profilerTag => "Equal";
@@ -170,10 +203,14 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
+            var O = ctx.backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(inputTensors[0], inputTensors[1]));
+            if (O.shape.HasZeroDims())
+                return O;
             if (inputTensors[0] is TensorInt)
-                return ctx.backend.Greater(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+                ctx.backend.Greater(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt, O);
             else
-                return ctx.backend.Greater(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+                ctx.backend.Greater(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, O);
+            return O;
         }
 
         internal override string profilerTag => "Greater";
@@ -199,10 +236,14 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
+            var O = ctx.backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(inputTensors[0], inputTensors[1]));
+            if (O.shape.HasZeroDims())
+                return O;
             if (inputTensors[0] is TensorInt)
-                return ctx.backend.GreaterOrEqual(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+                ctx.backend.GreaterOrEqual(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt, O);
             else
-                return ctx.backend.GreaterOrEqual(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+                ctx.backend.GreaterOrEqual(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, O);
+            return O;
         }
 
         internal override string profilerTag => "GreaterOrEqual";
@@ -247,7 +288,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.IsInf(inputTensors[0] as TensorFloat, detectNegative, detectPositive);
+            var O = ctx.backend.NewOutputTensorInt(inputTensors[0].shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.IsInf(inputTensors[0] as TensorFloat, O, detectNegative, detectPositive);
+            return O;
         }
 
         /// <inheritdoc/>
@@ -285,7 +330,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.IsNaN(inputTensors[0] as TensorFloat);
+            var O = ctx.backend.NewOutputTensorInt(inputTensors[0].shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.IsNaN(inputTensors[0] as TensorFloat, O);
+            return O;
         }
 
         internal override string profilerTag => "IsNaN";
@@ -311,10 +360,14 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
+            var O = ctx.backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(inputTensors[0], inputTensors[1]));
+            if (O.shape.HasZeroDims())
+                return O;
             if (inputTensors[0] is TensorInt)
-                return ctx.backend.Less(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+                ctx.backend.Less(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt, O);
             else
-                return ctx.backend.Less(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+                ctx.backend.Less(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, O);
+            return O;
         }
 
         internal override string profilerTag => "Less";
@@ -340,10 +393,14 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
+            var O = ctx.backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(inputTensors[0], inputTensors[1]));
+            if (O.shape.HasZeroDims())
+                return O;
             if (inputTensors[0] is TensorInt)
-                return ctx.backend.LessOrEqual(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+                ctx.backend.LessOrEqual(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt, O);
             else
-                return ctx.backend.LessOrEqual(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat);
+                ctx.backend.LessOrEqual(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, O);
+            return O;
         }
 
         internal override string profilerTag => "LessOrEqual";
@@ -375,7 +432,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.Not(inputTensors[0] as TensorInt);
+            var O = ctx.backend.NewOutputTensorInt(inputTensors[0].shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.Not(inputTensors[0] as TensorInt, O);
+            return O;
         }
 
         internal override string profilerTag => "Not";
@@ -401,7 +462,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.Or(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+            var O = ctx.backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(inputTensors[0], inputTensors[1]));
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.Or(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt, O);
+            return O;
         }
 
         internal override string profilerTag => "Or";
@@ -427,7 +492,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.Xor(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt);
+            var O = ctx.backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(inputTensors[0], inputTensors[1]));
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.Xor(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt, O);
+            return O;
         }
 
         internal override string profilerTag => "Xor";
@@ -460,7 +529,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.Where(inputTensors[0] as TensorInt, inputTensors[1], inputTensors[2]);
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape.Broadcast(inputTensors[1].shape.Broadcast(inputTensors[2].shape)), inputTensors[1].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.Where(inputTensors[0] as TensorInt, inputTensors[1], inputTensors[2], O);
+            return O;
         }
 
         internal override string profilerTag => "Where";

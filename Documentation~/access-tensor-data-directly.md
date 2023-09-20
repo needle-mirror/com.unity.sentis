@@ -69,7 +69,7 @@ To access a tensor in GPU memory, first get the tensor data as a `ComputeTensorD
 
 You can then use the `buffer` property of the `ComputeTensorData` object and a compute shader to access the tensor data in the compute buffer directly. Refer to [`ComputeBuffer`](https://docs.unity3d.com/ScriptReference/ComputeBuffer.html) in the Unity API reference for more information about how to access a compute buffer.
 
-Refer to the `AsyncReadback/AsyncReadBackCompute` example in the [sample scripts](package-samples.md) for an example.
+Refer to the `Read output asynchronously` example in the [sample scripts](package-samples.md) for an example.
 
 ## Access a tensor in CPU memory
 
@@ -86,7 +86,7 @@ You can then use the object in a Burst function like `IJobParallelFor` to read f
 
 Refer to the following:
 
-- The `CSharpJob` example in the [sample scripts](package-samples.md) for an example.
+- The `Use Burst to write data` example in the [sample scripts](package-samples.md) for an example.
 - The [Burst documentation](https://docs.unity3d.com/Packages/com.unity.burst@latest).
 
 ### Get an ArrayTensorData object

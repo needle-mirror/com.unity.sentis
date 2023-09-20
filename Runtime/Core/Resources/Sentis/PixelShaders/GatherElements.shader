@@ -30,7 +30,7 @@ Shader "Hidden/Sentis/GatherElements"
             DECLARE_TENSOR_BLOCK_STRIDE(B)
             DECLARE_TENSOR_BLOCK_STRIDE_O;
 
-            uint endLength, axisDim;
+            uint endLength, endLengthX, axisDim;
 
             DTYPE4 frag(v2f j, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
@@ -41,7 +41,7 @@ Shader "Hidden/Sentis/GatherElements"
                 int4 index4 = SampleElementsB(indexO4);
                 index4 = index4 < 0 ? axisDim + index4 : index4;
 
-                return SampleElementsX(start4 * endLength * axisDim + index4 * endLength + end4);
+                return SampleElementsX(start4 * endLengthX * axisDim + index4 * endLengthX + end4);
             }
             ENDCG
         }

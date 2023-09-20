@@ -17,6 +17,7 @@ Shader "Hidden/Sentis/Broadcast"
             #pragma vertex vert
             #pragma fragment frag
 
+            #include "../ComputeShaders/Tensor.cginc"
             #include "CommonVertexShader.cginc"
             #include "CommonPixelShader.cginc"
 
@@ -55,6 +56,10 @@ Shader "Hidden/Sentis/Broadcast"
             float alpha, beta;
             #endif
 
+            bool IsNaN(float x) {
+                return !(x < 0. || x > 0. || x == 0.);
+            }
+
             O_DTYPE4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
                 uint blockIndexO = GetBlockIndexO(screenPos);
@@ -89,22 +94,20 @@ Shader "Hidden/Sentis/Broadcast"
                 #endif
                 #ifdef Div
                     float4 u = va / vb;
-                    bool4 vNaN = vb == 0.0f;
-                    v.x = vNaN.x ? 0.0f : u.x;
-                    v.y = vNaN.y ? 0.0f : u.y;
-                    v.z = vNaN.z ? 0.0f : u.z;
-                    v.w = vNaN.w ? 0.0f : u.w;
+                    v.x = IsNaN(u.x) ? 0.0f : u.x;
+                    v.y = IsNaN(u.y) ? 0.0f : u.y;
+                    v.z = IsNaN(u.z) ? 0.0f : u.z;
+                    v.w = IsNaN(u.w) ? 0.0f : u.w;
                 #endif
                 #ifdef DivInt
                     v = va / vb;
                 #endif
                 #if defined(Pow) | defined(PowInt)
-                    O_DTYPE4 u = pow(va, vb);
-                    bool4 vNaN = (va < 0.0f && floor(vb) == vb) || (va == 0.0f && vb == 0.0f);
-                    v.x = vNaN.x ? 0.0f : u.x;
-                    v.y = vNaN.y ? 0.0f : u.y;
-                    v.z = vNaN.z ? 0.0f : u.z;
-                    v.w = vNaN.w ? 0.0f : u.w;
+                    O_DTYPE4 u = SignedPow(va, vb);
+                    v.x = IsNaN(u.x) ? 0.0f : u.x;
+                    v.y = IsNaN(u.y) ? 0.0f : u.y;
+                    v.z = IsNaN(u.z) ? 0.0f : u.z;
+                    v.w = IsNaN(u.w) ? 0.0f : u.w;
                 #endif
                 #if defined(Min) | defined(MinInt)
                     v = min(va, vb);
@@ -117,11 +120,10 @@ Shader "Hidden/Sentis/Broadcast"
                 #endif
                 #ifdef FMod
                     float4 u = fmod(va, vb);
-                    bool4 vNaN = vb == 0.0f;
-                    v.x = vNaN.x ? 0.0f : u.x;
-                    v.y = vNaN.y ? 0.0f : u.y;
-                    v.z = vNaN.z ? 0.0f : u.z;
-                    v.w = vNaN.w ? 0.0f : u.w;
+                    v.x = IsNaN(u.x) ? 0.0f : u.x;
+                    v.y = IsNaN(u.y) ? 0.0f : u.y;
+                    v.z = IsNaN(u.z) ? 0.0f : u.z;
+                    v.w = IsNaN(u.w) ? 0.0f : u.w;
                 #endif
                 #ifdef FModInt
                     v = va % vb;

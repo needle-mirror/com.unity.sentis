@@ -32,6 +32,9 @@ public class RunOperatorOnTensor : MonoBehaviour
         // Run the ArgMax operator on the input tensor.
         TensorInt result = ops.ArgMax(inputTensor, axis: 0, keepdim: true);
 
+        // Make tensor readable before indexing.
+        result.MakeReadable();
+
         // Log the first item of the result.
         Debug.Log(result[0]);
     }
@@ -46,7 +49,7 @@ public class RunOperatorOnTensor : MonoBehaviour
 }
 ```
 
-Refer to the `ExecuteOperatorOnTensor` example in the [sample scripts](package-samples.md) for an example.
+Refer to the `Do an operation on a tensor` example in the [sample scripts](package-samples.md) for an example.
 
 Refer to [Create an engine to run a model](create-an-engine.md) for more information about back end types.
 

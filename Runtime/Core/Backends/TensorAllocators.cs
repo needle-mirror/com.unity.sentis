@@ -180,14 +180,14 @@ class TensorCachingByShapeAllocator : ITensorAllocator
     }
 
     /// <inheritdoc/>
-    public virtual void MoveToDevice(Tensor tensor, ITensorData newBuffer, ITensorData oldBuffer, bool disposeDetachedBufferHint)
+    public virtual void MoveToDevice(Tensor X, ITensorData newBuffer, ITensorData oldBuffer, bool disposeDetachedBufferHint)
     {
         if (newBuffer == oldBuffer)
             return;
 
-        Assert.AreEqual(tensor.allocator, this);
-        Assert.IsTrue(m_BusyTensors.ContainsKey(tensor));
-        m_BusyTensors[tensor] = newBuffer;
+        Assert.AreEqual(X.allocator, this);
+        Assert.IsTrue(m_BusyTensors.ContainsKey(X));
+        m_BusyTensors[X] = newBuffer;
 
         AddRef(newBuffer);
         DecRef(oldBuffer,
@@ -195,7 +195,7 @@ class TensorCachingByShapeAllocator : ITensorAllocator
                 if (disposeDetachedBufferHint)
                     freeBuffer.Dispose();
                 else
-                    AdoptFreeBuffer(tensor.shape, freeBuffer);
+                    AdoptFreeBuffer(X.shape, freeBuffer);
             });
     }
 
@@ -223,13 +223,13 @@ class TensorCachingByShapeAllocator : ITensorAllocator
     }
 
     /// <inheritdoc/>
-    public virtual void WaiveOwnership(Tensor tensor)
+    public virtual void WaiveOwnership(Tensor X)
     {
-        Assert.AreEqual(tensor.allocator, this);
-        Assert.IsTrue(m_BusyTensors.ContainsKey(tensor));
-        m_BusyTensors.Remove(tensor);
+        Assert.AreEqual(X.allocator, this);
+        Assert.IsTrue(m_BusyTensors.ContainsKey(X));
+        m_BusyTensors.Remove(X);
 
-        var buffer = tensor.tensorOnDevice;
+        var buffer = X.tensorOnDevice;
         if (buffer == null)
             return;
 
@@ -269,7 +269,7 @@ class TensorCachingByShapeAllocator : ITensorAllocator
 
         foreach (var busyEntry in m_BusyTensors)
         {
-            Assert.IsTrue(busyEntry.Key != tensor);
+            Assert.IsTrue(busyEntry.Key != X);
             Assert.IsTrue(busyEntry.Value != buffer);
         }
 
@@ -402,6 +402,32 @@ public class TensorCachingAllocator : ITensorAllocator
         return res;
     }
 
+    int FindEntryIndexForSize(int minimumSize)
+    {
+        var allocatedBufferCount = m_AllocatedBuffers.Count;
+
+        if (allocatedBufferCount == 0 || m_AllocatedBuffers[^1].size < minimumSize)
+            return -1;
+
+        if (m_AllocatedBuffers[0].size >= minimumSize)
+            return 0;
+
+        // l will be the last entry which size < minimumSize
+        // r will be the first entry which size >= minimumSize
+        int l = 0, r = allocatedBufferCount - 1;
+
+        while (r - l > 1)
+        {
+            var m = (l + r) / 2;
+            if (m_AllocatedBuffers[m].size >= minimumSize)
+                r = m;
+            else
+                l = m;
+        }
+
+        return r;
+    }
+
     void AddRef(ITensorData buffer)
     {
         if (buffer == null)
@@ -432,38 +458,20 @@ public class TensorCachingAllocator : ITensorAllocator
     {
         var bufferSize = buffer.maxCapacity;
         var newEntry = new Entry { size = bufferSize, tensorData = buffer, deviceType = buffer.deviceType, free = true };
+
+        var index = FindEntryIndexForSize(bufferSize);
+
+        if (index == -1)
+        {
+            m_AllocatedBuffers.Add(newEntry);
+            return;
+        }
+
         var allocatedBufferCount = m_AllocatedBuffers.Count;
 
-        if (allocatedBufferCount == 0)
+        for (; index < allocatedBufferCount; index++)
         {
-            m_AllocatedBuffers.Add(newEntry);
-            return;
-        }
-
-        int l = -1, r = allocatedBufferCount;
-        var m = (l + r) / 2;
-
-        // Looking for l as the last entry with entry.size < buffer.size
-        while (r - l > 1)
-        {
-            if (m_AllocatedBuffers[m].size < bufferSize)
-                l = m;
-            else
-                r = m;
-
-            m = (l + r) / 2;
-        }
-
-        m = l + 1;
-        if (m == allocatedBufferCount)
-        {
-            m_AllocatedBuffers.Add(newEntry);
-            return;
-        }
-
-        for (; m < allocatedBufferCount; m++)
-        {
-            var entry = m_AllocatedBuffers[m];
+            var entry = m_AllocatedBuffers[index];
 
             if (entry.size != bufferSize)
                 break;
@@ -472,16 +480,16 @@ public class TensorCachingAllocator : ITensorAllocator
             {
                 Assert.IsFalse(entry.free);
                 entry.free = true;
-                m_AllocatedBuffers[m] = entry;
+                m_AllocatedBuffers[index] = entry;
                 return;
             }
         }
 
         // m is now out of the list, or points to the first entry with entry.size > buffer.size
-        if (m == allocatedBufferCount)
+        if (index == allocatedBufferCount)
             m_AllocatedBuffers.Add(newEntry);
         else
-            m_AllocatedBuffers.Insert(m, newEntry);
+            m_AllocatedBuffers.Insert(index, newEntry);
     }
 
     void DisposeAllocatedBuffer(ITensorData buffer)
@@ -495,49 +503,48 @@ public class TensorCachingAllocator : ITensorAllocator
     /// <inheritdoc/>
     public virtual Tensor Alloc(TensorShape shape, DataType dataType, DeviceType deviceType, AllocScope scope)
     {
-        Profiler.BeginSample("Sentis.SizeAllocator.Alloc");
-
-        for (int i = 0; i < m_AllocatedBuffers.Count; ++i)
+        Tensor AllocNew(TensorShape s, DataType dt)
         {
-            var entry = m_AllocatedBuffers[i];
-            if (entry.size >= shape.length && deviceType == entry.deviceType && entry.free)
-            {
-                entry.free = false;
-                m_AllocatedBuffers[i] = entry;
+            ++m_NumAllocatedBufferSinceCleanup;
 
-                ITensorData buffer = entry.tensorData;
-                buffer?.Reserve(shape.length);
-
-                var tensor = AllocTensorInternal(shape, buffer, dataType);
-
-                m_BusyTensors.Add(tensor, tensor.tensorOnDevice);
-                AddRef(tensor.tensorOnDevice);
-
-                Profiler.EndSample();
-                return tensor;
-            }
+            var newTensor = AllocTensorInternal(s, null, dt);
+            m_BusyTensors.Add(newTensor, newTensor.tensorOnDevice);
+            AddRef(newTensor.tensorOnDevice);
+            return newTensor;
         }
 
-        ++m_NumAllocatedBufferSinceCleanup;
+        var index = FindEntryIndexForSize(shape.length);
+        if(index == -1)
+            return AllocNew(shape, dataType);
 
-        var newTensor = AllocTensorInternal(shape, null, dataType);
-        m_BusyTensors.Add(newTensor, newTensor.tensorOnDevice);
-        AddRef(newTensor.tensorOnDevice);
+        for(var allocatedBufferCount = m_AllocatedBuffers.Count; index < allocatedBufferCount; index++)
+        {
+            var entry = m_AllocatedBuffers[index];
+            if (entry.deviceType != deviceType || !entry.free)
+                continue;
 
-        Profiler.EndSample();
-        return newTensor;
+            entry.free = false;
+            m_AllocatedBuffers[index] = entry;
+
+            var buffer = entry.tensorData;
+            buffer?.Reserve(shape.length);
+
+            var tensor = AllocTensorInternal(shape, buffer, dataType);
+
+            m_BusyTensors.Add(tensor, tensor.tensorOnDevice);
+            AddRef(tensor.tensorOnDevice);
+            return tensor;
+        }
+
+        return AllocNew(shape, dataType);
     }
 
     /// <inheritdoc/>
     public virtual Tensor Alloc(TensorShape shape, DataType dataType, ITensorData buffer, AllocScope scope)
     {
-        Profiler.BeginSample("Sentis.SizeAllocator.Alloc");
-
         var tensor = AllocTensorInternal(shape, buffer, dataType);
         m_BusyTensors.Add(tensor, tensor.tensorOnDevice);
         AddRef(tensor.tensorOnDevice);
-
-        Profiler.EndSample();
         return tensor;
     }
 
@@ -609,14 +616,14 @@ public class TensorCachingAllocator : ITensorAllocator
     }
 
     /// <inheritdoc/>
-    public virtual void MoveToDevice(Tensor tensor, ITensorData newBuffer, ITensorData oldBuffer, bool disposeDetachedBufferHint)
+    public virtual void MoveToDevice(Tensor X, ITensorData newBuffer, ITensorData oldBuffer, bool disposeDetachedBufferHint)
     {
         if (newBuffer == oldBuffer)
             return;
 
-        Assert.AreEqual(tensor.allocator, this);
-        Assert.IsTrue(m_BusyTensors.ContainsKey(tensor));
-        m_BusyTensors[tensor] = newBuffer;
+        Assert.AreEqual(X.allocator, this);
+        Assert.IsTrue(m_BusyTensors.ContainsKey(X));
+        m_BusyTensors[X] = newBuffer;
 
         AddRef(newBuffer);
 
@@ -653,13 +660,13 @@ public class TensorCachingAllocator : ITensorAllocator
     }
 
     /// <inheritdoc/>
-    public virtual void WaiveOwnership(Tensor tensor)
+    public virtual void WaiveOwnership(Tensor X)
     {
-        Assert.AreEqual(tensor.allocator, this);
-        Assert.IsTrue(m_BusyTensors.ContainsKey(tensor));
-        m_BusyTensors.Remove(tensor);
+        Assert.AreEqual(X.allocator, this);
+        Assert.IsTrue(m_BusyTensors.ContainsKey(X));
+        m_BusyTensors.Remove(X);
 
-        var buffer = tensor.tensorOnDevice;
+        var buffer = X.tensorOnDevice;
         if (buffer == null)
             return;
 
@@ -710,7 +717,7 @@ public class TensorCachingAllocator : ITensorAllocator
 
         foreach(var busyEntry in m_BusyTensors)
         {
-            Assert.IsTrue(busyEntry.Key != tensor);
+            Assert.IsTrue(busyEntry.Key != X);
             Assert.IsTrue(busyEntry.Value != buffer);
         }
 

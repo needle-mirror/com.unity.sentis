@@ -84,6 +84,18 @@ namespace Unity.Sentis.Layers
             this.kernelShape = kernelShape;
             this.fusedActivation = fusedActivation;
         }
+        public Conv(string name, string X, string W, int group, int[] strides, int[] pads, int[] dilations, AutoPad autoPad = AutoPad.NotSet, int[] kernelShape = null, FusableActivation fusedActivation = FusableActivation.None)
+        {
+            this.name = name;
+            inputs = new[] { X, W };
+            this.autoPad = autoPad;
+            this.dilations = dilations ?? new[] { 1, 1, 1, 1, 1, 1 };
+            this.group = group;
+            this.pads = pads ?? new int[12];
+            this.strides = strides ?? new[] { 1, 1, 1, 1, 1, 1 };
+            this.kernelShape = kernelShape;
+            this.fusedActivation = fusedActivation;
+        }
 
         /// <inheritdoc/>
         internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
@@ -94,17 +106,22 @@ namespace Unity.Sentis.Layers
             {
                 shapeKernel[i + 2] = SymbolicTensorDim.MaxDefinedDim(shapeKernel[i + 2], new SymbolicTensorDim(kernelShape[i]));
             }
-            var shapeBias = inputTensors[2]?.shape ?? SymbolicTensorShape.UnknownShape;
             if (!shapeX.hasRank)
                 return new PartialTensor(DataType.Float);
 
             shapeKernel.DeclareRank(shapeX.rank);
-            shapeBias.DeclareRank(1);
 
             var shapeOut = SymbolicTensorShape.UnknownOfRank(shapeX.rank);
 
             shapeOut[0] = shapeX[0];
-            shapeOut[1] = SymbolicTensorDim.MaxDefinedDim(shapeKernel[0], shapeBias[0]);
+            shapeOut[1] = shapeKernel[0];
+
+            if (inputs.Length == 3)
+            {
+                var shapeBias = inputTensors[2]?.shape ?? SymbolicTensorShape.UnknownShape;
+                shapeBias.DeclareRank(1);
+                shapeOut[1] = SymbolicTensorDim.MaxDefinedDim(shapeOut[1], shapeBias[0]);
+            }
 
             for (var i = 2; i < shapeOut.rank; i++)
             {
@@ -132,7 +149,12 @@ namespace Unity.Sentis.Layers
             var padsSpan = pads.AsSpan(0, 2 * numSpatialDims);
             var dilationsSpan = dilations.AsSpan(0, numSpatialDims);
             ShapeInference.UpdatePadForConvAutoPadding(inputTensors[0].shape, inputTensors[1].shape, stridesSpan, dilationsSpan, autoPad, padsSpan);
-            return ctx.backend.Conv(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors.Length > 2 ? inputTensors[2] as TensorFloat : null, group, stridesSpan, padsSpan, dilationsSpan, fusedActivation);
+            var shapeO = ShapeInference.Conv(inputTensors[0].shape, inputTensors[1].shape, group, stridesSpan, padsSpan, dilationsSpan);
+            var O = ctx.backend.NewOutputTensorFloat(shapeO);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.Conv(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors.Length > 2 ? inputTensors[2] as TensorFloat : null, O, group, stridesSpan, padsSpan, dilationsSpan, fusedActivation);
+            return O;
         }
 
         /// <inheritdoc/>
@@ -200,6 +222,18 @@ namespace Unity.Sentis.Layers
             this.fusedActivation = fusedActivation;
         }
 
+        public ConvTranspose(string name, string input, string kernel, int[] strides, int[] pads, AutoPad autoPad, int[] outputPadding, int[] kernelShape = null, FusableActivation fusedActivation = FusableActivation.None)
+        {
+            this.name = name;
+            inputs = new[] { input, kernel };
+            this.autoPad = autoPad;
+            this.outputPadding = outputPadding ?? new int[6];
+            this.pads = pads ?? new int[12];
+            this.strides = strides ?? new[] { 1, 1, 1, 1, 1, 1 };
+            this.kernelShape = kernelShape;
+            this.fusedActivation = fusedActivation;
+        }
+
         /// <inheritdoc/>
         internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
@@ -209,7 +243,6 @@ namespace Unity.Sentis.Layers
             {
                 shapeKernel[i + 2] = SymbolicTensorDim.MaxDefinedDim(shapeKernel[i + 2], new SymbolicTensorDim(kernelShape[i]));
             }
-            var shapeBias = inputTensors[2]?.shape ?? SymbolicTensorShape.UnknownShape;
             if (!shapeX.hasRank)
                 return new PartialTensor(DataType.Float);
 
@@ -218,7 +251,14 @@ namespace Unity.Sentis.Layers
             var shapeOut = SymbolicTensorShape.Ones(shapeX.rank);
 
             shapeOut[0] = shapeX[0];
-            shapeOut[1] = SymbolicTensorDim.MaxDefinedDim(shapeKernel[1], shapeBias[0]);
+            shapeOut[1] = shapeKernel[1];
+
+            if (inputs.Length == 3)
+            {
+                var shapeBias = inputTensors[2]?.shape ?? SymbolicTensorShape.UnknownShape;
+                shapeBias.DeclareRank(1);
+                shapeOut[1] = SymbolicTensorDim.MaxDefinedDim(shapeOut[1], shapeBias[0]);
+            }
 
             for (var i = 2; i < shapeOut.rank; i++)
             {
@@ -245,13 +285,18 @@ namespace Unity.Sentis.Layers
             var padsSpan = pads.AsSpan(0, 2 * numSpatialDims);
             var outputPaddingSpan = outputPadding.AsSpan(0, numSpatialDims);
             ShapeInference.UpdatePadForConvTransAutoPadding(inputTensors[0].shape, inputTensors[1].shape, stridesSpan, autoPad, outputPaddingSpan, padsSpan);
-            return ctx.backend.ConvTranspose(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors.Length > 2 ? inputTensors[2] as TensorFloat : null, stridesSpan, padsSpan, outputPaddingSpan, fusedActivation);
+            var shapeO = ShapeInference.ConvTranspose(inputTensors[0].shape, inputTensors[1].shape, stridesSpan, padsSpan, outputPaddingSpan);
+            var O = ctx.backend.NewOutputTensorFloat(shapeO);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.ConvTranspose(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors.Length > 2 ? inputTensors[2] as TensorFloat : null, O, stridesSpan, padsSpan, outputPaddingSpan, fusedActivation);
+            return O;
         }
 
         /// <inheritdoc/>
         public override string ToString()
         {
-            return $"{base.ToString()}, strides: [{(strides == null ? "null" : string.Join(", ", strides))}], pads: [{(pads == null ? "null" : string.Join(", ", pads))}], outputPadding: [{(outputPadding == null ? "null" : string.Join(", ", outputPadding))}], autoPad, {autoPad}, kernelShape: [{(kernelShape == null ? "null" : string.Join(", ", kernelShape))}], fusedActivation: {fusedActivation}";
+            return $"{base.ToString()}, strides: [{(string.Join(", ", strides))}], pads: [{(string.Join(", ", pads))}], outputPadding: [{(string.Join(", ", outputPadding))}], autoPad, {autoPad}, kernelShape: [{(kernelShape == null ? "null" : string.Join(", ", kernelShape))}], fusedActivation: {fusedActivation}";
         }
 
         internal override string profilerTag => "ConvTranspose";

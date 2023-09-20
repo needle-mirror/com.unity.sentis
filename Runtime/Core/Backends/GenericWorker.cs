@@ -381,9 +381,9 @@ class GenericVars : IVars
     }
 
     /// <inheritdoc/>
-    public virtual void SetInput(string name, Tensor x)
+    public virtual void SetInput(string name, Tensor X)
     {
-        m_TensorsByName[name] = x;
+        m_TensorsByName[name] = X;
     }
 
     /// <inheritdoc/>
@@ -697,21 +697,21 @@ class GenericVarsWithPreallocation : GenericVarsWithReuse, ITensorAllocator
     }
 
     /// <inheritdoc/>
-    public virtual void MoveToDevice(Tensor x, ITensorData newBuffer, ITensorData oldBuffer, bool disposeDetachedBufferHint)
+    public virtual void MoveToDevice(Tensor X, ITensorData newBuffer, ITensorData oldBuffer, bool disposeDetachedBufferHint)
     {
-        x.allocator.MoveToDevice(x, newBuffer, oldBuffer, disposeDetachedBufferHint);
+        X.allocator.MoveToDevice(X, newBuffer, oldBuffer, disposeDetachedBufferHint);
     }
 
     /// <inheritdoc/>
-    public virtual void Release(Tensor x, bool calledFromTensorDispose)
+    public virtual void Release(Tensor tensor, bool calledFromTensorDispose)
     {
-        x.allocator.Release(x, calledFromTensorDispose);
+        tensor.allocator.Release(tensor, calledFromTensorDispose);
     }
 
     /// <inheritdoc/>
-    public virtual void WaiveOwnership(Tensor x)
+    public virtual void WaiveOwnership(Tensor X)
     {
-        x.allocator.WaiveOwnership(x);
+        X.allocator.WaiveOwnership(X);
     }
 
     /// <inheritdoc/>

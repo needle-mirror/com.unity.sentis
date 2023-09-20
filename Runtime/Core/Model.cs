@@ -13,7 +13,7 @@ public class Model
     /// <summary>
     /// The version of the model. The value increments each time the data structure changes.
     /// </summary>
-    public const int Version = 27;
+    public const int Version = 29;
     internal const int WeightsAlignment = 16;
 
     /// <summary>

@@ -150,17 +150,12 @@ namespace Unity.Sentis
                     writtenLength = 0;
                 }
                 writtenLength += memorySize;
-                #if UNITY_2021_OR_NEWER
                 unsafe
                 {
                     var src = model.constants[l].weights.AddressAt<byte>(constant.offset * sizeOfDataItem);
                     Span<byte> span = new Span<byte>(src, memorySize);
                     stream.Write(span);
                 }
-                #else
-                var src = model.constants[l].weights.GetNativeArrayHandle<float>().Reinterpret<byte>(sizeOfDataItem).ToArray();
-                stream.Write(src, (int)constant.offset * sizeOfDataItem, memorySize);
-                #endif
             }
 
             Profiler.EndSample();
@@ -171,21 +166,12 @@ namespace Unity.Sentis
             unsafe
             {
                 T* src = &value;
-                #if UNITY_2021_OR_NEWER
                 Span<byte> arr = stackalloc byte[sizeof(T)]; // todo move out
                 fixed (byte* dst = &arr[0])
                 {
                     Buffer.MemoryCopy(src, dst, sizeof(T), sizeof(T));
                 }
                 memoryStream.Write(arr);
-                #else
-                var arr = new byte[sizeof(T)]; // todo move out
-                fixed (byte* dst = &arr[0])
-                {
-                    Buffer.MemoryCopy(src, dst, sizeof(T), sizeof(T));
-                }
-                memoryStream.Write(arr, 0, arr.Length);
-                #endif
             }
         }
 

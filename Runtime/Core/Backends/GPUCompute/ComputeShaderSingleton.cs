@@ -129,7 +129,7 @@ namespace Unity.Sentis
                 });
 
             RegisterKernels("Sentis/ComputeShaders/Normalization",
-                new[] { "AxisNormalizationTail", "BatchNormalization", "ScaleBias" });
+                new[] { "LayerNormalizationTail", "BatchNormalization", "ScaleBias" });
 
             RegisterKernels("Sentis/ComputeShaders/ReduceIndices",
                 new[]
@@ -156,10 +156,9 @@ namespace Unity.Sentis
             RegisterKernels("Sentis/ComputeShaders/Upsample",
                 new[]
                 {
-                    "Upsample2D_Nearest_Floor", "Upsample2D_Nearest_Ceil",
-                    "Upsample2D_Linear_None",
-                    "Upsample3D_Nearest_Floor", "Upsample3D_Nearest_Ceil",
-                    "Upsample3D_Linear_None"
+                    "Upsample1D_Nearest_Floor", "Upsample1D_Nearest_Ceil", "Upsample1D_Linear_None",
+                    "Upsample2D_Nearest_Floor", "Upsample2D_Nearest_Ceil", "Upsample2D_Linear_None",
+                    "Upsample3D_Nearest_Floor", "Upsample3D_Nearest_Ceil", "Upsample3D_Linear_None",
                 });
 
             RegisterKernels("Sentis/ComputeShaders/ImageBased",
@@ -216,14 +215,15 @@ namespace Unity.Sentis
 
         ComputeShader FindComputeShaderFromShaderName(string shaderName)
         {
-            if (!m_ShaderNameToComputeShader.ContainsKey(shaderName))
+            var found = m_ShaderNameToComputeShader.TryGetValue(shaderName, out var cs);
+            if (!found)
             {
                 Profiler.BeginSample(shaderName);
-                m_ShaderNameToComputeShader[shaderName] = Resources.Load<ComputeShader>(shaderName);
+                cs = Resources.Load<ComputeShader>(shaderName);
+                m_ShaderNameToComputeShader[shaderName] = cs;
                 Profiler.EndSample();
             }
-
-            return m_ShaderNameToComputeShader[shaderName];
+            return cs;
         }
 
         /// <summary>

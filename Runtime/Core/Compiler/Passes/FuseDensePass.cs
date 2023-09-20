@@ -11,7 +11,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
     {
         public void Run(ref Model model)
         {
-            using var ops = new CPUBackend();
+            using var ops = new CPUOps();
 
             var preserve = new HashSet<string>(model.outputs);
 

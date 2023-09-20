@@ -22,7 +22,7 @@ public class ConvertArrayToTensor : MonoBehaviour
         // Create a data array with 9 values
         float[] data = new float[] { 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f };
 
-        // Create a 3D tensor shape with size 3 × 1 × 3 
+        // Create a 3D tensor shape with size 3 × 1 × 3
         TensorShape shape = new TensorShape(3, 1, 3);
 
         // Create a new tensor from the array
@@ -36,7 +36,8 @@ public class ConvertArrayToTensor : MonoBehaviour
 If a model needs multiple input tensors, you can create a dictionary that contains the inputs. For example:
 
 ```
-Dictionary<string, Tensor> inputTensors = new Dictionary<string, Tensor>() {
+Dictionary<string, Tensor> inputTensors = new Dictionary<string, Tensor>()
+{
     { "x", xTensor },
     { "y", yTensor },
 };

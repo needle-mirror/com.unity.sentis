@@ -25,21 +25,21 @@ namespace Unity.Sentis
         /// updates pad values so that output_shape[i] = ceil(input_shape[i] / strides[i])
         /// N.B: pad int[] needs to be previously allocated with 2*#of spatial dimensions
         /// </summary>
-        public static void UpdatePadForPoolAutoPadding(TensorShape shape, int[] pool, int[] stride, bool ceilMode, Layers.AutoPad autopad, int[] pad)
+        public static void UpdatePadForPoolAutoPadding(TensorShape shape, int[] kernelShape, int[] strides, int[] pads, bool ceilMode, AutoPad autopad)
         {
             if (autopad == Layers.AutoPad.NotSet)
                 return;
 
-            int featureCount = stride.Length;
+            int featureCount = strides.Length;
 
-            Logger.AssertAreEqual(2 * featureCount, pad.Length, "ComputePoolAutoPadding.LengthError: incorrect length for pad, expecting {0}, got {1}", 2 * featureCount, pad.Length);
+            Logger.AssertAreEqual(2 * featureCount, pads.Length, "ComputePoolAutoPadding.LengthError: incorrect length for pad, expecting {0}, got {1}", 2 * featureCount, pads.Length);
 
             for (var i = 0; i < featureCount; ++i)
             {
                 if (autopad == Layers.AutoPad.Valid)
                 {
-                    pad[i] = 0;
-                    pad[i + featureCount] = 0;
+                    pads[i] = 0;
+                    pads[i + featureCount] = 0;
                     continue;
                 }
 
@@ -47,28 +47,28 @@ namespace Unity.Sentis
                 //        https://github.com/onnx/onnx/blob/master/docs/Operators.md
                 // and TensorFlow docs:
                 //         https://www.tensorflow.org/api_guides/python/nn#Notes_on_SAME_Convolution_Padding
-                int outputDim = (shape[2 + i] - 1) / stride[i] + 1;
+                int outputDim = (shape[2 + i] - 1) / strides[i] + 1;
 
                 // C# automatically rounds down
                 // https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/operators/arithmetic-operators
                 int padAlongFeature = 0;
                 if (ceilMode)
-                    padAlongFeature = (outputDim - 1) * stride[i] + pool[i] - stride[i] + 1 - shape[2 + i];
+                    padAlongFeature = (outputDim - 1) * strides[i] + kernelShape[i] - strides[i] + 1 - shape[2 + i];
                 else
-                    padAlongFeature = (outputDim - 1) * stride[i] + pool[i] - shape[2 + i];
+                    padAlongFeature = (outputDim - 1) * strides[i] + kernelShape[i] - shape[2 + i];
 
                 var featureSmall = padAlongFeature / 2;
                 var featureLarge = padAlongFeature - featureSmall;
 
                 if (autopad == Layers.AutoPad.SameUpper)
                 {
-                    pad[i] = featureSmall;
-                    pad[i + featureCount] = featureLarge;
+                    pads[i] = featureSmall;
+                    pads[i + featureCount] = featureLarge;
                 }
                 else
                 {
-                    pad[i] = featureLarge;
-                    pad[i + featureCount] = featureSmall;
+                    pads[i] = featureLarge;
+                    pads[i + featureCount] = featureSmall;
                 }
             }
         }
@@ -110,39 +110,25 @@ namespace Unity.Sentis
             if (autopad == Layers.AutoPad.NotSet)
                 return;
 
-            int featureCount = strides.Length;
-            Logger.AssertAreEqual(2 * featureCount, pads.Length, "ComputeConvAutoPadding.LengthError: incorrect length for pad, expecting {0}, got {1}", 2 * featureCount, pads.Length);
-            Logger.AssertAreEqual(featureCount, dilations.Length, "ComputeConvAutoPadding.LengthError: incorrect length for dilation, expecting {0}, got {1}", featureCount, dilations.Length);
+            var numSpatialDims = shape.rank - 2;
+            Logger.AssertAreEqual(2 * numSpatialDims, pads.Length, "ComputeConvAutoPadding.LengthError: incorrect length for pad, expecting {0}, got {1}", 2 * numSpatialDims, pads.Length);
+            Logger.AssertAreEqual(numSpatialDims, dilations.Length, "ComputeConvAutoPadding.LengthError: incorrect length for dilation, expecting {0}, got {1}", numSpatialDims, dilations.Length);
 
-            for (var i = 0; i < featureCount; ++i)
+            for (var i = 0; i < numSpatialDims; ++i)
             {
                 if (autopad == Layers.AutoPad.Valid)
                 {
                     pads[i] = 0;
-                    pads[i + featureCount] = 0;
+                    pads[i + numSpatialDims] = 0;
                     continue;
                 }
 
-                // Based on ONNX (AveragePool & MaxPool)
-                //        https://github.com/onnx/onnx/blob/master/docs/Operators.md
-                // and TensorFlow docs:
-                //         https://www.tensorflow.org/api_guides/python/nn#Notes_on_SAME_Convolution_Padding
-                int outputDim = (shape[2 + i] - 1) / strides[i] + 1;
-                int padAlongFeature = outputDim * strides[i] + (dilations[i] * (kernel[2 + i] - 1) + 1) - (shape[2 + i] + 1);
+                var padTotal = dilations[i] * (kernel[2 + i] - 1) - (shape[2 + i] - 1) % strides[i];
+                var padSmall = padTotal / 2;
+                var padLarge = padTotal - padSmall;
 
-                var featureSmall = padAlongFeature / 2;
-                var featureLarge = padAlongFeature - featureSmall;
-
-                if (autopad == Layers.AutoPad.SameUpper)
-                {
-                    pads[i] = featureSmall;
-                    pads[i + featureCount] = featureLarge;
-                }
-                else
-                {
-                    pads[i] = featureLarge;
-                    pads[i + featureCount] = featureSmall;
-                }
+                pads[i] = autopad == Layers.AutoPad.SameUpper ? padSmall : padLarge;
+                pads[i + numSpatialDims] = autopad == Layers.AutoPad.SameUpper ? padLarge : padSmall;
             }
         }
 
@@ -190,41 +176,32 @@ namespace Unity.Sentis
         /// updates pad values so that output_shape[i] = input_shape[i] * strides[i]
         /// N.B: pad int[] needs to be previously allocated with 2*#of spatial dimensions
         /// </summary>
-        public static void UpdatePadForConvTransAutoPadding(TensorShape shape, TensorShape kernel, Span<int> stride, AutoPad autopad, Span<int> outputPadding, Span<int> pad)
+        public static void UpdatePadForConvTransAutoPadding(TensorShape shape, TensorShape kernel, Span<int> stride, AutoPad autopad, Span<int> outputPadding, Span<int> pads)
         {
             if (autopad == Layers.AutoPad.NotSet)
                 return;
 
-            int featureCount = stride.Length;
-            Logger.AssertAreEqual(2 * featureCount, pad.Length, "ComputeConvTransAutoPadding.LengthError: incorrect length for pad, expecting {0}, got {1}", 2 * featureCount, pad.Length);
+            var numSpatialDims = stride.Length;
+            Logger.AssertAreEqual(2 * numSpatialDims, pads.Length, "ComputeConvTransAutoPadding.LengthError: incorrect length for pad, expecting {0}, got {1}", 2 * numSpatialDims, pads.Length);
 
-            for (var i = 0; i < featureCount; ++i)
+            for (var i = 0; i < numSpatialDims; ++i)
             {
                 if (autopad == Layers.AutoPad.Valid)
                 {
-                    pad[i] = 0;
-                    pad[i + featureCount] = 0;
+                    pads[i] = 0;
+                    pads[i + numSpatialDims] = 0;
                     continue;
                 }
 
-                // from https://github.com/onnx/onnx/blob/main/docs/Operators.md#ConvTranspose
                 var outputShape = shape[2 + i] * stride[i];
                 var dilation = 1;
                 var padAlongFeature = stride[i] * (shape[2 + i] - 1) + outputPadding[i] + (kernel[2 + i] - 1) * dilation + 1 - outputShape;
 
-                var featureSmall = padAlongFeature / 2;
-                var featureLarge = padAlongFeature - featureSmall;
+                var padSmall = padAlongFeature / 2;
+                var padLarge = padAlongFeature - padSmall;
 
-                if (autopad == Layers.AutoPad.SameUpper)
-                {
-                    pad[i] = featureSmall;
-                    pad[i + featureCount] = featureLarge;
-                }
-                else
-                {
-                    pad[i] = featureLarge;
-                    pad[i + featureCount] = featureSmall;
-                }
+                pads[i] = autopad == Layers.AutoPad.SameUpper ? padSmall : padLarge;
+                pads[i + numSpatialDims] = autopad == Layers.AutoPad.SameUpper ? padLarge : padSmall;
             }
         }
 

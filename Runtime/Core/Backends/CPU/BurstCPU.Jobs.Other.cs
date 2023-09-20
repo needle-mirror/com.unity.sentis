@@ -1249,7 +1249,7 @@ public partial class CPUBackend
     }
 
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
-    unsafe struct ScatterNDJob : IJobParallelFor, IJobResourceDeclarationXSBO
+    unsafe struct ScatterNDFloatJob : IJobParallelFor, IJobResourceDeclarationXSBO
     {
         public Layers.ScatterReductionMode reduction;
         public int updatesLength;
@@ -1281,6 +1281,39 @@ public partial class CPUBackend
         }
     }
 
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    unsafe struct ScatterNDIntJob : IJobParallelFor, IJobResourceDeclarationXSBO
+    {
+        public Layers.ScatterReductionMode reduction;
+        public int updatesLength;
+        public int indexRemapDim;
+        public fixed int trailing[8];
+        public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
+        public ReadOnlyMemResource S { get; set; } int* Sptr => (int*)S.ptr;
+        public ReadOnlyMemResource B { get; set; } int* Bptr => (int*)B.ptr;
+        public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+
+        public void Execute(int threadIdx)
+        {
+            int k = threadIdx % updatesLength;
+            int i = threadIdx / updatesLength;
+
+            int indexO = 0;
+            for (int j = 0; j < indexRemapDim; j++)
+            {
+                indexO += trailing[j] * (int)Sptr[i * indexRemapDim + j];
+            }
+            int vw = Bptr[i * updatesLength + k];
+
+            if (reduction == Layers.ScatterReductionMode.None)
+                Optr[indexO * updatesLength + k] = vw;
+            else if (reduction == Layers.ScatterReductionMode.Add)
+                Optr[indexO * updatesLength + k] += vw;
+            else if (reduction == Layers.ScatterReductionMode.Mul)
+                Optr[indexO * updatesLength + k] *= vw;
+        }
+    }
+
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
     unsafe struct TopKJob : IJobParallelFor
     {
@@ -1291,7 +1324,7 @@ public partial class CPUBackend
         public int reduceLength;
         public int innerLength;
         public int maxK;
-        public bool largest;
+        public int direction;
 
         public void Execute(int index)
         {
@@ -1314,17 +1347,14 @@ public partial class CPUBackend
             float value = Xp[0];
             Vp[0] = value;
             Ip[0] = 0;
-            float minOValue = value;
+            float minOValue = direction * value;
             int k = 1;
             for (int j = 1; j < reduceLength; j++)
             {
                 Xp += innerLength;
                 value = Xp[0];
 
-                if (largest && k == maxK && value <= minOValue)
-                    continue;
-
-                if (!largest && k == maxK && value >= minOValue)
+                if (k == maxK && direction * value <= minOValue)
                     continue;
 
                 k = math.min(k + 1, maxK);
@@ -1339,9 +1369,7 @@ public partial class CPUBackend
 
                     float swapf = Vp[idx];
 
-                    if (largest && Vp[idxPrev] >= swapf)
-                        break;
-                    if (!largest && Vp[idxPrev] <= swapf)
+                    if (direction * Vp[idxPrev] >= direction * swapf)
                         break;
 
                     int swapi = Ip[idx];
@@ -1352,7 +1380,7 @@ public partial class CPUBackend
                     Ip[idx] = Ip[idxPrev];
                     Ip[idxPrev] = swapi;
                 }
-                minOValue = math.min(Vp[(k - 1)*innerLength], value);
+                minOValue = math.min(direction * Vp[(k - 1) * innerLength], value);
             }
         }
     }

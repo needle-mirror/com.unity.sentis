@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.Serialization;
+using UnityEngine;
 
 namespace Unity.Sentis.Layers
 {
@@ -93,7 +94,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.RandomNormal(shape, mean, scale, NextSeed);
+            var O = ctx.backend.NewOutputTensorFloat(shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.RandomNormal(O, mean, scale, NextSeed);
+            return O;
         }
 
         /// <inheritdoc/>
@@ -147,7 +152,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.RandomNormal(inputTensors[0].shape, mean, scale, NextSeed);
+            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.RandomNormal(O, mean, scale, NextSeed);
+            return O;
         }
 
         /// <inheritdoc/>
@@ -205,7 +214,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.RandomUniform(shape, low, high, NextSeed);
+            var O = ctx.backend.NewOutputTensorFloat(shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.RandomUniform(O, low, high, NextSeed);
+            return O;
         }
 
         /// <inheritdoc/>
@@ -259,7 +272,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.RandomUniform(inputTensors[0].shape, low, high, NextSeed);
+            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.RandomUniform(O, low, high, NextSeed);
+            return O;
         }
 
         /// <inheritdoc/>
@@ -306,7 +323,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.Bernoulli(inputTensors[0] as TensorFloat, dataType, NextSeed);
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape, dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.Bernoulli(inputTensors[0] as TensorFloat, O, NextSeed);
+            return O;
         }
 
         /// <inheritdoc/>
@@ -355,7 +376,47 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.Multinomial(inputTensors[0] as TensorFloat, count, NextSeed);
+            var X = inputTensors[0] as TensorFloat;
+            var O = ctx.backend.NewOutputTensorInt(ShapeInference.Multinomial(X.shape, count));
+            if (O.shape.HasZeroDims())
+                return O;
+
+            ArrayTensorData.Pin(X);
+            ArrayTensorData.Pin(O, clearOnInit: false);
+
+            uint finalSeed = Random.GetOpSeed(NextSeed);
+            finalSeed = finalSeed == 0 ? 1 : finalSeed;
+            var random = new Mathematics.Random(finalSeed);
+
+            // Tensorflow Multinomial for reference
+            // See: https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/multinomial_op.cc
+            for (int n = 0; n < X.shape[0]; ++n)
+            {
+                var maxLogP = Mathf.NegativeInfinity;
+                for (int i = 0; i < X.shape[1]; ++i)
+                    maxLogP = Mathf.Max(X[n, i], maxLogP);
+
+                float sumOfProbabilities = 0f;
+                for (int i = 0; i < X.shape[1]; ++i)
+                    sumOfProbabilities += Mathf.Exp(X[n, i] - maxLogP); // NOTE: X contains log-probabilities
+
+                for (int sample = 0; sample < count; ++sample)
+                {
+                    float p = random.NextFloat() * sumOfProbabilities;
+
+                    int i = 0;
+                    float cumulativeP = 0f;
+                    while (i < X.shape[1] && p > cumulativeP)
+                    {
+                        cumulativeP += Mathf.Exp(X[n, i] - maxLogP);
+                        i++;
+                    }
+                    Logger.AssertIsTrue(i > 0, "Multinomial.ValueError: need at least one cumulative sample {0}", i);
+                    O[n, sample] = i - 1;
+                }
+            }
+
+            return O;
         }
 
         /// <inheritdoc/>

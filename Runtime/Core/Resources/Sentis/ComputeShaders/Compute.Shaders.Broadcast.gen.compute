@@ -54,6 +54,7 @@
 #pragma kernel ScalarBroadcastFModInt SCALARBROADCAST FMODINT XINT YINT OINT
 #pragma kernel BroadcastFModInt BROADCAST FMODINT XINT YINT OINT
 #pragma kernel ElementwiseFModInt ELEMENTWISE FMODINT XINT YINT OINT
+#pragma kernel ScalarMad SCALARMAD 
 
 #pragma warning( disable : 3556 )
 #include "Tensor.cginc"
@@ -68,6 +69,11 @@ uint2 unrolledDispatchArgs;
 int rank;
 uint LengthO;
 uint MaxBlockIndexX;
+
+#ifdef SCALARMAD
+float s;
+float b;
+#endif
 
 #ifdef MEANFLOAT
 float alpha;
@@ -1836,3 +1842,40 @@ void ElementwiseFModInt(uint3 dispatchThreadID : SV_DispatchThreadID)
 }
 #endif
 #endif
+
+#ifdef SCALARMAD
+[numthreads(64, 1, 1)]
+void ScalarMad(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
+{
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
+
+    float4 x = float4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+    float4 O = s*x+b;
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
+}
+#endif
+

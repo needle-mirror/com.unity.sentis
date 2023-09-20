@@ -1,14 +1,11 @@
 using UnityEngine;
-using UnityEngine.Profiling;
 using System.Runtime.CompilerServices;
-using Unity.Collections.LowLevel.Unsafe;
-using static Unity.Sentis.ShaderPropertyID;
 
 [assembly: InternalsVisibleTo("Unity.Sentis.EditorTests")]
 
-namespace Unity.Sentis {
-
-struct ComputeFunc
+namespace Unity.Sentis
+{
+readonly struct ComputeFunc
 {
     // dispatch dimension limitation coming from D3D11
     public const uint SafeDispatchLimit = 65535;
@@ -19,7 +16,7 @@ struct ComputeFunc
     public readonly uint threadGroupSizeX;
     public readonly uint threadGroupSizeY;
     public readonly uint threadGroupSizeZ;
-    public uint threadGroupSize { get { return threadGroupSizeX * threadGroupSizeY * threadGroupSizeZ; } }
+    public uint threadGroupSize => threadGroupSizeX * threadGroupSizeY * threadGroupSizeZ;
 
     // ---------------------------------------------------------------------------------
     public ComputeFunc(string kn)

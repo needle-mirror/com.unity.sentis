@@ -75,7 +75,7 @@ This section only appears if there was a problem when Sentis imported and optimi
 
 This section only appears if there was a problem when Sentis imported and optimized the model. You can usually still run the model, but you might get unexpected results.
 
-You can add a custom layer to implement a missing operator. Refer to the `CustomLayer` example in the [sample scripts](package-samples.md) for an example.
+You can add a custom layer to implement a missing operator. Refer to the `Add a custom layer` example in the [sample scripts](package-samples.md) for an example.
 
 ## Additional resources
 

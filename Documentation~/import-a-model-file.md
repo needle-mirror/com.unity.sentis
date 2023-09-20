@@ -22,25 +22,26 @@ When you import a model file, Sentis optimizes the model. Refer to [Understand m
 To use an imported model, you must use `ModelLoader.Load` to create a runtime `Model` object.
 
 ```
+using UnityEngine;
+using Unity.Sentis;
 
-public class CreateRuntimeModel : MonoBehaviour {
-
+public class CreateRuntimeModel : MonoBehaviour
+{
     public ModelAsset modelAsset;
-    private Model runtimeModel;
+    Model runtimeModel;
 
     void Start()
-    {   
+    {
         runtimeModel = ModelLoader.Load(modelAsset);
-    }    
+    }
 }
-
 ```
 
 You can then [create an engine to run a model](create-an-engine.md).
 
 ## Import errors
 
-If the [Model Asset Import Settings](onnx-model-importer-properties.md) window displays a warning that your model contains unsupported operators, you can add a custom layer to implement the missing operator. Refer to the `CustomLayer` example in the [sample scripts](package-samples.md) for an example.
+If the [Model Asset Import Settings](onnx-model-importer-properties.md) window displays a warning that your model contains unsupported operators, you can add a custom layer to implement the missing operator. Refer to the `Add a custom layer` example in the [sample scripts](package-samples.md) for an example.
 
 ## Additional resources
 

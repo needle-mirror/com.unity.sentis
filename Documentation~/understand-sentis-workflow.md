@@ -86,57 +86,63 @@ Follow these steps:
 
 1. Attach the following script to a GameObject in your scene.
 
-    ```
-    using UnityEngine;
-    using Unity.Sentis;
-    
-    public class ClassifyHandwrittenDigit : MonoBehaviour
-    {
-        public Texture2D inputTexture;
-        public ModelAsset modelAsset;
-        Model runtimeModel;
-        IWorker worker;
-        public float[] results;
-    
-        void Start()
-        {
-            // Create the runtime model
-            runtimeModel = ModelLoader.Load(modelAsset);
-    
-            // Create input data as a tensor
-            Tensor inputTensor = TextureConverter.ToTensor(inputTexture);
-    
-            // Create an engine
-            worker = WorkerFactory.CreateWorker(BackendType.GPUCompute, runtimeModel);
-    
-            // Run the model with the input data
-            worker.Execute(inputTensor);
-    
-            // Get the result
-            TensorFloat outputTensor = worker.PeekOutput() as TensorFloat;
-    
-            // Move the tensor data to the CPU before reading it
-            outputTensor.MakeReadable();
-    
-            results = outputTensor.ToReadOnlyArray();
-        }
-    
-        void OnDisable()
-        {
-            // Tell the GPU we're finished with the memory the engine used
-            worker.Dispose();
-        }
-    }
-    ```
+```
+using UnityEngine;
+using Unity.Sentis;
+using Unity.Sentis.Layers;
 
-2. Download a handwriting recognition ONNX model file, for example the [MNIST Handwritten Digit Recognition model](https://github.com/onnx/models/tree/main/vision/classification/mnist) from the ONNX Model Zoo, and drag it into the `Assets` folder of the Project window.
+public class ClassifyHandwrittenDigit : MonoBehaviour
+{
+    public Texture2D inputTexture;
+    public ModelAsset modelAsset;
+    Model runtimeModel;
+    IWorker worker;
+    public float[] results;
+
+    void Start()
+    {
+        // Create the runtime model
+        runtimeModel = ModelLoader.Load(modelAsset);
+
+        // Add softmax layer to end of model instead of non-softmaxed output
+        string softmaxOutputName = "Softmax_Output";
+        runtimeModel.AddLayer(new Softmax(softmaxOutputName, runtimeModel.outputs[0]));
+        runtimeModel.outputs[0] = softmaxOutputName;
+
+        // Create input data as a tensor
+        using Tensor inputTensor = TextureConverter.ToTensor(inputTexture, width: 28, height: 28, channels: 1);
+
+        // Create an engine
+        worker = WorkerFactory.CreateWorker(BackendType.GPUCompute, runtimeModel);
+
+        // Run the model with the input data
+        worker.Execute(inputTensor);
+
+        // Get the result
+        using TensorFloat outputTensor = worker.PeekOutput() as TensorFloat;
+
+        // Move the tensor data to the CPU before reading it
+        outputTensor.MakeReadable();
+
+        results = outputTensor.ToReadOnlyArray();
+    }
+
+    void OnDisable()
+    {
+        // Tell the GPU we're finished with the memory the engine used
+        worker.Dispose();
+    }
+}
+```
+
+2. Download a handwriting recognition ONNX model file, for example the [MNIST Handwritten Digit Recognition model](https://github.com/onnx/models/tree/main/vision/classification/mnist) mnist-8.onnx from the ONNX Model Zoo, and drag it into the `Assets` folder of the Project window.
 3. Drag the model asset into the **modelAsset** field in the Inspector window of the GameObject.
-4. Download the `digit.png` image below and drag it into the `Assets` folder of the Project window.
+4. Download the `digit.png` image below and drag it into the `Assets` folder of the Project window. Set `Non-Power of 2` to `None` in the import settings and click `Apply`.
 
     ![A handwritten number 7](images/digit.png)
 
 5. Drag the **digit** asset into the **inputTexture** field in the Inspector window of the GameObject.
-6. Run the project. In the Inspector window of the GameObject, each item of the **results** array shows how highly the model predicts the image is a digit. For example, item 0 of the array is how highly the model predicts the image is a handwritten zero.
+6. Click `Play`. In the Inspector window of the GameObject, each item of the **results** array shows how highly the model predicts the image is a digit. For example, item 0 of the array is how highly the model predicts the image is a handwritten zero.
 
 ## Additional resources
 

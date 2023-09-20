@@ -9,7 +9,7 @@ Follow these steps:
 3. Sentis invokes the callback when the readback is complete. The boolean argument is `true` when readback was successful.
 4. Use [`Tensor.MakeReadable`](xref:Unity.Sentis.Tensor.MakeReadable()) to put the downloaded data into a readable state.
 
-Refer to the `AsyncReadback/AsyncReadbackCompute` example in the [sample scripts](package-samples.md) for an example.
+Refer to the `Read output asynchronously` example in the [sample scripts](package-samples.md) for an example.
 
 ## Additional resources
 

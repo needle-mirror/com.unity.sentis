@@ -73,7 +73,7 @@ public class ComputeTensorData : ITensorData
 
         int length = m_Buffer.count;
 
-        var fn = new ComputeFunc("MemCopy");
+        var fn = ComputeFuncSingleton.Instance.Get("MemCopy");
         fn.SetTensorAsBuffer(ShaderPropertyID.k_ID_Xptr, this);
         fn.SetTensorAsBuffer(ShaderPropertyID.k_ID_Optr, copy);
         fn.SetInt(ShaderPropertyID.k_ID_offsetX, 0);

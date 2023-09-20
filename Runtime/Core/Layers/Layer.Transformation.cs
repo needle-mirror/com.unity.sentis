@@ -1,6 +1,6 @@
 using System;
-using System.Linq;
 using UnityEngine;
+using UnityEngine.Assertions;
 
 namespace Unity.Sentis.Layers
 {
@@ -170,7 +170,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.Cast(inputTensors[0], toType);
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape, toType);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.Cast(inputTensors[0], O);
+            return O;
         }
 
         internal override string profilerTag => "Cast";
@@ -205,7 +209,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.Cast(inputTensors[0], inputTensors[1].dataType);
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape, inputTensors[1].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.Cast(inputTensors[0], O);
+            return O;
         }
 
         internal override string profilerTag => "CastLike";
@@ -299,7 +307,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.Concat(inputTensors, axis);
+            var O = ctx.backend.NewOutputTensor(TensorShapeHelper.ConcatShape(inputTensors, axis), inputTensors[0].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.Concat(inputTensors, O, axis);
+            return O;
         }
 
         /// <inheritdoc/>
@@ -352,7 +364,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.DepthToSpace(inputTensors[0] as TensorFloat, blocksize, mode);
+            var O = ctx.backend.NewOutputTensorFloat(ShapeInference.DepthToSpace(inputTensors[0].shape, blocksize));
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.DepthToSpace(inputTensors[0] as TensorFloat, O, blocksize, mode);
+            return O;
         }
 
         /// <inheritdoc/>
@@ -392,9 +408,12 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            inputTensors[1].MakeReadable();
-            var shape = inputTensors[1].ToReadOnlySpan<int>();
-            return ctx.backend.Expand(inputTensors[0], new TensorShape(shape));
+            var shape = new TensorShape(inputTensors[1].ToReadOnlySpan<int>());
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape.Broadcast(shape), inputTensors[0].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.Expand(inputTensors[0], O);
+            return O;
         }
 
         internal override string profilerTag => "Expand";
@@ -453,9 +472,8 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            Tensor X = inputTensors[0];
-
-            return ctx.backend.Reshape(X, X.shape.Flatten(axis));
+            var shape = inputTensors[0].shape.Flatten(axis);
+            return ctx.backend.ShallowReshape(inputTensors[0], shape, AllocScope.LayerOutput);
         }
 
         /// <inheritdoc/>
@@ -493,7 +511,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.Copy(inputTensors[0]);
+            return ctx.backend.ShallowCopy(inputTensors[0], AllocScope.LayerOutput);
         }
 
         internal override string profilerTag => "Identity";
@@ -573,15 +591,18 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            inputTensors[1].MakeReadable();
             var pads = inputTensors[1].ToReadOnlySpan<int>();
-            var constantValue = 0f;
-            if (inputTensors.Length > 2 && inputTensors[2] != null)
-            {
-                inputTensors[2].MakeReadable();
-                constantValue = inputTensors[2].ToReadOnlySpan<float>()[0];
-            }
-            return ctx.backend.Pad(inputTensors[0] as TensorFloat, pads, padMode, constantValue);
+            var constantValue = inputTensors.Length > 2 && inputTensors[2] != null ? inputTensors[2].ToReadOnlySpan<float>()[0] : 0f;
+            if (padMode != Layers.PadMode.Constant)
+                Assert.IsFalse(inputTensors[0].shape.HasZeroDims(), "ValueError: zero dimensions input for Pad operator is not supported");
+            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape.Pad(pads));
+            if (O.shape.HasZeroDims())
+                return O;
+            if (inputTensors[0].shape.HasZeroDims())
+                ctx.backend.MemSet(O, constantValue);
+            else
+                ctx.backend.Pad(inputTensors[0] as TensorFloat, O, pads, padMode, constantValue);
+            return O;
         }
 
         internal override string profilerTag => "Pad";
@@ -683,9 +704,8 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            inputTensors[1].MakeReadable();
-            var size = inputTensors[1].ToReadOnlySpan<int>();
-            return ctx.backend.Reshape(inputTensors[0], inputTensors[0].shape.Reshape(size, allowZero));
+            var shape = inputTensors[0].shape.Reshape(inputTensors[1].ToReadOnlySpan<int>(), allowZero);
+            return ctx.backend.ShallowReshape(inputTensors[0], shape, AllocScope.LayerOutput);
         }
 
         /// <inheritdoc/>
@@ -790,7 +810,6 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            inputTensors[1].MakeReadable();
             if (scaleMode == ScaleMode.Sizes)
             {
                 var inputShape = inputTensors[0].shape;
@@ -802,11 +821,20 @@ namespace Unity.Sentis.Layers
                 {
                     scales[i] = sizes[i] / (float)inputShape[i];
                 }
-                return ctx.backend.Resize(inputTensors[0] as TensorFloat, scales, mode, nearestMode, coordTransformMode);
+                var O = ctx.backend.NewOutputTensorFloat(ShapeInference.Resize(inputTensors[0].shape, scales));
+                if (O.shape.HasZeroDims())
+                    return O;
+                ctx.backend.Resize(inputTensors[0] as TensorFloat, O, scales, mode, nearestMode, coordTransformMode);
+                return O;
             }
             else
             {
-                return ctx.backend.Resize(inputTensors[0] as TensorFloat, inputTensors[1].ToReadOnlySpan<float>(), mode, nearestMode, coordTransformMode);
+                var scales = inputTensors[1].ToReadOnlySpan<float>();
+                var O = ctx.backend.NewOutputTensorFloat(ShapeInference.Resize(inputTensors[0].shape, scales));
+                if (O.shape.HasZeroDims())
+                    return O;
+                ctx.backend.Resize(inputTensors[0] as TensorFloat, O, scales, mode, nearestMode, coordTransformMode);
+                return O;
             }
         }
 
@@ -933,23 +961,15 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            inputTensors[1].MakeReadable();
             var starts = inputTensors[1].ToReadOnlySpan<int>();
-            inputTensors[2].MakeReadable();
             var ends = inputTensors[2].ToReadOnlySpan<int>();
-            ReadOnlySpan<int> axes = null;
-            if (inputTensors.Length > 3 && inputTensors[3] != null)
-            {
-                inputTensors[3].MakeReadable();
-                axes = inputTensors[3].ToReadOnlySpan<int>();
-            }
-            ReadOnlySpan<int> steps = null;
-            if (inputTensors.Length > 4 && inputTensors[4] != null)
-            {
-                inputTensors[4].MakeReadable();
-                steps = inputTensors[4].ToReadOnlySpan<int>();
-            }
-            return ctx.backend.Slice(inputTensors[0], starts, ends, axes, steps);
+            var axes = inputTensors.Length > 3 && inputTensors[3] != null ? inputTensors[3].ToReadOnlySpan<int>() : null;
+            var steps = inputTensors.Length > 4 && inputTensors[4] != null ? inputTensors[4].ToReadOnlySpan<int>() : null;
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape.Slice(starts, ends, axes, steps), inputTensors[0].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.Slice(inputTensors[0], O, starts, axes, steps);
+            return O;
         }
 
         internal override string profilerTag => "Slice";
@@ -990,7 +1010,11 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.SpaceToDepth(inputTensors[0] as TensorFloat, blocksize);
+            var O = ctx.backend.NewOutputTensorFloat(ShapeInference.SpaceToDepth(inputTensors[0].shape, blocksize));
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.SpaceToDepth(inputTensors[0] as TensorFloat, O, blocksize);
+            return O;
         }
 
         /// <inheritdoc/>
@@ -1107,25 +1131,21 @@ namespace Unity.Sentis.Layers
             ReadOnlySpan<int> split = null;
             var equalSplitLength = 0;
             if (inputTensors.Length > 1 && inputTensors[1] != null)
-            {
-                inputTensors[1].MakeReadable();
                 split = inputTensors[1].ToReadOnlySpan<int>();
-            }
             else
-            {
-                // if splits are not given calculate even split length
                 equalSplitLength = (int)Math.Ceiling(dim / (double)numOutputs);
-            }
             var start = 0;
             for (var i = 0; i < outputs.Length; i++)
             {
                 var end = start + (split != null ? split[i] : equalSplitLength);
                 end = Math.Min(end, dim);
-                var output = ctx.backend.Split(inputTensors[0], axis, start, end);
+                var O = ctx.backend.NewOutputTensor(inputTensors[0].shape.Split(axis, start, end), inputTensors[0].dataType);
+                if (!O.shape.HasZeroDims())
+                    ctx.backend.Split(inputTensors[0], O, axis, start);
                 if (i == 0)
-                    firstOutput = output;
+                    firstOutput = O;
                 else
-                    ctx.vars.Store(outputs[i], output);
+                    ctx.vars.Store(outputs[i], O);
                 start = end;
             }
             return firstOutput;
@@ -1175,13 +1195,13 @@ namespace Unity.Sentis.Layers
         {
             if (inputs.Length == 2)
             {
-                var x = inputTensors[0];
+                var X = inputTensors[0];
                 var axes = inputTensors[1];
                 if (!axes.isPartiallyKnown)
-                    return x.Reshape(SymbolicTensorShape.UnknownShape);
+                    return X.Reshape(SymbolicTensorShape.UnknownShape);
                 if (!axes.IsFullyKnown())
-                    return x.Reshape(SymbolicTensorShape.UnknownOfRank(x.shape.rank - axes.length));
-                return x.Reshape(x.shape.Squeeze(axes));
+                    return X.Reshape(SymbolicTensorShape.UnknownOfRank(X.shape.rank - axes.length));
+                return X.Reshape(X.shape.Squeeze(axes));
             }
 
             return inputTensors[0].Reshape(inputTensors[0].shape.Squeeze());
@@ -1190,15 +1210,17 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var X = inputTensors[0];
+            TensorShape shape;
             if (inputTensors.Length > 1 && inputTensors[1] != null)
             {
-                inputTensors[1].MakeReadable();
                 var axes = inputTensors[1].ToReadOnlySpan<int>();
-                return ctx.backend.Reshape(X, X.shape.Squeeze(axes));
+                shape = inputTensors[0].shape.Squeeze(axes);
             }
-
-            return ctx.backend.Reshape(X, X.shape.Squeeze());
+            else
+            {
+                shape = inputTensors[0].shape.Squeeze();
+            }
+            return ctx.backend.ShallowReshape(inputTensors[0], shape, AllocScope.LayerOutput);
         }
 
         internal override string profilerTag => "Squeeze";
@@ -1252,9 +1274,12 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            inputTensors[1].MakeReadable();
             var repeats = inputTensors[1].ToReadOnlySpan<int>();
-            return ctx.backend.Tile(inputTensors[0], repeats);
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape.Tile(repeats), inputTensors[0].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            ctx.backend.Tile(inputTensors[0], O, repeats);
+            return O;
         }
 
         internal override string profilerTag => "Tile";
@@ -1325,9 +1350,21 @@ namespace Unity.Sentis.Layers
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             if (permutations == null)
-                return ctx.backend.Transpose(inputTensors[0]);
+            {
+                var O = ctx.backend.NewOutputTensor(inputTensors[0].shape.Transpose(), inputTensors[0].dataType);
+                if (O.shape.HasZeroDims())
+                    return O;
+                ctx.backend.Transpose(inputTensors[0], O);
+                return O;
+            }
             else
-                return ctx.backend.Transpose(inputTensors[0], permutations);
+            {
+                var O = ctx.backend.NewOutputTensor(inputTensors[0].shape.Transpose(permutations), inputTensors[0].dataType);
+                if (O.shape.HasZeroDims())
+                    return O;
+                ctx.backend.Transpose(inputTensors[0], O, permutations);
+                return O;
+            }
         }
 
         /// <inheritdoc/>
@@ -1390,16 +1427,15 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var k = 0;
-            if (inputTensors.Length > 1 && inputTensors[1] != null)
-            {
-                inputTensors[1].MakeReadable();
-                k = inputTensors[1].ToReadOnlySpan<int>()[0];
-            }
+            var k = inputTensors.Length > 1 && inputTensors[1] != null ? inputTensors[1].ToReadOnlySpan<int>()[0] : 0;
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape, inputTensors[0].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
             if (mode == TriluMode.Upper)
-                return ctx.backend.Triu(inputTensors[0], k);
+                ctx.backend.Triu(inputTensors[0], O, k);
             else
-                return ctx.backend.Tril(inputTensors[0], k);
+                ctx.backend.Tril(inputTensors[0], O, k);
+            return O;
         }
 
         /// <inheritdoc/>
@@ -1439,9 +1475,8 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            inputTensors[1].MakeReadable();
-            var axes = inputTensors[1].ToReadOnlySpan<int>();
-            return ctx.backend.Reshape(inputTensors[0], inputTensors[0].shape.Unsqueeze(axes));
+            var shape = inputTensors[0].shape.Unsqueeze(inputTensors[1].ToReadOnlySpan<int>());
+            return ctx.backend.ShallowReshape(inputTensors[0], shape, AllocScope.LayerOutput);
         }
 
         internal override string profilerTag => "Unsqueeze";

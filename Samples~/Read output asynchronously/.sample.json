@@ -1,0 +1,4 @@
+{
+  "displayName": "Read output asynchronously",
+  "description": "Examples of reading the output from a model asynchronously, using compute shaders or Burst."
+}

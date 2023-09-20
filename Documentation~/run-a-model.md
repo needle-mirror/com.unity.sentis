@@ -13,7 +13,7 @@ worker = WorkerFactory.CreateWorker(BackendType.GPUCompute, runtimeModel, verbos
 
 When you run a model for the first time in the Unity Editor, it might be slow because Sentis needs to compile code and shaders. Later runs are faster.
 
-Refer to the `ModelExecution` example in the [sample scripts](package-samples.md) for an example.
+Refer to the `Run a model` example in the [sample scripts](package-samples.md) for an example.
 
 ## Run a model a layer at a time
 
@@ -86,7 +86,7 @@ public class StartManualSchedule : MonoBehaviour
 }
 ```
 
-Refer to the `ModelExecutionInParts` example in the [sample scripts](package-samples.md) for an example.
+Refer to the `Run a model a layer at a time` example in the [sample scripts](package-samples.md) for an example.
 
 ## Additional resources
 

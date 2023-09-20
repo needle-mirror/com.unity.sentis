@@ -46,6 +46,9 @@ namespace Unity.Sentis
         public static readonly int k_ID_stridesB = Shader.PropertyToID("stridesB");
         public static readonly int k_ID_shapeO = Shader.PropertyToID("shapeO");
         public static readonly int k_ID_stridesO = Shader.PropertyToID("stridesO");
+        public static readonly int k_ID_A = Shader.PropertyToID("A");
+        public static readonly int k_ID_B = Shader.PropertyToID("B");
+        public static readonly int k_ID_S = Shader.PropertyToID("S");
         public static readonly int k_ID_M = Shader.PropertyToID("M");
         public static readonly int k_ID_N = Shader.PropertyToID("N");
         public static readonly int k_ID_K = Shader.PropertyToID("K");
@@ -58,6 +61,8 @@ namespace Unity.Sentis
         public static readonly int k_ID_CN = Shader.PropertyToID("CN");
         public static readonly int k_ID_rank = Shader.PropertyToID("rank");
         public static readonly int k_ID_Bptr = Shader.PropertyToID("Bptr");
+        public static readonly int k_ID_b = Shader.PropertyToID("b");
+        public static readonly int k_ID_s = Shader.PropertyToID("s");
         public static readonly int k_ID_W_width = Shader.PropertyToID("W_width");
         public static readonly int k_ID_W_height = Shader.PropertyToID("W_height");
         public static readonly int k_ID_Wptr = Shader.PropertyToID("Wptr");
@@ -152,6 +157,7 @@ namespace Unity.Sentis
         public static readonly int k_ID_Beta = Shader.PropertyToID("Beta");
         public static readonly int k_ID_permutations = Shader.PropertyToID("permutations");
         public static readonly int k_ID_endLength = Shader.PropertyToID("endLength");
+        public static readonly int k_ID_endLengthX = Shader.PropertyToID("endLengthX");
         public static readonly int k_ID_indicesLength = Shader.PropertyToID("indicesLength");
         public static readonly int k_ID_axisDim = Shader.PropertyToID("axisDim");
         public static readonly int k_ID_startLength = Shader.PropertyToID("startLength");
@@ -166,6 +172,8 @@ namespace Unity.Sentis
         public static readonly int k_ID_depth = Shader.PropertyToID("depth");
         public static readonly int k_ID_offValue = Shader.PropertyToID("offValue");
         public static readonly int k_ID_onValue = Shader.PropertyToID("onValue");
+        public static readonly int k_ID_offValueInt = Shader.PropertyToID("offValueInt");
+        public static readonly int k_ID_onValueInt = Shader.PropertyToID("onValueInt");
         public static readonly int k_ID_rankO = Shader.PropertyToID("rankO");
         public static readonly int k_ID_numRois = Shader.PropertyToID("numRois");
         public static readonly int k_ID_inputChannels = Shader.PropertyToID("inputChannels");

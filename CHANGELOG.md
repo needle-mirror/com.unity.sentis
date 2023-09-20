@@ -5,7 +5,34 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 
-## [1.1.1-exp.2] - 2023-08-31
+## [1.2.0-exp.2] - 2023-09-20
+
+### Added
+- Fast inference path for 1D Resize
+- OneHot operator now supports float tensors properly
+- Import for LayerNormalization operator
+- Import for Gelu operator
+- Optimized ScalarMad layer with optimizer passes
+
+### Removed
+- Watermark on Unity scenes referencing Sentis
+- License key requirement for Sentis
+
+### Changed
+- Moved CPU fallback pass to mandatory optimizer passes and remove MakeReadable calls in layer inference
+- Binary search for allocator speedup
+- Cached compute func instances for inference speedup
+- Refactored AxisNormalization to be LayerNormalization
+
+### Fixed
+- Import settings for Upsample operator
+- Condition for fast inference path for 2D Resize on CPU
+- Inspector no longer crashes when model can't be imported
+- Serialize to streaming assets now correctly uses optimal path and doesn't crash the editor with large models
+- Serialize to streaming assets creates directory if it doesn't exist and refreshes asset database
+
+
+## [1.1.1-exp.2] - 2023-09-04
 
 ### Fixed
 - Fixed inference with multiple Conv layers with different attributes in same model

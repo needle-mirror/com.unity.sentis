@@ -346,7 +346,7 @@ namespace Unity.Sentis
             var data = new NativeArray<T>(count, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
 
             unsafe
-            {  
+            {
                 void* dataPtr = (byte*)data.GetUnsafeReadOnlyPtr() + srcOffset * sizeof(float);
                 var src = texture.GetRawTextureData<float>();
 

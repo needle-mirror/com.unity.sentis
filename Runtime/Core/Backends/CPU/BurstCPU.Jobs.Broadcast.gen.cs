@@ -1843,5 +1843,28 @@ public partial class CPUBackend
             }
         }
     }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    internal unsafe struct ScalarMadJob : IParallelForBatch, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+        public float s;
+        public float b;
+
+        public void Execute(int i, int count)
+        {
+            float* Xp = Xptr + i;
+            float* Op = Optr + i;
+
+            for (; count > 0; count--)
+            {
+                float x = Xp[0];
+                Op[0] = s * x + b;
+                Xp++;
+                Op++;
+            }
+        }
+    }
 }
 }

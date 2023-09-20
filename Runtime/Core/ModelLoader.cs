@@ -265,13 +265,8 @@ public static class ModelLoader
     {
         unsafe
         {
-            #if UNITY_2021_OR_NEWER
             Span<byte> arr = stackalloc byte[sizeof(T)];
             stream.Read(arr);
-            #else
-            var arr = new byte[sizeof(T)];
-            stream.Read(arr, 0, arr.Length);
-            #endif
             T dst = default(T);
             fixed (byte* src = &arr[0])
             {

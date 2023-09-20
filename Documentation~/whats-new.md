@@ -1,3 +1,18 @@
+# What's new in Sentis 1.2
+
+This is a summary of the changes from Sentis 1.1 to Sentis 1.2.
+
+## Removed
+
+- Removed the license requirement for using the Sentis package.
+- Removed the watermark on content generated with Sentis.
+
+## Added
+
+- Support and improvement for LayerNormalization, Gelu, Resize1D, Upsample, OneHot operators.
+- Improvements for model import and saving to serialized assets.
+- Optimizations for models with ScalarMad layer and operator.
+
 # What's new in Sentis 1.1
 
 This is a summary of the changes from Sentis 1.0 to Sentis 1.1.
@@ -28,7 +43,7 @@ For information on how to upgrade, refer to the [Upgrade Guide](upgrade-guide.md
 
 ## Added
 
-- You can now override model layers in your code, and add your own layers. Refer to the `CustomLayer` example in the [sample scripts](package-samples.md) for an example.
+- You can now override model layers in your code, and add your own layers. Refer to the `Add a custom layer` example in the [sample scripts](package-samples.md) for an example.
 
 
 ## Updated

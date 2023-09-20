@@ -1,14 +1,14 @@
 # Sentis overview
 
-This package is available as an experimental package, so it is not ready for production use. The features and documentation in this package might change before it is verified for release.
+This is an experimental package in an open beta program available to Unity users via the [package manager](https://tinyurl.com/4eun48fb). The features and documentation might change before it is verified for release, so it is not ready for production use.
+
+Visit the [Unity Discussions Sentis topic](https://discussions.unity.com/c/10) for additional getting started information, the latest updates, and to collaborate with other beta participants.
 
 The Sentis package is a neural network inference library for Unity.
 
 You can use Sentis to import trained neural network models into Unity, then run them in real time locally on any platform Unity supports and in the Editor. You can run models on the GPU or the CPU.
 
 To use Sentis, it helps if you have some experience in using machine learning models, for example in a framework like [TensorFlow](https://www.tensorflow.org/) or [PyTorch](https://pytorch.org/).
-
-**Note:** You can only get access to Sentis if you've been invited to the private beta by Unity. You can [sign up for the closed beta](https://create.unity.com/ai-beta). If you’re already in the closed beta, visit [the Unity Discussions group for the Sentis beta](https://discussions.unity.com/c/10) for updates and resources, including a full sample project.
 
 |Section|Description|
 |-|-|

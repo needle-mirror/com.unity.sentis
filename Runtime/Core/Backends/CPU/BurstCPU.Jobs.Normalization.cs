@@ -11,7 +11,7 @@ namespace Unity.Sentis
     public partial class CPUBackend
     {
         [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
-        unsafe struct AxisNormalizationTailJob : IJobParallelFor, IJobResourceDeclarationXSBWO
+        unsafe struct LayerNormalizationTailJob : IJobParallelFor, IJobResourceDeclarationXSBWO
         {
             public float epsilon;
             public int axisDim;

@@ -49,7 +49,7 @@ namespace Unity.Sentis
 
                 var tensorData = new ComputeTensorData(shape, false);
 
-                var fn = new ComputeFunc(isExact ? "TextureToTensorExact" : "TextureToTensorLinear");
+                var fn = ComputeFuncSingleton.Instance.Get(isExact ? "TextureToTensorExact" : "TextureToTensorLinear");
 
                 fn.SetTexture(k_ID_X_tex2D, texture);
                 fn.SetTensorAsBuffer(k_ID_Optr, tensorData);
@@ -132,7 +132,7 @@ namespace Unity.Sentis
 
             var tensorData = new ComputeTensorData(shape, false);
 
-            var fn = new ComputeFunc(isExact ? "TextureToTensorExact" : "TextureToTensorLinear");
+            var fn = ComputeFuncSingleton.Instance.Get(isExact ? "TextureToTensorExact" : "TextureToTensorLinear");
 
             cb.SetTexture(fn, k_ID_X_tex2D, texture);
             cb.SetTensorAsBuffer(fn, k_ID_Optr, tensorData);
@@ -171,7 +171,7 @@ namespace Unity.Sentis
             var renderHeight = Screen.height;
             var isExact = renderHeight == transform.height && renderWidth == transform.width;
 
-            var fn = new ComputeFunc(isExact ? "TextureToTensorExact" : "TextureToTensorLinear");
+            var fn = ComputeFuncSingleton.Instance.Get(isExact ? "TextureToTensorExact" : "TextureToTensorLinear");
 
             cb.SetTexture(fn, k_ID_X_tex2D, rte);
             cb.SetTensorAsBuffer(fn, k_ID_Optr, ComputeTensorData.Pin(tensor));
@@ -240,7 +240,7 @@ namespace Unity.Sentis
                         renderTexture.Create();
                     }
 
-                    var fn = new ComputeFunc(isExact ? "TensorToTextureExact" : "TensorToTextureLinear");
+                    var fn = ComputeFuncSingleton.Instance.Get(isExact ? "TensorToTextureExact" : "TensorToTextureLinear");
 
                     fn.SetTensorAsBuffer(k_ID_Xptr, ComputeTensorData.Pin(tensor));
                     fn.SetTexture(k_ID_O_tex2D, renderTexture);
@@ -370,7 +370,7 @@ namespace Unity.Sentis
                     renderTexture.Create();
                 }
 
-                var fn = new ComputeFunc(isExact ? "TensorToTextureExact" : "TensorToTextureLinear");
+                var fn = ComputeFuncSingleton.Instance.Get(isExact ? "TensorToTextureExact" : "TensorToTextureLinear");
 
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, ComputeTensorData.Pin(tensor));
                 cb.SetTexture(fn, k_ID_O_tex2D, renderTexture);

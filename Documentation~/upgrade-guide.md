@@ -1,3 +1,9 @@
+# Upgrade from Sentis 1.1 to Sentis 1.2
+
+To upgrade from Sentis 1.1 to Sentis 1.2, do the following:
+
+- Reimport models that were previously imported in an earlier version of Sentis.
+
 # Upgrade from Sentis 1.0 to Sentis 1.1
 
 To upgrade from Sentis 1.0 to Sentis 1.1, do the following:

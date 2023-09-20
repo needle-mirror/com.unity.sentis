@@ -5,21 +5,16 @@ namespace Unity.Sentis
 {
     public partial class CPUBackend
     {
-        TensorFloat EinsumND(string equation, params TensorFloat[] operands)
+        internal static void EinsumND(TensorFloat[] inputTensors, TensorFloat O, TensorShape[] operandShapes, TensorIndex[] operandIndices, TensorIndex outputIndices, TensorShape outputShape, TensorIndex sumIndices, TensorShape sumShape, int numIndices)
         {
-            var tensorShapes = new TensorShape[operands.Length];
-            for (var i = 0; i < tensorShapes.Length; i++)
+            for (var i = 0; i < inputTensors.Length; i++)
             {
-                ArrayTensorData.Pin(operands[i]);
-                tensorShapes[i] = operands[i].shape;
+                ArrayTensorData.Pin(inputTensors[i]);
             }
-            var operandIndices = new TensorIndex[operands.Length];
-            EinsumHelper.ParseEquationString(equation, tensorShapes, ref operandIndices, out var outputIndices, out var outputShape, out var sumIndices, out var sumShape, out var numIndices);
 
-            var output = NewOutputTensorFloat(outputShape);
-            ArrayTensorData.Pin(output, clearOnInit: false);
+            ArrayTensorData.Pin(O, clearOnInit: false);
 
-            var outSize = output.shape.length;
+            var outSize = O.shape.length;
             var sumSize = sumShape.length;
 
             Span<int> position = stackalloc int[outputIndices.rank + sumIndices.rank];
@@ -32,19 +27,17 @@ namespace Unity.Sentis
                 {
                     SetPositionFromIndex(position, sumIndices, sumShape, sumIndex);
                     float product = 1f;
-                    for (var i = 0; i < operands.Length; i++)
+                    for (var i = 0; i < inputTensors.Length; i++)
                     {
-                        var operandIndex = GetIndexFromPosition(position, operandIndices[i], operands[i].shape);
-                        product *= operands[i][operandIndex];
+                        var operandIndex = GetIndexFromPosition(position, operandIndices[i], inputTensors[i].shape);
+                        product *= inputTensors[i][operandIndex];
                     }
 
                     sum += product;
                 }
 
-                output[outIndex] = sum;
+                O[outIndex] = sum;
             }
-
-            return output;
         }
 
         static void SetPositionFromIndex(Span<int> position, TensorIndex indices, TensorShape shape, int index)

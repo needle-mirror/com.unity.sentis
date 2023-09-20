@@ -87,6 +87,7 @@ You can also use the following methods which are similar to numpy methods:
 |[InstanceNormalization](https://github.com/onnx/onnx/blob/main/docs/Operators.md#InstanceNormalization) | float | float | float | |
 |[IsInf](https://github.com/onnx/onnx/blob/main/docs/Operators.md#IsInf) | float | float | float (Infs not supported) | |
 |[IsNaN](https://github.com/onnx/onnx/blob/main/docs/Operators.md#IsNaN) | float | float | float (NaNs not supported) | |
+|[LayerNormalization](https://github.com/onnx/onnx/blob/main/docs/Operators.md#LayerNormalization) | float | float | float | |
 |[LeakyRelu](https://github.com/onnx/onnx/blob/main/docs/Operators.md#LeakyRelu) | float | float | float | |
 |[Less](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Less) | float, int | float, int | float, int | |
 |[LessOrEqual](https://github.com/onnx/onnx/blob/main/docs/Operators.md#LessOrEqual) | float, int | float, int | float, int | |
@@ -106,7 +107,7 @@ You can also use the following methods which are similar to numpy methods:
 |[NonMaxSuppression](https://github.com/onnx/onnx/blob/main/docs/Operators.md#NonMaxSuppression) | float | Not supported | Not supported | |
 |[NonZero](https://github.com/onnx/onnx/blob/main/docs/Operators.md#NonZero) | float, int | Not supported | Not supported | |
 |[Not](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Not) | int | int | int | |
-|[OneHot](https://github.com/onnx/onnx/blob/main/docs/Operators.md#OneHot) | int | int | int | |
+|[OneHot](https://github.com/onnx/onnx/blob/main/docs/Operators.md#OneHot) | float, int | float, int | float, int | |
 |[Or](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Or) | int | int | int | |
 |[Pad](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Pad) | float | float | float | |
 |[Pow](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Pow) | float, int | float, int | float, int | |
@@ -129,7 +130,7 @@ You can also use the following methods which are similar to numpy methods:
 |[ReduceSumSquare](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceSumSquare) | float, int | float, int | float, int | |
 |[Relu](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Relu) | float | float | float | |
 |[Reshape](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Reshape) | float, int | float, int | float, int | |
-|[Resize](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Resize) | float | float (2D and 3D only) | float (2D and 3D only) | The `cubic_coeff_a`, `exclude_outside`, `extrapolation_value` and `roi`  parameters aren't supported. |
+|[Resize](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Resize) | float | float (1D, 2D and 3D) | float (1D, 2D and 3D) | The `cubic_coeff_a`, `exclude_outside`, `extrapolation_value` and `roi`  parameters aren't supported. |
 |[RoiAlign](https://github.com/onnx/onnx/blob/main/docs/Operators.md#RoiAlign) | float | float | float | The `coordinate_transformation_mode` parameter isn't supported. |
 |[Round](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Round) | float | float | float | |
 |[Scatter (deprecated)](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Scatter) | float, int | float, int | float, int | The operator maps to the Sentis layer `ScatterElements`. |
@@ -161,7 +162,7 @@ You can also use the following methods which are similar to numpy methods:
 |[Transpose](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Transpose) | float, int | float, int | float, int | |
 |[Trilu](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Trilu) | float, int | float, int | float, int | |
 |[Unsqueeze](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Unsqueeze) | float, int | float, int | float, int | |
-|[Upsample (deprecated)](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Upsample) | float | float (2D and 3D only) | float (2D and 3D only) | The operator maps to the Sentis layer `Resize`. |
+|[Upsample (deprecated)](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Upsample) | float | float (1D, 2D and 3D) | float (1D, 2D and 3D) | The operator maps to the Sentis layer `Resize`. |
 |[Where](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Where) | float, int | float, int | float, int | |
 |[Xor](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Xor) | int | int | int | |
 
@@ -172,8 +173,10 @@ Sentis might create the following layers when it [optimizes the model](models-co
 |Name|Supported data types with `BackendType.CPU`|Supported data types with `BackendType.GPUCompute`|Supported data types with `BackendType.GPUPixel`|
 |-|-|-|-|
 |Dense | float | float | float |
+|Gelu | float | float | float |
 |MatMul2D | float | float | float |
 |Relu6 | float | float | float |
+|ScalarMad | float | float | float |
 |Square | float | float | float |
 |Swish | float | float | float |
 |ScaleBias | float | float | float |

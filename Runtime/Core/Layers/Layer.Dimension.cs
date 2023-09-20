@@ -68,7 +68,18 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.Shape(inputTensors[0], start, end);
+            var shapeX = inputTensors[0].shape;
+            var startX = start < 0 ? start + shapeX.rank : start;
+            var endX = end < 0 ? end + shapeX.rank : end;
+            startX = Mathf.Clamp(startX, 0, shapeX.rank);
+            endX = Mathf.Clamp(endX, 0, shapeX.rank);
+
+            Logger.AssertIsTrue(endX >= startX, "Shape.InputError: start value cannot be greater than end value for shape slicing");
+            var O = ctx.backend.NewOutputTensorInt(new TensorShape(endX - startX));
+            ArrayTensorData.Pin(O, clearOnInit: false);
+            for (var i = startX; i < endX; i++)
+                O[i - startX] = shapeX[i];
+            return O;
         }
 
         /// <inheritdoc/>
@@ -110,7 +121,10 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            return ctx.backend.Size(inputTensors[0].shape);
+            var O = ctx.backend.NewOutputTensorInt(new TensorShape());
+            ArrayTensorData.Pin(O, clearOnInit: false);
+            O[0] = inputTensors[0].shape.length;
+            return O;
         }
 
         internal override string profilerTag => "Size";

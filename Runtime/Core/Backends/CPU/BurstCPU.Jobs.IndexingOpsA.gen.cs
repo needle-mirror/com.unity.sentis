@@ -50,8 +50,8 @@ internal unsafe struct GatherElementsJob : IJobParallelFor, IJobResourceDeclarat
 {
     
     public int axisDim;
-    public int startLength;
     public int endLength;
+    public int endLengthX;
     public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
     public ReadOnlyMemResource B { get; set; } int* Bptr => (int*)B.ptr;
     public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
@@ -64,7 +64,7 @@ internal unsafe struct GatherElementsJob : IJobParallelFor, IJobResourceDeclarat
         int index = (int)Bptr[threadIdx];
         index = index < 0 ? axisDim + index : index;
 
-        Optr[threadIdx] = Xptr[start * endLength * axisDim + index * endLength + end];
+        Optr[threadIdx] = Xptr[start * endLengthX * axisDim + index * endLengthX + end];
     }
 }
 

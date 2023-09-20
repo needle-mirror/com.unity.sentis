@@ -17,7 +17,7 @@ float SignedPow(float f, float e)
 {
     // handle negative f
     float v = pow(abs(f), e);
-    float s = (e % 2 == 1) ?
+    float s = (abs(e % 2) == 1) ?
         sign(f):    // exponent is odd  => sign(f) * pow(abs(f), e)
         1;          // exponent is even => pow(abs(f), e)
     return v * s;

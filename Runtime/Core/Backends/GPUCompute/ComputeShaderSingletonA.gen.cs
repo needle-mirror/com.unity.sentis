@@ -26,6 +26,7 @@ namespace Unity.Sentis
                 "ScalarBroadcastMaxInt", "BroadcastMaxInt", "ElementwiseMaxInt",
                 "ScalarBroadcastModInt", "BroadcastModInt", "ElementwiseModInt",
                 "ScalarBroadcastFModInt", "BroadcastFModInt", "ElementwiseFModInt",
+"ScalarMad",
             });
 
             RegisterKernels("Sentis/ComputeShaders/Compute.Shaders.Conv.gen", new[]

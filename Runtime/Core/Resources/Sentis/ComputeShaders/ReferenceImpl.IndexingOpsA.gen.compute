@@ -19,7 +19,7 @@ int rank;
 int axisDim;
 int endLength;
 int indicesLength;
-int startLength;
+int endLengthX;
 int axisDimIndices;
 int reduction;
 StructuredBuffer<float> Xptr;
@@ -82,7 +82,7 @@ void GatherElements(uint3 dispatchThreadID : SV_DispatchThreadID)
         int index = (int)Bptr[threadIdx];
         index = index < 0 ? axisDim + index : index;
 
-        Optr[threadIdx] = Xptr[start * endLength * axisDim + index * endLength + end];
+        Optr[threadIdx] = Xptr[start * endLengthX * axisDim + index * endLengthX + end];
     }
 }
 #endif

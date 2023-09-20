@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/OneHot"
         Pass
         {
             CGPROGRAM
-
+            #pragma multi_compile _ OneHotInt
             #pragma vertex vert
             #pragma fragment frag
 
@@ -19,17 +19,28 @@ Shader "Hidden/Sentis/OneHot"
             #include "CommonPixelShader.cginc"
 
             DECLARE_TENSOR(X, int);
+            #ifdef OneHotInt
+            int onValueInt, offValueInt;
+            #define DTYPE4 int4
+            #else
+            float onValue, offValue;
+            #define DTYPE4 float4
+            #endif
+
 
             uint StrideAxis, DimAxisO;
-            int onValue, offValue;
 
-            int4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
+            DTYPE4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
                 uint blockIndexO = GetBlockIndexO(screenPos);
                 uint3 lowerAxisUpper = Unravel(uint2(StrideAxis, DimAxisO), blockIndexO);
                 int4 indices = SampleBlockX(Ravel(uint1(StrideAxis), lowerAxisUpper.xz));
                 bool4 mask4 = (indices == (int4)lowerAxisUpper.y) || ((indices + (int)DimAxisO) == (int4)lowerAxisUpper.y);
+                #ifdef OneHotInt
+                return mask4 ? onValueInt : offValueInt;
+                #else
                 return mask4 ? onValue : offValue;
+                #endif
             }
             ENDCG
         }

@@ -29,7 +29,7 @@ If you use `ToTexture`, Sentis uses the tensor to set the size and channels of t
 - Removes channels from the end, if the render texture has fewer channels than the tensor.
 - Sets values in RGB channels to 0 and values in the alpha channel to 1, if the render texture has more channels than the tensor.
 
-Refer to the `TensorToTexture` example in the [sample scripts](package-samples.md) for working examples.
+Refer to the `Convert tensors to textures` example in the [sample scripts](package-samples.md) for working examples.
 
 ### ToTexture example
 
@@ -136,7 +136,7 @@ public class StyleTransfer : MonoBehaviour
 
 If you use the Universal Render Pipeline (URP) or the High-Definition Render Pipeline (HDRP), you must call `RenderToScreen` in the `RenderPipelineManager.endFrameRendering` or `RenderPipelineManager.endContextRendering` callbacks. Refer to [Rendering.RenderPipelineManager](https://docs.unity3d.com/ScriptReference/Rendering.RenderPipelineManager.html) for more information.
 
-Refer to the `RunModelOnFullScreen` example in the [sample scripts](package-samples.md) for an example.
+Refer to the `Copy a texture tensor to the screen` example in the [sample scripts](package-samples.md) for an example.
 
 ## Override shape and layout
 

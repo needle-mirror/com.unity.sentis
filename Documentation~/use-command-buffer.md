@@ -20,7 +20,7 @@ For example, the following code creates and execute a command buffer queue that 
 using UnityEngine;
 using Unity.Sentis;
 using UnityEngine.Rendering;
-​
+
 public class UseCommandBuffer : MonoBehaviour
 {
     public ModelAsset modelAsset;

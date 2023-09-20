@@ -57,8 +57,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Add(TensorFloat A, float b)
         {
-            using var B = m_Backend.ConstantOfShape(new TensorShape(), b);
-            return m_Backend.Add(A, B);
+            var O = m_Backend.NewOutputTensorFloat(A.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ScalarMad(A, O, 1, b);
+            return O;
         }
 
         /// <summary>
@@ -69,8 +72,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Add(float a, TensorFloat B)
         {
-            using var A = m_Backend.ConstantOfShape(new TensorShape(), a);
-            return m_Backend.Add(A, B);
+            var O = m_Backend.NewOutputTensorFloat(B.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ScalarMad(B, O, 1, a);
+            return O;
         }
 
         /// <summary>
@@ -81,8 +87,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Sub(TensorFloat A, float b)
         {
-            using var B = m_Backend.ConstantOfShape(new TensorShape(), b);
-            return m_Backend.Sub(A, B);
+            var O = m_Backend.NewOutputTensorFloat(A.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ScalarMad(A, O, 1, -b);
+            return O;
         }
 
         /// <summary>
@@ -93,8 +102,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Sub(float a, TensorFloat B)
         {
-            using var A = m_Backend.ConstantOfShape(new TensorShape(), a);
-            return m_Backend.Sub(A, B);
+            var O = m_Backend.NewOutputTensorFloat(B.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ScalarMad(B, O, -1, a);
+            return O;
         }
 
         /// <summary>
@@ -105,8 +117,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Mul(TensorFloat A, float b)
         {
-            using var B = m_Backend.ConstantOfShape(new TensorShape(), b);
-            return m_Backend.Mul(A, B);
+            var O = m_Backend.NewOutputTensorFloat(A.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ScalarMad(A, O, b, 0);
+            return O;
         }
 
         /// <summary>
@@ -117,8 +132,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Mul(float a, TensorFloat B)
         {
-            using var A = m_Backend.ConstantOfShape(new TensorShape(), a);
-            return m_Backend.Mul(A, B);
+            var O = m_Backend.NewOutputTensorFloat(B.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ScalarMad(B, O, a, 0);
+            return O;
         }
 
         /// <summary>
@@ -129,8 +147,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Div(TensorFloat A, float b)
         {
-            using var B = m_Backend.ConstantOfShape(new TensorShape(), b);
-            return m_Backend.Div(A, B);
+            var O = m_Backend.NewOutputTensorFloat(A.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ScalarMad(A, O, 1/b, 0);
+            return O;
         }
 
         /// <summary>
@@ -142,6 +163,9 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="A">The first argument as a tensor.</param>
         /// <param name="B">The second argument as a tensor.</param>
+        /// <param name="axis">The axis along which to set the slice.</param>
+        /// <param name="start">The inclusive start of the slice.</param>
+        /// <param name="end">The exclusive end of the slice.</param>
         /// <returns>The computed output tensor.</returns>
         public Tensor Set(Tensor A, Tensor B, int axis, int start, int end)
         {
@@ -155,26 +179,33 @@ namespace Unity.Sentis
             updatesShape[axis] = 1;
             updatesShape = A.shape.Broadcast(updatesShape);
             updatesShape[axis] = end - start;
-            using var updates = m_Backend.Expand(B, updatesShape);
-            using var indicesRange = m_Backend.Range(start, end, 1);
+            using var updates = Expand(B, updatesShape);
+            using var indicesRange = Range(start, end, 1);
             var indicesOnesShape = TensorShape.Ones(A.shape.rank);
             indicesOnesShape[axis] = updatesShape[axis];
-            using var indicesOnes = m_Backend.Reshape(indicesRange, indicesOnesShape);
-            using var indices = m_Backend.Expand(indicesOnes, updatesShape) as TensorInt;
-            return m_Backend.ScatterElements(A, indices, updates, axis, Layers.ScatterReductionMode.None);
+            using var indicesOnes = Reshape(indicesRange, indicesOnesShape);
+            using var indices = Expand(indicesOnes, updatesShape) as TensorInt;
+            return ScatterElements(A, indices, updates, axis, Layers.ScatterReductionMode.None);
         }
 
         /// <summary>
         /// Performs a matrix multiplication operation with optional transposes: f(a, b) = a' x b'.
         /// </summary>
         /// <param name="X">The first input tensor.</param>
+        /// <param name="Y">The second input tensor.</param>
         /// <param name="xTranspose">Whether to transpose the first input tensor before performing the matrix multiplication.</param>
-        /// <param name="y">The second input tensor.</param>
         /// <param name="yTranspose">Whether to transpose the second input tensor before performing the matrix multiplication.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat MatMul2D(TensorFloat X, bool xTranspose, TensorFloat y, bool yTranspose)
+        public TensorFloat MatMul2D(TensorFloat X, TensorFloat Y, bool xTranspose, bool yTranspose)
         {
-            return m_Backend.MatMul2D(X, xTranspose, y, yTranspose);
+            var O = m_Backend.NewOutputTensorFloat(ShapeInference.Gemm(X.shape, Y.shape, xTranspose, yTranspose));
+            if (O.shape.HasZeroDims())
+                return O;
+            if (X.shape.HasZeroDims() || Y.shape.HasZeroDims())
+                m_Backend.MemSet(O, 0.0f);
+            else
+                m_Backend.MatMul2D(X, Y, O, xTranspose, yTranspose);
+            return O;
         }
 
         /// <summary>
@@ -185,11 +216,18 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat MatMul(TensorFloat X, TensorFloat Y)
         {
-            return m_Backend.MatMul(X, Y);
+            var O = m_Backend.NewOutputTensorFloat(X.shape.MatMul(Y.shape));
+            if (O.shape.HasZeroDims())
+                return O;
+            if (X.shape.HasZeroDims() || Y.shape.HasZeroDims())
+                m_Backend.MemSet(O, 0.0f);
+            else
+                m_Backend.MatMul(X, Y, O);
+            return O;
         }
 
         /// <summary>
-        /// Performs a matrix multiplication operation: f(x, w, b) = X x W + B.
+        /// Performs a matrix multiplication operation: f(X, w, b) = X x W + B.
         ///
         /// This supports numpy-style broadcasting of input tensors.
         /// </summary>
@@ -200,7 +238,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Dense(TensorFloat X, TensorFloat W, TensorFloat B, Layers.FusableActivation fusedActivation)
         {
-            return m_Backend.Dense(X, W, B, fusedActivation);
+            var O = m_Backend.NewOutputTensorFloat(X.shape.MatMul(W.shape));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Dense(X, W, B, O, fusedActivation);
+            return O;
         }
 
         /// <summary>
@@ -211,7 +253,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public Tensor Tril(Tensor X, int k = 0)
         {
-            return m_Backend.Tril(X, k);
+            var O = m_Backend.NewOutputTensor(X.shape, X.dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Tril(X, O, k);
+            return O;
         }
 
         /// <summary>
@@ -222,7 +268,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public Tensor Triu(Tensor X, int k = 0)
         {
-            return m_Backend.Triu(X, k);
+            var O = m_Backend.NewOutputTensor(X.shape, X.dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Triu(X, O, k);
+            return O;
         }
 
         /// <summary>
@@ -239,7 +289,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Conv(TensorFloat X, TensorFloat K, TensorFloat B, int groups, int[] stride, int[] pad, int[] dilation, Layers.FusableActivation fusedActivation)
         {
-            return m_Backend.Conv(X, K, B, groups, stride, pad, dilation, fusedActivation);
+            var O = m_Backend.NewOutputTensorFloat(ShapeInference.Conv(X.shape, K.shape, groups, stride, pad, dilation));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Conv(X, K, B, O, groups, stride, pad, dilation, fusedActivation);
+            return O;
         }
 
         /// <summary>
@@ -253,9 +307,13 @@ namespace Unity.Sentis
         /// <param name="outputAdjustment">The output padding value for each spatial dimension in the filter.</param>
         /// <param name="fusedActivation">The fused activation type to apply after the convolution.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Conv2DTrans(TensorFloat X, TensorFloat K, TensorFloat B, int[] stride, int[] pad, int[] outputAdjustment, Layers.FusableActivation fusedActivation)
+        public TensorFloat ConvTranspose(TensorFloat X, TensorFloat K, TensorFloat B, int[] stride, int[] pad, int[] outputAdjustment, Layers.FusableActivation fusedActivation)
         {
-            return m_Backend.ConvTranspose(X, K, B, stride, pad, outputAdjustment, fusedActivation);
+            var O = m_Backend.NewOutputTensorFloat(ShapeInference.ConvTranspose(X.shape, K.shape, stride, pad, outputAdjustment));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ConvTranspose(X, K, B, O, stride, pad, outputAdjustment, fusedActivation);
+            return O;
         }
 
         /// <summary>
@@ -269,7 +327,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Resize(TensorFloat X, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode = Layers.NearestMode.RoundPreferFloor, Layers.CoordTransformMode coordTransformMode = Layers.CoordTransformMode.HalfPixel)
         {
-            return m_Backend.Resize(X, scale, interpolationMode, nearestMode, coordTransformMode);
+            var O = m_Backend.NewOutputTensorFloat(ShapeInference.Resize(X.shape, scale));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Resize(X, O, scale, interpolationMode, nearestMode, coordTransformMode);
+            return O;
         }
 
         /// <summary>
@@ -281,18 +343,26 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat DepthToSpace(TensorFloat X, int blocksize, Layers.DepthToSpaceMode mode)
         {
-            return m_Backend.DepthToSpace(X, blocksize, mode);
+            var O = m_Backend.NewOutputTensorFloat(ShapeInference.DepthToSpace(X.shape, blocksize));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.DepthToSpace(X, O, blocksize, mode);
+            return O;
         }
 
         /// <summary>
         /// Computes the output tensor by permuting data from blocks of spatial data into depth.
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <param name="blocksize">The size of the blocks to move the depth data into.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat SpaceToDepth(TensorFloat x, int blocksize)
+        public TensorFloat SpaceToDepth(TensorFloat X, int blocksize)
         {
-            return m_Backend.SpaceToDepth(x, blocksize);
+            var O = m_Backend.NewOutputTensorFloat(ShapeInference.SpaceToDepth(X.shape, blocksize));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.SpaceToDepth(X, O, blocksize);
+            return O;
         }
 
         /// <summary>
@@ -305,7 +375,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat MaxPool(TensorFloat X, int[] pool, int[] stride, int[] pad)
         {
-            return m_Backend.MaxPool(X, pool, stride, pad);
+            var O = m_Backend.NewOutputTensorFloat(ShapeInference.ApplyPool(X.shape, pool, stride, pad));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.MaxPool(X, O, pool, stride, pad);
+            return O;
         }
 
         /// <summary>
@@ -318,7 +392,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat AveragePool(TensorFloat X, int[] pool, int[] stride, int[] pad)
         {
-            return m_Backend.AveragePool(X, pool, stride, pad);
+            var O = m_Backend.NewOutputTensorFloat(ShapeInference.ApplyPool(X.shape, pool, stride, pad));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.AveragePool(X, O, pool, stride, pad);
+            return O;
         }
 
         /// <summary>
@@ -328,7 +406,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat GlobalMaxPool(TensorFloat X)
         {
-            return m_Backend.GlobalMaxPool(X);
+            var O = m_Backend.NewOutputTensorFloat(ShapeInference.GlobalPool(X.shape));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.GlobalMaxPool(X, O);
+            return O;
         }
 
         /// <summary>
@@ -338,7 +420,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat GlobalAveragePool(TensorFloat X)
         {
-            return m_Backend.GlobalAveragePool(X);
+            var O = m_Backend.NewOutputTensorFloat(ShapeInference.GlobalPool(X.shape));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.GlobalAveragePool(X, O);
+            return O;
         }
 
         /// <summary>
@@ -351,11 +437,20 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Pad(TensorFloat X, ReadOnlySpan<int> pad, Layers.PadMode padMode = Layers.PadMode.Constant, float constant = 0.0f)
         {
-            return m_Backend.Pad(X, pad, padMode, constant);
+            if (padMode != Layers.PadMode.Constant)
+                Assert.IsFalse(X.shape.HasZeroDims(), "ValueError: zero dimensions input for Pad operator is not supported");
+            var O = m_Backend.NewOutputTensorFloat(X.shape.Pad(pad));
+            if (O.shape.HasZeroDims())
+                return O;
+            if (X.shape.HasZeroDims())
+                m_Backend.MemSet(O, constant);
+            else
+                m_Backend.Pad(X, O, pad, padMode, constant);
+            return O;
         }
 
         /// <summary>
-        /// Computes the output tensor with an element-wise `ScaleBias` function: f(x, s, b) = x * s + b.
+        /// Computes the output tensor with an element-wise `ScaleBias` function: f(X, s, b) = x * s + b.
         /// </summary>
         /// <param name="X">The input tensor.</param>
         /// <param name="S">The scale tensor.</param>
@@ -363,7 +458,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat ScaleBias(TensorFloat X, TensorFloat S, TensorFloat B)
         {
-            return m_Backend.ScaleBias(X, S, B);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ScaleBias(X, S, B, O);
+            return O;
         }
 
         /// <summary>
@@ -376,7 +475,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat InstanceNormalization(TensorFloat X, TensorFloat S, TensorFloat B, float epsilon)
         {
-            return m_Backend.InstanceNormalization(X, S, B, epsilon);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.InstanceNormalization(X, S, B, O, epsilon);
+            return O;
         }
 
         /// <summary>
@@ -387,9 +490,13 @@ namespace Unity.Sentis
         /// <param name="B">The bias tensor.</param>
         /// <param name="epsilon">The epsilon value the layer uses to avoid division by zero.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat AxisNormalization(TensorFloat X, TensorFloat S, TensorFloat B, float epsilon)
+        public TensorFloat LayerNormalization(TensorFloat X, TensorFloat S, TensorFloat B, float epsilon)
         {
-            return m_Backend.AxisNormalization(X, S, B, epsilon);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.LayerNormalization(X, S, B, O, epsilon);
+            return O;
         }
 
         /// <summary>
@@ -403,7 +510,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat LRN(TensorFloat X, float alpha, float beta, float bias, int size)
         {
-            return m_Backend.LRN(X, alpha, beta, bias, size);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.LRN(X, O, alpha, beta, bias, size);
+            return O;
         }
 
         /// <summary>
@@ -416,7 +527,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat RandomNormal(TensorShape S, float mean, float scale, float? seed)
         {
-            return m_Backend.RandomNormal(S, mean, scale, seed);
+            var O = m_Backend.NewOutputTensorFloat(S);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.RandomNormal(O, mean, scale, seed);
+            return O;
         }
 
         /// <summary>
@@ -429,19 +544,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat RandomUniform(TensorShape S, float low, float high, float? seed)
         {
-            return m_Backend.RandomUniform(S, low, high, seed);
-        }
-
-        /// <summary>
-        /// Generates an output tensor with values from a multinomial distribution according to the probabilities given by the input tensor.
-        /// </summary>
-        /// <param name="x">The probabilities input tensor.</param>
-        /// <param name="count">The number of times to sample the input.</param>
-        /// <param name="seed">The optional seed to use for the random number generation. If this is `null` the operation generates a seed using `System.Random()`.</param>
-        /// <returns>The computed output tensor.</returns>
-        public TensorInt Multinomial(TensorFloat x, int count, float? seed)
-        {
-            return m_Backend.Multinomial(x, count, seed);
+            var O = m_Backend.NewOutputTensorFloat(S);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.RandomUniform(O, low, high, seed);
+            return O;
         }
 
         /// <summary>
@@ -455,7 +562,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt OneHot(TensorInt indices, int axis, int depth, int offValue, int onValue)
         {
-            return m_Backend.OneHot(indices, axis, depth, offValue, onValue);
+            var O = m_Backend.NewOutputTensorInt(ShapeInference.OneHot(indices.shape, axis, depth));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.OneHot(indices, O, axis, depth, offValue, onValue);
+            return O;
         }
 
         /// <summary>
@@ -472,27 +583,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat RoiAlign(TensorFloat X, TensorFloat Rois, TensorInt Indices, Layers.RoiPoolingMode mode, int outputHeight, int outputWidth, int samplingRatio, float spatialScale)
         {
-            return m_Backend.RoiAlign(X, Rois, Indices, mode, outputHeight, outputWidth, samplingRatio, spatialScale);
-        }
-
-        /// <summary>
-        /// Returns the indices of the elements of the input tensor that are not zero.
-        /// </summary>
-        /// <param name="X">The input tensor.</param>
-        /// <returns>The computed output tensor.</returns>
-        public TensorInt NonZero(TensorFloat X)
-        {
-            return m_Backend.NonZero(X);
-        }
-
-        /// <summary>
-        /// Returns the indices of the elements of the input tensor that are not zero.
-        /// </summary>
-        /// <param name="X">The input tensor.</param>
-        /// <returns>The computed output tensor.</returns>
-        public TensorInt NonZero(TensorInt X)
-        {
-            return m_Backend.NonZero(X);
+            var O = m_Backend.NewOutputTensorFloat(ShapeInference.RoiAlign(X.shape, Rois.shape, Indices.shape, outputHeight, outputWidth));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.RoiAlign(X, Rois, Indices, O, mode, outputHeight, outputWidth, samplingRatio, spatialScale);
+            return O;
         }
 
         /// <summary>
@@ -504,7 +599,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Range(float start, float limit, float delta)
         {
-            return m_Backend.Range(start, limit, delta);
+            var O = m_Backend.NewOutputTensorFloat(ShapeInference.Range(start, limit, delta));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Range(O, start, delta);
+            return O;
         }
 
         /// <summary>
@@ -516,62 +615,86 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Range(int start, int limit, int delta)
         {
-            return m_Backend.Range(start, limit, delta);
+            var O = m_Backend.NewOutputTensorInt(ShapeInference.Range(start, limit, delta));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Range(O, start, delta);
+            return O;
         }
 
         /// <summary>
         /// Generates an output tensor with values 0 or 1 from a Bernoulli distribution. The input tensor contains the probabilities to use for generating the output values.
         /// </summary>
-        /// <param name="x">The probabilities input tensor.</param>
+        /// <param name="X">The probabilities input tensor.</param>
         /// <param name="dataType">The data type of the output tensor.</param>
         /// <param name="seed">The optional seed to use for the random number generation. If this is `null` the operation generates a seed using `System.Random()`.</param>
         /// <returns>The computed output tensor.</returns>
-        public Tensor Bernoulli(TensorFloat x, DataType dataType, float? seed)
+        public Tensor Bernoulli(TensorFloat X, DataType dataType, float? seed)
         {
-            return m_Backend.Bernoulli(x, dataType, seed);
+            var O = m_Backend.NewOutputTensor(X.shape, dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Bernoulli(X, O, seed);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Relu` activation function: f(x) = max(0, x).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Relu(TensorFloat x)
+        public TensorFloat Relu(TensorFloat X)
         {
-            return m_Backend.Relu(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Relu(X, O);
+            return O;
         }
 
         /// <summary>
-        /// Computes an output tensor by applying the `Softmax` activation function along an axis: f(x, axis) = exp(X) / ReduceSum(exp(X), axis).
+        /// Computes an output tensor by applying the `Softmax` activation function along an axis: f(X, axis) = exp(X) / ReduceSum(exp(X), axis).
         /// </summary>
         /// <param name="X">The input tensor.</param>
         /// <param name="axis">The axis along which to apply the `Softmax` activation function. The default value is -1.</param>
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Softmax(TensorFloat X, int axis = -1)
         {
-            return m_Backend.Softmax(X, axis);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Softmax(X, O, axis);
+            return O;
         }
 
         /// <summary>
-        /// Computes an output tensor by applying the `LogSoftmax` activation function along an axis: f(x, axis) = log(Softmax(x, axis)).
+        /// Computes an output tensor by applying the `LogSoftmax` activation function along an axis: f(X, axis) = log(Softmax(X, axis)).
         /// </summary>
         /// <param name="X">The input tensor.</param>
         /// <param name="axis">The axis along which to apply the `LogSoftmax` activation function. The default value is -1.</param>
         /// <returns>The computed output tensor.</returns>
         public TensorFloat LogSoftmax(TensorFloat X, int axis = -1)
         {
-            return m_Backend.LogSoftmax(X, axis);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.LogSoftmax(X, O, axis);
+            return O;
         }
 
         /// <summary>
-        /// Computes an output tensor by applying the `Hardmax` activation function along an axis: f(x, axis) = 1 if x is the first maximum value along the specified axis, otherwise f(x) = 0.
+        /// Computes an output tensor by applying the `Hardmax` activation function along an axis: f(X, axis) = 1 if x is the first maximum value along the specified axis, otherwise f(x) = 0.
         /// </summary>
         /// <param name="X">The input tensor.</param>
         /// <param name="axis">The axis along which to apply the `Hardmax` activation function. The default value is -1.</param>
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Hardmax(TensorFloat X, int axis = -1)
         {
-            return m_Backend.Hardmax(X, axis);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Hardmax(X, O, axis);
+            return O;
         }
 
         /// <summary>
@@ -584,7 +707,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat CumSum(TensorFloat X, int axis, bool reverse = false, bool exclusive = false)
         {
-            return m_Backend.CumSum(X, axis, reverse, exclusive);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.CumSum(X, O, axis, reverse: reverse, exclusive: exclusive);
+            return O;
         }
 
         /// <summary>
@@ -597,7 +724,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt CumSum(TensorInt X, int axis, bool reverse = false, bool exclusive = false)
         {
-            return m_Backend.CumSum(X, axis, reverse, exclusive);
+            var O = m_Backend.NewOutputTensorInt(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.CumSum(X, O, axis, reverse: reverse, exclusive: exclusive);
+            return O;
         }
 
         /// <summary>
@@ -607,7 +738,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Tanh(TensorFloat X)
         {
-            return m_Backend.Tanh(X);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Tanh(X, O);
+            return O;
         }
 
         /// <summary>
@@ -617,7 +752,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Softplus(TensorFloat X)
         {
-            return m_Backend.Softplus(X);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Softplus(X, O);
+            return O;
         }
 
         /// <summary>
@@ -627,19 +766,27 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Sigmoid(TensorFloat X)
         {
-            return m_Backend.Sigmoid(X);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Sigmoid(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `HardSigmoid` activation function: f(x) = clamp(alpha * x + beta, 0, 1).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <param name="alpha">The alpha value to use for the `HardSigmoid` activation function.</param>
         /// <param name="beta">The beta value to use for the `HardSigmoid` activation function.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat HardSigmoid(TensorFloat x, float alpha, float beta)
+        public TensorFloat HardSigmoid(TensorFloat X, float alpha, float beta)
         {
-            return m_Backend.HardSigmoid(x, alpha, beta);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.HardSigmoid(X, O, alpha, beta);
+            return O;
         }
 
         /// <summary>
@@ -650,7 +797,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Elu(TensorFloat X, float alpha)
         {
-            return m_Backend.Elu(X, alpha);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Elu(X, O, alpha);
+            return O;
         }
 
         /// <summary>
@@ -660,81 +811,113 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Gelu(TensorFloat X)
         {
-            return m_Backend.Gelu(X);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Gelu(X, O);
+            return O;
         }
 
         /// <summary>
-        /// Computes an output tensor by applying the element-wise `Relu6` activation function: f(x) = clamp(x, 0, 6).
+        /// Computes an output tensor by applying the element-wise `Relu6` activation function: f(x) = clamp(X, 0, 6).
         /// </summary>
         /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Relu6(TensorFloat X)
         {
-            return m_Backend.Relu6(X);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Relu6(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `LeakyRelu` activation function: f(x) = x if x >= 0, otherwise f(x) = alpha * x.
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <param name="alpha">The alpha value to use for the `LeakyRelu` activation function.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat LeakyRelu(TensorFloat x, float alpha)
+        public TensorFloat LeakyRelu(TensorFloat X, float alpha)
         {
-            return m_Backend.LeakyRelu(x, alpha);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.LeakyRelu(X, O, alpha);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Selu` activation function: f(x) = gamma * x if x >= 0, otherwise f(x) = (alpha * e^x - alpha).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <param name="alpha">The alpha value to use for the `Selu` activation function.</param>
         /// <param name="gamma">The alpha value to use for the `Selu` activation function.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Selu(TensorFloat x, float alpha, float gamma)
+        public TensorFloat Selu(TensorFloat X, float alpha, float gamma)
         {
-            return m_Backend.Selu(x, alpha, gamma);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Selu(X, O, alpha, gamma);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `PRelu` activation function: f(x) = x if x >= 0, otherwise f(x) = slope * x.
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <param name="slope">The slope tensor, must be unidirectional broadcastable to x.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat PRelu(TensorFloat x, TensorFloat slope)
+        public TensorFloat PRelu(TensorFloat X, TensorFloat slope)
         {
-            return m_Backend.PRelu(x, slope);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.PRelu(X, slope, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Swish` activation function: f(x) = sigmoid(x) * x = x / (1 + e^{-x}).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Swish(TensorFloat x)
+        public TensorFloat Swish(TensorFloat X)
         {
-            return m_Backend.Swish(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Swish(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Abs` math function: f(x) = f(x) = |x|.
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Abs(TensorFloat x)
+        public TensorFloat Abs(TensorFloat X)
         {
-            return m_Backend.Abs(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Abs(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Abs` math function: f(x) = f(x) = |x|.
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorInt Abs(TensorInt x)
+        public TensorInt Abs(TensorInt X)
         {
-            return m_Backend.Abs(x);
+            var O = m_Backend.NewOutputTensorInt(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Abs(X, O);
+            return O;
         }
 
         /// <summary>
@@ -744,7 +927,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Neg(TensorFloat X)
         {
-            return m_Backend.Neg(X);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Neg(X, O);
+            return O;
         }
 
         /// <summary>
@@ -754,7 +941,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Neg(TensorInt X)
         {
-            return m_Backend.Neg(X);
+            var O = m_Backend.NewOutputTensorInt(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Neg(X, O);
+            return O;
         }
 
         /// <summary>
@@ -764,19 +955,27 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Ceil(TensorFloat X)
         {
-            return m_Backend.Ceil(X);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Ceil(X, O);
+            return O;
         }
 
         /// <summary>
-        /// Computes an output tensor by applying the element-wise `Clip` math function: f(x) = clamp(x, min, max).
+        /// Computes an output tensor by applying the element-wise `Clip` math function: f(x) = clamp(X, min, max).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <param name="min">The lower clip value.</param>
         /// <param name="max">The upper clip value.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Clip(TensorFloat x, float min, float max)
+        public TensorFloat Clip(TensorFloat X, float min, float max)
         {
-            return m_Backend.Clip(x, min, max);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Clip(X, O, min, max);
+            return O;
         }
 
         /// <summary>
@@ -786,7 +985,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Floor(TensorFloat X)
         {
-            return m_Backend.Floor(X);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Floor(X, O);
+            return O;
         }
 
         /// <summary>
@@ -798,37 +1001,53 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Round(TensorFloat X)
         {
-            return m_Backend.Round(X);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Round(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Reciprocal` math function: f(x) = 1 / x.
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Reciprocal(TensorFloat x)
+        public TensorFloat Reciprocal(TensorFloat X)
         {
-            return m_Backend.Reciprocal(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Reciprocal(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Square` math function: f(x) = x * x.
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Square(TensorFloat x)
+        public TensorFloat Square(TensorFloat X)
         {
-            return m_Backend.Square(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Square(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Exp` math function: f(x) = exp(x).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Exp(TensorFloat x)
+        public TensorFloat Exp(TensorFloat X)
         {
-            return m_Backend.Exp(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Exp(X, O);
+            return O;
         }
 
         /// <summary>
@@ -838,191 +1057,267 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Log(TensorFloat X)
         {
-            return m_Backend.Log(X);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Log(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Sqrt` math function: f(x) = sqrt(x).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Sqrt(TensorFloat x)
+        public TensorFloat Sqrt(TensorFloat X)
         {
-            return m_Backend.Sqrt(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Sqrt(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Acos` trigonometric function: f(x) = acos(x).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Acos(TensorFloat x)
+        public TensorFloat Acos(TensorFloat X)
         {
-            return m_Backend.Acos(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Acos(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Acosh` trigonometric function: f(x) = acosh(x).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Acosh(TensorFloat x)
+        public TensorFloat Acosh(TensorFloat X)
         {
-            return m_Backend.Acosh(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Acosh(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Asin` trigonometric function: f(x) = asin(x).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Asin(TensorFloat x)
+        public TensorFloat Asin(TensorFloat X)
         {
-            return m_Backend.Asin(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Asin(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Asinh` trigonometric function: f(x) = asinh(x).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Asinh(TensorFloat x)
+        public TensorFloat Asinh(TensorFloat X)
         {
-            return m_Backend.Asinh(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Asinh(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Atan` trigonometric function: f(x) = atan(x).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Atan(TensorFloat x)
+        public TensorFloat Atan(TensorFloat X)
         {
-            return m_Backend.Atan(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Atan(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Atanh` trigonometric function: f(x) = atanh(x).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Atanh(TensorFloat x)
+        public TensorFloat Atanh(TensorFloat X)
         {
-            return m_Backend.Atanh(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Atanh(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Cos` trigonometric function: f(x) = cos(x).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Cos(TensorFloat x)
+        public TensorFloat Cos(TensorFloat X)
         {
-            return m_Backend.Cos(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Cos(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Cosh` trigonometric function: f(x) = cosh(x).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Cosh(TensorFloat x)
+        public TensorFloat Cosh(TensorFloat X)
         {
-            return m_Backend.Cosh(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Cosh(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Sin` trigonometric function: f(x) = sin(x).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Sin(TensorFloat x)
+        public TensorFloat Sin(TensorFloat X)
         {
-            return m_Backend.Sin(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Sin(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Sinh` trigonometric function: f(x) = sinh(x).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Sinh(TensorFloat x)
+        public TensorFloat Sinh(TensorFloat X)
         {
-            return m_Backend.Sinh(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Sinh(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Tan` trigonometric function: f(x) = tan(x).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Tan(TensorFloat x)
+        public TensorFloat Tan(TensorFloat X)
         {
-            return m_Backend.Tan(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Tan(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Erf` activation function: f(x) = erf(x).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Erf(TensorFloat x)
+        public TensorFloat Erf(TensorFloat X)
         {
-            return m_Backend.Erf(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Erf(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Celu` activation function: f(x) = max(0, x) + min(0, alpha * (exp(x / alpha) - 1)).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <param name="alpha">The alpha value to use for the `Celu` activation function.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Celu(TensorFloat x, float alpha)
+        public TensorFloat Celu(TensorFloat X, float alpha)
         {
-            return m_Backend.Celu(x, alpha);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Celu(X, O, alpha);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `HardSwish` activation function: f(x) = x * max(0, min(1, 1/6 * x + 0.5)).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat HardSwish(TensorFloat x)
+        public TensorFloat HardSwish(TensorFloat X)
         {
-            return m_Backend.HardSwish(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.HardSwish(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Shrink` activation function: f(x) = x + bias if x &lt; lambd. f(x) = x - bias if x &gt; lambd. Otherwise f(x) = 0.
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <param name="bias">The bias value to use for the `Shrink` activation function.</param>
         /// <param name="lambd">The lambda value to use for the `Shrink` activation function.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Shrink(TensorFloat x, float bias, float lambd)
+        public TensorFloat Shrink(TensorFloat X, float bias, float lambd)
         {
-            return m_Backend.Shrink(x, bias, lambd);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Shrink(X, O, bias, lambd);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Softsign` activation function: f(x) = x/(|x| + 1).
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat Softsign(TensorFloat x)
+        public TensorFloat Softsign(TensorFloat X)
         {
-            return m_Backend.Softsign(x);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Softsign(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `ThresholdedRelu` activation function: f(x) = x if x > alpha, otherwise f(x) = 0.
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <param name="alpha">The alpha value to use for the `ThresholdedRelu` activation function.</param>
         /// <returns>The computed output tensor.</returns>
-        public TensorFloat ThresholdedRelu(TensorFloat x, float alpha)
+        public TensorFloat ThresholdedRelu(TensorFloat X, float alpha)
         {
-            return m_Backend.ThresholdedRelu(x, alpha);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ThresholdedRelu(X, O, alpha);
+            return O;
         }
 
         /// <summary>
@@ -1034,7 +1329,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Sum(TensorFloat[] tensors)
         {
-            return m_Backend.Sum(tensors);
+            var O = m_Backend.NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(tensors));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Sum(tensors, O);
+            return O;
         }
 
         /// <summary>
@@ -1047,7 +1346,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Add(TensorFloat A, TensorFloat B)
         {
-            return m_Backend.Add(A, B);
+            var O = m_Backend.NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Add(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1060,7 +1363,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Add(TensorInt A, TensorInt B)
         {
-            return m_Backend.Add(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Add(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1073,7 +1380,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Sub(TensorFloat A, TensorFloat B)
         {
-            return m_Backend.Sub(A, B);
+            var O = m_Backend.NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Sub(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1086,7 +1397,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Sub(TensorInt A, TensorInt B)
         {
-            return m_Backend.Sub(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Sub(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1099,7 +1414,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Mul(TensorFloat A, TensorFloat B)
         {
-            return m_Backend.Mul(A, B);
+            var O = m_Backend.NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Mul(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1112,7 +1431,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Mul(TensorInt A, TensorInt B)
         {
-            return m_Backend.Mul(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Mul(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1125,7 +1448,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Div(TensorFloat A, TensorFloat B)
         {
-            return m_Backend.Div(A, B);
+            var O = m_Backend.NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Div(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1138,7 +1465,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Div(TensorInt A, TensorInt B)
         {
-            return m_Backend.Div(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Div(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1153,7 +1484,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Mod(TensorInt A, TensorInt B)
         {
-            return m_Backend.Mod(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Mod(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1168,7 +1503,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt FMod(TensorInt A, TensorInt B)
         {
-            return m_Backend.FMod(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.FMod(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1183,7 +1522,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat FMod(TensorFloat A, TensorFloat B)
         {
-            return m_Backend.FMod(A, B);
+            var O = m_Backend.NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.FMod(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1196,7 +1539,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Pow(TensorFloat A, TensorFloat B)
         {
-            return m_Backend.Pow(A, B);
+            var O = m_Backend.NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Pow(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1209,7 +1556,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Pow(TensorFloat A, TensorInt B)
         {
-            return m_Backend.Pow(A, B);
+            var O = m_Backend.NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Pow(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1221,7 +1572,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Min(TensorFloat[] tensors)
         {
-            return m_Backend.Min(tensors);
+            var O = m_Backend.NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(tensors));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Min(tensors, O);
+            return O;
         }
 
         /// <summary>
@@ -1233,7 +1588,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Min(TensorInt[] tensors)
         {
-            return m_Backend.Min(tensors);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(tensors));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Min(tensors, O);
+            return O;
         }
 
         /// <summary>
@@ -1245,7 +1604,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Max(TensorFloat[] tensors)
         {
-            return m_Backend.Max(tensors);
+            var O = m_Backend.NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(tensors));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Max(tensors, O);
+            return O;
         }
 
         /// <summary>
@@ -1257,7 +1620,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Max(TensorInt[] tensors)
         {
-            return m_Backend.Max(tensors);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(tensors));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Max(tensors, O);
+            return O;
         }
 
         /// <summary>
@@ -1269,7 +1636,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Mean(TensorFloat[] tensors)
         {
-            return m_Backend.Mean(tensors);
+            var O = m_Backend.NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(tensors));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Mean(tensors, O);
+            return O;
         }
 
         /// <summary>
@@ -1281,7 +1652,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat ReduceMax(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
         {
-            return m_Backend.ReduceMax(X, axes, keepdim);
+            var O = m_Backend.NewOutputTensorFloat(X.shape.Reduce(axes, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ReduceMax(X, O, axes, keepdim);
+            return O;
         }
 
         /// <summary>
@@ -1293,7 +1668,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt ReduceMax(TensorInt X, ReadOnlySpan<int> axes, bool keepdim)
         {
-            return m_Backend.ReduceMax(X, axes, keepdim);
+            var O = m_Backend.NewOutputTensorInt(X.shape.Reduce(axes, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ReduceMax(X, O, axes, keepdim);
+            return O;
         }
 
         /// <summary>
@@ -1305,7 +1684,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat ReduceMean(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
         {
-            return m_Backend.ReduceMean(X, axes, keepdim);
+            var O = m_Backend.NewOutputTensorFloat(X.shape.Reduce(axes, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ReduceMean(X, O, axes, keepdim);
+            return O;
         }
 
         /// <summary>
@@ -1317,7 +1700,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat ReduceMin(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
         {
-            return m_Backend.ReduceMin(X, axes, keepdim);
+            var O = m_Backend.NewOutputTensorFloat(X.shape.Reduce(axes, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ReduceMin(X, O, axes, keepdim);
+            return O;
         }
 
         /// <summary>
@@ -1329,7 +1716,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt ReduceMin(TensorInt X, ReadOnlySpan<int> axes, bool keepdim)
         {
-            return m_Backend.ReduceMin(X, axes, keepdim);
+            var O = m_Backend.NewOutputTensorInt(X.shape.Reduce(axes, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ReduceMin(X, O, axes, keepdim);
+            return O;
         }
 
         /// <summary>
@@ -1341,7 +1732,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat ReduceProd(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
         {
-            return m_Backend.ReduceProd(X, axes, keepdim);
+            var O = m_Backend.NewOutputTensorFloat(X.shape.Reduce(axes, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ReduceProd(X, O, axes, keepdim);
+            return O;
         }
 
         /// <summary>
@@ -1353,7 +1748,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt ReduceProd(TensorInt X, ReadOnlySpan<int> axes, bool keepdim)
         {
-            return m_Backend.ReduceProd(X, axes, keepdim);
+            var O = m_Backend.NewOutputTensorInt(X.shape.Reduce(axes, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ReduceProd(X, O, axes, keepdim);
+            return O;
         }
 
         /// <summary>
@@ -1365,7 +1764,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat ReduceSum(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
         {
-            return m_Backend.ReduceSum(X, axes, keepdim);
+            var O = m_Backend.NewOutputTensorFloat(X.shape.Reduce(axes, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ReduceSum(X, O, axes, keepdim);
+            return O;
         }
 
         /// <summary>
@@ -1377,7 +1780,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt ReduceSum(TensorInt X, ReadOnlySpan<int> axes, bool keepdim)
         {
-            return m_Backend.ReduceSum(X, axes, keepdim);
+            var O = m_Backend.NewOutputTensorInt(X.shape.Reduce(axes, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ReduceSum(X, O, axes, keepdim);
+            return O;
         }
 
         /// <summary>
@@ -1389,7 +1796,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat ReduceSumSquare(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
         {
-            return m_Backend.ReduceSumSquare(X, axes, keepdim);
+            var O = m_Backend.NewOutputTensorFloat(X.shape.Reduce(axes, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ReduceSumSquare(X, O, axes, keepdim);
+            return O;
         }
 
         /// <summary>
@@ -1401,7 +1812,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt ReduceSumSquare(TensorInt X, ReadOnlySpan<int> axes, bool keepdim)
         {
-            return m_Backend.ReduceSumSquare(X, axes, keepdim);
+            var O = m_Backend.NewOutputTensorInt(X.shape.Reduce(axes, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ReduceSumSquare(X, O, axes, keepdim);
+            return O;
         }
 
         /// <summary>
@@ -1413,7 +1828,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat ReduceL1(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
         {
-            return m_Backend.ReduceL1(X, axes, keepdim);
+            var O = m_Backend.NewOutputTensorFloat(X.shape.Reduce(axes, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ReduceL1(X, O, axes, keepdim);
+            return O;
         }
 
         /// <summary>
@@ -1425,7 +1844,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt ReduceL1(TensorInt X, ReadOnlySpan<int> axes, bool keepdim)
         {
-            return m_Backend.ReduceL1(X, axes, keepdim);
+            var O = m_Backend.NewOutputTensorInt(X.shape.Reduce(axes, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ReduceL1(X, O, axes, keepdim);
+            return O;
         }
 
         /// <summary>
@@ -1437,7 +1860,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat ReduceL2(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
         {
-            return m_Backend.ReduceL2(X, axes, keepdim);
+            var O = m_Backend.NewOutputTensorFloat(X.shape.Reduce(axes, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ReduceL2(X, O, axes, keepdim);
+            return O;
         }
 
         /// <summary>
@@ -1449,7 +1876,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat ReduceLogSum(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
         {
-            return m_Backend.ReduceLogSum(X, axes, keepdim);
+            var O = m_Backend.NewOutputTensorFloat(X.shape.Reduce(axes, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ReduceLogSum(X, O, axes, keepdim);
+            return O;
         }
 
         /// <summary>
@@ -1461,7 +1892,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat ReduceLogSumExp(TensorFloat X, ReadOnlySpan<int> axes, bool keepdim)
         {
-            return m_Backend.ReduceLogSumExp(X, axes, keepdim);
+            var O = m_Backend.NewOutputTensorFloat(X.shape.Reduce(axes, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ReduceLogSumExp(X, O, axes, keepdim);
+            return O;
         }
 
         /// <summary>
@@ -1474,7 +1909,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt ArgMax(TensorFloat X, int axis, bool keepdim, bool selectLastIndex = false)
         {
-            return m_Backend.ArgMax(X, axis, keepdim, selectLastIndex);
+            var O = m_Backend.NewOutputTensorInt(X.shape.Reduce(axis, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ArgMax(X, O, axis, keepdim, selectLastIndex);
+            return O;
         }
 
         /// <summary>
@@ -1487,7 +1926,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt ArgMax(TensorInt X, int axis, bool keepdim, bool selectLastIndex = false)
         {
-            return m_Backend.ArgMax(X, axis, keepdim, selectLastIndex);
+            var O = m_Backend.NewOutputTensorInt(X.shape.Reduce(axis, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ArgMax(X, O, axis, keepdim, selectLastIndex);
+            return O;
         }
 
         /// <summary>
@@ -1500,7 +1943,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt ArgMin(TensorFloat X, int axis, bool keepdim, bool selectLastIndex)
         {
-            return m_Backend.ArgMin(X, axis, keepdim, selectLastIndex);
+            var O = m_Backend.NewOutputTensorInt(X.shape.Reduce(axis, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ArgMin(X, O, axis, keepdim, selectLastIndex);
+            return O;
         }
 
         /// <summary>
@@ -1513,7 +1960,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt ArgMin(TensorInt X, int axis, bool keepdim, bool selectLastIndex)
         {
-            return m_Backend.ArgMin(X, axis, keepdim, selectLastIndex);
+            var O = m_Backend.NewOutputTensorInt(X.shape.Reduce(axis, keepdim));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ArgMin(X, O, axis, keepdim, selectLastIndex);
+            return O;
         }
 
         /// <summary>
@@ -1526,7 +1977,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Greater(TensorFloat A, TensorFloat B)
         {
-            return m_Backend.Greater(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Greater(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1539,7 +1994,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Greater(TensorInt A, TensorInt B)
         {
-            return m_Backend.Greater(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Greater(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1552,7 +2011,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt GreaterOrEqual(TensorFloat A, TensorFloat B)
         {
-            return m_Backend.GreaterOrEqual(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.GreaterOrEqual(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1565,7 +2028,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt GreaterOrEqual(TensorInt A, TensorInt B)
         {
-            return m_Backend.GreaterOrEqual(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.GreaterOrEqual(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1578,7 +2045,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Less(TensorFloat A, TensorFloat B)
         {
-            return m_Backend.Less(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Less(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1591,7 +2062,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Less(TensorInt A, TensorInt B)
         {
-            return m_Backend.Less(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Less(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1604,7 +2079,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt LessOrEqual(TensorFloat A, TensorFloat B)
         {
-            return m_Backend.LessOrEqual(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.LessOrEqual(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1617,7 +2096,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt LessOrEqual(TensorInt A, TensorInt B)
         {
-            return m_Backend.LessOrEqual(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.LessOrEqual(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1630,7 +2113,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Equal(TensorFloat A, TensorFloat B)
         {
-            return m_Backend.Equal(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Equal(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1643,7 +2130,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Equal(TensorInt A, TensorInt B)
         {
-            return m_Backend.Equal(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Equal(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1656,7 +2147,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Or(TensorInt A, TensorInt B)
         {
-            return m_Backend.Or(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Or(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1669,7 +2164,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt And(TensorInt A, TensorInt B)
         {
-            return m_Backend.And(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.And(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1680,7 +2179,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Xor(TensorInt A, TensorInt B)
         {
-            return m_Backend.Xor(A, B);
+            var O = m_Backend.NewOutputTensorInt(TensorShapeHelper.BroadcastShape(A, B));
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Xor(A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1690,7 +2193,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Not(TensorInt X)
         {
-            return m_Backend.Not(X);
+            var O = m_Backend.NewOutputTensorInt(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Not(X, O);
+            return O;
         }
 
         /// <summary>
@@ -1700,7 +2207,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat Sign(TensorFloat X)
         {
-            return m_Backend.Sign(X);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Sign(X, O);
+            return O;
         }
 
         /// <summary>
@@ -1710,7 +2221,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt Sign(TensorInt X)
         {
-            return m_Backend.Sign(X);
+            var O = m_Backend.NewOutputTensorInt(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Sign(X, O);
+            return O;
         }
 
         /// <summary>
@@ -1720,7 +2235,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt IsNaN(TensorFloat X)
         {
-            return m_Backend.IsNaN(X);
+            var O = m_Backend.NewOutputTensorInt(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.IsNaN(X, O);
+            return O;
         }
 
         /// <summary>
@@ -1732,7 +2251,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt IsInf(TensorFloat X, bool detectNegative, bool detectPositive)
         {
-            return m_Backend.IsInf(X, detectNegative, detectPositive);
+            var O = m_Backend.NewOutputTensorInt(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.IsInf(X, O, detectNegative, detectPositive);
+            return O;
         }
 
         /// <summary>
@@ -1744,7 +2267,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public Tensor Where(TensorInt C, Tensor A, Tensor B)
         {
-            return m_Backend.Where(C, A, B);
+            var O = m_Backend.NewOutputTensor(A.shape.Broadcast(B.shape.Broadcast(C.shape)), A.dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Where(C, A, B, O);
+            return O;
         }
 
         /// <summary>
@@ -1755,7 +2282,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public Tensor Reshape(Tensor X, TensorShape shape)
         {
-            return m_Backend.Reshape(X, shape);
+            var O = m_Backend.NewOutputTensor(shape, X.dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Reshape(X, O);
+            return O;
         }
 
         /// <summary>
@@ -1766,28 +2297,40 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public Tensor Expand(Tensor X, TensorShape shape)
         {
-            return m_Backend.Expand(X, shape);
+            var O = m_Backend.NewOutputTensor(X.shape.Broadcast(shape), X.dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Expand(X, O);
+            return O;
         }
 
         /// <summary>
         /// Calculates an output tensor by reversing the dimensions of the input tensor.
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public Tensor Transpose(Tensor x)
+        public Tensor Transpose(Tensor X)
         {
-            return m_Backend.Transpose(x);
+            var O = m_Backend.NewOutputTensor(X.shape.Transpose(), X.dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Transpose(X, O);
+            return O;
         }
 
         /// <summary>
         /// Calculates an output tensor by permuting the axes and data of the input tensor according to the given permutations.
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <param name="permutations">The axes to sample the output tensor from in the input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public Tensor Transpose(Tensor x, int[] permutations)
+        public Tensor Transpose(Tensor X, int[] permutations)
         {
-            return m_Backend.Transpose(x, permutations);
+            var O = m_Backend.NewOutputTensor(X.shape.Transpose(permutations), X.dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Transpose(X, O, permutations);
+            return O;
         }
 
         /// <summary>
@@ -1798,7 +2341,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public Tensor Concat(Tensor[] tensors, int axis)
         {
-            return m_Backend.Concat(tensors, axis);
+            var O = m_Backend.NewOutputTensor(TensorShapeHelper.ConcatShape(tensors, axis), tensors[0].dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Concat(tensors, O, axis);
+            return O;
         }
 
         /// <summary>
@@ -1811,7 +2358,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public Tensor Split(Tensor X, int axis, int start = 0, int end = int.MaxValue)
         {
-            return m_Backend.Split(X, axis, start, end);
+            var O = m_Backend.NewOutputTensor(X.shape.Split(axis, start, end), X.dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Split(X, O, axis, start);
+            return O;
         }
 
         /// <summary>
@@ -1825,7 +2376,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public Tensor Slice(Tensor X, ReadOnlySpan<int> starts, ReadOnlySpan<int> ends, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps)
         {
-            return m_Backend.Slice(X, starts, ends, axes, steps);
+            var O = m_Backend.NewOutputTensor(X.shape.Slice(starts, ends, axes, steps), X.dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Slice(X, O, starts, axes, steps);
+            return O;
         }
 
         /// <summary>
@@ -1836,19 +2391,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public Tensor Tile(Tensor X, ReadOnlySpan<int> repeats)
         {
-            return m_Backend.Tile(X, repeats);
-        }
-
-        /// <summary>
-        /// Selects slices of an input tensor along a given axis according to a condition tensor.
-        /// </summary>
-        /// <param name="X">The input tensor.</param>
-        /// <param name="indices">The indices tensor.</param>
-        /// <param name="axis">The axis along which to compress.</param>
-        /// <returns>The computed output tensor.</returns>
-        public Tensor Compress(Tensor X, TensorInt indices, int axis)
-        {
-            return m_Backend.Compress(X, indices, axis);
+            var O = m_Backend.NewOutputTensor(X.shape.Tile(repeats), X.dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Tile(X, O, repeats);
+            return O;
         }
 
         /// <summary>
@@ -1860,7 +2407,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public Tensor Gather(Tensor X, TensorInt indices, int axis)
         {
-            return m_Backend.Gather(X, indices, axis);
+            var O = m_Backend.NewOutputTensor(ShapeInference.Gather(X.shape, indices.shape, axis), X.dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Gather(X, indices, O, axis);
+            return O;
         }
 
         /// <summary>
@@ -1872,7 +2423,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public Tensor GatherElements(Tensor X, TensorInt indices, int axis)
         {
-            return m_Backend.GatherElements(X, indices, axis);
+            var O = m_Backend.NewOutputTensor(indices.shape, X.dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.GatherElements(X, indices, O, axis);
+            return O;
         }
 
         /// <summary>
@@ -1884,7 +2439,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public Tensor GatherND(Tensor X, TensorInt indices, int batchDims)
         {
-            return m_Backend.GatherND(X, indices, batchDims);
+            var O = m_Backend.NewOutputTensor(ShapeInference.GatherND(X.shape, indices.shape, batchDims), X.dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.GatherND(X, indices, O, batchDims);
+            return O;
         }
 
         /// <summary>
@@ -1900,7 +2459,14 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public Tensor ScatterElements(Tensor X, TensorInt indices, Tensor updates, int axis, Layers.ScatterReductionMode reduction)
         {
-            return m_Backend.ScatterElements(X, indices, updates, axis, reduction);
+            var O = m_Backend.NewOutputTensor(X.shape, X.dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            if (indices.shape.HasZeroDims())
+                m_Backend.MemCopy(X, O);
+            else
+                m_Backend.ScatterElements(X, indices, updates, O, axis, reduction);
+            return O;
         }
 
         /// <summary>
@@ -1915,7 +2481,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat ScatterND(TensorFloat X, TensorInt indices, TensorFloat updates, Layers.ScatterReductionMode reduction)
         {
-            return m_Backend.ScatterND(X, indices, updates, reduction);
+            var O = m_Backend.NewOutputTensorFloat(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ScatterND(X, indices, updates, O, reduction);
+            return O;
         }
 
         /// <summary>
@@ -1930,31 +2500,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt ScatterND(TensorInt X, TensorInt indices, TensorInt updates, Layers.ScatterReductionMode reduction)
         {
-            return m_Backend.ScatterND(X, indices, updates, reduction);
-        }
-
-        /// <summary>
-        /// Generates an output tensor by computing a one-layer long short-term memory (LSTM) on an input tensor.
-        /// </summary>
-        /// <param name="X">The input sequences tensor.</param>
-        /// <param name="W">The weights tensor for the gates of the LSTM.</param>
-        /// <param name="R">The recurrent weights tensor for the gates of the LSTM.</param>
-        /// <param name="B">The optional bias tensor for the input gate of the LSTM.</param>
-        /// <param name="sequenceLens">The optional 1D tensor specifying the lengths of the sequences in a batch.</param>
-        /// <param name="initialH">The optional initial values tensor of the hidden neurons of the LSTM. If this is `null`, the layer uses 0.</param>
-        /// <param name="initialC">The optional initial values tensor of the cells of the LSTM. If this is `null`, the layer uses 0.</param>
-        /// <param name="P">The optional weight tensor for the peepholes of the LSTM. If this is `null`, the layer uses 0.</param>
-        /// <param name="direction">The direction of the LSTM as an `RnnDirection`.</param>
-        /// <param name="activations">The activation functions of the LSTM as an array of `RnnActivation`.</param>
-        /// <param name="activationAlpha">The alpha values of the activation functions of the LSTM.</param>
-        /// <param name="activationBeta">The beta values of the activation functions of the LSTM.</param>
-        /// <param name="inputForget">Whether to forget the input values in the LSTM. If this is `false`, the layer couples the input and forget gates.</param>
-        /// <param name="clip">The cell clip threshold of the LSTM.</param>
-        /// <param name="layout">The layout of the tensors as an `RnnLayout`.</param>
-        /// <returns>The computed output tensor.</returns>
-        public TensorFloat[] LSTM(TensorFloat X, TensorFloat W, TensorFloat R, TensorFloat B, TensorInt sequenceLens, TensorFloat initialH, TensorFloat initialC, TensorFloat P, Layers.RnnDirection direction, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, Layers.RnnLayout layout)
-        {
-            return m_Backend.LSTM(X, W, R, B, sequenceLens, initialH, initialC, P, direction, activations, activationAlpha, activationBeta, inputForget, clip, layout);
+            var O = m_Backend.NewOutputTensorInt(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.ScatterND(X, indices, updates, O, reduction);
+            return O;
         }
 
         /// <summary>
@@ -1968,61 +2518,14 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public Tensor[] TopK(TensorFloat X, int k, int axis, bool largest, bool sorted)
         {
-            return m_Backend.TopK(X, k, axis, largest, sorted);
-        }
+            var outputShape = new TensorShape(X.shape);
+            outputShape[axis] = k;
 
-        /// <summary>
-        /// Performs an `Einsum` math operation.
-        /// </summary>
-        /// <description>
-        /// The Einsum operator evaluates algebraic tensor operations on a sequence of tensors, using the Einstein summation convention. The equation string contains a comma-separated sequence of lower case letters. Each term corresponds to an operand tensor, and the characters within the terms correspond to operands dimensions.
-        /// This sequence may be followed by "->" to separate the left and right hand side of the equation. If the equation contains "->" followed by the right-hand side, the explicit (not classical) form of the Einstein summation is performed, and the right-hand side indices indicate output tensor dimensions. In other cases, output indices are (implicitly) set to the alphabetically sorted sequence of indices appearing exactly once in the equation.
-        /// When a dimension character is repeated in the left-hand side, it represents summation along the dimension.
-        /// The equation may contain ellipsis ("...") to enable broadcasting. Ellipsis must indicate a fixed number of dimensions. Specifically, every occurrence of ellipsis in the equation must represent the same number of dimensions. The right-hand side may contain exactly one ellipsis. In implicit mode, the ellipsis dimensions are set to the beginning of the output. The equation string may contain space (U+0020) character.
-        /// </description>
-        /// <param name="equation">The equation of the Einstein summation as a comma-separated list of subscript labels.</param>
-        /// <param name="operands">The input tensors of the Einsum.</param>
-        /// <returns>The computed output tensor.</returns>
-        public TensorFloat Einsum(string equation, params TensorFloat[] operands)
-        {
-            return m_Backend.Einsum(equation, operands);
-        }
-
-        /// <summary>
-        /// Calculates an output tensor of selected indices of boxes from input `boxes` and `scores` tensors where the indices are based on the scores and amount of intersection with previously selected boxes.
-        /// </summary>
-        /// <param name="boxes">The boxes input tensor.</param>
-        /// <param name="scores">The scores input tensor.</param>
-        /// <param name="maxOutputBoxesPerClass">The maximum number of boxes to return for each class.</param>
-        /// <param name="iouThreshold">The threshold above which the intersect-over-union rejects a box.</param>
-        /// <param name="scoreThreshold">The threshold below which the box score filters a box from the output.</param>
-        /// <param name="centerPointBox">The format the `boxes` tensor uses to store the box data as a `CenterPointBox`.</param>
-        /// <returns>The computed output tensor.</returns>
-        public TensorInt NonMaxSuppression(TensorFloat boxes, TensorFloat scores, int maxOutputBoxesPerClass, float iouThreshold, float scoreThreshold, Layers.CenterPointBox centerPointBox)
-        {
-            return m_Backend.NonMaxSuppression(boxes, scores, maxOutputBoxesPerClass, iouThreshold, scoreThreshold, centerPointBox);
-        }
-
-        /// <summary>
-        /// Calculates the shape of an input tensor as a 1D `TensorInt`.
-        /// </summary>
-        /// <param name="X">The input tensor.</param>
-        /// <param name="start">The inclusive start axis for slicing the shape of the input tensor. The default value is 0.</param>
-        /// <param name="end">The exclusive end axis for slicing the shape of the input tensor. The default value is 8.</param>
-        /// <returns>The computed output tensor.</returns>
-        public TensorInt Shape(Tensor X, int start = 0, int end = TensorShape.maxRank)
-        {
-            return m_Backend.Shape(X, start, end);
-        }
-
-        /// <summary>
-        /// Calculates the number of elements of an input tensor shape as a scalar `TensorInt`.
-        /// </summary>
-        /// <param name="shape">The input tensor shape.</param>
-        /// <returns>The computed output tensor.</returns>
-        public TensorInt Size(TensorShape shape)
-        {
-            return m_Backend.Size(shape);
+            var values = m_Backend.NewOutputTensorFloat(outputShape);
+            var indices = m_Backend.NewOutputTensorInt(outputShape);
+            if (!outputShape.HasZeroDims())
+                m_Backend.TopK(X, values, indices, k, axis, largest);
+            return new Tensor[] { values, indices };
         }
 
         /// <summary>
@@ -2033,7 +2536,11 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorFloat ConstantOfShape(TensorShape X, float value)
         {
-            return m_Backend.ConstantOfShape(X, value);
+            var O = m_Backend.NewOutputTensorFloat(X);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.MemSet(O, value);
+            return O;
         }
 
         /// <summary>
@@ -2044,28 +2551,40 @@ namespace Unity.Sentis
         /// <returns>The computed output tensor.</returns>
         public TensorInt ConstantOfShape(TensorShape X, int value)
         {
-            return m_Backend.ConstantOfShape(X, value);
+            var O = m_Backend.NewOutputTensorInt(X);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.MemSet(O, value);
+            return O;
         }
 
         /// <summary>
         /// Creates a copy of a given input tensor with the same shape and values.
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <returns>The computed output tensor.</returns>
-        public Tensor Copy(Tensor x)
+        public Tensor Copy(Tensor X)
         {
-            return m_Backend.Copy(x);
+            var O = m_Backend.NewOutputTensor(X.shape, X.dataType);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.MemCopy(X, O);
+            return O;
         }
 
         /// <summary>
         /// Computes the output tensor using an element-wise `Cast` function: f(x) = (float)x or f(x) = (int)x depending on the value of `toType`.
         /// </summary>
-        /// <param name="x">The input tensor.</param>
+        /// <param name="X">The input tensor.</param>
         /// <param name="toType">The data type to cast to as a `DataType`.</param>
         /// <returns>The computed output tensor.</returns>
-        public Tensor Cast(Tensor x, DataType toType)
+        public Tensor Cast(Tensor X, DataType toType)
         {
-            return m_Backend.Cast(x, toType);
+            var O = m_Backend.NewOutputTensor(X.shape, toType);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Cast(X, O);
+            return O;
         }
     }
 }

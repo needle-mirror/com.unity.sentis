@@ -12,7 +12,7 @@ public class ConvertTextureToTensor : MonoBehaviour
 
     void Start()
     {
-        TensorFloat inputTensor = TextureConverter.ToTensor(inputTexture);        
+        TensorFloat inputTensor = TextureConverter.ToTensor(inputTexture);
     }
 }
 ```
@@ -28,7 +28,7 @@ Make sure the format of the texture matches what your model needs. If you need t
 
 Depending on the input tensor your model needs, you might also need to scale the values in the tensor before you run the model. For example, if your model needs values from 0 to 255 instead of from 0 to 1. You can use the `WorkerFactory.CreateOps` API to scale a tensor. Refer to [Do operations on a tensor](do-complex-tensor-operations.md) for more information.
 
-Refer to the `TextureToTensor` example in the [sample scripts](package-samples.md) for an example.
+Refer to the `Convert textures to tensors` example in the [sample scripts](package-samples.md) for an example.
 
 ### Override texture shape and layout
 

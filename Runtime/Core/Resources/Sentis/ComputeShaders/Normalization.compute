@@ -1,4 +1,4 @@
-#pragma kernel AxisNormalizationTail
+#pragma kernel LayerNormalizationTail
 #pragma kernel BatchNormalization
 #pragma kernel ScaleBias
 
@@ -15,7 +15,7 @@ uint outerLength, axisDim, innerLength;
 float epsilon;
 
 [numthreads(8, 8, 1)]
-void AxisNormalizationTail(uint3 dispatchThreadID : SV_DispatchThreadID)
+void LayerNormalizationTail(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     uint dim = dispatchThreadID.x;
     uint outer = dispatchThreadID.y;

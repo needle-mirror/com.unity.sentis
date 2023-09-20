@@ -1,6 +1,10 @@
-# Sample scripts
+# Samples
 
-The Sentis package comes with a set of sample scripts that show examples of using the API.
+The Sentis package comes with a set of samples that show examples of using the API. There are both smaller scripts as well as full sample projects.
+
+To find the full sample projects:
+
+- Go to the [Sentis samples github repository](https://github.com/Unity-Technologies/sentis-samples), which will be updated over time with more samples. Some samples contain a helpful video overview linked in the readme file.
 
 To find the sample scripts:
 

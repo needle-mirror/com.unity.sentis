@@ -13,30 +13,9 @@ namespace Unity.Sentis
 
 static class ModelOptimizer
 {
-    internal static Model OptimizeModel(Model model)
+    static void RunPasses(Model model, IModelPass[] passes)
     {
-        var optimizationPasses = new IModelPass[]
-        {
-            new EinsumToMatMulPass(),
-            new FuseConstantsPass(),
-            new RemoveNoOpsPass(),
-            new RemoveUnusedPass(),
-            new ContractSubExpressionPass(),
-            new ConcatenateTransposesPass(),
-            new ContractToSimplerLayerPass(),
-            new SimplifyReshapeInputPass(),
-            new FuseDensePass(),
-            new FuseLinearLayersPass(),
-            new FuseActivationPass(),
-            new RemoveDuplicatesPass(),
-            new RemoveNoOpsPass(),
-            // // Good to do those passes at the very end
-            new RemoveUnusedPass(),
-            new RoundDenormalWeightsPass(),
-            new CPUFallbackPass(),
-        };
-
-        foreach (var pass in optimizationPasses)
+        foreach (var pass in passes)
         {
             try
             {
@@ -48,8 +27,42 @@ static class ModelOptimizer
                 Debug.LogError(model.Warnings.Last().Message);
             }
         }
+    }
 
-        return model;
+    internal static void OptimizeModel(Model model)
+    {
+        var optimizationPasses = new IModelPass[]
+        {
+            new EinsumToMatMulPass(),
+            new FuseConstantsPass(),
+            new RemoveNoOpsPass(),
+            new RemoveUnusedPass(),
+            new ConcatenateTransposesPass(),
+            new ContractToSimplerLayerPass(),
+            new SimplifyReshapeInputPass(),
+            new FuseDensePass(),
+            new FuseLinearLayersPass(),
+            new FuseActivationPass(),
+            new ContractSubExpressionPass(),
+            new FuseScalarMadPass(),
+            new RemoveDuplicatesPass(),
+            new RemoveNoOpsPass(),
+            // // Good to do those passes at the very end
+            new RemoveUnusedPass(),
+            new RoundDenormalWeightsPass(),
+        };
+
+        RunPasses(model, optimizationPasses);
+    }
+
+    internal static void RunCPUFallbackPass(Model model)
+    {
+        var optimizationPasses = new IModelPass[]
+        {
+            new CPUFallbackPass(),
+        };
+
+        RunPasses(model, optimizationPasses);
     }
 }
 
