@@ -1931,8 +1931,6 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public override void ScalarMad(TensorFloat X, TensorFloat O, float s, float b)
         {
-            if (X.shape.HasZeroDims())
-                return;
             var fn = new ComputeFunc("ScalarMad");
             fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
             fn.SetFloat(k_ID_s, s);

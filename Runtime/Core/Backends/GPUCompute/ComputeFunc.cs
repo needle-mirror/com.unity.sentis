@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using System.Runtime.CompilerServices;
 
@@ -22,6 +23,7 @@ readonly struct ComputeFunc
     public ComputeFunc(string kn)
     {
         shader = ComputeShaderSingleton.Instance.FindComputeShader(kn);
+        shader.shaderKeywords = Array.Empty<string>();
         kernelName = kn;
         kernelIndex = ComputeShaderSingleton.Instance.GetKernelIndex(kn);
         ComputeShaderSingleton.Instance.GetKernelThreadGroupSizes(kn, out threadGroupSizeX, out threadGroupSizeY, out threadGroupSizeZ);

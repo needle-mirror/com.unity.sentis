@@ -60,6 +60,9 @@ namespace Unity.Sentis.Layers
         ///
         /// If the layer has more than one output, output tensors are saved to variables.
         /// </summary>
+        /// <param name="inputTensors">The input tensor for the execution.</param>
+        /// <param name="ctx">The execution context with the backend and variables for the execution.</param>
+        /// <returns>The first output tensor of the execution.</returns>
         public abstract Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx);
 
         internal virtual string profilerTag => MethodBase.GetCurrentMethod()?.DeclaringType?.Name;
@@ -67,6 +70,7 @@ namespace Unity.Sentis.Layers
         /// <summary>
         /// Returns a string that represents the `Layer`.
         /// </summary>
+        /// <returns>The string representation of the `Layer`.</returns>
         public override string ToString()
         {
             return $"{profilerTag} - name: {name}, inputs: [{string.Join(", ", inputs)}]";

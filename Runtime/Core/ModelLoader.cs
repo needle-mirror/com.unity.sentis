@@ -19,6 +19,8 @@ public static class ModelLoader
     /// <summary>
     /// Converts a binary `ModelAsset` representation of a neural network to an object-oriented `Model` representation.
     /// </summary>
+    /// <param name="modelAsset">The binary `ModelAsset` model</param>
+    /// <returns>The loaded `Model`</returns>
     public static Model Load(ModelAsset modelAsset)
     {
         Model model = new Model();
@@ -41,28 +43,37 @@ public static class ModelLoader
         return model;
     }
 
+    /// <summary>
+    /// Loads a model that has been serialized to disk.
+    /// </summary>
+    /// <param name="path">The path of the binary serialized model</param>
+    /// <returns>The loaded `Model`</returns>
     public static Model Load(string path)
     {
-        Model model = new Model();
-
-        FileStream fileStream = File.Open(path, FileMode.Open);
-        LoadModelDesc(fileStream, ref model);
-        LoadModelWeights(fileStream, ref model);
-        fileStream.Dispose();
-
-        return model;
+        using FileStream fileStream = File.Open(path, FileMode.Open);
+        return Load(fileStream);
     }
 
-    public static Model Load(FileStream fileStream)
+    /// <summary>
+    /// Loads a serialized model from a stream.
+    /// </summary>
+    /// <param name="stream">The `Stream` from which to load the binary serialized model</param>
+    /// <returns>The loaded `Model`</returns>
+    public static Model Load(Stream stream)
     {
         Model model = new Model();
 
-        LoadModelDesc(fileStream, ref model);
-        LoadModelWeights(fileStream, ref model);
+        LoadModelDesc(stream, ref model);
+        LoadModelWeights(stream, ref model);
 
         return model;
     }
 
+    /// <summary>
+    /// Loads a model description without the external weights from a serialized `ModelAsset`
+    /// </summary>
+    /// <param name="modelAsset">The serialized `ModelAsset` from which to load the model description</param>
+    /// <param name="model">The model to set the loaded description of</param>
     public static void LoadModelDesc(ModelAsset modelAsset, ref Model model)
     {
         MemoryStream descStream = Open(modelAsset.modelAssetData.value);
@@ -70,6 +81,11 @@ public static class ModelLoader
         descStream.Dispose();
     }
 
+    /// <summary>
+    /// Loads a model weights without the description from a serialized `ModelAsset`
+    /// </summary>
+    /// <param name="modelAsset">The serialized `ModelAsset` from which to load the model weights</param>
+    /// <param name="model">The model to set the loaded description of</param>
     public static void LoadModelWeights(ModelAsset modelAsset, ref Model model)
     {
         List<MemoryStream> weightStreams = new List<MemoryStream>();
@@ -214,7 +230,7 @@ public static class ModelLoader
         Profiler.EndSample();
     }
 
-    static void LoadModelWeights(FileStream stream, ref Model model)
+    static void LoadModelWeights(Stream stream, ref Model model)
     {
         Profiler.BeginSample("Sentis.LoadModelWeights");
 

@@ -40,6 +40,7 @@ public unsafe struct TensorIndex
     int m_D0;
 #pragma warning restore CS0649
 
+    int m_Rank;
     /// <summary>
     /// Rank of a TensorIndex:
     /// Ex:
@@ -48,13 +49,20 @@ public unsafe struct TensorIndex
     /// (7,3,5)   -> rank:3
     /// (6,7,3,5) -> rank:4
     /// </summary>
-    int m_Rank;
     public int rank => m_Rank;
 
     /// <summary>
     /// Creates a rank-8 tensor index (d7, d6, d5, d4, d3, d2, d1, d0)
     /// Ex: (2,3,4,5,6,7,8,9)
     /// </summary>
+    /// <param name="d7">Axis 7.</param>
+    /// <param name="d6">Axis 6.</param>
+    /// <param name="d5">Axis 5.</param>
+    /// <param name="d4">Axis 4.</param>
+    /// <param name="d3">Axis 3.</param>
+    /// <param name="d2">Axis 2.</param>
+    /// <param name="d1">Axis 1.</param>
+    /// <param name="d0">Axis 0.</param>
     public TensorIndex(int d7, int d6, int d5, int d4, int d3, int d2, int d1, int d0)
     {
         m_D7 = d7 >= 0 ? d7 : 0;
@@ -73,6 +81,13 @@ public unsafe struct TensorIndex
     /// Creates a rank-7 tensor index (d6, d5, d4, d3, d2, d1, d0)
     /// Ex: (3,4,5,6,7,8,9)
     /// </summary>
+    /// <param name="d6">Axis 6.</param>
+    /// <param name="d5">Axis 5.</param>
+    /// <param name="d4">Axis 4.</param>
+    /// <param name="d3">Axis 3.</param>
+    /// <param name="d2">Axis 2.</param>
+    /// <param name="d1">Axis 1.</param>
+    /// <param name="d0">Axis 0.</param>
     public TensorIndex(int d6, int d5, int d4, int d3, int d2, int d1, int d0)
     {
         m_D7 = 0;
@@ -91,6 +106,12 @@ public unsafe struct TensorIndex
     /// Creates a rank-6 tensor index (d5, d4, d3, d2, d1, d0)
     /// Ex: (4,5,6,7,8,9)
     /// </summary>
+    /// <param name="d5">Axis 5.</param>
+    /// <param name="d4">Axis 4.</param>
+    /// <param name="d3">Axis 3.</param>
+    /// <param name="d2">Axis 2.</param>
+    /// <param name="d1">Axis 1.</param>
+    /// <param name="d0">Axis 0.</param>
     public TensorIndex(int d5, int d4, int d3, int d2, int d1, int d0)
     {
         m_D7 = 0;
@@ -109,6 +130,11 @@ public unsafe struct TensorIndex
     /// Creates a rank-5 tensor index (d4, d3, d2, d1, d0)
     /// Ex: (5,6,7,8,9)
     /// </summary>
+    /// <param name="d4">Axis 4.</param>
+    /// <param name="d3">Axis 3.</param>
+    /// <param name="d2">Axis 2.</param>
+    /// <param name="d1">Axis 1.</param>
+    /// <param name="d0">Axis 0.</param>
     public TensorIndex(int d4, int d3, int d2, int d1, int d0)
     {
         m_D7 = 0;
@@ -127,6 +153,10 @@ public unsafe struct TensorIndex
     /// Creates a rank-4 tensor index (d3, d2, d1, d0)
     /// Ex: (6,7,8,9)
     /// </summary>
+    /// <param name="d3">Axis 3.</param>
+    /// <param name="d2">Axis 2.</param>
+    /// <param name="d1">Axis 1.</param>
+    /// <param name="d0">Axis 0.</param>
     public TensorIndex(int d3, int d2, int d1, int d0)
     {
         m_D7 = 0;
@@ -145,6 +175,9 @@ public unsafe struct TensorIndex
     /// Creates a rank-3 tensor index (d2, d1, d0)
     /// Ex: (7,8,9)
     /// </summary>
+    /// <param name="d2">Axis 2.</param>
+    /// <param name="d1">Axis 1.</param>
+    /// <param name="d0">Axis 0.</param>
     public TensorIndex(int d2, int d1, int d0)
     {
         m_D7 = 0;
@@ -162,6 +195,8 @@ public unsafe struct TensorIndex
     /// Creates a rank-2 tensor index (d1, d0)
     /// Ex: (8,9)
     /// </summary>
+    /// <param name="d1">Axis 1.</param>
+    /// <param name="d0">Axis 0.</param>
     public TensorIndex(int d1, int d0)
     {
         m_D7 = 0;
@@ -179,6 +214,7 @@ public unsafe struct TensorIndex
     /// Creates a rank-1 tensor index (d0)
     /// Ex: (9)
     /// </summary>
+    /// <param name="d0">Axis 0.</param>
     public TensorIndex(int d0)
     {
         m_D7 = 0;
@@ -194,8 +230,9 @@ public unsafe struct TensorIndex
     }
 
     /// <summary>
-    /// Copy constructor
+    /// Instantiates and returns a copy of another `TensorIndex`.
     /// </summary>
+    /// <param name="index">The `TensorIndex` to copy.</param>
     public TensorIndex(TensorIndex index)
     {
         m_Rank = index.rank;
@@ -214,6 +251,7 @@ public unsafe struct TensorIndex
     /// Creates a tensor index given an input int[] representing the index
     /// Ex: TensorIndex(new [] {3,4,5,6}) = (3,4,5,6)
     /// </summary>
+    /// <param name="index">The index as an array.</param>
     public TensorIndex(int[] index)
         : this()
     {
@@ -235,6 +273,8 @@ public unsafe struct TensorIndex
     /// Ex:
     /// EmptyOfRank(rank: 3) => (0, 0, 0)
     /// </summary>
+    /// <param name="rank">The rank of the tensor index.</param>
+    /// <returns>The created tensor index.</returns>
     public static TensorIndex Zeros(int rank)
     {
         Logger.AssertIsTrue(rank <= maxRank, "ValueError: TensorIndex are capped to rank=8, cannot create empty index of rank {0}", rank);
@@ -281,6 +321,7 @@ public unsafe struct TensorIndex
     /// index   0, 1, 2
     ///        -3,-2,-1
     /// </summary>
+    /// <param name="axis">The axis to get the index at.</param>
     public int this[int axis]
     {
         get
@@ -307,6 +348,7 @@ public unsafe struct TensorIndex
     /// <summary>
     /// Returns a string that represents the `TensorIndex`.
     /// </summary>
+    /// <returns>The string representation of the tensor index.</returns>
     public override string ToString()
     {
         StringBuilder sb = new StringBuilder();
@@ -324,9 +366,11 @@ public unsafe struct TensorIndex
     /// <summary>
     /// Wraps axis to positive index between 0,rank
     /// (5,2,3,4)
-    /// axis = -1 => axis_out = 3
-    /// axis = 1 => axis_out = 1
+    /// axis = -1 =&gt; axis_out = 3
+    /// axis = 1 =&gt; axis_out = 1
     /// </summary>
+    /// <param name="axis">The axis to wrap.</param>
+    /// <returns>The wrapped axis.</returns>
     public int Axis(int axis)
     {
         Logger.AssertIsTrue(axis >= -rank && axis < rank, "IndexError: axis {0} is out of bounds index of rank, {1}", axis, rank);
@@ -337,6 +381,9 @@ public unsafe struct TensorIndex
     /// Compares two `TensorIndex` objects
     /// Two TensorIndices are equal if they have the same rank and all their dimensions are equal
     /// </summary>
+    /// <param name="a">The first tensor index to compare.</param>
+    /// <param name="b">The second tensor index to compare.</param>
+    /// <returns>Whether the tensor indexes are equal.</returns>
     public static bool operator ==(TensorIndex a, TensorIndex b)
     {
         if (a.rank != b.rank)
@@ -351,6 +398,12 @@ public unsafe struct TensorIndex
         return true;
     }
 
+    /// <summary>
+    /// Compares two `TensorIndex` objects
+    /// </summary>
+    /// <param name="a">The first tensor index to compare.</param>
+    /// <param name="b">The second tensor index to compare.</param>
+    /// <returns>Whether the tensor indexes are not equal.</returns>
     public static bool operator !=(TensorIndex a, TensorIndex b)
     {
         return !(a == b);
@@ -359,6 +412,8 @@ public unsafe struct TensorIndex
     /// <summary>
     /// Determines whether the specified object is equal to the current `TensorIndex`.
     /// </summary>
+    /// <param name="obj">The object to compare to the tensor index.</param>
+    /// <returns>Whether the object is equal to the tensor index.</returns>
     public override bool Equals(object obj)
     {
         // Check for null values and compare run-time types.
@@ -371,6 +426,7 @@ public unsafe struct TensorIndex
     /// <summary>
     /// Serves as the default hash function.
     /// </summary>
+    /// <returns>The hashed tensor index.</returns>
     public override int GetHashCode()
     {
         return rank ^ m_D7 ^ m_D6 ^ m_D5 ^ m_D4 ^ m_D3 ^ m_D2 ^ m_D1 ^ m_D0;

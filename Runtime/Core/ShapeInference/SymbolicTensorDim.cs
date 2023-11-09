@@ -41,6 +41,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Initializes and returns an instance of `SymbolicTensorDim` of fixed type, with an integer value.
         /// </summary>
+        /// <param name="value">The size of the dim.</param>
         public SymbolicTensorDim(int value)
         {
             Logger.AssertIsTrue(value >= 0, "Dim value cannot be negative");
@@ -52,6 +53,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Initializes and returns an instance of `SymbolicTensorDim` of dynamic type, with a character value. The character value maps to a string in the `Model` class.
         /// </summary>
+        /// <param name="param">The character name of the dynamic parameter.</param>
         public SymbolicTensorDim(char param)
         {
             Logger.AssertIsTrue(param >= 0, "Dim param cannot be negative");
@@ -102,6 +104,8 @@ namespace Unity.Sentis
         /// <summary>
         /// Returns a string that represents the `SymbolicTensorDim`.
         /// </summary>
+        /// <returns>The string representation of the `SymbolicTensorDim`.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if the dim type is not implemented.</exception>
         public override string ToString()
         {
             return m_DimType switch
@@ -121,6 +125,8 @@ namespace Unity.Sentis
         /// <summary>
         /// Determines whether the specified object is equal to the current `SymbolicTensorDim`.
         /// </summary>
+        /// <param name="obj">The object to compare against.</param>
+        /// <returns>Whether the object is equal to the current `SymbolicTensorDim`.</returns>
         public override bool Equals(object obj)
         {
             return obj is SymbolicTensorDim other && Equals(other);
@@ -129,6 +135,8 @@ namespace Unity.Sentis
         /// <summary>
         /// Whether the current 'SymbolicTensorDim' is 'DimType.Value' and is equal to the specified dim.
         /// </summary>
+        /// <param name="other">The 'SymbolicTensorDim' to compare against.</param>
+        /// <returns>Whether the other `SymbolicTensorDim` is is a value and is equal to the current `SymbolicTensorDim`.</returns>
         public bool EqualsValue(SymbolicTensorDim other)
         {
             return m_DimType == DimType.Value && other.m_DimType == DimType.Value && m_Value == other.m_Value;
@@ -137,11 +145,19 @@ namespace Unity.Sentis
         /// <summary>
         /// Whether the current 'SymbolicTensorDim' is 'DimType.Param' and is equal to the specified dim.
         /// </summary>
+        /// <param name="other">The 'SymbolicTensorDim' to compare against.</param>
+        /// <returns>Whether the other `SymbolicTensorDim` is is a param and is equal to the current `SymbolicTensorDim`.</returns>
         public bool EqualsParam(SymbolicTensorDim other)
         {
             return m_DimType == DimType.Param && other.m_DimType == DimType.Param && m_Param == other.m_Param;
         }
 
+        /// <summary>
+        /// Determines whether two 'SymbolicTensorDim' objects are equal.
+        /// </summary>
+        /// <param name="a">The first 'SymbolicTensorDim' to compare.</param>
+        /// <param name="b">The second 'SymbolicTensorDim' to compare.</param>
+        /// <returns>Whether the two 'SymbolicTensorDim' objects are equal.</returns>
         public static bool operator ==(SymbolicTensorDim a, SymbolicTensorDim b)
         {
             if (a.m_DimType != b.m_DimType)
@@ -153,34 +169,67 @@ namespace Unity.Sentis
             return true;
         }
 
+        /// <summary>
+        /// Determines whether two 'SymbolicTensorDim' objects are not equal.
+        /// </summary>
+        /// <param name="a">The first 'SymbolicTensorDim' to compare.</param>
+        /// <param name="b">The second 'SymbolicTensorDim' to compare.</param>
+        /// <returns>Whether the two 'SymbolicTensorDim' objects are not equal.</returns>
         public static bool operator !=(SymbolicTensorDim a, SymbolicTensorDim b)
         {
             return a.isValue && b.isValue && a.m_Value != b.m_Value;
         }
 
+        /// <summary>
+        /// Determines whether a 'SymbolicTensorDim' is equal to a value.
+        /// </summary>
+        /// <param name="a">The 'SymbolicTensorDim' to compare.</param>
+        /// <param name="b">The integer value to compare.</param>
+        /// <returns>Whether the 'SymbolicTensorDim' object is equal to the value.</returns>
         public static bool operator ==(SymbolicTensorDim a, int b)
         {
             return a.isValue && a.m_Value == b;
         }
 
+        /// <summary>
+        /// Determines whether a 'SymbolicTensorDim' is not equal to a value.
+        /// </summary>
+        /// <param name="a">The 'SymbolicTensorDim' to compare.</param>
+        /// <param name="b">The integer value to compare.</param>
+        /// <returns>Whether the 'SymbolicTensorDim' object is not equal to the value.</returns>
         public static bool operator !=(SymbolicTensorDim a, int b)
         {
             return a.isValue && a.m_Value != b;
         }
 
+        /// <summary>
+        /// Determines whether a 'SymbolicTensorDim' is equal to a value.
+        /// </summary>
+        /// <param name="a">The integer value to compare.</param>
+        /// <param name="b">The 'SymbolicTensorDim' to compare.</param>
+        /// <returns>Whether the 'SymbolicTensorDim' object is equal to the value.</returns>
         public static bool operator ==(int a, SymbolicTensorDim b)
         {
             return b.isValue && a == b.m_Value;
         }
 
+        /// <summary>
+        /// Determines whether a 'SymbolicTensorDim' is not equal to a value.
+        /// </summary>
+        /// <param name="a">The integer value to compare.</param>
+        /// <param name="b">The 'SymbolicTensorDim' to compare.</param>
+        /// <returns>Whether the 'SymbolicTensorDim' object is not equal to the value.</returns>
         public static bool operator !=(int a, SymbolicTensorDim b)
         {
             return b.isValue && a != b.m_Value;
         }
 
         /// <summary>
-        /// Adds two `SymbolicTensorDim` dimensions.
+        /// Adds two `SymbolicTensorDim` objects.
         /// </summary>
+        /// <param name="a">The LHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="b">The RHS 'SymbolicTensorDim' of the operation.</param>
+        /// <returns>The result of the add operation.</returns>
         public static SymbolicTensorDim operator +(SymbolicTensorDim a, SymbolicTensorDim b)
         {
             if (a.isValue)
@@ -197,6 +246,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Adds a `SymbolicTensorDim` to an `int`.
         /// </summary>
+        /// <param name="a">The LHS integer of the operation.</param>
+        /// <param name="b">The RHS 'SymbolicTensorDim' of the operation.</param>
+        /// <returns>The result of the add operation.</returns>
         public static SymbolicTensorDim operator +(int a, SymbolicTensorDim b)
         {
             if (b.isValue)
@@ -215,6 +267,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Adds an `int` to a `SymbolicTensorDim`.
         /// </summary>
+        /// <param name="a">The LHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="b">The RHS integer of the operation.</param>
+        /// <returns>The result of the add operation.</returns>
         public static SymbolicTensorDim operator +(SymbolicTensorDim a, int b)
         {
             return b + a;
@@ -228,6 +283,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Subtracts a `SymbolicTensorDim` from another `SymbolicTensorDim`.
         /// </summary>
+        /// <param name="a">The LHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="b">The RHS 'SymbolicTensorDim' of the operation.</param>
+        /// <returns>The result of the subtract operation.</returns>
         public static SymbolicTensorDim operator -(SymbolicTensorDim a, SymbolicTensorDim b)
         {
             if (a.isValue)
@@ -245,6 +303,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Subtracts a `SymbolicTensorDim` from an `int`.
         /// </summary>
+        /// <param name="a">The LHS integer of the operation.</param>
+        /// <param name="b">The RHS 'SymbolicTensorDim' of the operation.</param>
+        /// <returns>The result of the subtract operation.</returns>
         public static SymbolicTensorDim operator -(int a, SymbolicTensorDim b)
         {
             if (b.isValue)
@@ -260,6 +321,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Subtracts an `int` from a `SymbolicTensorDim`.
         /// </summary>
+        /// <param name="a">The LHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="b">The RHS integer of the operation.</param>
+        /// <returns>The result of the subtract operation.</returns>
         public static SymbolicTensorDim operator -(SymbolicTensorDim a, int b)
         {
             if (a.isValue)
@@ -278,6 +342,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Multiplies two `SymbolicTensorDim` dimensions.
         /// </summary>
+        /// <param name="a">The LHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="b">The RHS 'SymbolicTensorDim' of the operation.</param>
+        /// <returns>The result of the multiply operation.</returns>
         public static SymbolicTensorDim operator *(SymbolicTensorDim a, SymbolicTensorDim b)
         {
             if (a.isValue)
@@ -294,6 +361,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Multiplies an `int` by a `SymbolicTensorDim`.
         /// </summary>
+        /// <param name="a">The LHS integer of the operation.</param>
+        /// <param name="b">The RHS 'SymbolicTensorDim' of the operation.</param>
+        /// <returns>The result of the multiply operation.</returns>
         public static SymbolicTensorDim operator *(int a, SymbolicTensorDim b)
         {
             if (b.isValue)
@@ -313,6 +383,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Multiplies a `SymbolicTensorDim` by an `int`.
         /// </summary>
+        /// <param name="a">The LHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="b">The RHS integer of the operation.</param>
+        /// <returns>The result of the multiply operation.</returns>
         public static SymbolicTensorDim operator *(SymbolicTensorDim a, int b)
         {
             return b * a;
@@ -327,6 +400,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Divides two `SymbolicTensorDim` dimensions a whole number of times. The method throws an error if the result has a remainder.
         /// </summary>
+        /// <param name="a">The LHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="b">The RHS 'SymbolicTensorDim' of the operation.</param>
+        /// <returns>The result of the divide operation.</returns>
         public static SymbolicTensorDim operator /(SymbolicTensorDim a, SymbolicTensorDim b)
         {
             if (a.isValue)
@@ -345,6 +421,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Divides an `int` by a `SymbolicTensorDim` a whole number of times. The method throws an error if the result has a remainder.
         /// </summary>
+        /// <param name="a">The LHS integer of the operation.</param>
+        /// <param name="b">The RHS 'SymbolicTensorDim' of the operation.</param>
+        /// <returns>The result of the divide operation.</returns>
         public static SymbolicTensorDim operator /(int a, SymbolicTensorDim b)
         {
             if (a == 0)
@@ -367,6 +446,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Divides a `SymbolicTensorDim` by an `int` a whole number of times. The method throws an error if the result has a remainder.
         /// </summary>
+        /// <param name="a">The LHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="b">The RHS integer of the operation.</param>
+        /// <returns>The result of the divide operation.</returns>
         public static SymbolicTensorDim operator /(SymbolicTensorDim a, int b)
         {
             if (a.isValue)
@@ -412,21 +494,45 @@ namespace Unity.Sentis
             return new SymbolicTensorDim(Mathf.RoundToInt(v));
         }
 
+        /// <summary>
+        /// Whether a `SymbolicTensorDim` is known to be less than a given integer value.
+        /// </summary>
+        /// <param name="d">The `SymbolicTensorDim` to compare.</param>
+        /// <param name="v">The integer value to compare.</param>
+        /// <returns>The result of the comparison</returns>
         public static bool operator <(SymbolicTensorDim d, int v)
         {
             return d.m_DimType == DimType.Value && d.m_Value < v;
         }
 
+        /// <summary>
+        /// Whether a `SymbolicTensorDim` is known to be greater than than a given integer value.
+        /// </summary>
+        /// <param name="d">The `SymbolicTensorDim` to compare.</param>
+        /// <param name="v">The integer value to compare.</param>
+        /// <returns>The result of the comparison</returns>
         public static bool operator >(SymbolicTensorDim d, int v)
         {
             return d.m_DimType == DimType.Value && d.m_Value > v;
         }
 
+        /// <summary>
+        /// Whether a `SymbolicTensorDim` is known to be less than or equal to than a given integer value.
+        /// </summary>
+        /// <param name="d">The `SymbolicTensorDim` to compare.</param>
+        /// <param name="v">The integer value to compare.</param>
+        /// <returns>The result of the comparison</returns>
         public static bool operator <=(SymbolicTensorDim d, int v)
         {
             return d.m_DimType == DimType.Value && d.m_Value <= v;
         }
 
+        /// <summary>
+        /// Whether a `SymbolicTensorDim` is known to be greater than or equal to than a given integer value.
+        /// </summary>
+        /// <param name="d">The `SymbolicTensorDim` to compare.</param>
+        /// <param name="v">The integer value to compare.</param>
+        /// <returns>The result of the comparison</returns>
         public static bool operator >=(SymbolicTensorDim d, int v)
         {
             return d.m_DimType == DimType.Value && d.m_Value >= v;
@@ -440,6 +546,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Returns the better known of two `SymbolicTensorDim` dimensions known to be equal. The method throws an error if both dimensions are values and not equal.
         /// </summary>
+        /// <param name="a">The first `SymbolicTensorDim`.</param>
+        /// <param name="b">The second `SymbolicTensorDim`.</param>
+        /// <returns>The better known of the `SymbolicTensorDim` objects.</returns>
         internal static SymbolicTensorDim MaxDefinedDim(SymbolicTensorDim a, SymbolicTensorDim b)
         {
             if (a.isUnknown)
@@ -547,6 +656,12 @@ namespace Unity.Sentis
             return Unknown;
         }
 
+        /// <summary>
+        /// Calculates the greatest common divisor of two `SymbolicTensorDim` objects.
+        /// </summary>
+        /// <param name="a">The first `SymbolicTensorDim`.</param>
+        /// <param name="b">The second `SymbolicTensorDim`.</param>
+        /// <returns>The greatest common divisor of the `SymbolicTensorDim` objects.</returns>
         public static SymbolicTensorDim GCD(SymbolicTensorDim a, SymbolicTensorDim b)
         {
             if (a == One || b == One)
@@ -576,6 +691,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Serves as the default hash function.
         /// </summary>
+        /// <returns>The calculated hash code.</returns>
         public override int GetHashCode()
         {
             return m_DimType.GetHashCode() ^ m_Param.GetHashCode() ^ m_Value.GetHashCode();

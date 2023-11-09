@@ -24,7 +24,9 @@ namespace Unity.Sentis.ONNX
             }
 
             Assert.AreEqual(tensorProto.DataLocation, TensorProto.Types.DataLocation.External);
-            int length = Int32.Parse(tensorProto.ExternalData.Single(x => x.Key == "length").Value);
+
+            var lengthField = tensorProto.ExternalData.SingleOrDefault(x => x.Key == "length");
+            int length = lengthField != null ? int.Parse(lengthField.Value) : (int)weightStream.Length;
 
             byte[] byteArray = new byte[length];
             weightStream.Read(byteArray, 0, length);
@@ -33,8 +35,15 @@ namespace Unity.Sentis.ONNX
             return new Layers.Constant(tensorProto.Name, shape, dataType, tensorData);
         }
 
-        public static Layers.Constant LoadConstant(TensorProto tensorProto)
+        public static Layers.Constant LoadConstant(TensorProto tensorProto, string directoryPath = null)
         {
+            if (tensorProto.ExternalData != null && tensorProto.ExternalData.Any(x => x.Key == "location"))
+            {
+                string name = tensorProto.ExternalData.SingleOrDefault(x => x.Key == "location").Value;
+                using var weightStream = File.OpenRead(Path.Combine(directoryPath, name));
+                return LoadConstant(tensorProto, weightStream);
+            }
+
             var shape = GetShape(tensorProto);
             var dataType = GetDataType(tensorProto);
 

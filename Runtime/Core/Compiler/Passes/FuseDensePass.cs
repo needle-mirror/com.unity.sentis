@@ -64,19 +64,36 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
                 // const bias of rank 1
                 List<Layers.Layer> downStreamLayers = layerDownstream[layer.name];
-                if (!downStreamLayers.Any(x => x is Layers.Add))
+                if (!downStreamLayers.Any(x => x is Layers.Add) && !downStreamLayers.Any(x => x is Layers.ScalarMad))
                     continue;
 
-                var bias = downStreamLayers.Find(x => x is Layers.Add);
-                var biasInputsConst = bias.inputs.Where(x => x != layer.name && constTensors.ContainsKey(x) && constTensors[x].shape.rank == 1).ToList();
-                if (biasInputsConst.Count != 1)
-                    continue;
-                string biasName = biasInputsConst[0];
+                Layers.Layer bias;
+                string biasName;
+                if (downStreamLayers.Any(x => x is Layers.ScalarMad))
+                {
+                    bias = downStreamLayers.Find(x => x is Layers.ScalarMad);
+                    var biasMad = bias as Layers.ScalarMad;
+                    if (biasMad.s != 1)
+                        continue;
+                    var biasS = biasMad.b;
+                    using TensorFloat biasT = ops.ConstantOfShape(new TensorShape(constTensors[weightsName].shape[-1]), biasS);
+                    biasName = bias.name + "_Bias";
+                    constTensors.Add(biasName, biasT);
+                    model.constants.Add(new Layers.Constant(biasName, biasT));
+                }
+                else
+                {
+                    bias = downStreamLayers.Find(x => x is Layers.Add);
+                    var biasInputsConst = bias.inputs.Where(x =>
+                        x != layer.name && constTensors.ContainsKey(x) && constTensors[x].shape.rank == 1).ToList();
+                    if (biasInputsConst.Count != 1)
+                        continue;
+                    biasName = biasInputsConst[0];
+                }
 
                 if (preserve.Contains(bias.name))
                     continue;
 
-                TensorFloat biasT = constTensors[biasName] as TensorFloat;
                 TensorFloat weightT = constTensors[weightsName] as TensorFloat;
 
                 bool transposeWeights = (layer is Layers.MatMul2D && (layer as Layers.MatMul2D).transposeB == true);

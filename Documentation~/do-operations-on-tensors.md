@@ -1,4 +1,10 @@
-## Do operations on tensors
+# Do operations on tensors
+
+You can use the `Ops` object to do individual tensor operations on a back end. This can be easier to set up than writing a full model, and you can use it to dynamically handle input and output tensors at runtime.
+
+If you have a fixed long list of tensor operations, you should execute them with a `Model` and `IWorker` so that Sentis can optimize performance.
+
+## Using Ops
 
 To do operations on tensors, follow these steps:
 
@@ -52,6 +58,42 @@ public class RunOperatorOnTensor : MonoBehaviour
 Refer to the `Do an operation on a tensor` example in the [sample scripts](package-samples.md) for an example.
 
 Refer to [Create an engine to run a model](create-an-engine.md) for more information about back end types.
+
+## Supported operations
+
+Almost all of the [supported ONNX operators](supported-operators.md) have corresponding `Ops` methods. Sentis also provides convenience methods such as tensor arithmetic with scalar values.
+
+In the following example a series of tensors are calculated by applying `Ops` methods.
+
+``` 
+using UnityEngine;
+using Unity.Sentis;
+using Unity.Sentis.Layers;
+
+public class OpsMethods : MonoBehaviour
+{
+    void Start()
+    {
+        using ITensorAllocator allocator = new TensorCachingAllocator();
+        using Ops ops = WorkerFactory.CreateOps(BackendType.GPUCompute, allocator);
+
+        // Create a random uniform tensor of shape [1, 3, 32, 32]
+        using TensorFloat randomTensor = ops.RandomUniform(new TensorShape(1, 3, 32, 32), 0, 1, 0.5f);
+
+        // Multiply `randomTensor` by a scalar float
+        using TensorFloat mulTensor = ops.Mul(randomTensor, 255f);
+
+        // Resize `mulTensor` by a factor of 3/2
+        using TensorFloat resizedTensor = ops.Resize(mulTensor, new[] { 1.5f, 1.5f }, InterpolationMode.Linear);
+
+        // Tile `resizedTensor` on the x axis twice
+        using TensorFloat tiledTensor = ops.Tile(resizedTensor, new[] { 1, 1, 1, 2 });
+
+        // Pad `tiledTensor` with a constant value of 1 at the end of axis 1
+        using TensorFloat paddedTensor = ops.Pad(tiledTensor, new[] { 0, 0, 0, 0, 0, 1, 0, 0 }, constant: 1f);
+    }
+}
+```
 
 ## Additional resources
 

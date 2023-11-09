@@ -12,25 +12,37 @@ namespace Unity.Sentis
     public static class ModelWriter
     {
         /// <summary>
-        /// Saves the model description and weights to a file.
+        /// Serializes and saves the model description and weights to a file.
         /// </summary>
+        /// <param name="fileName">The path to save the model file to</param>
+        /// <param name="model">The model to save to file</param>
         public static void Save(string fileName, Model model)
         {
             using FileStream fileStream = File.Create(fileName);
+            Save(fileStream, model);
+        }
+
+        /// <summary>
+        /// Serializes and saves the model description and weights to a `Stream`.
+        /// </summary>
+        /// <param name="stream">The `Stream` to save the model file to</param>
+        /// <param name="model">The model to save to file</param>
+        public static void Save(Stream stream, Model model)
+        {
             var descStream = new MemoryStream();
             SaveModelDesc(descStream, model);
             var descData = descStream.ToArray();
-            fileStream.Write(descData, 0, descData.Length);
+            stream.Write(descData, 0, descData.Length);
             descStream.Dispose();
 
             var weightStreams = new List<MemoryStream>();
             SaveModelWeights(weightStreams, model);
 
-            foreach (var stream in weightStreams)
+            foreach (var weightStream in weightStreams)
             {
-                descData = stream.ToArray();
-                fileStream.Write(descData, 0, descData.Length);
-                stream.Dispose();
+                descData = weightStream.ToArray();
+                stream.Write(descData, 0, descData.Length);
+                weightStream.Dispose();
             }
         }
 
@@ -138,7 +150,7 @@ namespace Unity.Sentis
             for (var l = 0; l < model.constants.Count; ++l)
             {
                 var constant = model.constants[l];
-                if (constant.weights == null)
+                if (constant?.weights == null)
                     continue;
                 var sizeOfDataItem = constant.weights.SizeOfType;
                 int memorySize = constant.length * sizeOfDataItem;

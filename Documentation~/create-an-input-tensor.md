@@ -45,7 +45,7 @@ Dictionary<string, Tensor> inputTensors = new Dictionary<string, Tensor>()
 
 ## Do operations
 
-Use `WorkerFactory.CreateOps` if you need to do operations on a tensor. Refer to [Do operations on a tensor](do-complex-tensor-operations.md) for more information.
+Use `WorkerFactory.CreateOps` if you need to do operations on a tensor. Refer to [Do operations on a tensor](do-operations-on-tensors.md) for more information.
 
 ## Additional resources
 

@@ -110,8 +110,19 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                         continue;
 
                     remapRemovedNames.Add(layer.name, similarLayer.name);
+
                     layersToRemove.Add(layer.name);
                     removed = true;
+
+                    if (layer.outputs == null)
+                        break;
+
+                    for (int i = 1; i < layer.outputs.Length; i++)
+                    {
+                        if (!remapRemovedNames.ContainsKey(layer.outputs[i]))
+                            remapRemovedNames.Add(layer.outputs[i], similarLayer.outputs[i]);
+                    }
+
                     break;
                 }
 
@@ -139,6 +150,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
         {
             long seed = 0;
             HashHelper.HashCombine(ref seed, constant.shape);
+
+            if (constant.shape.HasZeroDims())
+                return seed;
+
             for (int i = 0; i < constant.weights.Length; i++)
                 HashHelper.HashCombine(ref seed, constant.weights.Get<int>((int)constant.offset + i));
 
@@ -149,6 +164,9 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
         {
             if (c0.shape != c1.shape)
                 return false;
+
+            if (c0.shape.HasZeroDims() && c1.shape.HasZeroDims())
+                return true;
 
             for (int i = 0; i < c0.weights.Length; i++)
             {
@@ -218,6 +236,11 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     if (constantsToRemove.ContainsKey(input))
                         layer.inputs[i] = constantsToRemove[input];
                 }
+            }
+            foreach (var output in model.outputs)
+            {
+                if (constantsToRemove.ContainsKey(output))
+                    model.AddLayer(new Identity(output, constantsToRemove[output]));
             }
         }
     }

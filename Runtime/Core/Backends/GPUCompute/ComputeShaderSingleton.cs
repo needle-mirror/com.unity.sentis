@@ -229,6 +229,8 @@ namespace Unity.Sentis
         /// <summary>
         /// Loads and compiles given compute kernels without running them.
         /// </summary>
+        /// <param name="kernels">List of kernel names to load and compile.</param>
+        /// <returns>Enumerator to iterate.</returns>
         public IEnumerator WarmupKernels(List<string> kernels)
         {
             foreach (var kernel in kernels)
@@ -246,6 +248,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Returns used compute kernels as a list.
         /// </summary>
+        /// <returns>List of used kernels.</returns>
         public List<string> GetUsedKernels()
         {
             if (!EnableDebug)

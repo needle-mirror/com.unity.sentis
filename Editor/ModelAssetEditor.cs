@@ -148,7 +148,7 @@ public class ModelAssetEditor : UnityEditor.Editor
                 items.Add($"<b>{output}</b> {m_Model.GetSymbolicTensorShapeAsString(partialTensor.shape)}, {partialTensor.dataType}");
             }
         }
-        catch (Exception e)
+        catch (Exception)
         {
             foreach (var output in outputs)
                 items.Add($"<b>{output}</b>");

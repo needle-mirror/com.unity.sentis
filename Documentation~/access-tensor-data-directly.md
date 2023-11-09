@@ -4,7 +4,7 @@ To avoid having to do a slow readback of a tensor from a device when you want to
 
 Refer to [Tensor fundamentals in Sentis](tensor-fundamentals.md#memory-location) for more information about how Sentis stores tensor data.
 
-You can also use `Ops` methods to do complicated tensor operations with a Sentis back end type that uses compute shaders or Burst. For example, you can use `Ops` to do matrix multiplication. Refer to [Do operations on tensors](do-complex-tensor-operations.md) for more information.
+You can also use `Ops` methods to do complicated tensor operations with a Sentis back end type that uses compute shaders or Burst. For example, you can use `Ops` to do matrix multiplication. Refer to [Do operations on tensors](do-operations-on-tensors.md) for more information.
 
 ## Check where the data for a tensor is stored
 
@@ -103,4 +103,4 @@ Refer to [NativeArray](https://docs.unity3d.com/ScriptReference/Unity.Collection
 ## Additional resources
 
 - [Tensor fundamentals in Sentis](tensor-fundamentals.md)
-- [Do operations on tensors](do-complex-tensor-operations.md)
+- [Do operations on tensors](do-operations-on-tensors.md)

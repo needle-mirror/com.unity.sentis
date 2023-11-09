@@ -43,6 +43,11 @@ public class GenericWorker : IWorker
     /// <summary>
     /// Initializes and returns an instance of `GenericWorker` for the specified `model` and `ops`.
     /// </summary>
+    /// <param name="model">The model to execute.</param>
+    /// <param name="backend">The backend to use for execution.</param>
+    /// <param name="vars">The stored tensor variables to use for execution.</param>
+    /// <param name="verbose">Whether to enable verbose logging during execution.</param>
+    /// <param name="takeoverWeights">Whether to allow the worker to take ownership of the model weights during execution.</param>
     public GenericWorker(Model model, IBackend backend, IVars vars, bool verbose = false, bool takeoverWeights = false)
     {
         m_Model = model;
@@ -72,6 +77,10 @@ public class GenericWorker : IWorker
         Dispose();
     }
 
+    /// <summary>
+    /// Gets the backend used by the worker for execution.
+    /// </summary>
+    /// <returns>The backend used for execution.</returns>
     public IBackend GetBackend() { return m_Backend; }
 
     void OccupyAllocator()
@@ -274,6 +283,7 @@ public class GenericWorker : IWorker
     /// <summary>
     /// Returns a summary of the execution as a string.
     /// </summary>
+    /// <returns>The string representation of the allocator and backend states.</returns>
     public virtual string Summary()
     {
         return m_Vars.GetAllocator().ToString() + "\n" + m_Backend.ToString();

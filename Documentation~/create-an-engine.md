@@ -30,15 +30,11 @@ public class CreateWorker : MonoBehaviour
 
 ## Back end types
 
-|Back end type|Runs on|Compatible platforms|
-|-|-|-|
-|`BackendType.CPU`|CPU, using [Burst](https://docs.unity3d.com/Packages/com.unity.burst@latest/)|All|
-|`BackendType.GPUCompute`|GPU, using Sentis compute shaders|Platforms that support compute shaders. Use [SystemInfo.supportsComputeShaders](https://docs.unity3d.com/2023.2/Documentation/ScriptReference/SystemInfo-supportsComputeShaders.html) to check if a platform supports compute shaders.|
-|`BackendType.GPUPixel`|GPU, using Sentis pixel shaders|All|
+Sentis provides CPU and GPU back end types. To understand how Sentis executes operations using the different back ends, refer to [How Sentis runs a model](how-sentis-runs-a-model.md).
 
 If a back end type doesn't support a Sentis layer in a model, the worker falls back to running on the CPU for that layer. Refer to [Supported ONNX operators](supported-operators.md) for more information.
 
-`BackendType.GPUCompute` and `BackendType.CPU` are the fastest back end types, so use `BackendType.GPUPixel` only if a platform doesn't support compute shaders.
+`BackendType.GPUCompute`, `BackendType.GPUCommandBuffer` and `BackendType.CPU` are the fastest back end types, so use `BackendType.GPUPixel` only if a platform doesn't support compute shaders. To check if your runtime platform supports compute shaders use [SystemInfo.supportsComputeShaders](https://docs.unity3d.com/2023.2/Documentation/ScriptReference/SystemInfo-supportsComputeShaders.html)
 
 If you use `BackendType.CPU` with WebGL, Burst compiles to WebAssembly code which might be slow. Refer to [Getting started with WebGL development](https://docs.unity3d.com/Documentation/Manual/webgl-gettingstarted.html) for more information.
 
@@ -47,5 +43,6 @@ How fast a model runs depends on how well a platform supports multithreading for
 ## Additional resources
 
 - [Create a runtime model](import-a-model-file.md#create-a-runtime-model)
+- [How Sentis runs a model](how-sentis-runs-a-model.md)
 - [Supported ONNX operators](supported-operators.md)
 - [Run a model](run-a-model.md)

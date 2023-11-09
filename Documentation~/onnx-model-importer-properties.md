@@ -79,7 +79,7 @@ You can add a custom layer to implement a missing operator. Refer to the `Add a 
 
 ## Additional resources
 
-- [Import a model](import-a-model.md)
+- [Import a model](import-a-model-file.md)
 - [How Sentis optimizes a model](models-concept.md#how-sentis-optimizes-a-model)
 - [Supported ONNX operators](supported-operators.md)
 

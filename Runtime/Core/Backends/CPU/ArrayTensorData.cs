@@ -11,6 +11,8 @@ public interface IConvertibleToArrayTensorData
     /// <summary>
     /// Implement this method to convert to `ArrayTensorData`.
     /// </summary>
+    /// <param name="shape">The shape of the tensor using the tensor data.</param>
+    /// <returns>Converted `ArrayTensorData`.</returns>
     ArrayTensorData ConvertToArrayTensorData(TensorShape shape);
 }
 
@@ -53,7 +55,7 @@ public class ArrayTensorData : ITensorData, IConvertibleToBurstTensorData, IConv
     /// Initializes and returns an instance of `ArrayTensorData` with given storage and offset.
     /// </summary>
     /// <param name="shape">The shape of the tensor data.</param>
-    /// <param name="array">The allocated data to use as backing data.</param>
+    /// <param name="data">The allocated data to use as backing data.</param>
     /// <param name="offset">The integer offset from the start of the backing array. The default value is 0.</param>
     /// <param name="clearOnInit">Whether to zero the data on instantiation. The default value is `true`.</param>
     public ArrayTensorData(TensorShape shape, NativeTensorArray data, int offset = 0, bool clearOnInit = true)
@@ -68,6 +70,7 @@ public class ArrayTensorData : ITensorData, IConvertibleToBurstTensorData, IConv
     /// </summary>
     /// <param name="shape">The shape of the tensor data.</param>
     /// <param name="data">The data to use as backing data.</param>
+    /// <param name="clearOnInit">Whether to zero the data on instantiation. The default value is `true`.</param>
     public ArrayTensorData(TensorShape shape, Array data, bool clearOnInit = true)
     {
         m_Shape = shape;
@@ -180,6 +183,7 @@ public class ArrayTensorData : ITensorData, IConvertibleToBurstTensorData, IConv
     /// <summary>
     /// Returns a summary of the storage used by the tensor array, as a string.
     /// </summary>
+    /// <returns>The string summary of the `ArrayTensorData`.</returns>
     public override string ToString()
     {
         return string.Format("(CPU array [{0}])", m_Array?.Length);
@@ -187,9 +191,10 @@ public class ArrayTensorData : ITensorData, IConvertibleToBurstTensorData, IConv
 
     /// <summary>
     /// Moves the tensor into memory on the CPU backend device.
+    /// </summary>
     /// <param name="X">The `Tensor` to move to the CPU.</param>
     /// <param name="clearOnInit">Whether to initialize the backend data. The default value is `true`.</param>
-    /// </summary>
+    /// <returns>The pinned `ArrayTensorData`.</returns>
     public static ArrayTensorData Pin(Tensor X, bool clearOnInit = true)
     {
         var onDevice = X.tensorOnDevice;
@@ -382,6 +387,7 @@ public class SharedArrayTensorData : ITensorData, IConvertibleToBurstTensorData,
     /// <summary>
     /// Returns a string that represents the `SharedArrayTensorData`.
     /// </summary>
+    /// <returns>The string summary of the `SharedArrayTensorData`.</returns>
     public override string ToString()
     {
         return string.Format("(CPU shared[{0}], offset: {1} count: {2})",

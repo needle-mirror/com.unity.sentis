@@ -75,6 +75,7 @@ You can use the following methods to log tensor data to the Console window:
 
 ## Additional resources
 
+- [Manage memory](manage-memory.md)
 - [Tensor fundamentals](tensor-fundamentals.md)
 - [Use output data](use-model-output.md)
 - [Read output from a model asynchronously](read-output-async.md)

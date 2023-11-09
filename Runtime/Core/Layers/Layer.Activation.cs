@@ -8,6 +8,11 @@ namespace Unity.Sentis.Layers
     [Serializable]
     public abstract class Activation : Layer
     {
+        /// <summary>
+        /// Initializes and returns an instance of activation layer.
+        /// </summary>
+        /// <param name="name">The name to use for the output tensor of the layer.</param>
+        /// <param name="input">The name to use for the input tensor of the layer.</param>
         protected Activation(string name, string input)
         {
             this.name = name;

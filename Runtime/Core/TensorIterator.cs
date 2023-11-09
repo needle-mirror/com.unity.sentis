@@ -33,6 +33,7 @@ public unsafe struct TensorNDIterator
     /// <summary>
     /// Returns a copy of another `TensorNDIterator`.
     /// </summary>
+    /// <param name="other">The iterator to copy.</param>
     public TensorNDIterator(TensorNDIterator other)
     {
         m_Shape = other.shape;
@@ -50,6 +51,7 @@ public unsafe struct TensorNDIterator
     /// <summary>
     /// Initializes and returns an instance of `TensorNDIterator` with a given shape.
     /// </summary>
+    /// <param name="shape">The shape of the iterator.</param>
     public TensorNDIterator(TensorShape shape)
     {
         m_Shape = shape;
@@ -60,6 +62,8 @@ public unsafe struct TensorNDIterator
     /// <summary>
     /// Initializes and returns an instance of `TensorNDIterator` with a given shape, and uses a given index in the flattened 1D version of the shape.
     /// </summary>
+    /// <param name="shape">The shape of the iterator.</param>
+    /// <param name="index">The index in the flattened shape.</param>
     public TensorNDIterator(TensorShape shape, int index)
     {
         Logger.AssertIsTrue(index < shape.length, "TensorNDIterator.ValueError: shape meant for iteration length {0} is smaller than given flattened 1D index {1}", shape.length, index);
@@ -73,6 +77,7 @@ public unsafe struct TensorNDIterator
     /// <summary>
     /// Copies the dimension indices from another iterator. If the shapes of the iterators are not the same the final flattened index may be different.
     /// </summary>
+    /// <param name="other">The iterator to copy.</param>
     public void CopyNDIndex(TensorNDIterator other)
     {
         m_D0 = other.m_D0;
@@ -89,6 +94,8 @@ public unsafe struct TensorNDIterator
     /// <summary>
     /// Creates a new iterator by skipping an axis of this iterator.
     /// </summary>
+    /// <param name="axis">The axis to skip.</param>
+    /// <returns>The created iterator.</returns>
     public TensorNDIterator RemoveDim(int axis)
     {
         Logger.AssertIsTrue(shape.rank > 0, "TensorNDIterator.ValueError: iterator is iterating on rank 0 shape, cannot remove additional dimensions");
@@ -127,6 +134,8 @@ public unsafe struct TensorNDIterator
     /// <summary>
     /// Creates a new iterator by broadcasting this iterator on a given shape following the broadcast rule.
     /// </summary>
+    /// <param name="shapeToBroadcast">The shape to broadcast with.</param>
+    /// <returns>The broadcast iterator.</returns>
     public TensorNDIterator Broadcast(TensorShape shapeToBroadcast)
     {
         TensorNDIterator broadcast = new TensorNDIterator(shapeToBroadcast);
@@ -156,6 +165,8 @@ public unsafe struct TensorNDIterator
     /// <summary>
     /// Creates a new iterator by transposing this iterator using the given permutations.
     /// </summary>
+    /// <param name="permutations">The permutation array.</param>
+    /// <returns>The transposed iterator.</returns>
     public TensorNDIterator Transpose(int[] permutations)
     {
         Logger.AssertAreEqual(shape.rank, permutations.Length, "TensorNDIterator.ValueError: shape ranks and permutations length do not match {0}, {1}", shape, permutations.Length);
@@ -184,6 +195,7 @@ public unsafe struct TensorNDIterator
     /// <summary>
     /// Creates a new iterator by transposing this iterator reversing the axes.
     /// </summary>
+    /// <returns>The transposed iterator.</returns>
     public TensorNDIterator Transpose()
     {
         TensorNDIterator transpose = new TensorNDIterator(shape.Transpose());
@@ -268,6 +280,7 @@ public unsafe struct TensorNDIterator
     /// <summary>
     /// Increments the index at a given axis by one.
     /// </summary>
+    /// <param name="axis">The axis along which to increment.</param>
     public void MoveNextAxis(int axis)
     {
         if (!HasNext())
@@ -293,6 +306,7 @@ public unsafe struct TensorNDIterator
     /// <summary>
     /// Whether the iterator is yet to reach the end of the shape.
     /// </summary>
+    /// <returns>Whether the iterator can increment.</returns>
     public bool HasNext()
     {
         return index < shape.length;
@@ -301,6 +315,8 @@ public unsafe struct TensorNDIterator
     /// <summary>
     /// Whether the iterator is yet to reach the end of the shape on a given axis.
     /// </summary>
+    /// <param name="axis">The axis along which to check.</param>
+    /// <returns>Whether the iterator can increment along the axis.</returns>
     public bool HasNext(int axis)
     {
         return HasNext() && (this[axis] < shape[axis]);
@@ -318,6 +334,7 @@ public unsafe struct TensorNDIterator
     /// <summary>
     /// Gets or sets the iterator at a given axis.
     /// </summary>
+    /// <param name="axis">The axis at which to get or set the index.</param>
     public int this[int axis]
     {
         get
@@ -345,6 +362,7 @@ public unsafe struct TensorNDIterator
     /// <summary>
     /// Returns a string that represents the `TensorNDIterator`.
     /// </summary>
+    /// <returns>The string representation of the iterator.</returns>
     public override string ToString()
     {
         StringBuilder sb = new StringBuilder();

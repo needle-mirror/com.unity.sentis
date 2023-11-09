@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Unity.Sentis
 {
-    public static class BurstJobsCastTensor
+    static class BurstJobsCastTensor
     {
         [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
         public unsafe struct DoubleBytesAsFloatJob : IJobParallelFor

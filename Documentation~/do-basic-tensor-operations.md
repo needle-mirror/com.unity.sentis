@@ -34,6 +34,6 @@ The result of `ShallowReshape` is a shallow copy that points to the same memory 
 ## Additional resources
 
 - [Tensor fundamentals](tensor-fundamentals.md)
-- [Do operations on a tensor](do-complex-tensor-operations.md)
+- [Do operations on a tensor](do-operations-on-tensors.md)
 - [Model inputs](models-concept.md#model-inputs)
 

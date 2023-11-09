@@ -81,7 +81,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     {
                         outputPartialTensor = ctx.GetPartialTensor(layer.outputs[i]);
                         if (outputPartialTensor.IsFullyKnown())
-                            calculatedTensors.Add(layer.name, outputPartialTensor.ToTensor());
+                            calculatedTensors.Add(layer.outputs[i], outputPartialTensor.ToTensor());
                     }
                     continue;
                 }
@@ -108,7 +108,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 for (var i = 1; i < layer.outputs.Length; i++)
                 {
                     outputTensor = vars.PeekOutput(layer.outputs[i]);
-                    calculatedTensors.Add(layer.name, outputTensor);
+                    calculatedTensors.Add(layer.outputs[i], outputTensor);
                     ctx.AddPartialTensor(layer.outputs[i], PartialTensor.FromTensor(outputTensor));
                 }
             }

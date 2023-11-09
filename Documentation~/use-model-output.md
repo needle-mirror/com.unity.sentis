@@ -2,11 +2,11 @@
 
 After you [get the output from a model](get-the-output.md) as a tensor, you can post-process the data to use it in your project.
 
-You can also use [WorkerFactory.CreateOps](do-complex-tensor-operations.md) to do calculations on tensor outputs.
+You can also use [WorkerFactory.CreateOps](do-operations-on-tensors.md) to do calculations on tensor outputs.
 
 ## Convert to a flattened 1D array
 
-Use `MakeReadable` to move a tensor on the GPU to the CPU before you read it. Use `ToReadOnlyArray` to convert tensor data to a flattened 1D array of floats or ints.
+Use `MakeReadable` to move a tensor on the GPU to the CPU before you read it. Use `ToReadOnlyArray` to convert tensor data to a flattened 1D array of floats or ints. You can also [read the tensor data asynchronously](read-output-async.md).
 
 For example:
 
@@ -87,7 +87,7 @@ To copy an output tensor to the screen, follow these steps:
 2. Create a script and attach it to the Camera.
 3. In the script, use `TextureConverter.RenderToScreen` in an event function such as `OnRenderImage`.
 
-If the image is too bright, the output tensor might be using values from 0 to 255 instead of values from 0 to 1. You can use [WorkerFactory.CreateOps](do-complex-tensor-operations.md) to remap the values in the output tensor before you call `RenderToScreen`.
+If the image is too bright, the output tensor might be using values from 0 to 255 instead of values from 0 to 1. You can use [WorkerFactory.CreateOps](do-operations-on-tensors.md) to remap the values in the output tensor before you call `RenderToScreen`.
 
 The following script uses a model to change a texture, then copies the result to the screen. You can set `modelAsset` to one of the [style transfer models](https://github.com/onnx/models/tree/main/vision/style_transfer/fast_neural_style) from ONNX, and `inputImage` to a texture. [Check the Texture import settings](convert-texture-to-tensor.md) to make sure the texture matches the shape and layout the model needs.
 
@@ -174,5 +174,5 @@ Refer to [Tensor fundamentals in Sentis](tensor-fundamentals.md) for more inform
 
 - [Get output from a model](get-the-output.md)
 - [Create and modify tensors](do-basic-tensor-operations.md)
-- [Do operations on tensors](do-complex-tensor-operations.md)
+- [Do operations on tensors](do-operations-on-tensors.md)
 

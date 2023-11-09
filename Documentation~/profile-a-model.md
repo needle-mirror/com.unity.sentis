@@ -1,5 +1,12 @@
 # Profile a model
 
+The performance of a model depends on the following:
+
+- The complexity of the model.
+- Whether the model uses performance-heavy operators such as Conv or MatMul.
+- The features of the platform you run the model on, for example CPU memory, GPU memory, and number of cores.
+- Whether Sentis downloads data to CPU memory when you access a tensor. Refer to [Get output from a model](get-the-output.md) for more information.
+
 ## Profile a model in the Profiler window
 
 To get performance information when you run a model, you can use the following:

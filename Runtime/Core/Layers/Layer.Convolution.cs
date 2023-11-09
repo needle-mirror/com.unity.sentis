@@ -57,6 +57,9 @@ namespace Unity.Sentis.Layers
         /// If this is `null` the layer uses a default of [1, 1, ..., 1].
         /// </summary>
         public int[] strides;
+        /// <summary>
+        /// The shape of the kernel as an integer array.
+        /// </summary>
         public int[] kernelShape;
 
         /// <summary>
@@ -71,6 +74,7 @@ namespace Unity.Sentis.Layers
         /// <param name="pads">The optional lower and upper padding values for each spatial dimension of the filter.</param>
         /// <param name="dilations">The optional dilation value of each spatial dimension of the filter.</param>
         /// <param name="autoPad">The auto padding mode of the convolution as an `AutoPad`.</param>
+        /// <param name="kernelShape">The shape of the kernel as an integer array.</param>
         /// <param name="fusedActivation">The fused activation type to apply after the convolution. The default value is `None`.</param>
         public Conv(string name, string X, string W, string B, int group, int[] strides, int[] pads, int[] dilations, AutoPad autoPad = AutoPad.NotSet, int[] kernelShape = null, FusableActivation fusedActivation = FusableActivation.None)
         {
@@ -84,6 +88,20 @@ namespace Unity.Sentis.Layers
             this.kernelShape = kernelShape;
             this.fusedActivation = fusedActivation;
         }
+
+        /// <summary>
+        /// Initializes and returns an instance of `Conv` convolution layer.
+        /// </summary>
+        /// <param name="name">The name to use for the output tensor of the layer.</param>
+        /// <param name="X">The name to use for the input tensor of the layer.</param>
+        /// <param name="W">The name to use for the filter tensor of the layer.</param>
+        /// <param name="group">The number of groups that input channels and output channels are divided into.</param>
+        /// <param name="strides">The optional stride value for each spatial dimension of the filter.</param>
+        /// <param name="pads">The optional lower and upper padding values for each spatial dimension of the filter.</param>
+        /// <param name="dilations">The optional dilation value of each spatial dimension of the filter.</param>
+        /// <param name="autoPad">The auto padding mode of the convolution as an `AutoPad`.</param>
+        /// <param name="kernelShape">The shape of the kernel as an integer array.</param>
+        /// <param name="fusedActivation">The fused activation type to apply after the convolution. The default value is `None`.</param>
         public Conv(string name, string X, string W, int group, int[] strides, int[] pads, int[] dilations, AutoPad autoPad = AutoPad.NotSet, int[] kernelShape = null, FusableActivation fusedActivation = FusableActivation.None)
         {
             this.name = name;
@@ -196,6 +214,9 @@ namespace Unity.Sentis.Layers
         /// If this is `null` the layer uses a default of [1, 1, ..., 1].
         /// </summary>
         public int[] strides;
+        /// <summary>
+        /// The shape of the kernel.
+        /// </summary>
         public int[] kernelShape;
 
         /// <summary>
@@ -209,6 +230,7 @@ namespace Unity.Sentis.Layers
         /// <param name="pads">The optional lower and upper padding values for each spatial dimension of the filter.</param>
         /// <param name="autoPad">The auto padding mode of the convolution.</param>
         /// <param name="outputPadding">The output padding value for each spatial dimension in the filter.</param>
+        /// <param name="kernelShape">The shape of the kernel as an integer array.</param>
         /// <param name="fusedActivation">The fused activation type to apply after the convolution. The default value is `None`.</param>
         public ConvTranspose(string name, string input, string kernel, string bias, int[] strides, int[] pads, AutoPad autoPad, int[] outputPadding, int[] kernelShape = null, FusableActivation fusedActivation = FusableActivation.None)
         {
@@ -222,6 +244,18 @@ namespace Unity.Sentis.Layers
             this.fusedActivation = fusedActivation;
         }
 
+        /// <summary>
+        /// Initializes and returns an instance of `ConvTranspose` convolution layer.
+        /// </summary>
+        /// <param name="name">The name to use for the output tensor of the layer.</param>
+        /// <param name="input">The name to use for the input tensor of the layer.</param>
+        /// <param name="kernel">The name to use for the filter tensor of the layer.</param>
+        /// <param name="strides">The optional stride value for each spatial dimension of the filter.</param>
+        /// <param name="pads">The optional lower and upper padding values for each spatial dimension of the filter.</param>
+        /// <param name="autoPad">The auto padding mode of the convolution.</param>
+        /// <param name="outputPadding">The output padding value for each spatial dimension in the filter.</param>
+        /// <param name="kernelShape">The shape of the kernel as an integer array.</param>
+        /// <param name="fusedActivation">The fused activation type to apply after the convolution. The default value is `None`.</param>
         public ConvTranspose(string name, string input, string kernel, int[] strides, int[] pads, AutoPad autoPad, int[] outputPadding, int[] kernelShape = null, FusableActivation fusedActivation = FusableActivation.None)
         {
             this.name = name;

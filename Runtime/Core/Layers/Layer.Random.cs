@@ -22,6 +22,9 @@ namespace Unity.Sentis.Layers
         [NonSerialized]
         Random m_Random;
 
+        /// <summary>
+        /// Gets the next seed value for execution.
+        /// </summary>
         protected float NextSeed => m_Random.NextFloatSeed();
 
         [OnDeserialized]
@@ -40,6 +43,10 @@ namespace Unity.Sentis.Layers
             m_Random = hasSeed ? new Random(seed) : new Random();
         }
 
+        /// <summary>
+        /// Initializes and returns an instance of `RandomLayer`.
+        /// </summary>
+        /// <param name="seed">The optional seed to use for the random number generation. If this is `null` the layer generates a seed using `System.Random()`.</param>
         protected RandomLayer(float? seed)
         {
             hasSeed = seed.HasValue;

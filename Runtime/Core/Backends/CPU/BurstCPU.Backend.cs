@@ -28,6 +28,9 @@ public partial class CPUBackend
     /// <summary>
     /// Allocate a new `Tensor` of a given shape and data type using the `AllocScope.LayerOutput` scope.
     /// </summary>
+    /// <param name="shape">The shape of the tensor.</param>
+    /// <param name="dataType">The data type of the tensor.</param>
+    /// <returns>The allocated tensor.</returns>
     public Tensor NewOutputTensor(TensorShape shape, DataType dataType)
     {
         return NewTensor(shape, dataType, AllocScope.LayerOutput);
@@ -36,6 +39,8 @@ public partial class CPUBackend
     /// <summary>
     /// Allocate a new `TensorFloat` of a given shape using the `AllocScope.LayerOutput` scope.
     /// </summary>
+    /// <param name="shape">The shape of the tensor.</param>
+    /// <returns>The allocated tensor.</returns>
     public TensorFloat NewOutputTensorFloat(TensorShape shape)
     {
         return NewTensor(shape, DataType.Float, AllocScope.LayerOutput) as TensorFloat;
@@ -44,6 +49,8 @@ public partial class CPUBackend
     /// <summary>
     /// Allocate a new `TensorInt` of a given shape using the `AllocScope.LayerOutput` scope.
     /// </summary>
+    /// <param name="shape">The shape of the tensor.</param>
+    /// <returns>The allocated tensor.</returns>
     public TensorInt NewOutputTensorInt(TensorShape shape)
     {
         return NewTensor(shape, DataType.Int, AllocScope.LayerOutput) as TensorInt;
@@ -52,6 +59,9 @@ public partial class CPUBackend
     /// <summary>
     /// Allocate a new `Tensor` of a given shape and data type using the `AllocScope.InternalToLayer` scope.
     /// </summary>
+    /// <param name="shape">The shape of the tensor.</param>
+    /// <param name="dataType">The data type of the tensor.</param>
+    /// <returns>The allocated tensor.</returns>
     public Tensor NewTempTensor(TensorShape shape, DataType dataType)
     {
         return NewTensor(shape, dataType, AllocScope.InternalToLayer);
@@ -60,6 +70,8 @@ public partial class CPUBackend
     /// <summary>
     /// Allocate a new `TensorFloat` of a given shape using the `AllocScope.InternalToLayer` scope.
     /// </summary>
+    /// <param name="shape">The shape of the tensor.</param>
+    /// <returns>The allocated tensor.</returns>
     public TensorFloat NewTempTensorFloat(TensorShape shape)
     {
         return NewTensor(shape, DataType.Float, AllocScope.InternalToLayer) as TensorFloat;
@@ -68,6 +80,8 @@ public partial class CPUBackend
     /// <summary>
     /// Allocate a new `TensorInt` of a given shape using the `AllocScope.InternalToLayer` scope.
     /// </summary>
+    /// <param name="shape">The shape of the tensor.</param>
+    /// <returns>The allocated tensor.</returns>
     public TensorInt NewTempTensorInt(TensorShape shape)
     {
         return NewTensor(shape, DataType.Int, AllocScope.InternalToLayer) as TensorInt;
@@ -564,6 +578,12 @@ public partial class CPUBackend
         job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
     }
 
+    /// <summary>
+    /// Calculates an output tensor by pooling the mean and variance values of the input tensor across the spatial dimensions from a given axis. The spatial dimensions of the output are size 1.
+    /// </summary>
+    /// <param name="X">The input tensor.</param>
+    /// <param name="O">The output tensor to be computed and filled.</param>
+    /// <param name="axis">The axis from which to pool.</param>
     public virtual void GlobalAverageVariancePool(TensorFloat X, TensorFloat O, int axis)
     {
         if (O.shape.HasZeroDims())
@@ -1001,7 +1021,8 @@ public partial class CPUBackend
         var job = new GatherElementsJob();
         job.endLength = O.shape.Strides(axis);
         job.endLengthX = X.shape.Strides(axis);
-        job.axisDim = X.shape[axis];
+        job.axisDim = O.shape[axis];
+        job.axisDimX = X.shape[axis];
         job.ScheduleXBO(Pin(X), Pin(indices), Pin(O, clearOnInit: false), O.shape.length, 1024);
     }
 
@@ -1246,25 +1267,6 @@ public partial class CPUBackend
     }
 
     /// <summary>
-    /// Set values of O to value
-    /// </summary>
-    protected virtual void MemSet(Tensor O, int value)
-    {
-        if (value == 0)
-        {
-            var job = new ClearJob();
-            job.length = O.shape.length;
-            job.ScheduleO(Pin(O, clearOnInit: false));
-        }
-        else
-        {
-            var job = new SetJob();
-            job.memValue = value;
-            job.ScheduleO(Pin(O, clearOnInit: false), O.shape.length, 1024);
-        }
-    }
-
-    /// <summary>
     /// Computes a single pass LSTM either forward or reverse
     /// dirIndex and layout are used to calculate where to index the various
     /// tensors in bidirectional and batch first layout passes
@@ -1276,6 +1278,23 @@ public partial class CPUBackend
     /// HtxRT and XsixWT are temp vectors of the correct dimension for the intermediate results of the matmuls
     /// activations, activationAlpha and activationBeta have full number of dimensions
     /// </summary>
+    /// <param name="X">The input tensor.</param>
+    /// <param name="W">The weights tensor.</param>
+    /// <param name="R">The recurrence weights tensor.</param>
+    /// <param name="B">The bias tensor.</param>
+    /// <param name="sequenceLens">Optional tensor specifying lengths of the sequences in a batch.</param>
+    /// <param name="P">The weight tensor for the peepholes.</param>
+    /// <param name="Y">The output tensor.</param>
+    /// <param name="Y_h">The output tensor for the last hidden.</param>
+    /// <param name="Y_c">The output tensor for the last cell.</param>
+    /// <param name="activations">The activations.</param>
+    /// <param name="activationAlpha">The activation alpha value.</param>
+    /// <param name="activationBeta">The activation beta value.</param>
+    /// <param name="inputForget">Whether to couple the input and forget gates.</param>
+    /// <param name="clip">The cell clip threshold.</param>
+    /// <param name="isReverse">Whether the direction is reverse.</param>
+    /// <param name="dirIndex">Which pass this is in a bidirectional LSTM.</param>
+    /// <param name="layout">The layout of the tensors.</param>
     protected virtual void SinglePassLSTM(TensorFloat X, TensorFloat W, TensorFloat R, TensorFloat B, TensorInt sequenceLens, TensorFloat P, TensorFloat Y, TensorFloat Y_h, TensorFloat Y_c, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, bool isReverse, int dirIndex, Layers.RnnLayout layout)
     {
         var pinY = Pin(Y, clearOnInit: false);

@@ -22,6 +22,9 @@ namespace Unity.Sentis.Layers
         Mul,
     }
 
+    /// <summary>
+    /// Represents a reduction which calculates indices.
+    /// </summary>
     [Serializable]
     public abstract class ArgReduce : Layer
     {
@@ -38,6 +41,14 @@ namespace Unity.Sentis.Layers
         /// </summary>
         public bool selectLastIndex;
 
+        /// <summary>
+        /// Initializes and returns an instance of `ArgReduce` layer.
+        /// </summary>
+        /// <param name="name">The name to use for the output tensor of the layer.</param>
+        /// <param name="input">The name to use for the input tensor of the layer.</param>
+        /// <param name="axis">The axis along which to perform the operation.</param>
+        /// <param name="keepdims">Whether to keep the axis dimension in the output tensor. The default value is `true`.</param>
+        /// <param name="selectLastIndex">Whether to perform the operation from the back of the axis. The default value is `false`.</param>
         protected ArgReduce(string name, string input, int axis, bool keepdims = true, bool selectLastIndex = false)
         {
             this.name = name;
@@ -50,10 +61,9 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            var dataType = inputTensors[0].dataType;
             var shapeX = inputTensors[0].shape;
             if (!shapeX.hasRank)
-                return new PartialTensor(dataType);
+                return new PartialTensor(DataType.Int);
 
             var reducedShape = new SymbolicTensorShape(shapeX);
 
@@ -64,7 +74,7 @@ namespace Unity.Sentis.Layers
                 reducedShape[axis] = SymbolicTensorDim.Unknown;
 
             var shapeOut = !keepdims ? reducedShape.Squeeze(axis) : reducedShape;
-            return new PartialTensor(dataType, shapeOut);
+            return new PartialTensor(DataType.Int, shapeOut);
         }
     }
 
@@ -601,6 +611,11 @@ namespace Unity.Sentis.Layers
             var O = ctx.backend.NewOutputTensor(inputTensors[0].shape, inputTensors[0].dataType);
             if (O.shape.HasZeroDims())
                 return O;
+            if (inputTensors[1].shape.HasZeroDims())
+            {
+                ctx.backend.MemCopy(inputTensors[0], O);
+                return O;
+            }
             if (inputTensors[0] is TensorInt)
                 ctx.backend.ScatterND(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt, inputTensors[2] as TensorInt, O as TensorInt, reduction);
             else

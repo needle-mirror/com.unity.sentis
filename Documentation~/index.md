@@ -13,8 +13,8 @@ To use Sentis, it helps if you have some experience in using machine learning mo
 |Section|Description|
 |-|-|
 |[Get started](get-started.md)|Install Sentis, find and use the sample projects, and get started.|
-|[Import a model](import-a-model.md)|Import an Open Neural Network Exchange (ONNX) model into Sentis and inspect it.|
-|[Run an imported model](run-an-imported-model.md)|Create input data for a model, create an engine to run the model, and get output.|
+|[Create a model](create-a-model.md)|Create a runtime model by importing an ONNX model file or using the Sentis model API.|
+|[Run a model](run-an-imported-model.md)|Create input data for a model, create an engine to run the model, and get output.|
 |[Use Tensors](use-tensors.md)|Get, set and modify input and output data.|
 |[Profile a model](profile-a-model.md)|Use Unity tools to profile the speed and performance of a model.|
 

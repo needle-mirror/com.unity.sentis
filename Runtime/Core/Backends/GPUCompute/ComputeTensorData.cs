@@ -15,6 +15,8 @@ public interface IConvertibleToComputeTensorData
     /// <summary>
     /// Implement this method to convert to `ComputeTensorData`.
     /// </summary>
+    /// <param name="shape">The shape of the tensor using the tensor data.</param>
+    /// <returns>Converted `ComputeTensorData`.</returns>
     ComputeTensorData ConvertToComputeTensorData(TensorShape shape);
 }
 
@@ -249,6 +251,7 @@ public class ComputeTensorData : ITensorData
     /// <summary>
     /// Returns a string that represents the `ComputeTensorData`.
     /// </summary>
+    /// <returns>The string summary of the `ComputeTensorData`.</returns>
     public override string ToString()
     {
         return string.Format("GPU<ComputeTensorData>:{0} buffer: {1}", m_Shape, m_Buffer);
@@ -257,6 +260,9 @@ public class ComputeTensorData : ITensorData
     /// <summary>
     /// Moves the tensor into GPU memory on the GPUCompute backend device.
     /// </summary>
+    /// <param name="X">The tensor to move to the compute backend.</param>
+    /// <param name="clearOnInit">Whether to zero the data on pinning. The default value is `true`.</param>
+    /// <returns>The pinned `ComputeTensorData`.</returns>
     public static ComputeTensorData Pin(Tensor X, bool clearOnInit = true)
     {
         var onDevice = X.tensorOnDevice;

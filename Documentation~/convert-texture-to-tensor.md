@@ -1,6 +1,6 @@
 # Convert a texture to a tensor
 
-Use [`TextureConverter.ToTensor`](xref:Unity.Sentis.TextureConverter.ToTensor(UnityEngine.Texture,Unity.Sentis.TextureTransform)) to convert a [Texture2D](https://docs.unity3d.com/ScriptReference/Texture2D.html) or a [render texture](https://docs.unity3d.com/ScriptReference/RenderTexture.html) to a tensor.
+Use [`TextureConverter.ToTensor`](xref:Unity.Sentis.TextureConverter.ToTensor(Texture,Unity.Sentis.TextureTransform)) to convert a [Texture2D](https://docs.unity3d.com/ScriptReference/Texture2D.html) or a [render texture](https://docs.unity3d.com/ScriptReference/RenderTexture.html) to a tensor.
 
 ```
 using UnityEngine;
@@ -26,7 +26,7 @@ By default, the tensor has the following properties:
 
 Make sure the format of the texture matches what your model needs. If you need to change the format of the texture, for example to change the number of channels, you can use the settings in [Texture Import Settings window](https://docs.unity3d.com/Documentation/Manual/class-TextureImporter.html).
 
-Depending on the input tensor your model needs, you might also need to scale the values in the tensor before you run the model. For example, if your model needs values from 0 to 255 instead of from 0 to 1. You can use the `WorkerFactory.CreateOps` API to scale a tensor. Refer to [Do operations on a tensor](do-complex-tensor-operations.md) for more information.
+Depending on the input tensor your model needs, you might also need to scale the values in the tensor before you run the model. For example, if your model needs values from 0 to 255 instead of from 0 to 1. You can use the `WorkerFactory.CreateOps` API to scale a tensor. Refer to [Do operations on a tensor](do-operations-on-tensors.md) for more information.
 
 Refer to the `Convert textures to tensors` example in the [sample scripts](package-samples.md) for an example.
 
@@ -74,5 +74,5 @@ Refer to [Tensor fundamentals in Sentis](tensor-fundamentals.md) for more inform
 ## Additional resources
 
 - [Tensor fundamentals in Sentis](tensor-fundamentals.md)
-- [Do operations on a tensor](do-complex-tensor-operations.md)
+- [Do operations on a tensor](do-operations-on-tensors.md)
 - [Use output data](use-model-output.md)

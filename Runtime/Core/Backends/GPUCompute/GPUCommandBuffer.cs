@@ -18,13 +18,16 @@ namespace Unity.Sentis {
 /// </summary>
 public partial class GPUCommandBufferBackend : CPUBackend
 {
+    /// <summary>
+    /// The command buffer to use for scheduling.
+    /// </summary>
     public CommandBuffer cb;
 
     /// <summary>
-    /// Create `GPUCommandBufferBackend`
+    /// Initializes and returns an instance of `GPUComputeOps`.
     /// </summary>
-    /// <param name="allocator">allocator</param>
-    /// <param name="cb">commandbuffer</param>
+    /// <param name="allocator">The allocator to use when allocating tensors.</param>
+    /// <param name="cb">The command buffer to use for scheduling.</param>
     public GPUCommandBufferBackend(CommandBuffer cb, ITensorAllocator allocator = null) : base(allocator) { this.cb = cb; }
 
     /// <summary>
@@ -2269,7 +2272,8 @@ public partial class GPUCommandBufferBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get("GatherElements");
         cb.SetInt(fn, k_ID_endLength, O.shape.Strides(axis));
         cb.SetInt(fn, k_ID_endLengthX, X.shape.Strides(axis));
-        cb.SetInt(fn, k_ID_axisDim, X.shape[axis]);
+        cb.SetInt(fn, k_ID_axisDim, O.shape[axis]);
+        cb.SetInt(fn, k_ID_axisDimX, X.shape[axis]);
         cb.ScheduleXBO(fn, Pin(X), Pin(indices), Pin(O, clearOnInit: false), O.shape.length);
     }
 

@@ -63,6 +63,14 @@ public unsafe struct TensorShape
     ///
     /// For example (2, 3, 4, 5, 6, 7, 8, 9).
     /// </summary>
+    /// <param name="d7">Length of axis 7.</param>
+    /// <param name="d6">Length of axis 6.</param>
+    /// <param name="d5">Length of axis 5.</param>
+    /// <param name="d4">Length of axis 4.</param>
+    /// <param name="d3">Length of axis 3.</param>
+    /// <param name="d2">Length of axis 2.</param>
+    /// <param name="d1">Length of axis 1.</param>
+    /// <param name="d0">Length of axis 0.</param>
     public TensorShape(int d7, int d6, int d5, int d4, int d3, int d2, int d1, int d0)
     {
         m_D7 = d7 >= 0 ? d7 : 0;
@@ -83,6 +91,13 @@ public unsafe struct TensorShape
     ///
     /// For example (3, 4, 5, 6, 7, 8, 9).
     /// </summary>
+    /// <param name="d6">Length of axis 6.</param>
+    /// <param name="d5">Length of axis 5.</param>
+    /// <param name="d4">Length of axis 4.</param>
+    /// <param name="d3">Length of axis 3.</param>
+    /// <param name="d2">Length of axis 2.</param>
+    /// <param name="d1">Length of axis 1.</param>
+    /// <param name="d0">Length of axis 0.</param>
     public TensorShape(int d6, int d5, int d4, int d3, int d2, int d1, int d0)
     {
         m_D7 = 0;
@@ -103,6 +118,12 @@ public unsafe struct TensorShape
     ///
     /// For example (4, 5, 6, 7, 8, 9).
     /// </summary>
+    /// <param name="d5">Length of axis 5.</param>
+    /// <param name="d4">Length of axis 4.</param>
+    /// <param name="d3">Length of axis 3.</param>
+    /// <param name="d2">Length of axis 2.</param>
+    /// <param name="d1">Length of axis 1.</param>
+    /// <param name="d0">Length of axis 0.</param>
     public TensorShape(int d5, int d4, int d3, int d2, int d1, int d0)
     {
         m_D7 = 0;
@@ -123,6 +144,11 @@ public unsafe struct TensorShape
     ///
     /// For example (5, 6, 7, 8, 9).
     /// </summary>
+    /// <param name="d4">Length of axis 4.</param>
+    /// <param name="d3">Length of axis 3.</param>
+    /// <param name="d2">Length of axis 2.</param>
+    /// <param name="d1">Length of axis 1.</param>
+    /// <param name="d0">Length of axis 0.</param>
     public TensorShape(int d4, int d3, int d2, int d1, int d0)
     {
         m_D7 = 0;
@@ -143,6 +169,10 @@ public unsafe struct TensorShape
     ///
     /// For example (6, 7, 8, 9).
     /// </summary>
+    /// <param name="d3">Length of axis 3.</param>
+    /// <param name="d2">Length of axis 2.</param>
+    /// <param name="d1">Length of axis 1.</param>
+    /// <param name="d0">Length of axis 0.</param>
     public TensorShape(int d3, int d2, int d1, int d0)
     {
         m_D7 = 0;
@@ -163,6 +193,9 @@ public unsafe struct TensorShape
     ///
     /// For example (7, 8, 9).
     /// </summary>
+    /// <param name="d2">Length of axis 2.</param>
+    /// <param name="d1">Length of axis 1.</param>
+    /// <param name="d0">Length of axis 0.</param>
     public TensorShape(int d2, int d1, int d0)
     {
         m_D7 = 0;
@@ -183,6 +216,8 @@ public unsafe struct TensorShape
     ///
     /// For example (8, 9).
     /// </summary>
+    /// <param name="d1">Length of axis 1.</param>
+    /// <param name="d0">Length of axis 0.</param>
     public TensorShape(int d1, int d0)
     {
         m_D7 = 0;
@@ -203,6 +238,7 @@ public unsafe struct TensorShape
     ///
     /// For example (9).
     /// </summary>
+    /// <param name="d0">Length of axis 0.</param>
     public TensorShape(int d0)
     {
         m_D7 = 0;
@@ -221,6 +257,7 @@ public unsafe struct TensorShape
     /// <summary>
     /// Initializes and returns an instance of `TensorShape` with a given shape. For example: `TensorShape(new [] {3, 4, 5, 6})` returns a tensor with a shape of (3, 4, 5, 6).
     /// </summary>
+    /// <param name="shape">The shape as a span.</param>
     public TensorShape(ReadOnlySpan<int> shape)
         : this()
     {
@@ -246,6 +283,7 @@ public unsafe struct TensorShape
     /// <summary>
     /// Returns a copy of another `TensorShape`.
     /// </summary>
+    /// <param name="shape">The shape to copy.</param>
     public TensorShape(TensorShape shape)
     {
         m_Rank = shape.rank;
@@ -301,6 +339,7 @@ public unsafe struct TensorShape
     /// <summary>
     /// Gets or sets the tensor shape at a given axis. A negative axis counts backwards from the inner dimension.
     /// </summary>
+    /// <param name="axis">The axis to get or set.</param>
     public int this[int axis]
     {
         get
@@ -327,8 +366,9 @@ public unsafe struct TensorShape
     }
 
     /// <summary>
-    /// Whether any axes are size 0. In this case the length is also 0.
+    /// Calculates whether any axes are length 0. In this case the length is also 0.
     /// </summary>
+    /// <returns>Whether the shape has any axes that are length 0.</returns>
     public bool HasZeroDims()
     {
         return length == 0 && rank > 0;
@@ -337,6 +377,7 @@ public unsafe struct TensorShape
     /// <summary>
     /// Returns a string that represents the `TensorShape`.
     /// </summary>
+    /// <returns>String representation of shape.</returns>
     public override string ToString()
     {
         var sb = new StringBuilder();
@@ -355,6 +396,8 @@ public unsafe struct TensorShape
     /// <summary>
     /// Returns the number of elements represented by the `TensorShape`, starting from a given axis. A negative axis counts backwards from the inner dimension.
     /// </summary>
+    /// <param name="start">The first axis to count length from.</param>
+    /// <returns>The number of elements in the shape.</returns>
     public int Length(int start)
     {
         if (start >= rank)
@@ -378,6 +421,9 @@ public unsafe struct TensorShape
     /// <summary>
     /// Returns the number of elements represented by the `TensorShape`, between the start and end axes. Negative axes counts backwards from the inner dimension.
     /// </summary>
+    /// <param name="start">The first axis to count length from.</param>
+    /// <param name="end">The exclusive final axis to count length to.</param>
+    /// <returns>The number of elements in the shape.</returns>
     public int Length(int start, int end)
     {
         if (start >= rank || end < -rank)
@@ -406,6 +452,8 @@ public unsafe struct TensorShape
     /// <summary>
     /// Returns the positive axis corresponding to a given axis. Negative axes counts backwards from the inner dimension.
     /// </summary>
+    /// <param name="axis">The axis to wrap.</param>
+    /// <returns>The positive axis.</returns>
     public int Axis(int axis)
     {
         Logger.AssertIsTrue(axis >= -rank && axis < rank, "IndexError: axis {0} is out of bounds shape of rank, {1}", axis, rank);
@@ -417,6 +465,8 @@ public unsafe struct TensorShape
     ///
     /// The strides of a tensor tell us how many elements we have to skip in flattened memory to move to the next position along a given index.
     /// </summary>
+    /// <param name="axis">The axis to calculate the stride length at.</param>
+    /// <returns>The stride length at the axis.</returns>
     public int Strides(int axis)
     {
         axis = Axis(axis);
@@ -436,6 +486,7 @@ public unsafe struct TensorShape
     /// <summary>
     /// Returns the `TensorShape` as an array of integers. For example if the `TensorShape` is (5, 2, 3, 4), the method returns new[] {5, 2, 3, 4}.
     /// </summary>
+    /// <returns>An integer array representation of the shape.</returns>
     public int[] ToArray()
     {
         var shape = new int[rank];
@@ -453,6 +504,7 @@ public unsafe struct TensorShape
     /// <summary>
     /// Creates a `TensorShape` by duplicating `this` and removing the dimensions of size 1. For example, if `this` is (5, 1, 3, 1), the method returns (5, 3).
     /// </summary>
+    /// <returns>The squeezed tensor shape.</returns>
     public TensorShape Squeeze()
     {
         Logger.AssertIsTrue(rank != 0, "ValueError: cannot squeeze scalar tensor {0}", this);
@@ -483,6 +535,8 @@ public unsafe struct TensorShape
     /// <summary>
     /// Creates a `TensorShape` by duplicating `this` and removing the given axis of size 1. For example, if `this` is (5, 1, 3, 1), and `axis` is 1, the method returns (5, 3, 1).
     /// </summary>
+    /// <param name="axis">The axis to squeeze.</param>
+    /// <returns>The squeezed tensor shape.</returns>
     public TensorShape Squeeze(int axis)
     {
         Logger.AssertIsTrue(rank != 0, "ValueError: cannot squeeze scalar tensor {0}", this);
@@ -522,6 +576,8 @@ public unsafe struct TensorShape
     /// <summary>
     /// Creates a `TensorShape` by duplicating `this` and removing the given axes of size 1. For example, if `this` is (5, 1, 3, 1), and `axes` is {1, -1}, the method returns (5, 3).
     /// </summary>
+    /// <param name="axes">The axes to squeeze.</param>
+    /// <returns>The squeezed tensor shape.</returns>
     public TensorShape Squeeze(ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
@@ -563,6 +619,8 @@ public unsafe struct TensorShape
     /// <summary>
     /// Creates a `TensorShape` by duplicating `this` and inserting a dimension of size one at a given axis. For example if `this` is (2), and the value of `axis` is 0, the method returns (1, 2).
     /// </summary>
+    /// <param name="axis">The axis at which to unsqueeze.</param>
+    /// <returns>The unsqueezed tensor shape.</returns>
     public TensorShape Unsqueeze(int axis)
     {
         if (rank == 0)
@@ -600,8 +658,10 @@ public unsafe struct TensorShape
     }
 
     /// <summary>
-    /// Creates a `TensorShape` by duplicating `this` and inserting dimensions of size one at the given axes. For example if `this` is (2), and `axes` is {0, 1}, the method returns (1, 1, 2).
+    /// Creates a `TensorShape` by duplicating `this` and inserting a dimension of size one at a given axis. For example if `this` is (2), and the value of `axis` is 0, the method returns (1, 2).
     /// </summary>
+    /// <param name="axes">The axes at which to unsqueeze.</param>
+    /// <returns>The unsqueezed tensor shape.</returns>
     public TensorShape Unsqueeze(ReadOnlySpan<int> axes)
     {
         Logger.AssertIsTrue(rank + axes.Length <= maxRank, "ValueError: TensorShape are capped to rank=8, cannot unsqueeze tensorshape {0} to rank greater than 8", this);
@@ -642,7 +702,9 @@ public unsafe struct TensorShape
     ///
     /// If a dimension in the shape array is -1, Sentis infers the value from the size of the `TensorShape` and the remaining dimensions. Only one dimension can be -1.
     /// </summary>
+    /// <param name="shape">The new shape as a span of integers.</param>
     /// <param name="allowZero">When the value is `true`, Sentis sets a dimension to zero if the new shape includes a zero. Otherwise Sentis retains the corresponding size at that axis from the original shape.</param>
+    /// <returns></returns>
     public TensorShape Reshape(ReadOnlySpan<int> shape, bool allowZero = false)
     {
         Logger.AssertIsTrue(shape.Length <= maxRank, "ValueError: TensorShape are capped to rank=8, cannot create tensorshape of rank {0}", shape.Length);
@@ -698,6 +760,8 @@ public unsafe struct TensorShape
     ///
     /// For example, if `this` is (2, 3, 4), and the value of `axis` is 2, the method returns (2 * 3, 4).
     /// </summary>
+    /// <param name="axis">The axis at which to flatten.</param>
+    /// <returns>The flattened tensor shape.</returns>
     public TensorShape Flatten(int axis = 1)
     {
         axis = axis >= 0 ? axis : rank + axis;
@@ -732,6 +796,8 @@ public unsafe struct TensorShape
     ///
     /// Sentis broadcasts shapes from innermost to outermost dimensions. Two dimensions are compatible when they're equal, or one of the dimensions is 1.
     /// </summary>
+    /// <param name="other">The other tensor shape which which to broadcast.</param>
+    /// <returns>The broadcast tensor shape.</returns>
     public TensorShape Broadcast(TensorShape other)
     {
         TensorShape broadcast = new TensorShape();
@@ -768,6 +834,8 @@ public unsafe struct TensorShape
     /// <summary>
     /// Creates a `TensorShape` with a given rank where all of the dimensions are 1. For example if `rank` is 3, the method returns (1, 1, 1).
     /// </summary>
+    /// <param name="rank">The rank of the tensor shape.</param>
+    /// <returns>The created tensor shape.</returns>
     public static TensorShape Ones(int rank)
     {
         Logger.AssertIsTrue(rank <= maxRank, "ValueError: TensorShape are capped to rank=8, cannot create empty shape of rank {0}", rank);
@@ -789,6 +857,8 @@ public unsafe struct TensorShape
     ///
     /// For example, if the `TensorShape` is (256, 256, 3), and the value of `rank` is 5, the method returns (1, 1, 256, 256, 3).
     /// </summary>
+    /// <param name="rank">The rank to which to broadcast to.</param>
+    /// <returns>The broadcast tensor shape.</returns>
     public TensorShape BroadcastToRank(int rank)
     {
         Logger.AssertIsTrue(rank >= this.rank, "ValueError: broadcasting to lower rank tensor {0}, {1}", this.rank, rank);
@@ -819,6 +889,8 @@ public unsafe struct TensorShape
     /// <summary>
     /// Creates a `TensorShape` by repeating this `TensorShape` a number of times along each axis.
     /// </summary>
+    /// <param name="repeats">The repeat counts along each axis as a span of integers.</param>
+    /// <returns>The tiled tensor shape.</returns>
     public TensorShape Tile(ReadOnlySpan<int> repeats)
     {
         TensorShape mul = new TensorShape();
@@ -843,6 +915,9 @@ public unsafe struct TensorShape
     ///
     /// For example if `this` is (2, 3, 4, 5), `other` is (2, 2, 4, 5), and the value of `axis` is 1, the method returns (2, 5, 4, 5).
     /// </summary>
+    /// <param name="other">The other tensor shape which which to concatenate.</param>
+    /// <param name="axis">The axis along which to concatenate.</param>
+    /// <returns>The concatenated tensor shape.</returns>
     public TensorShape Concat(TensorShape other, int axis)
     {
         TensorShape concat = new TensorShape(this);
@@ -871,7 +946,9 @@ public unsafe struct TensorShape
     /// <summary>
     /// Removes a dimension at `axis`. For example, if `this` is (2, 3, 4, 5), the value of `axis` is 1, and the value of `keepDim` is `true`, the method returns (2, 1, 4, 5).
     /// </summary>
+    /// <param name="axis">The axis along which to reduce.</param>
     /// <param name="keepDim">When the value is `true`, Sentis replaces the dimension with 1.</param>
+    /// <returns>The reduced tensor shape.</returns>
     public TensorShape Reduce(int axis, bool keepDim = true)
     {
         TensorShape reducedShape = new TensorShape(this);
@@ -900,7 +977,9 @@ public unsafe struct TensorShape
     /// <summary>
     /// Creates a `TensorShape` by removing the dimensions at `axes`. For example, if `this` is (2, 3, 4, 5), `axis` is {1, 2} and the value of `keepDim` is `true`, the method returns (2, 1, 1, 5).
     /// </summary>
+    /// <param name="axes">The axes along which to reduce.</param>
     /// <param name="keepDim">When the value is `true`, Sentis replaces the reduced axes with 1. Otherwise Sentis removes the reduced axes.</param>
+    /// <returns>The reduced tensor shape.</returns>
     public TensorShape Reduce(ReadOnlySpan<int> axes, bool keepDim = true)
     {
         if (axes == null || axes.Length == 0)
@@ -930,6 +1009,8 @@ public unsafe struct TensorShape
     /// <summary>
     /// Creates a `TensorShape` by permuting axes. For example, if `this` is (6, 7, 8, 9), and `permutations` is {3, 0, 1, 2}, the method returns (9, 6, 7, 8).
     /// </summary>
+    /// <param name="permutations">An array indexing the new tensor axis from the old ones.</param>
+    /// <returns>The transposed tensor shape.</returns>
     public TensorShape Transpose(int[] permutations)
     {
         Logger.AssertAreEqual(rank, permutations.Length, "ValueError: shape ranks and permutations length do not match {0}, {1}", this, permutations.Length);
@@ -958,6 +1039,7 @@ public unsafe struct TensorShape
     /// <summary>
     /// Creates a `TensorShape` by reversing axes. For example, if `this` is (6, 7, 8, 9), the method returns (9, 8, 7, 6).
     /// </summary>
+    /// <returns>The transposed tensor shape.</returns>
     public TensorShape Transpose()
     {
         TensorShape transposed = new TensorShape();
@@ -978,6 +1060,7 @@ public unsafe struct TensorShape
     /// Creates a `TensorShape` by padding axes. For example, if `this` is (1, 2, 3), and `pads` is {0, 0, 1, 0, 2, 2}, the method returns (1, 3, 7).
     /// </summary>
     /// <param name="pads">The lower and upper padding values for each dimension. For example [pad_left, pad_right] for 1D, or [pad_top, pad_bottom, pad_left, pad_right] for 2D.</param>
+    /// <returns>The padded tensor shape.</returns>
     public TensorShape Pad(ReadOnlySpan<int> pads)
     {
         Logger.AssertAreEqual(rank * 2, pads.Length, "ValueError: shape ranks and pad length do not match {0}, {1}", this, pads.Length);
@@ -996,6 +1079,8 @@ public unsafe struct TensorShape
     /// <summary>
     /// Creates a `TensorShape` that results from performing a matrix multiplication between `this` and `other` with numpy-style broadcasting. For example, if `this` is (5, 2, 3), and `other` is (1, 3, 4), the method returns (5, 2, 4).
     /// </summary>
+    /// <param name="other">The right hand tensor shape for the MatMul.</param>
+    /// <returns>The resultant tensor shape.</returns>
     public TensorShape MatMul(TensorShape other)
     {
         if (other.rank == 1)
@@ -1037,6 +1122,11 @@ public unsafe struct TensorShape
     /// <summary>
     /// Creates a `TensorShape` that results from slicing `this` along given axes with given starts, ends, and steps.
     /// </summary>
+    /// <param name="starts">The start indices along each of the `axes`.</param>
+    /// <param name="ends">The end indices along each of the `axes`.</param>
+    /// <param name="axes">The optional axes along which to slice. The default value is [0, 1, 2...rank-1].</param>
+    /// <param name="steps">The optional step sizes for each of the `axes`. The default value is [1, 1, 1...1]</param>
+    /// <returns>The sliced tensor shape.</returns>
     public TensorShape Slice(ReadOnlySpan<int> starts, ReadOnlySpan<int> ends, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps)
     {
         Logger.AssertAreEqual(starts.Length, ends.Length, "ValueError: starts and ends length do not match {0}, {1}", starts.Length, ends.Length);
@@ -1080,6 +1170,9 @@ public unsafe struct TensorShape
     /// <summary>
     /// Compares two `TensorShape` objects. Returns `true` if the two objects have the same rank, and all their dimensions are equal.
     /// </summary>
+    /// <param name="a">The first shape to compare.</param>
+    /// <param name="b">The second shape to compare.</param>
+    /// <returns>Whether the two shapes are equal.</returns>
     public static bool operator ==(TensorShape a, TensorShape b)
     {
         if (a.rank != b.rank)
@@ -1097,6 +1190,12 @@ public unsafe struct TensorShape
         return true;
     }
 
+    /// <summary>
+    /// Compares two `TensorShape` objects.
+    /// </summary>
+    /// <param name="a">The first shape to compare.</param>
+    /// <param name="b">The second shape to compare.</param>
+    /// <returns>Whether the two shapes are not equal.</returns>
     public static bool operator !=(TensorShape a, TensorShape b)
     {
         return !(a == b);
@@ -1105,6 +1204,8 @@ public unsafe struct TensorShape
     /// <summary>
     /// Determines whether the specified object is equal to the current `TensorShape`.
     /// </summary>
+    /// <param name="obj">The object to compare to the shape.</param>
+    /// <returns>Whether the object is equal to the shape.</returns>
     public override bool Equals(object obj)
     {
         // Check for null values and compare run-time types.
@@ -1117,6 +1218,7 @@ public unsafe struct TensorShape
     /// <summary>
     /// Serves as the default hash function.
     /// </summary>
+    /// <returns>The hash code of the tensor shape.</returns>
     public override int GetHashCode()
     {
         return m_Rank ^ m_D7 ^ m_D6 ^ m_D5 ^ m_D4 ^ m_D3 ^ m_D2 ^ m_D1 ^ m_D0;
@@ -1125,10 +1227,19 @@ public unsafe struct TensorShape
     /// <summary>
     /// Converts the indexes of the `TensorShape` into a flat index.
     ///
-    /// shape: (5,1,2,3,4,5,6,7) => 2 * (1*2*3*4*5*6*7) + 0 * (2*3*4*5*6*7) + 1 * (3*4*5*6*7) + 0 * (4*5*6*7) + 3 * (5*6*7) + 2 * (6*7) + 1 * (7) + 5 = 13326
+    /// shape: (5,1,2,3,4,5,6,7) =&gt; 2 * (1*2*3*4*5*6*7) + 0 * (2*3*4*5*6*7) + 1 * (3*4*5*6*7) + 0 * (4*5*6*7) + 3 * (5*6*7) + 2 * (6*7) + 1 * (7) + 5 = 13326
     ///
     /// index: (2,0,1,0,3,2,1,5)
     /// </summary>
+    /// <param name="d7">The index along axis 7.</param>
+    /// <param name="d6">The index along axis 6.</param>
+    /// <param name="d5">The index along axis 5.</param>
+    /// <param name="d4">The index along axis 4.</param>
+    /// <param name="d3">The index along axis 3.</param>
+    /// <param name="d2">The index along axis 2.</param>
+    /// <param name="d1">The index along axis 1.</param>
+    /// <param name="d0">The index along axis 0.</param>
+    /// <returns>The raveled index.</returns>
     public int RavelIndex(int d7, int d6, int d5, int d4, int d3, int d2, int d1, int d0)
     {
         return (((((((d7 * m_D6 + d6) * m_D5 + d5) * m_D4 + d4) * m_D3 + d3) * m_D2 + d2) * m_D1 + d1) * m_D0) + d0;
@@ -1141,6 +1252,14 @@ public unsafe struct TensorShape
     ///
     /// index: (0,1,0,3,2,1,5)
     /// </summary>
+    /// <param name="d6">The index along axis 6.</param>
+    /// <param name="d5">The index along axis 5.</param>
+    /// <param name="d4">The index along axis 4.</param>
+    /// <param name="d3">The index along axis 3.</param>
+    /// <param name="d2">The index along axis 2.</param>
+    /// <param name="d1">The index along axis 1.</param>
+    /// <param name="d0">The index along axis 0.</param>
+    /// <returns>The raveled index.</returns>
     public int RavelIndex(int d6, int d5, int d4, int d3, int d2, int d1, int d0)
     {
         return ((((((d6 * m_D5 + d5) * m_D4 + d4) * m_D3 + d3) * m_D2 + d2) * m_D1 + d1) * m_D0) + d0;
@@ -1153,6 +1272,13 @@ public unsafe struct TensorShape
     ///
     /// index: (1,0,3,2,1,5)
     /// </summary>
+    /// <param name="d5">The index along axis 5.</param>
+    /// <param name="d4">The index along axis 4.</param>
+    /// <param name="d3">The index along axis 3.</param>
+    /// <param name="d2">The index along axis 2.</param>
+    /// <param name="d1">The index along axis 1.</param>
+    /// <param name="d0">The index along axis 0.</param>
+    /// <returns>The raveled index.</returns>
     public int RavelIndex(int d5, int d4, int d3, int d2, int d1, int d0)
     {
         return ((((d5 * m_D4 + d4) * m_D3 + d3) * m_D2 + d2) * m_D1 + d1) * m_D0 + d0;
@@ -1165,6 +1291,12 @@ public unsafe struct TensorShape
     ///
     /// index: (0,3,2,1,5)
     /// </summary>
+    /// <param name="d4">The index along axis 4.</param>
+    /// <param name="d3">The index along axis 3.</param>
+    /// <param name="d2">The index along axis 2.</param>
+    /// <param name="d1">The index along axis 1.</param>
+    /// <param name="d0">The index along axis 0.</param>
+    /// <returns>The raveled index.</returns>
     public int RavelIndex(int d4, int d3, int d2, int d1, int d0)
     {
         return (((d4 * m_D3 + d3) * m_D2 + d2) * m_D1 + d1) * m_D0 + d0;
@@ -1177,6 +1309,11 @@ public unsafe struct TensorShape
     ///
     /// index: (3,2,1,5)
     /// </summary>
+    /// <param name="d3">The index along axis 3.</param>
+    /// <param name="d2">The index along axis 2.</param>
+    /// <param name="d1">The index along axis 1.</param>
+    /// <param name="d0">The index along axis 0.</param>
+    /// <returns>The raveled index.</returns>
     public int RavelIndex(int d3, int d2, int d1, int d0)
     {
         return ((d3 * m_D2 + d2) * m_D1 + d1) * m_D0 + d0;
@@ -1189,6 +1326,10 @@ public unsafe struct TensorShape
     ///
     /// index: (2,1,5)
     /// </summary>
+    /// <param name="d2">The index along axis 2.</param>
+    /// <param name="d1">The index along axis 1.</param>
+    /// <param name="d0">The index along axis 0.</param>
+    /// <returns>The raveled index.</returns>
     public int RavelIndex(int d2, int d1, int d0)
     {
         return (d2 * m_D1 + d1) * m_D0 + d0;
@@ -1201,6 +1342,9 @@ public unsafe struct TensorShape
     ///
     /// index: (1,5)
     /// </summary>
+    /// <param name="d1">The index along axis 1.</param>
+    /// <param name="d0">The index along axis 0.</param>
+    /// <returns>The raveled index.</returns>
     public int RavelIndex(int d1, int d0)
     {
         return d1 * m_D0 + d0;

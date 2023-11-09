@@ -13,7 +13,7 @@ namespace Unity.Sentis
 
 static class ModelOptimizer
 {
-    static void RunPasses(Model model, IModelPass[] passes)
+    static void RunPasses(ref Model model, IModelPass[] passes)
     {
         foreach (var pass in passes)
         {
@@ -29,7 +29,7 @@ static class ModelOptimizer
         }
     }
 
-    internal static void OptimizeModel(Model model)
+    internal static void OptimizeModel(ref Model model)
     {
         var optimizationPasses = new IModelPass[]
         {
@@ -40,11 +40,10 @@ static class ModelOptimizer
             new ConcatenateTransposesPass(),
             new ContractToSimplerLayerPass(),
             new SimplifyReshapeInputPass(),
+            new ContractSubExpressionPass(),
             new FuseDensePass(),
             new FuseLinearLayersPass(),
             new FuseActivationPass(),
-            new ContractSubExpressionPass(),
-            new FuseScalarMadPass(),
             new RemoveDuplicatesPass(),
             new RemoveNoOpsPass(),
             // // Good to do those passes at the very end
@@ -52,17 +51,17 @@ static class ModelOptimizer
             new RoundDenormalWeightsPass(),
         };
 
-        RunPasses(model, optimizationPasses);
+        RunPasses(ref model, optimizationPasses);
     }
 
-    internal static void RunCPUFallbackPass(Model model)
+    internal static void RunCPUFallbackPass(ref Model model)
     {
         var optimizationPasses = new IModelPass[]
         {
             new CPUFallbackPass(),
         };
 
-        RunPasses(model, optimizationPasses);
+        RunPasses(ref model, optimizationPasses);
     }
 }
 

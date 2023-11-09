@@ -1,6 +1,5 @@
 using Unity.Sentis;
 using UnityEngine;
-using System.Threading.Tasks;
 
 public class AsyncReadbackCompute : MonoBehaviour
 {

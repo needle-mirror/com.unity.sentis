@@ -33,6 +33,15 @@ namespace Unity.Sentis.Layers
         /// </summary>
         public AutoPad autopad;
 
+        /// <summary>
+        /// Initializes and returns an instance of `AveragePool` pooling layer.
+        /// </summary>
+        /// <param name="name">The name to use for the output tensor of the layer.</param>
+        /// <param name="input">The name to use for the input tensor of the layer.</param>
+        /// <param name="kernelShape">The size of the kernel along each spatial axis.</param>
+        /// <param name="strides">The stride along each spatial axis.</param>
+        /// <param name="pads">The lower and upper padding values for each spatial dimension, [pad_left, pad_right] for 1D, [pad_top, pad_bottom, pad_left, pad_right] for 2D, etc.</param>
+        /// <param name="autopad">The auto padding mode of the pool as an `AutoPad`. The default value is `AutoPad.NotSet`.</param>
         public LocalPool(string name, string input, int[] kernelShape, int[] strides, int[] pads, AutoPad autopad = AutoPad.NotSet)
         {
             this.name = name;
@@ -81,6 +90,9 @@ namespace Unity.Sentis.Layers
         }
     }
 
+    /// <summary>
+    /// Represents a global pooling layer.
+    /// </summary>
     [Serializable]
     public abstract class GlobalPool : Layer
     {

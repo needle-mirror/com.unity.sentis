@@ -46,9 +46,6 @@ namespace Unity.Sentis
         public static readonly int k_ID_stridesB = Shader.PropertyToID("stridesB");
         public static readonly int k_ID_shapeO = Shader.PropertyToID("shapeO");
         public static readonly int k_ID_stridesO = Shader.PropertyToID("stridesO");
-        public static readonly int k_ID_A = Shader.PropertyToID("A");
-        public static readonly int k_ID_B = Shader.PropertyToID("B");
-        public static readonly int k_ID_S = Shader.PropertyToID("S");
         public static readonly int k_ID_M = Shader.PropertyToID("M");
         public static readonly int k_ID_N = Shader.PropertyToID("N");
         public static readonly int k_ID_K = Shader.PropertyToID("K");
@@ -160,6 +157,7 @@ namespace Unity.Sentis
         public static readonly int k_ID_endLengthX = Shader.PropertyToID("endLengthX");
         public static readonly int k_ID_indicesLength = Shader.PropertyToID("indicesLength");
         public static readonly int k_ID_axisDim = Shader.PropertyToID("axisDim");
+        public static readonly int k_ID_axisDimX = Shader.PropertyToID("axisDimX");
         public static readonly int k_ID_startLength = Shader.PropertyToID("startLength");
         public static readonly int k_ID_axisDimIndices = Shader.PropertyToID("axisDimIndices");
         public static readonly int k_ID_reduction = Shader.PropertyToID("reduction");

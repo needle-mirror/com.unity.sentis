@@ -49,6 +49,8 @@ namespace Unity.Sentis
         /// <summary>
         /// Loads and compiles given pixel shaders without running them.
         /// </summary>
+        /// <param name="shaders">List of shader names to load and compile.</param>
+        /// <returns>Enumerator to iterate.</returns>
         public IEnumerator WarmupKernels(List<string> shaders)
         {
             foreach (var shader in shaders)
@@ -65,6 +67,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Returns used pixel shaders as a list.
         /// </summary>
+        /// <returns>List of used pixel shaders.</returns>
         public List<string> GetUsedShaders()
         {
             if (!EnableDebug)

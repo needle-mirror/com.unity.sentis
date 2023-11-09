@@ -18,7 +18,7 @@ namespace Unity.Sentis
     /// Represents an importer for Open Neural Network Exchange (ONNX) files.
     /// </summary>
     [ScriptedImporter(56, new[] { "onnx" })]
-    [HelpURL("https://docs.unity3d.com/Packages/com.unity.sentis@1.2/manual/index.html")]
+    [HelpURL("https://docs.unity3d.com/Packages/com.unity.sentis@latest/index.html")]
     class ONNXModelImporter : ScriptedImporter
     {
         // Configuration
@@ -33,11 +33,9 @@ namespace Unity.Sentis
         /// <param name="ctx">Asset import context</param>
         public override void OnImportAsset(AssetImportContext ctx)
         {
-            var converter = new ONNXModelConverter(optimizeModel);
+            var converter = new ONNXModelConverter(optimizeModel, ctx.assetPath);
             converter.CollectOpImporters += CollectOpImporters;
-            var modelName = ctx.assetPath;
-            var directoryName = Path.GetDirectoryName(modelName);
-            var model = converter.Convert(modelName, directoryName);
+            var model = converter.Convert();
 
             ModelAsset asset = ScriptableObject.CreateInstance<ModelAsset>();
 

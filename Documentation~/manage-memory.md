@@ -23,7 +23,7 @@ public void OnDestroy()
 
 You don't need to call `Dispose` for the following:
 
-- Tensors that you receive via the `worker.PeekOutput` call.
+- Tensors that you receive via the `worker.PeekOutput` call. Refer to [Get output from a model](get-the-output.md).
 - `CPUOps`, `GPUPixelOps`, `GPUComputeOps` and `GPUCommandBufferOps` objects you create with no allocator.
 
 ## Additional resources

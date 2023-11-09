@@ -30,6 +30,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Sets the global Sentis random state for random values without an explicit seed.
         /// </summary>
+        /// <param name="seed">The seed to set the state to</param>
         public static void SetSeed(int seed)
         {
             s_Random = new System.Random(seed);

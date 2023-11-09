@@ -14,6 +14,8 @@ public interface IConvertibleToBurstTensorData
     /// <summary>
     /// Implement this method to convert to `BurstTensorData`.
     /// </summary>
+    /// <param name="shape">The shape of the tensor using the tensor data.</param>
+    /// <returns>Converted `BurstTensorData`.</returns>
     BurstTensorData ConvertToBurstTensorData(TensorShape shape);
 }
 
@@ -166,6 +168,7 @@ public class BurstTensorData : ITensorData, IDependableMemoryResource, IConverti
     /// <summary>
     /// Reserves storage for `count` elements.
     /// </summary>
+    /// <param name="count">The number of elements to reserve.</param>
     public void Reserve(int count)
     {
         if (count > maxCapacity)
@@ -185,6 +188,10 @@ public class BurstTensorData : ITensorData, IDependableMemoryResource, IConverti
     /// <summary>
     /// Uploads data to internal storage.
     /// </summary>
+    /// <param name="data">The data to upload as a native array.</param>
+    /// <param name="srcCount">The number of elements to upload.</param>
+    /// <param name="srcOffset">The index of the first element in the native array.</param>
+    /// <typeparam name="T">The data type of the elements.</typeparam>
     public void Upload<T>(NativeArray<T> data, int srcCount, int srcOffset = 0) where T : unmanaged
     {
         CompleteAllPendingOperations();
@@ -201,6 +208,10 @@ public class BurstTensorData : ITensorData, IDependableMemoryResource, IConverti
     /// <summary>
     /// Returns data from internal storage.
     /// </summary>
+    /// <param name="dstCount">The number of elements to download.</param>
+    /// <param name="srcOffset">The index of the first element in the data.</param>
+    /// <typeparam name="T">The data type of the elements.</typeparam>
+    /// <returns>The downloaded data as a native array.</returns>
     public NativeArray<T> Download<T>(int dstCount, int srcOffset = 0) where T : unmanaged
     {
         // Download() as optimization gives direct access to the internal buffer
@@ -280,6 +291,7 @@ public class BurstTensorData : ITensorData, IDependableMemoryResource, IConverti
     /// <summary>
     /// Returns a string that represents the `BurstTensorData`.
     /// </summary>
+    /// <returns>The string summary of the `BurstTensorData`.</returns>
     public override string ToString()
     {
         return string.Format("(CPU burst: [{0}], offset: {1} uploaded: {2})", m_Array?.Length, m_Offset, m_Count);
@@ -290,6 +302,7 @@ public class BurstTensorData : ITensorData, IDependableMemoryResource, IConverti
     /// </summary>
     /// <param name="X">The `Tensor` to move to the CPU.</param>
     /// <param name="clearOnInit">Whether to initialize the backend data. The default value is `true`.</param>
+    /// <returns>The pinned `BurstTensorData`.</returns>
     public static BurstTensorData Pin(Tensor X, bool clearOnInit = true)
     {
         var onDevice = X.tensorOnDevice;

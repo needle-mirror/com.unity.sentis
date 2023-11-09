@@ -91,6 +91,7 @@ namespace Unity.Sentis
         int m_Height;
         int m_Channels;
 
+        internal bool isSetDimensions => m_IsSetDimensions;
         internal int width => m_IsSetDimensions ? m_Width : -1;
         internal int height => m_IsSetDimensions ? m_Height : -1;
         internal int channels => m_IsSetDimensions ? m_Channels : -1;
@@ -145,9 +146,9 @@ namespace Unity.Sentis
         /// When `broadcastChannels` is `true`, Sentis broadcasts the tensor values to additional channels in the render texture. For example, a tensor with a single channel R maps to (R, R, R, R) if the number of channels is 4.
         ///
         /// When `broadcastChannels` is `false`, Sentis applies a (0, 0, 0, 1) color mask to additional channels in the render texture. For example, a tensor with a single channel R becomes (R, 0, 0, 1) if the number of channels is 4.
-        ///
-        /// The method returns a `TextureTransform` that you can use to chain other methods.
         /// </summary>
+        /// <param name="broadcastChannels">Whether to broadcast the input channels across output channels.</param>
+        /// <returns>`TextureTransform` that you can use to chain other methods.</returns>
         public TextureTransform SetBroadcastChannels(bool broadcastChannels)
         {
             m_BroadcastChannels = broadcastChannels;
@@ -158,9 +159,10 @@ namespace Unity.Sentis
         /// Sets a specific texture channel, for example `Channel.R`, to a specific position in the tensor.
         ///
         /// A color mask for tensor to texture conversions might override this setting.
-        ///
-        /// The method returns a `TextureTransform` that you can use to chain other methods.
         /// </summary>
+        /// <param name="c">The color channel to set.</param>
+        /// <param name="swizzle">The index in the channel tensor axis.</param>
+        /// <returns>`TextureTransform` that you can use to chain other methods.</returns>
         public TextureTransform SetChannelSwizzle(Channel c, int swizzle)
         {
             m_ChannelSwizzle[(int)c] = swizzle;
@@ -170,10 +172,12 @@ namespace Unity.Sentis
 
         /// <summary>
         /// Sets a specific texture channel, for example `Channel.R`, to a specific `color`. The channel ignores input tensor values.
-        ///
-        /// The method returns a `TextureTransform` that you can use to chain other methods.
         /// </summary>
+        /// <returns>`TextureTransform` that you can use to chain other methods.</returns>
+        /// <param name="c">The color channel to set.</param>
         /// <param name="mask">When the value is `false`, Sentis ignores `color` and uses input tensor values.</param>
+        /// <param name="color">The color value to use.</param>
+        /// <returns>`TextureTransform` that you can use to chain other methods.</returns>
         public TextureTransform SetChannelColorMask(Channel c, bool mask, float color)
         {
             m_ChannelMask[(int)c] = mask ? 1 : 0;
@@ -186,9 +190,12 @@ namespace Unity.Sentis
         /// Sets which channels in the tensor map to which RGBA channels in the texture, using four channel position values.
         ///
         /// A color mask for tensor to texture conversions might override this setting.
-        ///
-        /// The method returns a `TextureTransform` that you can use to chain other methods.
         /// </summary>
+        /// <param name="channelSwizzleR">Index in tensor channel axis for red texture channel.</param>
+        /// <param name="channelSwizzleG">Index in tensor channel axis for green texture channel.</param>
+        /// <param name="channelSwizzleB">Index in tensor channel axis for blue texture channel.</param>
+        /// <param name="channelSwizzleA">Index in tensor channel axis for alpha texture channel.</param>
+        /// <returns>`TextureTransform` that you can use to chain other methods.</returns>
         public TextureTransform SetChannelSwizzle(int channelSwizzleR = 0, int channelSwizzleG = 1, int channelSwizzleB = 2, int channelSwizzleA = 3)
         {
             SetChannelSwizzle(Channel.R, channelSwizzleR);
@@ -202,9 +209,10 @@ namespace Unity.Sentis
         /// Sets which channels in the tensor map to which RGBA channels in the texture, using a `ChannelSwizzle` enum value.
         ///
         /// A color mask for tensor to texture conversions might override this setting.
-        ///
-        /// The method returns a `TextureTransform` that you can use to chain other methods.
         /// </summary>
+        /// <param name="channelSwizzle">The channel swizzle enum to use.</param>
+        /// <returns>`TextureTransform` that you can use to chain other methods.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if unknown `ChannelSwizzle` is used.</exception>
         public TextureTransform SetChannelSwizzle(ChannelSwizzle channelSwizzle)
         {
             return channelSwizzle switch
@@ -220,6 +228,12 @@ namespace Unity.Sentis
         ///
         /// The method returns a `TextureTransform` that you can use to chain other methods.
         /// </summary>
+        /// <param name="maskR">The mask value for the red channel.</param>
+        /// <param name="maskG">The mask value for the green channel.</param>
+        /// <param name="maskB">The mask value for the blue channel.</param>
+        /// <param name="maskA">The mask value for the alpha channel.</param>
+        /// <param name="color">The color value to use when masking.</param>
+        /// <returns>`TextureTransform` that you can use to chain other methods.</returns>
         public TextureTransform SetChannelColorMask(bool maskR, bool maskG, bool maskB, bool maskA, Color color)
         {
             SetChannelColorMask(Channel.R, maskR, color.r);
@@ -240,6 +254,10 @@ namespace Unity.Sentis
         ///
         /// The method returns a `TextureTransform` that you can use to chain other methods.
         /// </summary>
+        /// <param name="width">The width to use for the output.</param>
+        /// <param name="height">The height to use for the output.</param>
+        /// <param name="channels">The channel count to use for the output.</param>
+        /// <returns>`TextureTransform` that you can use to chain other methods.</returns>
         public TextureTransform SetDimensions(int width = -1, int height = -1, int channels = -1)
         {
             Logger.AssertIsTrue(width == -1 || 0 < width, "TextureTransform.SetDimensions:InputError width must be -1 or greater than 0");
@@ -254,9 +272,12 @@ namespace Unity.Sentis
 
         /// <summary>
         /// Sets the layout of the input tensor with four int values.
-        ///
-        /// The method returns a `TextureTransform` that you can use to chain other methods.
         /// </summary>
+        /// <param name="tensorLayoutAxisN">The axis in the tensor for the batch size of the texture.</param>
+        /// <param name="tensorLayoutAxisC">The axis in the tensor for the channel count of the texture.</param>
+        /// <param name="tensorLayoutAxisH">The axis in the tensor for the height of the texture.</param>
+        /// <param name="tensorLayoutAxisW">The axis in the tensor for the width of the texture.</param>
+        /// <returns>`TextureTransform` that you can use to chain other methods.</returns>
         public TextureTransform SetTensorLayout(int tensorLayoutAxisN, int tensorLayoutAxisC, int tensorLayoutAxisH, int tensorLayoutAxisW)
         {
             m_TensorLayoutAxisN = tensorLayoutAxisN;
@@ -269,9 +290,10 @@ namespace Unity.Sentis
 
         /// <summary>
         /// Sets the layout of the input tensor with a `TensorLayout` object, for example `TensorLayout.NHWC`. The default is `TensorLayout.NCHW`.
-        ///
-        /// The method returns a `TextureTransform` that you can use to chain other methods.
         /// </summary>
+        /// <param name="tensorLayout"></param>
+        /// <returns>`TextureTransform` that you can use to chain other methods.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if unknown `TensorLayout` is used.</exception>
         public TextureTransform SetTensorLayout(TensorLayout tensorLayout)
         {
             return tensorLayout switch
@@ -284,9 +306,9 @@ namespace Unity.Sentis
 
         /// <summary>
         /// Sets the position of the origin (0, 0) in the tensor.
-        ///
-        /// The method returns a `TextureTransform` that you can use to chain other methods.
         /// </summary>
+        /// <param name="coordOrigin">The position of the texture origin in the tensor.</param>
+        /// <returns>`TextureTransform` that you can use to chain other methods.</returns>
         public TextureTransform SetCoordOrigin(CoordOrigin coordOrigin)
         {
             this.coordOrigin = coordOrigin;

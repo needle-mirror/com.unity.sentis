@@ -2257,7 +2257,8 @@ public partial class GPUComputeBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get("GatherElements");
         fn.SetInt(k_ID_endLength, O.shape.Strides(axis));
         fn.SetInt(k_ID_endLengthX, X.shape.Strides(axis));
-        fn.SetInt(k_ID_axisDim, X.shape[axis]);
+        fn.SetInt(k_ID_axisDim, O.shape[axis]);
+        fn.SetInt(k_ID_axisDimX, X.shape[axis]);
         fn.ScheduleXBO(Pin(X), Pin(indices), Pin(O, clearOnInit: false), O.shape.length);
     }
 

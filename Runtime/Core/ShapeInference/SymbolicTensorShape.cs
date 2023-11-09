@@ -78,8 +78,9 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Checks if the `SymbolicTensorShape` is fully defined and converted to a `TensorShape`.
+        /// Checks if the `SymbolicTensorShape` is fully defined and can be converted to a `TensorShape`.
         /// </summary>
+        /// <returns>Whether the `SymbolicTensorShape` has fixed rank all fixed dimensions.</returns>
         public bool IsFullyKnown()
         {
             if (!hasRank)
@@ -113,6 +114,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Converts the `SymbolicTensorShape` to a `TensorShape`. You should call `IsFullyKnown` before you call this method.
         /// </summary>
+        /// <returns>The converted `TensorShape`.</returns>
         public TensorShape ToTensorShape()
         {
             Assert.IsTrue(hasRank, "ValueError: Cannot convert tensor of unknown rank to TensorShape");
@@ -131,6 +133,14 @@ namespace Unity.Sentis
         ///
         /// For example (2, 3, 4, 5, 6, 7, 8, 9).
         /// </summary>
+        /// <param name="d7">The `SymbolicTensorDim` of axis 7.</param>
+        /// <param name="d6">The `SymbolicTensorDim` of axis 6.</param>
+        /// <param name="d5">The `SymbolicTensorDim` of axis 5.</param>
+        /// <param name="d4">The `SymbolicTensorDim` of axis 4.</param>
+        /// <param name="d3">The `SymbolicTensorDim` of axis 3.</param>
+        /// <param name="d2">The `SymbolicTensorDim` of axis 2.</param>
+        /// <param name="d1">The `SymbolicTensorDim` of axis 1.</param>
+        /// <param name="d0">The `SymbolicTensorDim` of axis 0.</param>
         public SymbolicTensorShape(SymbolicTensorDim d7, SymbolicTensorDim d6, SymbolicTensorDim d5, SymbolicTensorDim d4, SymbolicTensorDim d3, SymbolicTensorDim d2, SymbolicTensorDim d1, SymbolicTensorDim d0)
         {
             m_D7 = d7;
@@ -151,6 +161,13 @@ namespace Unity.Sentis
         ///
         /// For example (3, 4, 5, 6, 7, 8, 9).
         /// </summary>
+        /// <param name="d6">The `SymbolicTensorDim` of axis 6.</param>
+        /// <param name="d5">The `SymbolicTensorDim` of axis 5.</param>
+        /// <param name="d4">The `SymbolicTensorDim` of axis 4.</param>
+        /// <param name="d3">The `SymbolicTensorDim` of axis 3.</param>
+        /// <param name="d2">The `SymbolicTensorDim` of axis 2.</param>
+        /// <param name="d1">The `SymbolicTensorDim` of axis 1.</param>
+        /// <param name="d0">The `SymbolicTensorDim` of axis 0.</param>
         public SymbolicTensorShape(SymbolicTensorDim d6, SymbolicTensorDim d5, SymbolicTensorDim d4, SymbolicTensorDim d3, SymbolicTensorDim d2, SymbolicTensorDim d1, SymbolicTensorDim d0)
         {
             m_D7 = SymbolicTensorDim.Unknown;
@@ -171,6 +188,12 @@ namespace Unity.Sentis
         ///
         /// For example (4, 5, 6, 7, 8, 9).
         /// </summary>
+        /// <param name="d5">The `SymbolicTensorDim` of axis 5.</param>
+        /// <param name="d4">The `SymbolicTensorDim` of axis 4.</param>
+        /// <param name="d3">The `SymbolicTensorDim` of axis 3.</param>
+        /// <param name="d2">The `SymbolicTensorDim` of axis 2.</param>
+        /// <param name="d1">The `SymbolicTensorDim` of axis 1.</param>
+        /// <param name="d0">The `SymbolicTensorDim` of axis 0.</param>
         public SymbolicTensorShape(SymbolicTensorDim d5, SymbolicTensorDim d4, SymbolicTensorDim d3, SymbolicTensorDim d2, SymbolicTensorDim d1, SymbolicTensorDim d0)
         {
             m_D7 = SymbolicTensorDim.Unknown;
@@ -191,6 +214,11 @@ namespace Unity.Sentis
         ///
         /// For example (5, 6, 7, 8, 9).
         /// </summary>
+        /// <param name="d4">The `SymbolicTensorDim` of axis 4.</param>
+        /// <param name="d3">The `SymbolicTensorDim` of axis 3.</param>
+        /// <param name="d2">The `SymbolicTensorDim` of axis 2.</param>
+        /// <param name="d1">The `SymbolicTensorDim` of axis 1.</param>
+        /// <param name="d0">The `SymbolicTensorDim` of axis 0.</param>
         public SymbolicTensorShape(SymbolicTensorDim d4, SymbolicTensorDim d3, SymbolicTensorDim d2, SymbolicTensorDim d1, SymbolicTensorDim d0)
         {
             m_D7 = SymbolicTensorDim.Unknown;
@@ -211,6 +239,10 @@ namespace Unity.Sentis
         ///
         /// For example (6, 7, 8, 9).
         /// </summary>
+        /// <param name="d3">The `SymbolicTensorDim` of axis 3.</param>
+        /// <param name="d2">The `SymbolicTensorDim` of axis 2.</param>
+        /// <param name="d1">The `SymbolicTensorDim` of axis 1.</param>
+        /// <param name="d0">The `SymbolicTensorDim` of axis 0.</param>
         public SymbolicTensorShape(SymbolicTensorDim d3, SymbolicTensorDim d2, SymbolicTensorDim d1, SymbolicTensorDim d0)
         {
             m_D7 = SymbolicTensorDim.Unknown;
@@ -231,6 +263,9 @@ namespace Unity.Sentis
         ///
         /// For example (7, 8, 9).
         /// </summary>
+        /// <param name="d2">The `SymbolicTensorDim` of axis 2.</param>
+        /// <param name="d1">The `SymbolicTensorDim` of axis 1.</param>
+        /// <param name="d0">The `SymbolicTensorDim` of axis 0.</param>
         public SymbolicTensorShape(SymbolicTensorDim d2, SymbolicTensorDim d1, SymbolicTensorDim d0)
         {
             m_D7 = SymbolicTensorDim.Unknown;
@@ -251,6 +286,8 @@ namespace Unity.Sentis
         ///
         /// For example (8, 9).
         /// </summary>
+        /// <param name="d1">The `SymbolicTensorDim` of axis 1.</param>
+        /// <param name="d0">The `SymbolicTensorDim` of axis 0.</param>
         public SymbolicTensorShape(SymbolicTensorDim d1, SymbolicTensorDim d0)
         {
             m_D7 = SymbolicTensorDim.Unknown;
@@ -271,6 +308,7 @@ namespace Unity.Sentis
         ///
         /// For example (9).
         /// </summary>
+        /// <param name="d0">The `SymbolicTensorDim` of axis 0.</param>
         public SymbolicTensorShape(SymbolicTensorDim d0)
         {
             m_D7 = SymbolicTensorDim.Unknown;
@@ -286,17 +324,47 @@ namespace Unity.Sentis
             m_Rank = 1;
         }
 
+        /// <summary>
+        /// Initializes and returns an instance of `SymbolicTensorShape` with a rank of 1: (d0).
+        ///
+        /// For example (9).
+        /// </summary>
+        /// <param name="d0">The `SymbolicTensorDim` of axis 0.</param>
         public SymbolicTensorShape(int d0)
             : this(new SymbolicTensorDim(d0)) { }
 
-        public SymbolicTensorShape(int d0, int d1)
-            : this(new SymbolicTensorDim(d0), new SymbolicTensorDim(d1)) { }
+        /// <summary>
+        /// Initializes and returns an instance of `SymbolicTensorShape` with a rank of 2: (d1, d0).
+        ///
+        /// For example (8, 9).
+        /// </summary>
+        /// <param name="d1">The `SymbolicTensorDim` of axis 1.</param>
+        /// <param name="d0">The `SymbolicTensorDim` of axis 0.</param>
+        public SymbolicTensorShape(int d1, int d0)
+            : this(new SymbolicTensorDim(d1), new SymbolicTensorDim(d0)) { }
 
-        public SymbolicTensorShape(int d0, int d1, int d2)
-            : this(new SymbolicTensorDim(d0), new SymbolicTensorDim(d1), new SymbolicTensorDim(d2)) { }
+        /// <summary>
+        /// Initializes and returns an instance of `SymbolicTensorShape` with a rank of 3: (d2, d1, d0).
+        ///
+        /// For example (7, 8, 9).
+        /// </summary>
+        /// <param name="d2">The `SymbolicTensorDim` of axis 2.</param>
+        /// <param name="d1">The `SymbolicTensorDim` of axis 1.</param>
+        /// <param name="d0">The `SymbolicTensorDim` of axis 0.</param>
+        public SymbolicTensorShape(int d2, int d1, int d0)
+            : this(new SymbolicTensorDim(d2), new SymbolicTensorDim(d1), new SymbolicTensorDim(d0)) { }
 
-        public SymbolicTensorShape(int d0, int d1, int d2, int d3)
-            : this(new SymbolicTensorDim(d0), new SymbolicTensorDim(d1), new SymbolicTensorDim(d2), new SymbolicTensorDim(d3)) { }
+        /// <summary>
+        /// Initializes and returns an instance of `SymbolicTensorShape` with a rank of 4: (d3, d2, d1, d0).
+        ///
+        /// For example (6, 7, 8, 9).
+        /// </summary>
+        /// <param name="d3">The `SymbolicTensorDim` of axis 3.</param>
+        /// <param name="d2">The `SymbolicTensorDim` of axis 2.</param>
+        /// <param name="d1">The `SymbolicTensorDim` of axis 1.</param>
+        /// <param name="d0">The `SymbolicTensorDim` of axis 0.</param>
+        public SymbolicTensorShape(int d3, int d2, int d1, int d0)
+            : this(new SymbolicTensorDim(d3), new SymbolicTensorDim(d2), new SymbolicTensorDim(d1), new SymbolicTensorDim(d0)) { }
 
         /// <summary>
         /// Initializes and returns an instance of `SymbolicTensorShape` of unknown rank.
@@ -314,6 +382,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Initializes and returns an instance of `SymbolicTensorShape` with a given `TensorShape`, and no unknown or dynamic dimensions. For example: `SymbolicTensorShape(new TensorShape(3, 4, 5, 6))` returns a symbolic tensor shape of (3, 4, 5, 6).
         /// </summary>
+        /// <param name="other">The `TensorShape` to copy.</param>
         public SymbolicTensorShape(TensorShape other)
         {
             m_Rank = other.rank;
@@ -332,6 +401,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Returns a copy of another `SymbolicTensorShape`.
         /// </summary>
+        /// <param name="other">The `SymbolicTensorShape` to copy.</param>
         public SymbolicTensorShape(SymbolicTensorShape other)
         {
             m_Rank = other.rank;
@@ -348,9 +418,11 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// SymbolicTensorShape with given rank and all dimensions unknown
+        /// Creates and returns a `SymbolicTensorShape` with given rank and all dimensions unknown.
         /// </summary>
-        internal static SymbolicTensorShape UnknownOfRank(int rank)
+        /// <param name="rank">The rank of the `SymbolicTensorShape`.</param>
+        /// <returns>The created `SymbolicTensorShape`.</returns>
+        public static SymbolicTensorShape UnknownOfRank(int rank)
         {
             Logger.AssertIsTrue(rank <= TensorShape.maxRank, "ValueError: SymbolicTensorShape are capped to rank=8, cannot create empty shape of rank {0}", rank);
             var outShape = new SymbolicTensorShape();
@@ -419,6 +491,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Returns a string that represents the `SymbolicTensorShape`.
         /// </summary>
+        /// <returns>The string representation of the `SymbolicTensorShape`.</returns>
         public override string ToString()
         {
             if (!hasRank)
@@ -697,6 +770,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Compares two `SymbolicTensorShape` objects. Returns `true` if the two objects have the same rank, and all their dimensions are equal.
         /// </summary>
+        /// <param name="a">The first `SymbolicTensorShape` to compare.</param>
+        /// <param name="b">The second `SymbolicTensorShape` to compare.</param>
+        /// <returns>Whether the two `SymbolicTensorShape` objects are equal.</returns>
         public static bool operator ==(SymbolicTensorShape a, SymbolicTensorShape b)
         {
             if (!a.hasRank || !b.hasRank)
@@ -725,6 +801,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Compares two `SymbolicTensorShape` objects. Returns `true` if the two shapes have a different or unknown rank, or at least one of their dimensions are not equal.
         /// </summary>
+        /// <param name="a">The first `SymbolicTensorShape` to compare.</param>
+        /// <param name="b">The second `SymbolicTensorShape` to compare.</param>
+        /// <returns>Whether the two `SymbolicTensorShape` objects are not equal.</returns>
         public static bool operator !=(SymbolicTensorShape a, SymbolicTensorShape b)
         {
             return !(a == b);
@@ -733,6 +812,8 @@ namespace Unity.Sentis
         /// <summary>
         /// Determines whether the specified object is equal to the current `SymbolicTensorShape`.
         /// </summary>
+        /// <param name="obj">The object to compare.</param>
+        /// <returns>Whether the object is equal to the current `SymbolicTensorShape`.</returns>
         public override bool Equals(object obj)
         {
             // Check for null values and compare run-time types.
@@ -783,6 +864,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Serves as the default hash function.
         /// </summary>
+        /// <returns>The calculated hash code.</returns>
         public override int GetHashCode()
         {
             return m_IsRankUnknown.GetHashCode() ^ m_Rank.GetHashCode() ^ m_D7.GetHashCode() ^ m_D6.GetHashCode() ^ m_D5.GetHashCode()

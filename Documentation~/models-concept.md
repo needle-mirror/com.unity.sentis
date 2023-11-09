@@ -24,17 +24,6 @@ The optimization doesn't affect what the model inputs or outputs.
 
 To deactivate optimization, select your [imported model asset](import-a-model-file.md) then deactivate **Optimize Model** in the [Model Asset Import Settings](onnx-model-importer-properties.md) window.
 
-## Model performance
-
-The performance of a model depends on the following:
-
-- The complexity of the model.
-- Whether the model uses performance-heavy operators such as Conv or MatMul.
-- The features of the platform you run the model on, for example CPU memory, GPU memory, and number of cores.
-- Whether Sentis downloads data to CPU memory when you access a tensor. Refer to [Get output from a model](get-the-output.md) for more information.
-
-[Profile a model](profile-a-model.md) to understand the performance on a particular platform, and check whether your application is CPU or GPU bound. If your application is GPU bound, you can run a model on the CPU to offload work from the GPU.
-
 ## Model inputs
 
 The input dimensions for a model are either fixed or dynamic.
@@ -48,6 +37,6 @@ If a model uses inputs with dynamic shapes, Sentis might not be able to optimize
 
 ## Additional resources
 
-- [Import a model](import-a-model.md)
+- [Import a model](import-a-model-file.md)
 - [Export an ONNX file from a machine learning framework](export-an-onnx-file.md)
 - [Supported ONNX operators](supported-operators.md)

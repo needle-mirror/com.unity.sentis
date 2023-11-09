@@ -11,6 +11,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Allocate a new `TensorFloat` of a given shape.
         /// </summary>
+        /// <param name="shape">The shape of the tensor.</param>
+        /// <param name="scope">Whether the allocated tensor is internal to the layer or used as an output.</param>
+        /// <returns>The allocated tensor.</returns>
         public TensorFloat NewTensorFloat(TensorShape shape, AllocScope scope)
         {
             return NewTensor(shape, DataType.Float, scope) as TensorFloat;
@@ -19,6 +22,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Allocate a new `TensorInt` of a given shape.
         /// </summary>
+        /// <param name="shape">The shape of the tensor.</param>
+        /// <param name="scope">Whether the allocated tensor is internal to the layer or used as an output.</param>
+        /// <returns>The allocated tensor.</returns>
         public TensorInt NewTensorInt(TensorShape shape, AllocScope scope)
         {
             return NewTensor(shape, DataType.Int, scope) as TensorInt;
@@ -27,6 +33,8 @@ namespace Unity.Sentis
         /// <summary>
         /// Allocate a new `TensorFloat` of a given shape using the `AllocScope.LayerOutput` scope.
         /// </summary>
+        /// <param name="shape">The shape of the tensor.</param>
+        /// <returns>The allocated tensor.</returns>
         public TensorFloat NewOutputTensorFloat(TensorShape shape)
         {
             return NewTensorFloat(shape, AllocScope.LayerOutput);
@@ -35,6 +43,8 @@ namespace Unity.Sentis
         /// <summary>
         /// Allocate a new `TensorInt` of a given shape using the `AllocScope.LayerOutput` scope.
         /// </summary>
+        /// <param name="shape">The shape of the tensor.</param>
+        /// <returns>The allocated tensor.</returns>
         public TensorInt NewOutputTensorInt(TensorShape shape)
         {
             return NewTensorInt(shape, AllocScope.LayerOutput);
@@ -43,6 +53,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Allocate a new `Tensor` of a given shape and data type using the `AllocScope.LayerOutput` scope.
         /// </summary>
+        /// <param name="shape">The shape of the tensor.</param>
+        /// <param name="dataType">The data type of the tensor.</param>
+        /// <returns>The allocated tensor.</returns>
         public Tensor NewOutputTensor(TensorShape shape, DataType dataType)
         {
             return NewTensor(shape, dataType, AllocScope.LayerOutput);
@@ -51,6 +64,8 @@ namespace Unity.Sentis
         /// <summary>
         /// Allocate a new `TensorFloat` of a given shape using the `AllocScope.InternalToLayer` scope.
         /// </summary>
+        /// <param name="shape">The shape of the tensor.</param>
+        /// <returns>The allocated tensor.</returns>
         public TensorFloat NewTempTensorFloat(TensorShape shape)
         {
             return NewTensorFloat(shape, AllocScope.InternalToLayer);
@@ -59,12 +74,37 @@ namespace Unity.Sentis
         /// <summary>
         /// Allocate a new `TensorInt` of a given shape using the `AllocScope.InternalToLayer` scope.
         /// </summary>
+        /// <param name="shape">The shape of the tensor.</param>
+        /// <returns>The allocated tensor.</returns>
         public TensorInt NewTempTensorInt(TensorShape shape)
         {
             return NewTensorInt(shape, AllocScope.InternalToLayer);
         }
 
+        /// <summary>
+        /// Allocates a new tensor with the internal allocator.
+        /// </summary>
+        /// <param name="shape">The shape of the tensor.</param>
+        /// <param name="dataType">The data type of the tensor.</param>
+        /// <param name="scope">Whether the allocated tensor is internal to the layer or used as an output.</param>
+        /// <returns>The allocated tensor.</returns>
+        Tensor NewTensor(TensorShape shape, DataType dataType, AllocScope scope);
+
+        /// <summary>
+        /// Create a shallow copy of a tensor with the same tensor data.
+        /// </summary>
+        /// <param name="X">The tensor to copy.</param>
+        /// <param name="allocScope">Whether the allocated tensor is internal to the layer or used as an output.</param>
+        /// <returns>The allocated tensor.</returns>
         public Tensor ShallowCopy(Tensor X, AllocScope allocScope);
+
+        /// <summary>
+        /// Create a shallow reshape of a tensor with the same tensor data.
+        /// </summary>
+        /// <param name="X">The tensor to copy.</param>
+        /// <param name="shape">The shape of the allocated tensor.</param>
+        /// <param name="allocScope">Whether the allocated tensor is internal to the layer or used as an output.</param>
+        /// <returns>The allocated tensor.</returns>
         public Tensor ShallowReshape(Tensor X, TensorShape shape, AllocScope allocScope);
 
         /// <summary>
@@ -1189,7 +1229,7 @@ namespace Unity.Sentis
         void Or(TensorInt A, TensorInt B, TensorInt O);
 
         /// <summary>
-        /// Performs an element-wise `And` logical operation: f(a, b) = a & b.
+        /// Performs an element-wise `And` logical operation: f(a, b) = a &amp; b.
         ///
         /// This supports numpy-style broadcasting of input tensors.
         /// </summary>
@@ -1423,6 +1463,12 @@ namespace Unity.Sentis
         /// When a dimension character is repeated in the left-hand side, it represents summation along the dimension.
         /// The equation may contain ellipsis ("...") to enable broadcasting. Ellipsis must indicate a fixed number of dimensions. Specifically, every occurrence of ellipsis in the equation must represent the same number of dimensions. The right-hand side may contain exactly one ellipsis. In implicit mode, the ellipsis dimensions are set to the beginning of the output. The equation string may contain space (U+0020) character.
         /// </description>
+        /// <param name="inputTensors">The input tensors.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="operandIndices">The operand indices for each input tensor.</param>
+        /// <param name="outputIndices">The output indices for each input tensor.</param>
+        /// <param name="sumIndices">The indices along which to sum.</param>
+        /// <param name="sumShape">The shape along which to sum.</param>
         void Einsum(TensorFloat[] inputTensors, TensorFloat O, TensorIndex[] operandIndices, TensorIndex outputIndices, TensorIndex sumIndices, TensorShape sumShape);
 
         /// <summary>
@@ -1456,6 +1502,14 @@ namespace Unity.Sentis
         /// Copy blocks of values from X to O, we copy 'count' blocks each of length 'length' values with initial offsets
         /// given by 'offsetX', 'offsetO' and with strides given by 'strideX', 'strideO'
         /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="strideX">The stride of the blocks in the input tensor.</param>
+        /// <param name="strideO">The stride of the blocks in the output tensor.</param>
+        /// <param name="length">The number of elements in each block.</param>
+        /// <param name="count">The number of blocks to copy.</param>
+        /// <param name="offsetX">The first index to copy from in the input tensor.</param>
+        /// <param name="offsetO">The first index to copy to in the output tensor.</param>
         void MemCopyStride(Tensor X, Tensor O, int strideX, int strideO, int length, int count, int offsetX, int offsetO);
 
         /// <summary>
@@ -1484,13 +1538,9 @@ namespace Unity.Sentis
         Tensor PinToDevice(Tensor X, bool clearOnInit = true);
 
         /// <summary>
-        /// Allocates a new tensor with the internal allocator.
-        /// </summary>
-        Tensor NewTensor(TensorShape shape, DataType dataType, AllocScope scope);
-
-        /// <summary>
         /// Resets the internal allocator.
         /// </summary>
+        /// <param name="keepCachedMemory">Whether to keep the cached memory on the allocator. If `false` all allocated memory is freed.</param>
         void ResetAllocator(bool keepCachedMemory = true);
 
         /// <summary>
@@ -1523,46 +1573,63 @@ namespace Unity.Sentis
         /// <summary>
         /// Sets a given input with a tensor.
         /// </summary>
+        /// <param name="name">The name of the input.</param>
+        /// <param name="X">The tensor for the input.</param>
         void SetInput(string name, Tensor X);
 
         /// <summary>
         /// Prepares storage for a given model.
         /// </summary>
+        /// <param name="model">The model to prepare storage of.</param>
+        /// <param name="optionalBackendToPrepareTensors">The optional backend to use.</param>
+        /// <param name="optionalInputShapes">The optional given input shapes for execution.</param>
+        /// <param name="takeoverWeights">Whether the execution can take ownership of the weights of the model.</param>
         void PrepareStorage(Model model, IBackend optionalBackendToPrepareTensors = null, IDictionary<string, TensorShape> optionalInputShapes = null, bool takeoverWeights = false);
 
         /// <summary>
         /// Gathers the input tensors for a given layer.
         /// </summary>
+        /// <param name="forLayer">The layer to gather inputs for.</param>
+        /// <returns>The tensor inputs for the layer as an array.</returns>
         Tensor[] GatherInputs(Layers.Layer forLayer);
 
         /// <summary>
         /// Prepares storage for a given layer.
         /// </summary>
+        /// <param name="forLayer">The layer to prepare storage of.</param>
         void PrepareStorage(Layers.Layer forLayer);
 
         /// <summary>
         /// Disposes storage that can be deleted after executing a given layer.
         /// </summary>
+        /// <param name="forLayer">The layer to dispose temporary storage of.</param>
         void DisposeAfterLayer(Layers.Layer forLayer);
 
         /// <summary>
         /// Stores the result of execution for a given layer.
         /// </summary>
+        /// <param name="fromLayer">The executed layer.</param>
+        /// <param name="result">The tensor result of execution.</param>
         void Store(Layers.Layer fromLayer, Tensor result);
 
         /// <summary>
         /// Stores the result of execution for a given tensor name.
         /// </summary>
+        /// <param name="fromLayer">The name of the output from the layer.</param>
+        /// <param name="result">The tensor result of execution.</param>
         void Store(string fromLayer, Tensor result);
 
         /// <summary>
         /// Peeks the output tensor of a given name.
         /// </summary>
+        /// <param name="name">The name of the tensor to peek.</param>
+        /// <returns>The peeked tensor.</returns>
         Tensor PeekOutput(string name);
 
         /// <summary>
         /// Returns the current allocator.
         /// </summary>
+        /// <returns>The allocator.</returns>
         ITensorAllocator GetAllocator();
     }
 
@@ -1590,11 +1657,21 @@ namespace Unity.Sentis
         /// <summary>
         /// Allocates a tensor of a given shape, data type on a given device type, and given scope.
         /// </summary>
+        /// <param name="shape">The shape of the tensor.</param>
+        /// <param name="dataType">The data type of the tensor.</param>
+        /// <param name="deviceType">The device type to allocate the tensor on.</param>
+        /// <param name="scope">Whether the tensor is an output from a layer or internal to the layer.</param>
+        /// <returns>The allocated tensor.</returns>
         Tensor Alloc(TensorShape shape, DataType dataType, DeviceType deviceType, AllocScope scope = AllocScope.LayerOutput);
 
         /// <summary>
         /// Allocates a tensor of a given shape, data type, and a given scope from an existing `ITensorData` buffer.
         /// </summary>
+        /// <param name="shape">The shape of the tensor.</param>
+        /// <param name="dataType">The data type of the tensor.</param>
+        /// <param name="buffer">The buffer to use for the tensor.</param>
+        /// <param name="scope">Whether the tensor is an output from a layer or internal to the layer.</param>
+        /// <returns>The allocated tensor.</returns>
         Tensor Alloc(TensorShape shape, DataType dataType, ITensorData buffer, AllocScope scope = AllocScope.LayerOutput);
 
         /// <summary>
@@ -1608,6 +1685,10 @@ namespace Unity.Sentis
         /// <summary>
         /// Moves a tensor to a device.
         /// </summary>
+        /// <param name="X">The tensor to move.</param>
+        /// <param name="newBuffer">The new buffer for the tensor data.</param>
+        /// <param name="oldBuffer">The previous buffer for the tensor data.</param>
+        /// <param name="disposeDetachedBufferHint">Whether the old buffer can be freed up for disposal.</param>
         void MoveToDevice(Tensor X, ITensorData newBuffer, ITensorData oldBuffer, bool disposeDetachedBufferHint);
 
         // NOTE: Release() should be ready to handle edge-case situation when
@@ -1616,16 +1697,20 @@ namespace Unity.Sentis
         /// <summary>
         /// Releases a tensor.
         /// </summary>
+        /// <param name="tensor">The tensor to release.</param>
+        /// <param name="calledFromTensorDispose">Whether this method was called from inside a tensor disposal.</param>
         void Release(Tensor tensor, bool calledFromTensorDispose);
 
         /// <summary>
         /// Waives ownership of a tensor.
         /// </summary>
+        /// <param name="X">The tensor to waive ownership of.</param>
         void WaiveOwnership(Tensor X);
 
         /// <summary>
         /// Resets the allocator.
         /// </summary>
+        /// <param name="keepCachedMemory">Whether to keep ownership of the already allocated memory.</param>
         void Reset(bool keepCachedMemory); // end-of-frame
     }
 

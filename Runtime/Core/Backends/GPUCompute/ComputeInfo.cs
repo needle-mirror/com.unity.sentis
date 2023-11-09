@@ -39,38 +39,43 @@ namespace Unity.Sentis
         public static string graphicsDeviceVendor = "";
 
         /// <summary>
-        /// Whether the GPU is a mobile GPU, for example Android, iPhone or Intel.
+        /// Determines whether the GPU is a mobile GPU, for example Android, iPhone or Intel.
         /// </summary>
+        /// <returns>Whether the GPU is a mobile GPU.</returns>
         public static bool IsMobileGPU() { return
             (Application.platform == RuntimePlatform.Android) ||
             (Application.platform == RuntimePlatform.IPhonePlayer);
         }
 
         /// <summary>
-        /// Whether the GPU is an Mac GPU.
+        /// Determines whether the GPU is a Mac GPU.
         /// </summary>
+        /// <returns>Whether the GPU is a Mac GPU.</returns>
         public static bool IsMacGPU() { return
             (Application.platform == RuntimePlatform.OSXEditor) ||
             (Application.platform == RuntimePlatform.OSXPlayer);
         }
 
         /// <summary>
-        /// Whether the GPU is an iPhone GPU.
+        /// Determines whether the GPU is an iPhone GPU.
         /// </summary>
+        /// <returns>Whether the GPU is an iPhone GPU.</returns>
         public static bool IsiPhoneGPU() { return
             (Application.platform == RuntimePlatform.IPhonePlayer);
         }
 
         /// <summary>
-        /// Whether the GPU is an Android Qualcomm GPU.
+        /// Determines whether the GPU is an Android Qualcomm GPU.
         /// </summary>
+        /// <returns>Whether the GPU is an Android Qualcomm GPU.</returns>
         public static bool IsQualcommGPU() { return
             (Application.platform == RuntimePlatform.Android) && graphicsDeviceVendor.Contains("Qualcomm");
         }
 
         /// <summary>
-        /// Whether the GPU is an Android ARM GPU.
+        /// Determines whether the GPU is an Android ARM GPU.
         /// </summary>
+        /// <returns>Whether the GPU is an Android ARM GPU.</returns>
         public static bool IsARMGPU() { return
             (Application.platform == RuntimePlatform.Android) && graphicsDeviceVendor.Contains("ARM");
         }

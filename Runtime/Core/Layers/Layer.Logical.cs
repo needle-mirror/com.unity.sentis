@@ -8,6 +8,12 @@ namespace Unity.Sentis.Layers
     [Serializable]
     public abstract class Comparison : Broadcast
     {
+        /// <summary>
+        /// Initializes and returns an instance of `Comparison` logical operation layer.
+        /// </summary>
+        /// <param name="name">The name to use for the output tensor of the layer.</param>
+        /// <param name="a">The name to use for the first input tensor of the layer.</param>
+        /// <param name="b">The name to use for the second input tensor of the layer.</param>
         protected Comparison(string name, string a, string b)
             : base(name, a, b) { }
 
@@ -19,7 +25,7 @@ namespace Unity.Sentis.Layers
     }
 
     /// <summary>
-    /// Represents an element-wise `And` logical operation layer: f(a, b) = a & b.
+    /// Represents an element-wise `And` logical operation layer: f(a, b) = a &amp; b.
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>

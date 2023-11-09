@@ -37,7 +37,12 @@ Shader "Hidden/Sentis/Softmax"
                 #ifdef LOGSOFTMAXEND
                 float4 v = (x - b) - log(s);
                 #else // SOFTMAXEND
-                float4 v = exp(x - b) / s;
+                float4 u = exp(x - b) / s;
+                float4 v;
+                v.x = s.x == 0 ? 0.0f : u.x;
+                v.y = s.y == 0 ? 0.0f : u.y;
+                v.z = s.z == 0 ? 0.0f : u.z;
+                v.w = s.w == 0 ? 0.0f : u.w;
                 #endif
                 return v;
             }

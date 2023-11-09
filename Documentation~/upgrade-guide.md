@@ -1,6 +1,6 @@
-# Upgrade from Sentis 1.1 to Sentis 1.2
+# Upgrade from Sentis 1.1 or 1.2 to Sentis 1.3
 
-To upgrade from Sentis 1.1 to Sentis 1.2, do the following:
+To upgrade from Sentis 1.1 or 1.2 to Sentis 1.3, do the following:
 
 - Reimport models that were previously imported in an earlier version of Sentis.
 
@@ -87,7 +87,7 @@ public class CreateRuntimeModel : MonoBehaviour
 }
 ```
 
-Refer to [Import a model](import-a-model.md) for more information.
+Refer to [Import a model](import-a-model-file.md) for more information.
 
 ## Convert back end types
 

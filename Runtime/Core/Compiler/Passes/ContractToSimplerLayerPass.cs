@@ -145,14 +145,15 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 {
                     // replace Reduce layer which does not perform any reduction with Identity
                     var axes = reduceLayer.inputs.Length > 1 ? ctx.GetPartialTensor(reduceLayer.inputs[1]) : null;
-                    if (reduceLayer.noopWithEmptyAxes && (axes == null || axes.shape.Length() == 0))
+                    var isEmptyAxes = (axes == null || axes.shape.Length() == 0);
+                    if (reduceLayer.noopWithEmptyAxes && isEmptyAxes)
                     {
                         model.layers[l] = new Layers.Identity(reduceLayer.name, reduceLayer.inputs[0]);
                         continue;
                     }
 
                     // these reductions don't change the values if we reduce along a 0 or 1 length axis
-                    if (axes == null || !axes.IsFullyKnown() || !(reduceLayer is Layers.ReduceMin or Layers.ReduceMax || reduceLayer is Layers.ReduceSum || reduceLayer is Layers.ReduceLogSumExp || reduceLayer is Layers.ReduceProd))
+                    if (isEmptyAxes || !axes.IsFullyKnown() || !(reduceLayer is Layers.ReduceMin or Layers.ReduceMax || reduceLayer is Layers.ReduceSum || reduceLayer is Layers.ReduceLogSumExp || reduceLayer is Layers.ReduceProd))
                         continue;
 
                     var input = ctx.GetPartialTensor(reduceLayer.inputs[0]);

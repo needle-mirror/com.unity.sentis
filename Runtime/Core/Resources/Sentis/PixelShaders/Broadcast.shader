@@ -56,8 +56,8 @@ Shader "Hidden/Sentis/Broadcast"
             float alpha, beta;
             #endif
 
-            bool IsNaN(float x) {
-                return !(x < 0. || x > 0. || x == 0.);
+            bool IsInfOrNaN(float x) {
+                return !(x < 0. || x > 0. || x == 0.) || (x != 0. && x * 2. == x);
             }
 
             O_DTYPE4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
@@ -94,20 +94,20 @@ Shader "Hidden/Sentis/Broadcast"
                 #endif
                 #ifdef Div
                     float4 u = va / vb;
-                    v.x = IsNaN(u.x) ? 0.0f : u.x;
-                    v.y = IsNaN(u.y) ? 0.0f : u.y;
-                    v.z = IsNaN(u.z) ? 0.0f : u.z;
-                    v.w = IsNaN(u.w) ? 0.0f : u.w;
+                    v.x = IsInfOrNaN(u.x) ? 0.0f : u.x;
+                    v.y = IsInfOrNaN(u.y) ? 0.0f : u.y;
+                    v.z = IsInfOrNaN(u.z) ? 0.0f : u.z;
+                    v.w = IsInfOrNaN(u.w) ? 0.0f : u.w;
                 #endif
                 #ifdef DivInt
                     v = va / vb;
                 #endif
                 #if defined(Pow) | defined(PowInt)
                     O_DTYPE4 u = SignedPow(va, vb);
-                    v.x = IsNaN(u.x) ? 0.0f : u.x;
-                    v.y = IsNaN(u.y) ? 0.0f : u.y;
-                    v.z = IsNaN(u.z) ? 0.0f : u.z;
-                    v.w = IsNaN(u.w) ? 0.0f : u.w;
+                    v.x = IsInfOrNaN(u.x) ? 0.0f : u.x;
+                    v.y = IsInfOrNaN(u.y) ? 0.0f : u.y;
+                    v.z = IsInfOrNaN(u.z) ? 0.0f : u.z;
+                    v.w = IsInfOrNaN(u.w) ? 0.0f : u.w;
                 #endif
                 #if defined(Min) | defined(MinInt)
                     v = min(va, vb);
@@ -120,10 +120,10 @@ Shader "Hidden/Sentis/Broadcast"
                 #endif
                 #ifdef FMod
                     float4 u = fmod(va, vb);
-                    v.x = IsNaN(u.x) ? 0.0f : u.x;
-                    v.y = IsNaN(u.y) ? 0.0f : u.y;
-                    v.z = IsNaN(u.z) ? 0.0f : u.z;
-                    v.w = IsNaN(u.w) ? 0.0f : u.w;
+                    v.x = IsInfOrNaN(u.x) ? 0.0f : u.x;
+                    v.y = IsInfOrNaN(u.y) ? 0.0f : u.y;
+                    v.z = IsInfOrNaN(u.z) ? 0.0f : u.z;
+                    v.w = IsInfOrNaN(u.w) ? 0.0f : u.w;
                 #endif
                 #ifdef FModInt
                     v = va % vb;

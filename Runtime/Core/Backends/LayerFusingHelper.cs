@@ -15,6 +15,7 @@ namespace Unity.Sentis
             return layer is Layers.Dense ||
                    layer is Layers.Conv ||
                    layer is Layers.ScaleBias ||
+                   layer is Layers.ScalarMad ||
                    IsLayerLinearMathOp(layer) && allConstInputsButOne;
         }
 
@@ -65,6 +66,42 @@ namespace Unity.Sentis
                     var constTensor = constTensors[l1.inputs[1]];
                     conditions = conditions && (constTensor.shape.rank == 1 && constTensor.shape[0] == constTensors[l0.inputs[2]].shape[0]);
                 }
+            }
+            else if (l0 is Layers.ScalarMad && l1 is Layers.Mul)
+            {
+                var lmad = l0 as Layers.ScalarMad;
+                if (lmad.b != 0)
+                    return false;
+            }
+            else if (l0 is Layers.Mul && l1 is Layers.ScalarMad)
+            {
+                var lmad = l1 as Layers.ScalarMad;
+                if (lmad.b != 0)
+                    return false;
+            }
+            else if (l0 is Layers.ScalarMad && l1 is Layers.Add)
+            {
+                var lmad = l0 as Layers.ScalarMad;
+                if (lmad.s != 1)
+                    return false;
+            }
+            else if (l0 is Layers.Add && l1 is Layers.ScalarMad)
+            {
+                var lmad = l1 as Layers.ScalarMad;
+                if (lmad.s != 1)
+                    return false;
+            }
+            else if (l0 is Layers.ScalarMad && l1 is Layers.Sub)
+            {
+                var lmad = l0 as Layers.ScalarMad;
+                if (lmad.s != 1)
+                    return false;
+            }
+            else if (l0 is Layers.Sub && l1 is Layers.ScalarMad)
+            {
+                var lmad = l1 as Layers.ScalarMad;
+                if (lmad.s != 1)
+                    return false;
             }
 
             return m_LayerFusers.ContainsKey((l0.GetType(), l1.GetType())) && conditions;
@@ -225,7 +262,7 @@ namespace Unity.Sentis
 
                 // b = W1 x b0 + b1``
                 using TensorFloat reshape = bias0.ShallowReshape(new TensorShape(1, bias0.shape[0])) as TensorFloat;
-                using TensorFloat bias = m_Ops.Dense(reshape, weights1, bias1, Layers.FusableActivation.None);
+                using TensorFloat bias = m_Ops.Dense(reshape, weights1, bias1);
                 using TensorFloat biasReshaped = bias.ShallowReshape(new TensorShape(bias.shape[1])) as TensorFloat;
 
                 // W = W1 x s
@@ -433,13 +470,139 @@ namespace Unity.Sentis
                 using TensorFloat weights = m_Ops.MatMul2D(weights0, weights1, false, false);
                 // b = W1 x b0 + b1
                 using TensorFloat reshape = bias0.ShallowReshape(new TensorShape(1, bias0.shape[0])) as TensorFloat;
-                using TensorFloat bias = m_Ops.Dense(reshape, weights1, bias1, Layers.FusableActivation.None);
+                using TensorFloat bias = m_Ops.Dense(reshape, weights1, bias1);
                 using TensorFloat biasReshaped = bias.ShallowReshape(new TensorShape(bias.shape[1])) as TensorFloat;
 
                 Layers.Layer lmerged = new Layers.Dense(l0.name, l0.inputs[0], l0.inputs[1], l0.inputs[2]);
 
                 constTensors[lmerged.inputs[1]].TensorToDataSet(weights);
                 constTensors[lmerged.inputs[2]].TensorToDataSet(biasReshaped);
+
+                return lmerged;
+            });
+            Add((typeof(Layers.ScalarMad), typeof(Layers.ScalarMad)), (l0, l1, constTensors) =>
+            {
+                var madLayer0 = l0 as Layers.ScalarMad;
+                var madLayer1 = l1 as Layers.ScalarMad;
+
+                Layers.Layer lmerged = new Layers.ScalarMad(l0.name, l0.inputs[0], madLayer1.s * madLayer0.s, madLayer1.s * madLayer0.b + madLayer1.b);
+
+                return lmerged;
+            });
+            Add((typeof(Layers.ScalarMad), typeof(Layers.Mul)), (l0, l1, constTensors) =>
+            {
+                var madLayer0 = l0 as Layers.ScalarMad;
+                var scale0 = madLayer0.s;
+                using Tensor scale1 = constTensors.ContainsKey(l1.inputs[0]) ? constTensors[l1.inputs[0]].DataSetToTensor() : constTensors[l1.inputs[1]].DataSetToTensor();
+
+                Tensor scale;
+                scale = m_Ops.Mul(scale0, scale1 as TensorFloat);
+
+                Layers.Layer lmerged = new Layers.Mul(l0.name, l0.inputs[0], constTensors.ContainsKey(l1.inputs[0]) ? l1.inputs[0] : l1.inputs[1]);
+
+                constTensors[lmerged.inputs[1]].TensorToDataSet(scale);
+
+                scale.Dispose();
+
+                return lmerged;
+            });
+            Add((typeof(Layers.Mul), typeof(Layers.ScalarMad)), (l0, l1, constTensors) =>
+            {
+                using Tensor scale0 = constTensors.ContainsKey(l0.inputs[0]) ? constTensors[l0.inputs[0]].DataSetToTensor() : constTensors[l0.inputs[1]].DataSetToTensor();
+                var madLayer1 = l1 as Layers.ScalarMad;
+                var scale1 = madLayer1.s;
+
+                Tensor scale;
+                scale = m_Ops.Mul(scale0  as TensorFloat, scale1);
+
+                Layers.Layer lmerged = new Layers.Mul(l0.name, l0.inputs[0], l0.inputs[1]);
+
+                if(constTensors.ContainsKey(lmerged.inputs[0]))
+                    constTensors[lmerged.inputs[0]].TensorToDataSet(scale);
+                else
+                    constTensors[lmerged.inputs[1]].TensorToDataSet(scale);
+
+                scale.Dispose();
+
+                return lmerged;
+            });
+            Add((typeof(Layers.ScalarMad), typeof(Layers.Add)), (l0, l1, constTensors) =>
+            {
+                var madLayer0 = l0 as Layers.ScalarMad;
+                var bias0 = madLayer0.b;
+                using Tensor bias1 = constTensors.ContainsKey(l1.inputs[0]) ? constTensors[l1.inputs[0]].DataSetToTensor() : constTensors[l1.inputs[1]].DataSetToTensor();
+
+                Tensor bias;
+                bias = m_Ops.Add(bias0, bias1 as TensorFloat);
+
+                Layers.Layer lmerged = new Layers.Add(l0.name, l0.inputs[0], constTensors.ContainsKey(l1.inputs[0]) ? l1.inputs[0] : l1.inputs[1]);
+
+                constTensors[lmerged.inputs[1]].TensorToDataSet(bias);
+
+                bias.Dispose();
+
+                return lmerged;
+            });
+            Add((typeof(Layers.Add), typeof(Layers.ScalarMad)), (l0, l1, constTensors) =>
+            {
+                using Tensor bias0 = constTensors.ContainsKey(l0.inputs[0]) ? constTensors[l0.inputs[0]].DataSetToTensor() : constTensors[l0.inputs[1]].DataSetToTensor();
+                var madLayer1 = l1 as Layers.ScalarMad;
+                var bias1 = madLayer1.b;
+
+                Tensor bias;
+                bias = m_Ops.Add(bias0  as TensorFloat, bias1);
+
+                Layers.Layer lmerged = new Layers.Add(l0.name, l0.inputs[0], l0.inputs[1]);
+
+                if(constTensors.ContainsKey(lmerged.inputs[0]))
+                    constTensors[lmerged.inputs[0]].TensorToDataSet(bias);
+                else
+                    constTensors[lmerged.inputs[1]].TensorToDataSet(bias);
+
+                bias.Dispose();
+
+                return lmerged;
+            });
+            Add((typeof(Layers.ScalarMad), typeof(Layers.Sub)), (l0, l1, constTensors) =>
+            {
+                var madLayer0 = l0 as Layers.ScalarMad;
+                var bias0 = madLayer0.b;
+                bias0 = constTensors.ContainsKey(l1.inputs[0]) ? bias0 : -bias0;
+                using Tensor bias1 = constTensors.ContainsKey(l1.inputs[0]) ? constTensors[l1.inputs[0]].DataSetToTensor() : constTensors[l1.inputs[1]].DataSetToTensor();
+
+
+                Tensor bias;
+                bias = constTensors.ContainsKey(l1.inputs[0]) ? m_Ops.Sub(bias1 as TensorFloat, bias0) : m_Ops.Add(bias0, bias1 as TensorFloat);
+
+                Layers.Layer lmerged = constTensors.ContainsKey(l1.inputs[0]) ? new Layers.Sub(l0.name, l1.inputs[0], l0.inputs[0]) : new Layers.Sub(l0.name, l0.inputs[0], l1.inputs[1]);
+
+                if(constTensors.ContainsKey(lmerged.inputs[0]))
+                    constTensors[lmerged.inputs[0]].TensorToDataSet(bias);
+                else
+                    constTensors[lmerged.inputs[1]].TensorToDataSet(bias);
+
+                bias.Dispose();
+
+                return lmerged;
+            });
+            Add((typeof(Layers.Sub), typeof(Layers.ScalarMad)), (l0, l1, constTensors) =>
+            {
+                using Tensor bias0 = constTensors.ContainsKey(l0.inputs[0]) ? constTensors[l0.inputs[0]].DataSetToTensor() : constTensors[l0.inputs[1]].DataSetToTensor();
+                var madLayer1 = l1 as Layers.ScalarMad;
+                var bias1 = madLayer1.b;
+                bias1 = constTensors.ContainsKey(l0.inputs[0]) ? bias1 : -bias1;
+
+                Tensor bias;
+                bias = m_Ops.Add(bias0  as TensorFloat, bias1);
+
+                Layers.Layer lmerged = new Layers.Sub(l0.name, l0.inputs[0], l0.inputs[1]);
+
+                if(constTensors.ContainsKey(lmerged.inputs[0]))
+                    constTensors[lmerged.inputs[0]].TensorToDataSet(bias);
+                else
+                    constTensors[lmerged.inputs[1]].TensorToDataSet(bias);
+
+                bias.Dispose();
 
                 return lmerged;
             });

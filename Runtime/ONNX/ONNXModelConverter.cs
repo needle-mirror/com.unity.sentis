@@ -14,10 +14,20 @@ using System.Reflection;
 
 namespace Unity.Sentis.ONNX
 {
+    /// <summary>
+    /// Attribute to define ONNX operator name for custom import.
+    /// </summary>
     [AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class | AttributeTargets.Struct)]
     public class OpImportAttribute : Attribute
     {
+        /// <summary>
+        /// Name of ONNX operator.
+        /// </summary>
         public string opType;
+        /// <summary>
+        /// Instantiates and returns ONNX operator attribute.
+        /// </summary>
+        /// <param name="opType">Name of ONNX operator.</param>
         public OpImportAttribute(string opType) { this.opType = opType; }
     }
 
@@ -29,6 +39,8 @@ namespace Unity.Sentis.ONNX
         /// <summary>
         /// Member method that implements adding the constants and layer of an ONNX operator node to a model.
         /// </summary>
+        /// <param name="net">The current model to add the node to.</param>
+        /// <param name="node">The node to import.</param>
         void Import(Model net, OperatorNode node);
     }
 
@@ -58,36 +70,50 @@ namespace Unity.Sentis.ONNX
         /// <summary>
         /// Whether the ONNX operator has an attribute called `name`.
         /// </summary>
+        /// <param name="name">The name of the attribute.</param>
+        /// <returns>Whether operator has attribute with name.</returns>
         public bool HasAttribute(string name) { return node.HasAttribute(name); }
 
         /// <summary>
-        /// Returns the float attribute called `name`.
+        /// Gets the float attribute called `name`.
         /// </summary>
+        /// <param name="name">The name of the attribute.</param>
+        /// <returns>The float value.</returns>
         public float GetFloatAttribute(string name) { return node.GetRequiredFloat(name); }
 
         /// <summary>
-        /// Return a list of float attributes called `name`, as an array of floats.
+        /// Gets a float list attribute called `name`, as an array of floats.
         /// </summary>
+        /// <param name="name">The name of the attribute.</param>
+        /// <returns>The float list values as an array.</returns>
         public float[] GetFloatArrayAttribute(string name) { return node.GetRequiredFloatArray(name); }
 
         /// <summary>
-        /// Returns the int attribute called `name`.
+        /// Gets the int attribute called `name`.
         /// </summary>
+        /// <param name="name">The name of the attribute.</param>
+        /// <returns>The int value.</returns>
         public int GetIntAttribute(string name) { return node.GetRequiredInt(name); }
 
         /// <summary>
-        /// Return a list of int attributes called `name`, as an array of ints.
+        /// Gets an int list attribute called `name`, as an array of ints.
         /// </summary>
+        /// <param name="name">The name of the attribute.</param>
+        /// <returns>The int list values as an array.</returns>
         public int[] GetIntArrayAttribute(string name) { return node.GetRequiredIntArray(name); }
 
         /// <summary>
-        /// Returns the string attribute called `name`.
+        /// Gets the string attribute called `name`.
         /// </summary>
+        /// <param name="name">The name of the attribute.</param>
+        /// <returns>The string value.</returns>
         public string GetStringAttribute(string name) { return node.GetRequiredString(name); }
 
         /// <summary>
-        /// Return a list of string attributes called `name`, as an array of strings.
+        /// Gets a string list attribute called `name`, as an array of strings.
         /// </summary>
+        /// <param name="name">The name of the attribute.</param>
+        /// <returns>The string list values as an array.</returns>
         public string[] GetStringArrayAttribute(string name) { return node.GetRequiredStringArray(name); }
     }
 
@@ -98,6 +124,8 @@ namespace Unity.Sentis.ONNX
     {
         // Configuration
         bool m_OptimizeModel;
+        string m_DirectoryPath;
+        string m_FilePath;
 
         internal event Action<Dictionary<string, IOpImporter>> CollectOpImporters;
 
@@ -114,21 +142,18 @@ namespace Unity.Sentis.ONNX
         /// <summary>
         /// Converts an ONNX model to a Sentis `Model` object.
         /// </summary>
-        public Model Convert(string filePath, string directoryPath)
+        /// <returns>The converted Sentis model.</returns>
+        public Model Convert()
         {
-            using var readStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+            using var readStream = new FileStream(m_FilePath, FileMode.Open, FileAccess.Read);
             using var inputStream = new CodedInputStream(readStream);
-            return Convert(inputStream, directoryPath);
-        }
 
-        Model Convert(CodedInputStream inputStream, string directoryPath)
-        {
             var onnxModel = new ModelProto();
             onnxModel.MergeFrom(inputStream);
 
             Model model = null;
             SetupImporter();
-            model = ConvertOnnxModel(onnxModel, directoryPath);
+            model = ConvertOnnxModel(onnxModel);
             ModelImported?.Invoke(onnxModel, model);
 
             return model;
@@ -138,20 +163,23 @@ namespace Unity.Sentis.ONNX
         /// Initializes and returns an instance of `ONNXModelConverter`.
         /// </summary>
         /// <param name="optimizeModel">Whether to perform optimizations on the model during the import. The default value is `true`.</param>
-        public ONNXModelConverter(bool optimizeModel)
+        /// <param name="filePath">The path of the asset to convert.</param>
+        public ONNXModelConverter(bool optimizeModel, string filePath)
         {
             m_OptimizeModel = optimizeModel;
+
+            m_FilePath = filePath;
+            m_DirectoryPath = Path.GetDirectoryName(m_FilePath);
         }
 
-        // TODO: remove requirement for ops
-        void SetupImporter()
+        internal void SetupImporter()
         {
             m_NodeImporters.Clear();
 
             Add("Constant", (net, node) =>
             {
                 node.UnsupportedAttribute("sparse_value");
-                var constant = ONNXConstantsLoader.LoadConstant(node.ValueAsTensor);
+                var constant = ONNXConstantsLoader.LoadConstant(node.ValueAsTensor, m_DirectoryPath);
                 constant.name = node.Name;
                 net.AddConstant(constant);
             });
@@ -252,7 +280,7 @@ namespace Unity.Sentis.ONNX
                     return;
                 }
 
-                var constant = ONNXConstantsLoader.LoadConstant(node.ValueAsTensor);
+                var constant = ONNXConstantsLoader.LoadConstant(node.ValueAsTensor, m_DirectoryPath);
                 if (constant.dataType == DataType.Int)
                 {
                     var value = constant.weights.Get<int>(0);
@@ -471,6 +499,7 @@ namespace Unity.Sentis.ONNX
             });
             Add("LayerNormalization", (net, node) =>
             {
+                node.UnsupportedAttribute("axis", -1);
                 net.AddLayer(new Layers.LayerNormalization(node.Name, node.Input0, node.Input1, node.Input2, node.EpsilonOptional()));
             });
             Add("LRN", (net, node) =>
@@ -783,6 +812,8 @@ namespace Unity.Sentis.ONNX
             Add("Identity", (net, node) => { net.AddLayer(new Layers.Identity(node.Name, node.Input0)); });
             Add("Pad", (net, node) =>
             {
+                if (node.InputCount > 3)
+                    node.Warn($"<b>Pad:</b> Unsupported input `<b>axes</b>`. Value will be ignored and defaulted to [0, 1, ..., input_rank-1].", Model.WarningType.Warning);
                 var mode = node.PadMode();
                 if (node.InputCount == 1)
                 {
@@ -795,7 +826,7 @@ namespace Unity.Sentis.ONNX
                     net.AddConstant(valueConstant);
                     net.AddLayer(new Layers.Pad(node.Name, node.Input0, padsConstant.name, valueConstant.name, mode));
                 }
-                else if (node.InputCount == 2)
+                else if (node.InputCount == 2 || string.IsNullOrEmpty(node.Inputs[2]))
                 {
                     // Pad-11, Pad-13, Pad-18 no constant value
                     net.AddLayer(new Layers.Pad(node.Name, node.Input0, node.Input1, mode));
@@ -803,8 +834,6 @@ namespace Unity.Sentis.ONNX
                 else
                 {
                     // Pad-11, Pad-13, Pad-18 with constant value
-                    if (node.InputCount > 3)
-                        node.Warn($"<b>Pad:</b> Unsupported input `<b>axes</b>`. Value will be ignored and defaulted to [0, 1, ..., input_rank-1].", Model.WarningType.Warning);
                     net.AddLayer(new Layers.Pad(node.Name, node.Input0, node.Input1, node.Input2, mode));
                 }
             });
@@ -1106,7 +1135,7 @@ namespace Unity.Sentis.ONNX
             return sortedGraph;
         }
 
-        Model ConvertOnnxModel(ModelProto onnxModel, string directoryPath)
+        Model ConvertOnnxModel(ModelProto onnxModel)
         {
             var model = new Model();
 
@@ -1205,9 +1234,9 @@ namespace Unity.Sentis.ONNX
                     string name = initializer.ExternalData.Single(x => x.Key == "location").Value;
                     if (!weightsStream.ContainsKey(name))
                     {
-                        string filePath = Path.Combine(directoryPath, name);
+                        string filePath = Path.Combine(m_DirectoryPath, name);
                         if (File.Exists(filePath))
-                            weightsStream.Add(name, File.OpenRead(Path.Combine(directoryPath, name)));
+                            weightsStream.Add(name, File.OpenRead(Path.Combine(m_DirectoryPath, name)));
                         else
                         {
                             Warn(model, name, Model.WarningType.Error, $"External Weights file not found! Expecting: {filePath}");
@@ -1276,8 +1305,8 @@ namespace Unity.Sentis.ONNX
             if (!model.Warnings.Any(w => w.MessageSeverity == Model.WarningType.Error))
             {
                 if (m_OptimizeModel)
-                    ModelOptimizer.OptimizeModel(model);
-                ModelOptimizer.RunCPUFallbackPass(model);
+                    ModelOptimizer.OptimizeModel(ref model);
+                ModelOptimizer.RunCPUFallbackPass(ref model);
             }
 
             return model;

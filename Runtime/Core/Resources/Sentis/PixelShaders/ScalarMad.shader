@@ -21,16 +21,15 @@ Shader "Hidden/Sentis/ScalarMad"
 
             DECLARE_TENSOR(X, float);
 
-            float S;
-            float B;
+            float s;
+            float b;
 
             float4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
                 uint blockIndexO = GetBlockIndexO(screenPos);
-                float4 v = 0;
                 float4 vx = SampleBlockX(blockIndexO);
 
-                v = S * vx + B;
+                float4 v = s * vx + b;
 
                 return v;
             }

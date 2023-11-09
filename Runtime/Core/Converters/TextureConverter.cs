@@ -20,6 +20,7 @@ namespace Unity.Sentis
         /// <param name="width">The width of the output tensor. If the value is -1, Sentis uses the texture to infer the width.</param>
         /// <param name="height">The height of the output tensor. If the value is -1, Sentis uses the texture to infer the height.</param>
         /// <param name="channels">The numbers of channels of the output tensor. If the value is -1, Sentis uses the texture to infer the number of channels.</param>
+        /// <returns>The converted tensor.</returns>
         public static TensorFloat ToTensor(Texture texture, int width = -1, int height = -1, int channels = -1)
         {
             return ToTensor(texture, new TextureTransform().SetDimensions(width, height, channels));
@@ -32,6 +33,7 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="texture">The texture to convert. Must be a Texture2D.</param>
         /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
+        /// <returns>The converted tensor.</returns>
         public static TensorFloat ToTensor(Texture texture, TextureTransform transform)
         {
             var textureChannels = (int)GraphicsFormatUtility.GetComponentCount(texture.graphicsFormat);
@@ -40,6 +42,26 @@ namespace Unity.Sentis
 
             var shape = transform.GetTensorShape();
 
+            var O = new TensorFloat(shape);
+            ToTensor(texture, O, transform);
+            return O;
+        }
+
+        /// <summary>
+        /// Converts a texture to a `TensorFloat`. The number of channels of the output tensor can be at most the number of channels in the input texture.
+        ///
+        /// If the width and height of the output tensor don't match the width and height of the texture, Sentis applies linear resampling.
+        /// </summary>
+        /// <param name="texture">The texture to convert. Must be a Texture2D.</param>
+        /// <param name="tensor">The output tensor.</param>
+        /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
+        public static void ToTensor(Texture texture, TensorFloat tensor, TextureTransform transform)
+        {
+            Logger.AssertIsTrue(tensor.shape.rank == 4, "ToTensor.ValueError: tensor must have rank 4 but has rank {0}", tensor.shape.rank);
+            var textureChannels = (int)GraphicsFormatUtility.GetComponentCount(texture.graphicsFormat);
+            transform.SetDimensions(tensor.shape[transform.tensorLayoutAxisW], tensor.shape[transform.tensorLayoutAxisH], tensor.shape[transform.tensorLayoutAxisC]);
+            Logger.AssertIsTrue(textureChannels >= transform.channels, "TextureAsTensorInputData.ValueError: texture has fewer channels {0}, than tensor shape {1}", textureChannels, transform.channels);
+
             var isExact = texture.height == transform.height && texture.width == transform.width;
             transform.InferChannelSettings(textureChannels);
 
@@ -47,7 +69,7 @@ namespace Unity.Sentis
             {
                 // GPUCompute
 
-                var tensorData = new ComputeTensorData(shape, false);
+                var tensorData = ComputeTensorData.Pin(tensor, false);
 
                 var fn = ComputeFuncSingleton.Instance.Get(isExact ? "TextureToTensorExact" : "TextureToTensorLinear");
 
@@ -57,9 +79,9 @@ namespace Unity.Sentis
                 fn.SetInt(k_ID_O_width, transform.width);
                 fn.SetInt(k_ID_O_height, transform.height);
                 fn.SetInt(k_ID_O_channels, transform.channels);
-                fn.SetInt(k_ID_O_strideW, shape.Strides(transform.tensorLayoutAxisW));
-                fn.SetInt(k_ID_O_strideH, shape.Strides(transform.tensorLayoutAxisH));
-                fn.SetInt(k_ID_O_strideC, shape.Strides(transform.tensorLayoutAxisC));
+                fn.SetInt(k_ID_O_strideW, tensor.shape.Strides(transform.tensorLayoutAxisW));
+                fn.SetInt(k_ID_O_strideH, tensor.shape.Strides(transform.tensorLayoutAxisH));
+                fn.SetInt(k_ID_O_strideC, tensor.shape.Strides(transform.tensorLayoutAxisC));
                 fn.SetInt(k_ID_CoordOrigin, (int)transform.coordOrigin);
                 fn.SetInt(k_ID_ChannelSwizzleR, transform.channelSwizzleR);
                 fn.SetInt(k_ID_ChannelSwizzleG, transform.channelSwizzleG);
@@ -67,34 +89,31 @@ namespace Unity.Sentis
                 fn.SetInt(k_ID_ChannelSwizzleA, transform.channelSwizzleA);
 
                 fn.Dispatch(transform.height, transform.width, 1);
-
-                return new TensorFloat(shape, data: tensorData);
             }
+            else
+            {
+                // PixelShader
 
-            // PixelShader
+                var pinO = TextureTensorData.Pin(tensor, transform.tensorLayoutAxisC, false);
 
-            var O = new TensorFloat(shape);
-            var pinO = TextureTensorData.Pin(O, transform.tensorLayoutAxisC, false);
+                var func = new PixelFunc("Hidden/Sentis/TextureConversion/TextureToTensor");
+                func.EnableKeyword(isExact ? "EXACT" : "LINEAR");
 
-            var func = new PixelFunc("Hidden/Sentis/TextureConversion/TextureToTensor");
-            func.EnableKeyword(isExact ? "EXACT" : "LINEAR");
+                func.SetTexture(k_ID_Xptr, texture);
+                func.SetInt(k_ID_StrideWidthO, pinO.blockedShape.Strides(transform.tensorLayoutAxisW));
+                func.SetInt(k_ID_StrideWidthO, pinO.blockedShape.Strides(transform.tensorLayoutAxisW));
+                func.SetInt(k_ID_StrideHeightO, pinO.blockedShape.Strides(transform.tensorLayoutAxisH));
+                func.SetInt(k_ID_WidthO, transform.width);
+                func.SetInt(k_ID_HeightO, transform.height);
+                func.SetInt(k_ID_Channels, transform.channels);
+                func.SetInt(k_ID_CoordOrigin, (int)transform.coordOrigin);
+                func.SetInt(k_ID_ChannelSwizzleR, transform.channelSwizzleR);
+                func.SetInt(k_ID_ChannelSwizzleG, transform.channelSwizzleG);
+                func.SetInt(k_ID_ChannelSwizzleB, transform.channelSwizzleB);
+                func.SetInt(k_ID_ChannelSwizzleA, transform.channelSwizzleA);
 
-            func.SetTexture(k_ID_Xptr, texture);
-            func.SetInt(k_ID_StrideWidthO, pinO.blockedShape.Strides(transform.tensorLayoutAxisW));
-            func.SetInt(k_ID_StrideWidthO, pinO.blockedShape.Strides(transform.tensorLayoutAxisW));
-            func.SetInt(k_ID_StrideHeightO, pinO.blockedShape.Strides(transform.tensorLayoutAxisH));
-            func.SetInt(k_ID_WidthO, transform.width);
-            func.SetInt(k_ID_HeightO, transform.height);
-            func.SetInt(k_ID_Channels, transform.channels);
-            func.SetInt(k_ID_CoordOrigin, (int)transform.coordOrigin);
-            func.SetInt(k_ID_ChannelSwizzleR, transform.channelSwizzleR);
-            func.SetInt(k_ID_ChannelSwizzleG, transform.channelSwizzleG);
-            func.SetInt(k_ID_ChannelSwizzleB, transform.channelSwizzleB);
-            func.SetInt(k_ID_ChannelSwizzleA, transform.channelSwizzleA);
-
-            func.Dispatch(pinO);
-
-            return O;
+                func.Dispatch(pinO);
+            }
         }
 
         /// <summary>
@@ -102,13 +121,15 @@ namespace Unity.Sentis
         ///
         /// If the width and height of the output tensor don't match the width and height of the texture, Sentis applies linear resampling.
         /// </summary>
+        /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
         /// <param name="texture">The texture to convert. Must be a Texture2D.</param>
         /// <param name="width">The width of the output tensor. If the value is -1, Sentis uses the texture to infer the width.</param>
         /// <param name="height">The height of the output tensor. If the value is -1, Sentis uses the texture to infer the height.</param>
         /// <param name="channels">The numbers of channels of the output tensor. If the value is -1, Sentis uses the texture to infer the number of channels.</param>
-        public static TensorFloat ToTensor(CommandBuffer cb, Texture texture, int width = -1, int height = -1, int channels = -1)
+        /// <returns>The converted tensor.</returns>
+        public static TensorFloat ToTensor(this CommandBuffer cb, Texture texture, int width = -1, int height = -1, int channels = -1)
         {
-            return ToTensor(cb, texture, new TextureTransform().SetDimensions(width, height, channels));
+            return cb.ToTensor(texture, new TextureTransform().SetDimensions(width, height, channels));
         }
 
         /// <summary>
@@ -119,7 +140,8 @@ namespace Unity.Sentis
         /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
         /// <param name="texture">The texture to convert. Must be a Texture2D.</param>
         /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
-        public static TensorFloat ToTensor(CommandBuffer cb, Texture texture, TextureTransform transform)
+        /// <returns>The converted tensor.</returns>
+        public static TensorFloat ToTensor(this CommandBuffer cb, Texture texture, TextureTransform transform)
         {
             var textureChannels = (int)GraphicsFormatUtility.GetComponentCount(texture.graphicsFormat);
             transform.InferDimensions(texture.width, texture.height, textureChannels);
@@ -127,22 +149,41 @@ namespace Unity.Sentis
 
             var shape = transform.GetTensorShape();
 
+            var O = new TensorFloat(shape);
+            cb.ToTensor(texture, O, transform);
+            return O;
+        }
+
+        /// <summary>
+        /// Appends the conversion of a texture to a `TensorFloat`to a CommandBuffer. The number of channels of the output tensor can be at most the number of channels in the input texture.
+        ///
+        /// If the width and height of the output tensor don't match the width and height of the texture, Sentis applies linear resampling.
+        /// </summary>
+        /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
+        /// <param name="texture">The texture to convert. Must be a Texture2D.</param>
+        /// <param name="tensor">The output tensor.</param>
+        /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
+        public static void ToTensor(this CommandBuffer cb, Texture texture, TensorFloat tensor, TextureTransform transform)
+        {
+            Logger.AssertIsTrue(tensor.shape.rank == 4, "ToTensor.ValueError: tensor must have rank 4 but has rank {0}", tensor.shape.rank);
+            var textureChannels = (int)GraphicsFormatUtility.GetComponentCount(texture.graphicsFormat);
+            transform.SetDimensions(tensor.shape[transform.tensorLayoutAxisW], tensor.shape[transform.tensorLayoutAxisH], tensor.shape[transform.tensorLayoutAxisC]);
+            Logger.AssertIsTrue(textureChannels >= transform.channels, "TextureAsTensorInputData.ValueError: texture has fewer channels {0}, than tensor shape {1}", textureChannels, transform.channels);
+
             var isExact = texture.height == transform.height && texture.width == transform.width;
             transform.InferChannelSettings(textureChannels);
-
-            var tensorData = new ComputeTensorData(shape, false);
 
             var fn = ComputeFuncSingleton.Instance.Get(isExact ? "TextureToTensorExact" : "TextureToTensorLinear");
 
             cb.SetTexture(fn, k_ID_X_tex2D, texture);
-            cb.SetTensorAsBuffer(fn, k_ID_Optr, tensorData);
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, ComputeTensorData.Pin(tensor, false));
 
             cb.SetInt(fn, k_ID_O_width, transform.width);
             cb.SetInt(fn, k_ID_O_height, transform.height);
             cb.SetInt(fn, k_ID_O_channels, transform.channels);
-            cb.SetInt(fn, k_ID_O_strideW, shape.Strides(transform.tensorLayoutAxisW));
-            cb.SetInt(fn, k_ID_O_strideH, shape.Strides(transform.tensorLayoutAxisH));
-            cb.SetInt(fn, k_ID_O_strideC, shape.Strides(transform.tensorLayoutAxisC));
+            cb.SetInt(fn, k_ID_O_strideW, tensor.shape.Strides(transform.tensorLayoutAxisW));
+            cb.SetInt(fn, k_ID_O_strideH, tensor.shape.Strides(transform.tensorLayoutAxisH));
+            cb.SetInt(fn, k_ID_O_strideC, tensor.shape.Strides(transform.tensorLayoutAxisC));
             cb.SetInt(fn, k_ID_CoordOrigin, (int)transform.coordOrigin);
             cb.SetInt(fn, k_ID_ChannelSwizzleR, transform.channelSwizzleR);
             cb.SetInt(fn, k_ID_ChannelSwizzleG, transform.channelSwizzleG);
@@ -150,8 +191,6 @@ namespace Unity.Sentis
             cb.SetInt(fn, k_ID_ChannelSwizzleA, transform.channelSwizzleA);
 
             cb.Dispatch(fn, transform.height, transform.width, 1);
-
-            return new TensorFloat(shape, data: tensorData);
         }
 
         /// <summary>
@@ -162,14 +201,38 @@ namespace Unity.Sentis
         /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
         /// <param name="rte">The RenderTargetIdentifier to convert.</param>
         /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
-        public static void ToTensor(CommandBuffer cb, RenderTargetIdentifier rte, Tensor tensor = null, TextureTransform transform = default)
+        /// <returns>The converted tensor.</returns>
+        public static TensorFloat ToTensor(this CommandBuffer cb, RenderTargetIdentifier rte, TextureTransform transform = default)
         {
-            transform.InferDimensions(tensor.shape[3], tensor.shape[2], tensor.shape[1]);
-            var shape = tensor.shape;
+            var textureChannels = 4;
+            transform.InferDimensions(Screen.width, Screen.height, textureChannels);
+            Logger.AssertIsTrue(textureChannels >= transform.channels, "TextureAsTensorInputData.ValueError: texture has fewer channels {0}, than tensor shape {1}", textureChannels, transform.channels);
 
-            var renderWidth = Screen.width;
-            var renderHeight = Screen.height;
-            var isExact = renderHeight == transform.height && renderWidth == transform.width;
+            var shape = transform.GetTensorShape();
+
+            var O = new TensorFloat(shape);
+            cb.ToTensor(rte, O, transform);
+            return O;
+        }
+
+        /// <summary>
+        /// Appends the conversion of a RenderTargetIdentifier to a `TensorFloat`to a CommandBuffer. The number of channels of the output tensor can be at most the number of channels in the input texture.
+        ///
+        /// If the width and height of the output tensor don't match the width and height of the texture, Sentis applies linear resampling.
+        /// </summary>
+        /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
+        /// <param name="rte">The RenderTargetIdentifier to convert.</param>
+        /// <param name="tensor">The output tensor.</param>
+        /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
+        public static void ToTensor(this CommandBuffer cb, RenderTargetIdentifier rte, TensorFloat tensor, TextureTransform transform = default)
+        {
+            Logger.AssertIsTrue(tensor.shape.rank == 4, "ToTensor.ValueError: tensor must have rank 4 but has rank {0}", tensor.shape.rank);
+            var textureChannels = 4;
+            transform.SetDimensions(tensor.shape[transform.tensorLayoutAxisW], tensor.shape[transform.tensorLayoutAxisH], tensor.shape[transform.tensorLayoutAxisC]);
+            Logger.AssertIsTrue(textureChannels >= transform.channels, "TextureAsTensorInputData.ValueError: texture has fewer channels {0}, than tensor shape {1}", textureChannels, transform.channels);
+
+            var isExact = Screen.height == transform.height && Screen.width == transform.width;
+            transform.InferChannelSettings(textureChannels);
 
             var fn = ComputeFuncSingleton.Instance.Get(isExact ? "TextureToTensorExact" : "TextureToTensorLinear");
 
@@ -179,9 +242,9 @@ namespace Unity.Sentis
             cb.SetInt(fn, k_ID_O_width, transform.width);
             cb.SetInt(fn, k_ID_O_height, transform.height);
             cb.SetInt(fn, k_ID_O_channels, transform.channels);
-            cb.SetInt(fn, k_ID_O_strideW, shape.Strides(transform.tensorLayoutAxisW));
-            cb.SetInt(fn, k_ID_O_strideH, shape.Strides(transform.tensorLayoutAxisH));
-            cb.SetInt(fn, k_ID_O_strideC, shape.Strides(transform.tensorLayoutAxisC));
+            cb.SetInt(fn, k_ID_O_strideW, tensor.shape.Strides(transform.tensorLayoutAxisW));
+            cb.SetInt(fn, k_ID_O_strideH, tensor.shape.Strides(transform.tensorLayoutAxisH));
+            cb.SetInt(fn, k_ID_O_strideC, tensor.shape.Strides(transform.tensorLayoutAxisC));
             cb.SetInt(fn, k_ID_CoordOrigin, (int)transform.coordOrigin);
             cb.SetInt(fn, k_ID_ChannelSwizzleR, transform.channelSwizzleR);
             cb.SetInt(fn, k_ID_ChannelSwizzleG, transform.channelSwizzleG);
@@ -192,8 +255,10 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `RenderTextureFormat` with the provided number of `channels`.
+        /// Returns the default `RenderTextureFormat` with the provided number of `channels`.
         /// </summary>
+        /// <param name="channels">The number of channels.</param>
+        /// <returns>The render texture format.</returns>
         static RenderTextureFormat GetDefaultRenderTextureFormatFromComponentCount(int channels)
         {
             Logger.AssertIsTrue(channels <= 4 && channels > 0, "GetDefaultRenderTextureFormatFromComponentCount.ValueError: cannot convert channel count {0} to texture format", channels);
@@ -211,6 +276,7 @@ namespace Unity.Sentis
         ///
         /// If the width and height of the tensor don't match the width and height of the render texture, Sentis applies linear resampling.
         /// </summary>
+        /// <param name="tensor">The input tensor.</param>
         /// <param name="renderTexture">The render texture to write to. If the value is `null`, Sentis blits the tensor data to the screen.</param>
         /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
         public static void RenderToTexture(TensorFloat tensor, RenderTexture renderTexture, TextureTransform transform = default)
@@ -343,9 +409,10 @@ namespace Unity.Sentis
         /// If the width and height of the tensor don't match the width and height of the render texture, Sentis applies linear resampling.
         /// </summary>
         /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
+        /// <param name="tensor">The input tensor.</param>
         /// <param name="renderTexture">The render texture to write to. If the value is `null`, Sentis blits the tensor data to the screen.</param>
         /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
-        public static void RenderToTexture(CommandBuffer cb, TensorFloat tensor, RenderTexture renderTexture, TextureTransform transform = default)
+        public static void RenderToTexture(this CommandBuffer cb, TensorFloat tensor, RenderTexture renderTexture, TextureTransform transform = default)
         {
             Logger.AssertIsTrue(tensor.shape.rank == 4, "BlitTensorToTexture.RankError: tensor rank should be equal to 4, got {0}.", tensor.shape.rank);
             if (renderTexture != null)
@@ -433,6 +500,7 @@ namespace Unity.Sentis
         ///
         /// If the width and height of the tensor don't match the width and height of the frame buffer, Sentis applies linear resampling.
         /// </summary>
+        /// <param name="tensor">The input tensor.</param>
         /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
         public static void RenderToScreen(TensorFloat tensor, TextureTransform transform = default)
         {
@@ -445,10 +513,11 @@ namespace Unity.Sentis
         /// If the width and height of the tensor don't match the width and height of the frame buffer, Sentis applies linear resampling.
         /// </summary>
         /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
+        /// <param name="tensor">The input tensor.</param>
         /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
-        public static void RenderToScreen(CommandBuffer cb, TensorFloat tensor, TextureTransform transform = default)
+        public static void RenderToScreen(this CommandBuffer cb, TensorFloat tensor, TextureTransform transform = default)
         {
-            RenderToTexture(cb, tensor, null, transform);
+            cb.RenderToTexture(tensor, null, transform);
         }
 
         /// <summary>
@@ -457,8 +526,10 @@ namespace Unity.Sentis
         /// If the width and height of the tensor don't match the width and height of the frame buffer, Sentis applies linear resampling.
         /// </summary>
         /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
+        /// <param name="tensor">The input tensor.</param>
+        /// <param name="rte">The render target identifier to write to.</param>
         /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
-        public static void RenderToScreen(CommandBuffer cb, TensorFloat tensor, RenderTargetIdentifier rte, TextureTransform transform = default)
+        public static void RenderToScreen(this CommandBuffer cb, TensorFloat tensor, RenderTargetIdentifier rte, TextureTransform transform = default)
         {
             var renderWidth = Screen.width;
             var renderHeight = Screen.height;
@@ -499,16 +570,17 @@ namespace Unity.Sentis
             cb.Blit(null, rte, material);
         }
 
-
         /// <summary>
         /// Converts the data in a tensor to a render texture. Sentis only writes batch == 0 to the render texture.
         ///
         /// If the width and height of the render texture don't match the width and height of the tensor, Sentis applies linear resampling.
         /// </summary>
+        /// <param name="tensor">The input tensor.</param>
         /// <param name="width">The width of the output render texture. If the value is -1, Sentis uses the tensor to infer the width.</param>
         /// <param name="height">The height of the output render texture. If the value is -1, Sentis uses the tensor to infer the height.</param>
         /// <param name="channels">The numbers of channels of the output render texture. If the value is -1, Sentis uses the tensor to infer the number of channels.</param>
         /// <param name="broadcastChannels">When the value is `true`, Sentis broadcasts the tensor values to additional channels in the render texture. For example, a tensor with a single channel R maps to (R, R, R, R) if `channels` is 4. When the value is `false`, Sentis applies a (0, 0, 0, 1) color mask to additional channels in the render texture. For example, a tensor with a single channel R becomes (R, 0, 0, 1) if `channels` is 4.</param>
+        /// <returns>The created render texture.</returns>
         public static RenderTexture ToTexture(TensorFloat tensor, int width = -1, int height = -1, int channels = -1, bool broadcastChannels = false)
         {
             return ToTexture(tensor, new TextureTransform().SetDimensions(width, height, channels).SetBroadcastChannels(broadcastChannels));
@@ -520,13 +592,15 @@ namespace Unity.Sentis
         /// If the width and height of the render texture don't match the width and height of the tensor, Sentis applies linear resampling.
         /// </summary>
         /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
+        /// <param name="tensor">The input tensor.</param>
         /// <param name="width">The width of the output render texture. If the value is -1, Sentis uses the tensor to infer the width.</param>
         /// <param name="height">The height of the output render texture. If the value is -1, Sentis uses the tensor to infer the height.</param>
         /// <param name="channels">The numbers of channels of the output render texture. If the value is -1, Sentis uses the tensor to infer the number of channels.</param>
         /// <param name="broadcastChannels">When the value is `true`, Sentis broadcasts the tensor values to additional channels in the render texture. For example, a tensor with a single channel R maps to (R, R, R, R) if `channels` is 4. When the value is `false`, Sentis applies a (0, 0, 0, 1) color mask to additional channels in the render texture. For example, a tensor with a single channel R becomes (R, 0, 0, 1) if `channels` is 4.</param>
-        public static RenderTexture ToTexture(CommandBuffer cb, TensorFloat tensor, int width = -1, int height = -1, int channels = -1, bool broadcastChannels = false)
+        /// <returns>The created render texture.</returns>
+        public static RenderTexture ToTexture(this CommandBuffer cb, TensorFloat tensor, int width = -1, int height = -1, int channels = -1, bool broadcastChannels = false)
         {
-            return ToTexture(cb, tensor, new TextureTransform().SetDimensions(width, height, channels).SetBroadcastChannels(broadcastChannels));
+            return cb.ToTexture(tensor, new TextureTransform().SetDimensions(width, height, channels).SetBroadcastChannels(broadcastChannels));
         }
 
         /// <summary>
@@ -534,7 +608,9 @@ namespace Unity.Sentis
         ///
         /// If the width and height of the output tensor don't match the width and height of the texture, Sentis applies linear resampling.
         /// </summary>
+        /// <param name="tensor">The input tensor.</param>
         /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
+        /// <returns>The created render texture.</returns>
         public static RenderTexture ToTexture(TensorFloat tensor, TextureTransform transform)
         {
             var width = transform.width == -1 ? tensor.shape[transform.tensorLayoutAxisW] : transform.width;
@@ -554,8 +630,11 @@ namespace Unity.Sentis
         ///
         /// If the width and height of the output tensor don't match the width and height of the texture, Sentis applies linear resampling.
         /// </summary>
+        /// <param name="cb">The CommandBuffer buffer to append graphics command to.</param>
+        /// <param name="tensor">The input tensor.</param>
         /// <param name="transform">The optional settings for the conversion. Refer to <see cref="TextureTransform"/> for more information.</param>
-        public static RenderTexture ToTexture(CommandBuffer cb, TensorFloat tensor, TextureTransform transform)
+        /// <returns>The created render texture.</returns>
+        public static RenderTexture ToTexture(this CommandBuffer cb, TensorFloat tensor, TextureTransform transform)
         {
             var width = transform.width == -1 ? tensor.shape[transform.tensorLayoutAxisW] : transform.width;
             var height = transform.height == -1 ? tensor.shape[transform.tensorLayoutAxisH] : transform.height;
@@ -564,7 +643,7 @@ namespace Unity.Sentis
             var channels = transform.channels == -1 ? tensor.shape[transform.tensorLayoutAxisC] : transform.channels;
 
             var renderTexture = new RenderTexture(width, height, 0, GetDefaultRenderTextureFormatFromComponentCount(channels));
-            RenderToTexture(cb, tensor, renderTexture, transform);
+            cb.RenderToTexture(tensor, renderTexture, transform);
 
             return renderTexture;
         }

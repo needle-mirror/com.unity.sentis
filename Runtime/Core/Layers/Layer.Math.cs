@@ -879,8 +879,8 @@ namespace Unity.Sentis.Layers
         /// </summary>
         /// <param name="name">The name to use for the output tensor of the layer.</param>
         /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="s">Input scalar for multiplication.</param>
-        /// <param name="b">Input bias for addition.</param>
+        /// <param name="s">The value of the scale for the scalarmad function.</param>
+        /// <param name="b">The value of the bias for the scalarmad function.</param>
         public ScalarMad(string name, string input, float s, float b)
             : base(name, input)
         {
@@ -892,6 +892,8 @@ namespace Unity.Sentis.Layers
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            if (O.shape.HasZeroDims())
+                return O;
             ctx.backend.ScalarMad(inputTensors[0] as TensorFloat, O, s, b);
             return O;
         }

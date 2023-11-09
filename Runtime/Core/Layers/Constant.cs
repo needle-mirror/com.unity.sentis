@@ -70,6 +70,11 @@ namespace Unity.Sentis.Layers
             }
         }
 
+        /// <summary>
+        /// Initializes and returns a vector `Constant` from a given name and float array.
+        /// </summary>
+        /// <param name="name">The name to use for the constant.</param>
+        /// <param name="value">The float array of values.</param>
         public Constant(string name, float[] value)
         {
             this.name = name;
@@ -81,6 +86,11 @@ namespace Unity.Sentis.Layers
             NativeTensorArray.Copy(value, weights);
         }
 
+        /// <summary>
+        /// Initializes and returns a vector `Constant` from a given name and int array.
+        /// </summary>
+        /// <param name="name">The name to use for the constant.</param>
+        /// <param name="value">The int array of values.</param>
         public Constant(string name, int[] value)
         {
             this.name = name;
@@ -105,6 +115,7 @@ namespace Unity.Sentis.Layers
         /// <summary>
         /// Returns a string that represents the `Constant`.
         /// </summary>
+        /// <returns>A string representation of the `Constant`.</returns>
         public override string ToString()
         {
             return $"Constant{dataType.ToString()} - name: {name}, weights: [{name}, {shape}]";
@@ -113,6 +124,8 @@ namespace Unity.Sentis.Layers
         /// <summary>
         /// Creates and returns a CPU `Tensor` of the constant.
         /// </summary>
+        /// <returns>The created tensor.</returns>
+        /// <exception cref="NotImplementedException">Thrown when a given data type is not supported.</exception>
         public Tensor DataSetToTensor()
         {
             switch (dataType)
@@ -156,6 +169,8 @@ namespace Unity.Sentis.Layers
         /// <summary>
         /// Initializes the constant with the shape, dataType and weights from a given `Tensor`.
         /// </summary>
+        /// <param name="X">The tensor to use for initialization.</param>
+        /// <exception cref="NotImplementedException">Thrown when a given data type is not supported.</exception>
         public void TensorToDataSet(Tensor X)
         {
             this.shape = X.shape;

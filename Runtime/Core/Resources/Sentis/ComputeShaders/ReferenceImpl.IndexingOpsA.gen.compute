@@ -19,6 +19,7 @@ int rank;
 int axisDim;
 int endLength;
 int indicesLength;
+int axisDimX;
 int endLengthX;
 int axisDimIndices;
 int reduction;
@@ -80,9 +81,9 @@ void GatherElements(uint3 dispatchThreadID : SV_DispatchThreadID)
         int start = threadIdx / (axisDim * endLength);
 
         int index = (int)Bptr[threadIdx];
-        index = index < 0 ? axisDim + index : index;
+        index = index < 0 ? axisDimX + index : index;
 
-        Optr[threadIdx] = Xptr[start * endLengthX * axisDim + index * endLengthX + end];
+        Optr[threadIdx] = Xptr[start * endLengthX * axisDimX + index * endLengthX + end];
     }
 }
 #endif

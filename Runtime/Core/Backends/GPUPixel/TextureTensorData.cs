@@ -12,42 +12,104 @@ using static Unity.Sentis.ShaderPropertyID;
 namespace Unity.Sentis
 {
     /// <summary>
-    /// Represents the data storage for a `Tensor` as a render texture, for backends that use GPU pixel shaders.
+    /// Represents the data storage for a 'Tensor' as a render texture, for backends that use GPU pixel shaders.
     ///
-    /// Sentis packs the tensor data into the pixels of an ARGB float4 texture.
+    /// Sentis packs the tensor data into the pixels of an RGBA float4 texture.
     ///
-    /// Sentis chooses a single tensor dimension as the blocked axis, across which data is chunked in `float4` blocks.
+    /// Sentis chooses a single tensor dimension as the blocked axis, across which data is chunked in float4 blocks.
     ///
-    /// Texture dimensions don't map directly to tensor dimensions. Sentis creates the texture with
-    /// dimensions large enough for the data, and pixel shaders index the data based on both the tensor and texture dimensions.
+    /// Tensor dimensions don't map directly to texture dimensions.
+    /// Sentis creates the texture with dimensions large enough to fit all the data and pixel shaders index the data
+    /// based on both the tensor and texture dimensions (see example below).
     /// </summary>
     public class TextureTensorData : ITensorData
     {
-        // Example: shape: (N, C, H, W), axis: 1 (C)
-        // This layout could be used conv centric ops where the most expensive data fetches are happening on the tensor channels (second dim)
-        //  => C is tiled on texture.channels(rgba) to have vectorized reads to 4 values of C
-        // Resulting in
-        //  * C%4 = tex.channels
-        //  * N, C/4, H, W = tex.pixel
-        // the remaining dims are flattened which is then used as an index into the RGBA pixel of the texture considered as
-        // a flattened array of float4s, the texture width is chosen as a power of two for easy indexing with bit operations
-        // e.g. X[n, k, y, x] where X.shape = (N, C, H, W)
-        // maps to Tex[ty, tx][tc] where Tex is RGBA with width Tex.w (power of two) and height Tex.h (chosen to be close to square texture)
-        // where:
-        // ti = (((n * C/4) + k/4 * H) + y * W) + x
-        //                  tc = k%4
-        //                     /-------\
-        //                 /-------\   |
-        // ty =        /-------\   |   |
-        // ti / Tex.h  |   x   |   |---/
-        //             |       |---/
-        //             \-------/
-        //              tx =
-        //              ti % Tex.h
         //
-        // some values of ti will thus be OOB of original texture and some values of the block GBA,
-        // however the block axis and texture dimensions can be chosen to minimize the number of these
-
+        // Rationale and formula for mapping from a tensor to a texture, given the following constraints / considerations:
+        //
+        // a) we limit ourselves to 2D textures, and these can usually be allocated with 4 channels per texel, with max texel sizes of float4.
+        // b) we have limits on 2D textures width and height, and the maximum size available for us to use is usually achieved if we choose
+        // a square dimension for some hardware "limit" of a dimension, for a total texel num of limit^2.
+        // c) tensors have usually more than 2 dimensions.
+        // d) tensors can have non square shapes, sometimes with very large ratios between dimension sizes, eg 1xn for the last 2 dims
+        // (where "last" means the dim with the shortest and/or unit stride).
+        // e) ML convolutions are a mix of spatial pooling using a "true" convolution on the inner dimensions (ie width, height of the tensor)
+        // followed by summing across all channels. Typically the bottleneck is in the summation across channels.
+        //
+        // Let a tensor T be of shape (N, C, H, W).
+        //
+        // First suppose we choose axis 1 (the axis of size C, the channel dimension) as the dimension along which to group 4 slices of this dimension
+        // into 4 channels of a single texel. This is because of e), where kernel footprint (halo) are usually much smaller than the channel dimension
+        // across which we must also sum (and thus fetch the data for a single result), so a texel read can pack 4 channel values which can be summed
+        // together after weight multiplications.
+        //
+        // Denote this new chunked tensor ChunkedT and note its shape as (N, ceil(C/4), H, W).
+        //
+        // Imagine now a 2D texture storing this ChunkedT where all dimensions after the inner 2 (ie after the ones with sizes H and W) are
+        // folded / flattened into the H dimension.
+        //
+        // Denote this new texture TexFromChunkedT and let its dimensions be factor*H x W, where "factor" is TBD.
+        //
+        // Denote a multidimensional index of the original tensor T to be (n, k, y, x).
+        // Denote a corresponding linear (1D) pixel offset inside the TexFromChunkedT texture by texIdx.
+        //
+        // A way to calculate that texIdx could be:
+        //
+        //   texIdx = (((n)*ceil(C/4) + k/4)*H + y)*W + x
+        //
+        // Here we see that "y" strides by W, but then each single increment on the channel dimension becomes k/4 (k is divided by 4 and truncated)
+        // and strides by H*W, and finally, increments in the batch dimension (of size N in the original tensor) stride by ceil(C/4) * H * W
+        // since ceil(C/4) is the channel dimension size (channel number) divided by 4 (as we pack 4 of them per texel).
+        // (Note also that since ceil is used, masking/padding is required when channel number is not divisible by 4)
+        //
+        // Since we said we folded all dimensions except the inner / last 2, we could thus imagine the texture having a height of:
+        //
+        //   N * ceil(C/4) * H
+        //
+        // Finally, because of point (b) above, we can take the total number of 4-channel texels required,
+        //
+        //   N * ceil(C/4) * H * W := texelsRequired
+        //
+        // and take the square root of the NextPowerOfTwo of texelsRequired to get a more robust and appropriate size for our texture,
+        // along with having quicker access indices calculations. This thus address points b) and d).
+        // We can fix our FinalTexWidth to this value,
+        //
+        //   FinalTexWidth = Sqrt(NextPowerOfTwo(texelsRequired))
+        //
+        // and have FinalTexHeight be calculated from texelsRequired,
+        //
+        //   FinalTexHeight = ceil(texelsRequired / FinalTexWidth),
+        //
+        // height being sized to make up for all the space required.
+        //
+        // Denote the final texture by FinalTex, and let its dimensions be FinalTexHeight X FinalTexWidth.
+        //
+        // The texel coordinates FinalTex.x and FinalTex.y and the selected channel corresponding to (n, k, y, x) (the later indexing the original tensor T)
+        // finally become
+        //
+        //   texIdx = (((n)*ceil(C/4) + k/4)*H + y)*W + x
+        //
+        //   FinalTex.x = texIdx % FinalTexWidth
+        //   FinalTex.y = texIdx / FinalTexWidth
+        //   FinalTexChannel = k % 4,
+        //
+        // so we have
+        //
+        //   FinalTex(FinalTex.x, FinalTex.y)[FinalTexChannel] = T(n, k, y, x)
+        //
+        //
+        //                                     /-------\
+        //                                 /-------\   |
+        //                             /-------\   |   |
+        //                         /-------\   | ---------> channel = k % 4
+        // y = texIdx / finalW <-- |   x   |   |---/
+        //                         |       |---/
+        //                         \-------/
+        //                             |
+        //                             +--> x = texIdx % finalW
+        //
+        // (where finalW is FinalTexWidth and (x,y,channel) are (FinalTex.x, FinalTex.y, FinalTexChannel)).
+        //
         bool m_DisposeBufferAfterUse;
         RenderTexture m_BufferAsTexture;
         int m_WidthShift;
@@ -380,7 +442,10 @@ namespace Unity.Sentis
         /// <summary>
         /// Moves the tensor into GPU memory on the `GPUPixel` back end device.
         /// </summary>
+        /// <param name="X">The tensor to move to the compute backend.</param>
         /// <param name="blockAxis">Which axis to block the tensor shape on.</param>
+        /// <param name="clearOnInit">Whether to zero the data on pinning. The default value is `true`.</param>
+        /// <returns>The pinned `TextureTensorData`.</returns>
         public static TextureTensorData Pin(Tensor X, int blockAxis, bool clearOnInit = true)
         {
             var onDevice = X.tensorOnDevice;
@@ -437,6 +502,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Returns a string that represents the `TextureTensorData`.
         /// </summary>
+        /// <returns>The summary string of the `TextureTensorData`.</returns>
         public override string ToString()
         {
             return $"GPU<TextureTensorData>:{shape} texture: {bufferAsTexture}";

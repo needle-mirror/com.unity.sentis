@@ -153,6 +153,9 @@ public class Model
         /// <summary>
         /// Initializes and returns an instance of `ImporterWarning`.
         /// </summary>
+        /// <param name="layer">The name of the layer where the warning originates</param>
+        /// <param name="severity">The severity of the warning as a `WarningType`</param>
+        /// <param name="msg">The message text of the warning</param>
         public ImporterWarning(string layer, WarningType severity, string msg)
         {
             Message = msg;
@@ -179,6 +182,7 @@ public class Model
     /// <summary>
     /// Returns a shallow copy of the model.
     /// </summary>
+    /// <returns>The shallow copy of the model</returns>
     public Model ShallowCopy()
     {
         var model = new Model();
@@ -203,6 +207,7 @@ public class Model
     /// <summary>
     /// Returns a string that represents the `Model`.
     /// </summary>
+    /// <returns>String representation of model.</returns>
     public override string ToString()
     {
         // weights are not loaded for UI, recompute size
@@ -301,16 +306,31 @@ public class Model
     }
 
     /// <summary>
-    /// Adds an input called `name` to the model.
+    /// Adds an input to the model with a symbolic tensor shape.
     /// </summary>
+    /// <param name="name">The name of the input.</param>
+    /// <param name="dataType">The data type of the input.</param>
+    /// <param name="shape">The `SymbolicTensorShape` of the input.</param>
     public void AddInput(string name, DataType dataType, SymbolicTensorShape shape)
     {
         inputs.Add(new Input { name = name, dataType = dataType, shape = shape });
     }
 
     /// <summary>
+    /// Adds an input to the model with a tensor shape.
+    /// </summary>
+    /// <param name="name">The name of the input.</param>
+    /// <param name="dataType">The data type of the input.</param>
+    /// <param name="shape">The `TensorShape` of the input.</param>
+    public void AddInput(string name, DataType dataType, TensorShape shape)
+    {
+        inputs.Add(new Input { name = name, dataType = dataType, shape = new SymbolicTensorShape(shape) });
+    }
+
+    /// <summary>
     /// Adds an output called `name` to the model.
     /// </summary>
+    /// <param name="name">The name of the input.</param>
     public void AddOutput(string name)
     {
         if (!outputs.Contains(name))
@@ -318,8 +338,9 @@ public class Model
     }
 
     /// <summary>
-    /// Adds a `layer` to the model.
+    /// Appends a `layer` to the model.
     /// </summary>
+    /// <param name="layer">The layer to append.</param>
     public void AddLayer(Layers.Layer layer)
     {
         layers.Add(layer);
@@ -328,6 +349,7 @@ public class Model
     /// <summary>
     /// Adds a `constant` to the model.
     /// </summary>
+    /// <param name="constant">The constant to add.</param>
     public void AddConstant(Layers.Constant constant)
     {
         constants.Add(constant);

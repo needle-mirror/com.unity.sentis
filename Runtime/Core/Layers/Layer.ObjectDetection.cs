@@ -62,6 +62,7 @@ namespace Unity.Sentis.Layers
             return new PartialTensor(DataType.Int, shape);
         }
 
+        /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             var maxOutputBoxesPerClass = inputTensors.Length > 2 && inputTensors[2] != null ? inputTensors[2].ToReadOnlySpan<int>()[0] : 0;

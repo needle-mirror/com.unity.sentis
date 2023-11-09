@@ -139,6 +139,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Initializes and returns an instance of `GPUPixelBackend`.
         /// </summary>
+        /// <param name="allocator">The allocator to use when allocating tensors.</param>
         public GPUPixelBackend(ITensorAllocator allocator = null)
             : base(allocator) { }
 
@@ -700,8 +701,8 @@ namespace Unity.Sentis
 
             func.SetTensor(k_TensorPropertiesX, pinX);
 
-            func.SetFloat(k_ID_S, s);
-            func.SetFloat(k_ID_B, b);
+            func.SetFloat(k_ID_s, s);
+            func.SetFloat(k_ID_b, b);
 
             func.Dispatch(pinO);
         }
@@ -1614,7 +1615,8 @@ namespace Unity.Sentis
                 func.EnableKeyword("GatherInt");
             func.SetInt(k_ID_endLength, pinO.shape.Strides(axis));
             func.SetInt(k_ID_endLengthX, pinX.shape.Strides(axis));
-            func.SetInt(k_ID_axisDim, pinX.shape[axis]);
+            func.SetInt(k_ID_axisDim, pinO.shape[axis]);
+            func.SetInt(k_ID_axisDimX, pinX.shape[axis]);
             func.SetTensor(k_TensorPropertiesX, pinX);
             func.SetTensorBlockStride(k_TensorPropertiesX, pinX);
             func.SetTensor(k_TensorPropertiesB, pinB);
@@ -2411,6 +2413,8 @@ namespace Unity.Sentis
             var pinO = PinAsSame(O, pinX, false);
 
             var func = new PixelFunc("Hidden/Sentis/Trilu");
+            if (X.dataType == DataType.Int)
+                func.EnableKeyword("INT");
             func.SetTensor(k_TensorPropertiesX, pinX);
             func.SetTensorBlockStride(k_TensorPropertiesO, pinO);
             func.SetInt(k_ID_width, X.shape[-1]);

@@ -2,6 +2,8 @@
 
 To import an ONNX model file, drag the file from your computer into the **Assets** folder of the Project window.
 
+If your model has external weights files, put them in the same directory as the model file so that Sentis imports them automatically.
+
 ## Supported models
 
 You can import most ONNX model files with an [opset version](https://github.com/onnx/onnx/blob/main/docs/Versioning.md#released-versions) between 7 and 15. Versions below 7 or above 15 might still import into Sentis, but you might get unexpected results. 

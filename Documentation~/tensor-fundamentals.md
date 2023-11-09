@@ -29,7 +29,7 @@ A model usually needs an input tensor in a certain format. For example, a model 
 
 If your tensor doesn't match the format the model needs, you might get unexpected results. 
 
-You can use [Ops.Transpose](xref:Unity.Sentis.Ops.Transpose(Unity.Sentis.Tensor)) to convert a tensor to a different format. Refer to [Create and modify tensors](do-basic-tensor-operations.md) for more information.
+You can use [Ops.Transpose](xref:Unity.Sentis.Ops.Transpose(Of T)(T)) to convert a tensor to a different format. Refer to [Create and modify tensors](do-basic-tensor-operations.md) for more information.
 
 Refer to [Create input for a model](create-an-input-tensor.md) for more information if you need to convert a texture to a tensor in a specific format.
 

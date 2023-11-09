@@ -4,7 +4,7 @@ using System.IO;
 
 using UnityEngine;
 using System.IO.Compression;
-
+using System.Linq;
 
 namespace Unity.Sentis {
 
@@ -13,7 +13,7 @@ namespace Unity.Sentis {
 /// </summary>
 class TestSet
 {
-    JSONTestSet jsonTestSet;
+    public JSONTestSet jsonTestSet;
 
     /// <summary>
     /// Create with JSON test set
@@ -22,6 +22,32 @@ class TestSet
     public TestSet(JSONTestSet jsonTestSet)
     {
         this.jsonTestSet = jsonTestSet;
+    }
+
+    public static JSONTestSet JSONTestSetFromInputsOutputs(Dictionary<string, Tensor> inputTensors, Dictionary<string, Tensor> outputTensors)
+    {
+        var jsonTestSet = new JSONTestSet
+        {
+            inputs = inputTensors.Select(kvp => JSONTensorFromTensor(kvp.Key, kvp.Value)).ToArray(),
+            outputs = outputTensors.Select(kvp => JSONTensorFromTensor(kvp.Key, kvp.Value)).ToArray()
+        };
+
+        return jsonTestSet;
+    }
+
+    public static JSONTensor JSONTensorFromTensor(string name, Tensor tensor)
+    {
+        var array = ArrayTensorData.Pin(tensor);
+        var data = new byte[tensor.shape.length * sizeof(float)];
+        NativeTensorArray.Copy(array.array, data);
+        var jsonTensor = new JSONTensor
+        {
+            name = name,
+            dataType = (int)tensor.dataType,
+            shape = tensor.shape.ToArray(),
+            data = data
+        };
+        return jsonTensor;
     }
 
     /// <summary>
@@ -33,7 +59,7 @@ class TestSet
     /// Get output tensor count
     /// </summary>
     /// <returns></returns>
-    public int GetOutputCount()
+    int GetOutputCount()
     {
         return jsonTestSet.outputs.Length;
     }
@@ -43,7 +69,7 @@ class TestSet
     /// </summary>
     /// <param name="idx">tensor index</param>
     /// <returns>tensor data</returns>
-    public byte[] GetOutputData(int idx = 0)
+    byte[] GetOutputData(int idx = 0)
     {
         return jsonTestSet.outputs[idx].data;
     }
@@ -51,7 +77,7 @@ class TestSet
     /// <summary>
     /// Get output tensor dataType
     /// </summary>
-    public DataType GetOutputDataType(int idx = 0)
+    DataType GetOutputDataType(int idx = 0)
     {
         return (DataType)jsonTestSet.outputs[idx].dataType;
     }
@@ -61,7 +87,7 @@ class TestSet
     /// </summary>
     /// <param name="idx">tensor index</param>
     /// <returns>tensor name</returns>
-    public string GetOutputName(int idx = 0)
+    string GetOutputName(int idx = 0)
     {
         string name = jsonTestSet.outputs[idx].name;
         return name.EndsWith(":0") ? name.Remove(name.Length - 2) : name;
@@ -71,7 +97,7 @@ class TestSet
     /// Get input tensor count
     /// </summary>
     /// <returns></returns>
-    public int GetInputCount()
+    int GetInputCount()
     {
         return jsonTestSet.inputs.Length;
     }
@@ -81,7 +107,7 @@ class TestSet
     /// </summary>
     /// <param name="idx">input tensor index</param>
     /// <returns>tensor name</returns>
-    public string GetInputName(int idx = 0)
+    string GetInputName(int idx = 0)
     {
         string name = jsonTestSet.inputs[idx].name;
         return name.EndsWith(":0") ? name.Remove(name.Length - 2) : name;
@@ -92,7 +118,7 @@ class TestSet
     /// </summary>
     /// <param name="idx">input tensor index</param>
     /// <returns>tensor data</returns>
-    public byte[] GetInputData(int idx = 0)
+    byte[] GetInputData(int idx = 0)
     {
         return jsonTestSet.inputs[idx].data;
     }
@@ -100,7 +126,7 @@ class TestSet
     /// <summary>
     /// Get input tensor dataType
     /// </summary>
-    public DataType GetInputDataType(int idx = 0)
+    DataType GetInputDataType(int idx = 0)
     {
         return (DataType)jsonTestSet.inputs[idx].dataType;
     }
@@ -110,7 +136,7 @@ class TestSet
     /// </summary>
     /// <param name="idx">input tensor index</param>
     /// <returns>input shape</returns>
-    public TensorShape GetInputShape(int idx = 0)
+    TensorShape GetInputShape(int idx = 0)
     {
         return new TensorShape(jsonTestSet.inputs[idx].shape);
     }
@@ -120,7 +146,7 @@ class TestSet
     /// </summary>
     /// <param name="idx">output tensor index</param>
     /// <returns>tensor shape</returns>
-    public TensorShape GetOutputShape(int idx = 0)
+    TensorShape GetOutputShape(int idx = 0)
     {
         return new TensorShape(jsonTestSet.outputs[idx].shape);
     }
@@ -129,8 +155,6 @@ class TestSet
     /// Get inputs as `Tensor` dictionary
     /// </summary>
     /// <param name="inputs">dictionary to store results</param>
-    /// <param name="batchCount">max batch count</param>
-    /// <param name="fromBatch">start from batch</param>
     /// <returns>dictionary with input tensors</returns>
     public Dictionary<string, Tensor> GetInputsAsTensorDictionary(Dictionary<string, Tensor> inputs = null)
     {
@@ -147,8 +171,6 @@ class TestSet
     /// Get outputs as `Tensor` dictionary
     /// </summary>
     /// <param name="outputs">dictionary to store results</param>
-    /// <param name="batchCount">max batch count</param>
-    /// <param name="fromBatch">start from batch</param>
     /// <returns>dictionary with input tensors</returns>
     /// <exception cref="Exception">thrown if called on raw test set (only JSON test set is supported)</exception>
     public Dictionary<string, Tensor> GetOutputsAsTensorDictionary(Dictionary<string, Tensor> outputs = null)
@@ -166,8 +188,6 @@ class TestSet
     /// Get input as `Tensor`
     /// </summary>
     /// <param name="idx">input index</param>
-    /// <param name="batchCount">max batch count</param>
-    /// <param name="fromBatch">start from batch</param>
     /// <returns>`Tensor`</returns>
     /// <exception cref="Exception">thrown if called on raw test set (only JSON test set is supported)</exception>
     public Tensor GetInputAsTensor(int idx = 0)
@@ -203,7 +223,7 @@ class TestSet
     /// <param name="fromBatch">start from batch</param>
     /// <returns>`Tensor`</returns>
     /// <exception cref="Exception">thrown if called on raw test set (only JSON test set is supported)</exception>
-    public Tensor GetOutputAsTensor(int idx = 0)
+    Tensor GetOutputAsTensor(int idx = 0)
     {
         TensorShape shape = GetOutputShape(idx);
         var array = GetOutputData(idx);
@@ -338,47 +358,6 @@ class TestSetLoader
 
         TestSet result = new TestSet(JsonUtility.FromJson<JSONTestSet>(json));
         return result;
-    }
-
-    /// <summary>
-    /// Load image
-    /// </summary>
-    /// <param name="filename">file name</param>
-    /// <returns>`Texture`</returns>
-    public static Texture LoadImage(string filename)
-    {
-        string fullpath = Path.Combine(Application.streamingAssetsPath, "TestSet", filename);
-
-        var bytes = File.ReadAllBytes(fullpath);
-        var tex = new Texture2D(2, 2);
-        ImageConversion.LoadImage(tex, bytes, false); // LoadImage will auto-resize the texture dimensions
-        tex.wrapMode = TextureWrapMode.Clamp;
-        return tex;
-    }
-
-    /// <summary>
-    /// Load float array
-    /// </summary>
-    /// <param name="file">binary file reader</param>
-    /// <returns>float array</returns>
-    public static float[] LoadFloatArray(BinaryReader file)
-    {
-        Int64 dataLength = file.ReadInt64();
-        float[] array = new float[dataLength];
-        byte[] bytes = file.ReadBytes(Convert.ToInt32(dataLength * sizeof(float))); // @TODO: support larger than MaxInt32 data blocks
-        Buffer.BlockCopy(bytes, 0, array, 0, bytes.Length);
-
-        return array;
-    }
-
-    /// <summary>
-    /// Open file with binary reader
-    /// </summary>
-    /// <param name="filename">file name</param>
-    /// <returns>`BinaryReader`</returns>
-    static BinaryReader Open(string filename)
-    {
-        return new BinaryReader(new FileStream(filename, FileMode.Open, FileAccess.Read));
     }
 }
 

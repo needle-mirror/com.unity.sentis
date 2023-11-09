@@ -67,6 +67,26 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             {
                 return new LayerNode<Sigmoid>(a);
             }
+            public static INode Softmax(INode a, int b)
+            {
+                return new LayerNode<Softmax>(a, b);
+            }
+            public static INode Transpose(INode a, int[] b)
+            {
+                return new LayerNode<Transpose>(a, b);
+            }
+            public static INode Reshape(INode a, INode b)
+            {
+                return new LayerNode<Reshape>(a, b);
+            }
+            public static INode MatMul(INode a, INode b)
+            {
+                return new LayerNode<MatMul>(a, b);
+            }
+            public static INode MatMul2D(INode a, INode b)
+            {
+                return new LayerNode<MatMul2D>(a, b);
+            }
             public static INode Pow(INode a, float b)
             {
                 return new LayerNode<Pow>(a, b);
@@ -79,28 +99,26 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             {
                 return new LayerNode<ReduceMean>(a, b);
             }
-
-            public static INode ScaleBias(INode a, INode b, INode c)
-            {
-                return new LayerNode<ScaleBias>(a, b, c);
-            }
         }
 
         private class InputNode : INode
         {
         }
 
-        private class ScalarNode : INode
-        {
-        }
-
-        private class ScalarMadNode : INode
-        {
-        }
-
         abstract class IConstantNode : INode
         {
             public abstract bool Validate(Constant constant);
+        }
+
+        private class ConstantFloatTensor : IConstantNode
+        {
+            public override bool Validate(Constant constant)
+            {
+                if (constant.dataType != DataType.Int)
+                    return false;
+
+                return true;
+            }
         }
 
         class ScalarInt : IConstantNode
@@ -116,7 +134,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 if (constant.dataType != DataType.Int)
                     return false;
 
-                return constant.length == 1 && constant.weights.Get<int>(0) == m_Value;
+                return constant.length == 1 && constant.shape.rank <= 1 && constant.weights.Get<int>(0) == m_Value;
             }
         }
 
@@ -133,7 +151,44 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 if (constant.dataType != DataType.Float)
                     return false;
 
-                return constant.length == 1 && constant.weights.Get<float>(0) == m_Value;
+                return constant.length == 1 && constant.shape.rank <= 1 && constant.weights.Get<float>(0) == m_Value;
+            }
+        }
+
+        class VariableScalarFloat : IConstantNode
+        {
+            public override bool Validate(Constant constant)
+            {
+                if (constant.dataType != DataType.Float)
+                    return false;
+
+                return constant.length == 1 && constant.shape.rank <= 1;
+            }
+        }
+
+        class VectorInt : IConstantNode
+        {
+            int[] m_Value;
+            public VectorInt(int[] v)
+            {
+                m_Value = v;
+            }
+
+            public override bool Validate(Constant constant)
+            {
+                if (constant.dataType != DataType.Int)
+                    return false;
+
+                if (constant.length != m_Value.Length)
+                    return false;
+
+                for (int i = 0; i < m_Value.Length; i++)
+                {
+                    if (constant.weights.Get<int>(i) != m_Value[i])
+                        return false;
+                }
+
+                return true;
             }
         }
 
@@ -161,10 +216,9 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             {
                 inputs = new[] { i0, new ScalarInt(i1) };
             }
-
-            public LayerNode(INode i0, INode i1, INode i2)
+            public LayerNode(INode i0, int[] i1)
             {
-                inputs = new[] { i0, i1, i2 };
+                inputs = new[] { i0, new VectorInt(i1) };
             }
 
             public override bool Validate(Layer layer)
@@ -188,22 +242,69 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 var mean = INode.ReduceMean(x, -1);
                 var y = x - mean;
                 var variance = INode.ReduceMean(INode.Pow(y, 2.0f), -1);
-                var epsilon = new ScalarNode();
+                var epsilon = new VariableScalarFloat();
                 var v = y / INode.Sqrt(variance + epsilon);
                 var scale = new InputNode();
                 var bias = new InputNode();
-                return v * scale + bias; },                                  (y, iLayers, iConstants) => { float epsilon = iConstants[0].weights.Get<float>(0);
-                                                                                                           return new LayerNormalization(y.name, iLayers[iLayers.Count - 1], iLayers[1], iLayers[0], epsilon);
+                return v * scale + bias; },
+                    (y, iLayers, iConstants) => {
+                    float epsilon = iConstants[0].weights.Get<float>(0);
+                    return new LayerNormalization(y.name, iLayers[iLayers.Count - 1], iLayers[1], iLayers[0], epsilon);
                 }
-             },
-            {x => x + new ScalarMadNode(), (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], 1.0f, iConstants[0].weights.Get<float>(0)) },
-            {x => new ScalarMadNode() + x, (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], 1.0f, iConstants[0].weights.Get<float>(0)) },
-            {x => x - new ScalarMadNode(), (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], 1.0f, -iConstants[0].weights.Get<float>(0)) },
-            {x => new ScalarMadNode() - x, (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], -1.0f, iConstants[0].weights.Get<float>(0)) },
-            {x => x * new ScalarMadNode(), (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], iConstants[0].weights.Get<float>(0), 0) },
-            {x => new ScalarMadNode() * x, (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], iConstants[0].weights.Get<float>(0), 0) },
-            {x => x / new ScalarMadNode(), (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], 1.0f / iConstants[0].weights.Get<float>(0), 0) },
-            {x =>  INode.ScaleBias(x, new ScalarMadNode(), new ScalarMadNode()), (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], iConstants[0].weights.Get<float>(0), iConstants[1].weights.Get<float>(0)) },
+            },
+            { x => {
+                var q_weights = new InputNode();
+                var q_bias = new InputNode();
+
+                var k_weights = new InputNode();
+                var k_bias = new InputNode();
+
+                var v_weights = new InputNode();
+                var v_bias = new InputNode();
+
+                var dim = new InputNode();
+                var attn_output_dim = new InputNode();
+            
+                var scaling_factor = new VariableScalarFloat();
+
+                var o_weights = new InputNode();
+                var o_bias = new InputNode();
+
+                var q = INode.MatMul(x, q_weights);
+                var q_add =  q_bias + q;
+                var q_reshape = INode.Reshape(q_add, dim);
+                var q_transpose = INode.Transpose(q_reshape, new[] {0, 2, 1, 3});
+           
+                var k = INode.MatMul(x, k_weights);
+                var k_add = k_bias + k;
+                var k_reshape = INode.Reshape(k_add, dim);
+                var k_transpose = INode.Transpose(k_reshape, new[] {0, 2, 3, 1});
+           
+                var v = INode.MatMul(x, v_weights);
+                var v_add = v_bias + v;
+                var v_reshape = INode.Reshape(v_add, dim);
+                var v_transpose = INode.Transpose(v_reshape, new[] {0, 2, 3, 1});
+           
+                var qk = INode.MatMul(q_transpose, k_transpose);
+                var qk_scale = qk * scaling_factor;
+                var attn_output_weights = INode.Softmax(qk_scale, -1);
+                var attn_output = INode.MatMul(attn_output_weights, v_transpose);
+                var attn_output_transpose = INode.Transpose(attn_output, new[] {0, 2, 3, 1});
+                var attn_output_reshape = INode.Reshape(attn_output_transpose, attn_output_dim);
+                var atten_output_gemm = INode.MatMul(attn_output_reshape, o_weights);
+                var atten_output_final = o_bias + atten_output_gemm;
+                return atten_output_final;
+            }, (y, iLayers, iConstants) => {
+                float scaling_factor = iConstants[0].weights.Get<float>(0);
+                return new SingleHeadAttention(y.name, iLayers[12], iLayers[11], iLayers[13], iLayers[7], iLayers[9], iLayers[3], iLayers[5], iLayers[0], iLayers[14], scaling_factor); }
+            }, // "x", "q_weights", "y", "k_weights", "z", "v_weights", "out_proj_weight", "out_proj_bias", "num_heads"
+            { x => x + new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], 1.0f, iConstants[0].weights.Get<float>(0)) },
+            { x => new VariableScalarFloat() + x, (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], 1.0f, iConstants[0].weights.Get<float>(0)) },
+            { x => x - new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], 1.0f, -iConstants[0].weights.Get<float>(0)) },
+            { x => new VariableScalarFloat() - x, (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], -1.0f, iConstants[0].weights.Get<float>(0)) },
+            { x => x * new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], iConstants[0].weights.Get<float>(0), 0) },
+            { x => new VariableScalarFloat() * x, (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], iConstants[0].weights.Get<float>(0), 0) },
+            { x => x / new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], 1.0f / iConstants[0].weights.Get<float>(0), 0) },
         };
 
         bool Validate(INode root, Layer input)
@@ -225,6 +326,8 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
                     if (!cNode.Validate(constant))
                         return false;
+
+                    inputConstants.Add(constant);
                 }
                 else if (node is ILayerNode lNode)
                 {
@@ -244,21 +347,6 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 else if (node is InputNode)
                 {
                     inputLayers.Add(name);
-                }
-                else if (node is ScalarNode)
-                {
-                    if (!modelConstants.TryGetValue(name, out Constant constant))
-                        return false;
-                    inputConstants.Add(constant);
-                }
-
-                else if (node is ScalarMadNode)
-                {
-                    if (!modelConstants.TryGetValue(name, out Constant constant))
-                        return false;
-                    if (constant.length != 1 || constant.dataType != DataType.Float || constant.shape.rank > 1)
-                        return false;
-                    inputConstants.Add(constant);
                 }
             }
 

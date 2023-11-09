@@ -6,7 +6,7 @@ using Unity.Burst;
 
 namespace Unity.Sentis
 {
-    public static class GPUPixelBurstJobs
+    static class GPUPixelBurstJobs
     {
         [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
         public unsafe struct IntBytesAsFloatJob : IJobParallelFor
