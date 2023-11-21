@@ -39,7 +39,7 @@ public class CSharpJob : MonoBehaviour
 
     void Update()
     {
-        var burstTensorDataX = BurstTensorData.Pin(m_Input, clearOnInit: false);
+        var burstTensorDataX = BurstTensorData.Pin(m_Input);
         SimpleJob job = new SimpleJob() { data = burstTensorDataX.array.GetNativeArrayHandle<float>() };
 
         // Set the fence on the input so Sentis doesn't execute until the job is complete.

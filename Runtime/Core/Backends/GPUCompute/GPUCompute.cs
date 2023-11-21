@@ -92,7 +92,7 @@ public partial class GPUComputeBackend : CPUBackend
 
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
         fn.SetTensorAsBuffer(k_ID_Bptr, Pin(Y));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
         fn.Dispatch(batch, M, N);
     }
 
@@ -115,7 +115,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_O_height, M);
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
         fn.SetTensorAsBuffer(k_ID_Wptr, Pin(Y));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
         fn.Dispatch(ComputeHelper.IDivC(N, 4), ComputeHelper.IDivC(M, 4), batch);
     }
@@ -141,7 +141,7 @@ public partial class GPUComputeBackend : CPUBackend
         // Warning, for some reason shared mem implementation on intel gpu is x2 faster than regular one
         ComputeFunc fn = ComputeFuncSingleton.Instance.Get(kernel);
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
         fn.SetInt(k_ID_X_width, X.shape[-1]);
         fn.SetInt(k_ID_X_height, X.shape[-2]);
         fn.SetInt(k_ID_X_length, X.shape.length);
@@ -235,7 +235,7 @@ public partial class GPUComputeBackend : CPUBackend
             {
                 fn.DisableKeyword("USEBIAS");
             }
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
             fn.SetInt(k_ID_O_batch, O.shape[0]); fn.SetInt(k_ID_O_channels, O.shape[1]);
             fn.SetInt(k_ID_X_channels, X.shape[1]);
             fn.SetInt4(k_ID__Stride, strides);
@@ -269,7 +269,7 @@ public partial class GPUComputeBackend : CPUBackend
             {
                 fn.DisableKeyword("USEBIAS");
             }
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
             fn.SetInt(k_ID_inputChannels, X.shape[1]);
             fn.SetInt(k_ID_inputHeight, X.shape[2]);
             fn.SetInt(k_ID_inputWidth, X.shape[3]);
@@ -312,7 +312,7 @@ public partial class GPUComputeBackend : CPUBackend
             {
                 fn.DisableKeyword("USEBIAS");
             }
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
             fn.SetInt(k_ID_inputChannels, X.shape[1]);
             fn.SetInt(k_ID_inputHeight, X.shape[2]);
             fn.SetInt(k_ID_kernelHeight, K.shape[2]);
@@ -399,7 +399,7 @@ public partial class GPUComputeBackend : CPUBackend
         {
             fn.DisableKeyword("USEBIAS");
         }
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
         fn.SetInt(k_ID_O_batch, O.shape[0]);
         fn.SetInt(k_ID_O_channels, O.shape[1]);
         fn.SetInt(k_ID_X_channels, X.shape[1]);
@@ -451,7 +451,7 @@ public partial class GPUComputeBackend : CPUBackend
         {
             fn.DisableKeyword("USEBIAS");
         }
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
         fn.SetInt(k_ID_inputChannels, X.shape[1]);
         fn.SetInt(k_ID_outputChannels, O.shape[1]);
         fn.SetInt(k_ID_dilationHeight, 1);
@@ -535,7 +535,7 @@ public partial class GPUComputeBackend : CPUBackend
         {
             fn.DisableKeyword("USEBIAS");
         }
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
         var workItemsX = ComputeHelper.IDivC(O.shape[1], 4);
         var workItemsY = ComputeHelper.IDivC(O.shape.Length(2), 4);
@@ -612,7 +612,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_outWidth, O.shape[2]);
 
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
         fn.Dispatch(O.shape[0] * O.shape[1], O.shape[2], 1);
     }
@@ -660,7 +660,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_outWidth, O.shape[3]);
 
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
         fn.Dispatch(O.shape[0] * O.shape[1], O.shape[2], O.shape[3]);
     }
@@ -712,7 +712,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_outWidth, O.shape[4]);
 
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
         fn.Dispatch(O.shape[2], O.shape[3], O.shape[4]);
     }
@@ -733,7 +733,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_outputSpatialSize, O.shape[2] * O.shape[3]);
         fn.SetInt(k_ID_outputBatch, O.shape[0]);
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
         fn.Dispatch(O.shape[0] * O.shape[1], O.shape[2] * O.shape[3], 1);
     }
@@ -754,7 +754,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_outputSpatialSize, O.shape[2] * O.shape[3]);
         fn.SetInt(k_ID_outputBatch, O.shape[0]);
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
         fn.Dispatch(O.shape[0] * O.shape[1], O.shape[2] * O.shape[3], 1);
     }
@@ -767,7 +767,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_inHeight, X.shape[2]);
         fn.SetInt(k_ID_pool, pool[0]);
         fn.SetInt(k_ID_outHeight, O.shape[2]);
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     void LocalPool2D(TensorFloat X, TensorFloat O, int[] pool, int[] stride, int[] pad, string kernelName)
@@ -787,7 +787,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_outHeight, O.shape[2]);
         fn.SetInt(k_ID_outWidth, O.shape[3]);
 
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -839,9 +839,9 @@ public partial class GPUComputeBackend : CPUBackend
             fnUnrolled.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
 
             if (Xmax != null)
-                fnUnrolled.ScheduleXBO(Pin(X), Pin(Xmax), Pin(O, clearOnInit: false), outerLength * innerLength);
+                fnUnrolled.ScheduleXBO(Pin(X), Pin(Xmax), Pin(O), outerLength * innerLength);
             else
-                fnUnrolled.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), outerLength * innerLength);
+                fnUnrolled.ScheduleXO(Pin(X), Pin(O), outerLength * innerLength);
             return;
         }
 
@@ -860,7 +860,7 @@ public partial class GPUComputeBackend : CPUBackend
             fnPool.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
             if (Xmax != null)
                 fnPool.SetTensorAsBuffer(k_ID_Bptr, Pin(Xmax));
-            fnPool.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp, clearOnInit: false));
+            fnPool.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
             fnPool.SetInt(k_ID_ReducedDim, localReduceLength);
             fnPool.SetInt(k_ID_InnerDim, innerLength);
             fnPool.SetInt(k_ID_SpatialDimsO, spatialLengthO);
@@ -877,7 +877,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
         if (Xmax != null)
             fn.SetTensorAsBuffer(k_ID_Bptr, Pin(Xmax));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
         fn.SetInt(k_ID_ReducedDim, localReduceLength);
         fn.SetInt(k_ID_InnerDim, innerLength);
         fn.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
@@ -904,7 +904,7 @@ public partial class GPUComputeBackend : CPUBackend
 
             var fnPool = ComputeFuncSingleton.Instance.Get(localKernel);
             fnPool.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fnPool.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp, clearOnInit: false));
+            fnPool.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
             fnPool.SetInt(k_ID_SpatialDims, localSpatialLength);
             fnPool.SetInt(k_ID_SpatialDimsO, spatialLengthO);
 
@@ -916,7 +916,7 @@ public partial class GPUComputeBackend : CPUBackend
 
         var fn = ComputeFuncSingleton.Instance.Get(globalKernel);
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
         fn.SetInt(k_ID_SpatialDims, localSpatialLength);
         fn.SetInt(k_ID_GlobalSpatialDims, globalSpatialDims);
 
@@ -959,8 +959,8 @@ public partial class GPUComputeBackend : CPUBackend
             var fnPool = ComputeFuncSingleton.Instance.Get("AverageVariancePoolReduce");
             fnPool.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
             fnPool.SetTensorAsBuffer(k_ID_X2ptr, Pin(X2));
-            fnPool.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp, clearOnInit: false));
-            fnPool.SetTensorAsBuffer(k_ID_O2ptr, Pin(O2temp, clearOnInit: false));
+            fnPool.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
+            fnPool.SetTensorAsBuffer(k_ID_O2ptr, Pin(O2temp));
             fnPool.SetInt(k_ID_SpatialDims, localSpatialLength);
             fnPool.SetInt(k_ID_SpatialDimsO, spatialLengthO);
             fnPool.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
@@ -976,7 +976,7 @@ public partial class GPUComputeBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get("GlobalAverageVariancePool");
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
         fn.SetTensorAsBuffer(k_ID_X2ptr, Pin(X2));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
         fn.SetInt(k_ID_SpatialDims, localSpatialLength);
         fn.SetInt(k_ID_GlobalSpatialDims, globalSpatialDims);
         fn.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
@@ -1034,7 +1034,7 @@ public partial class GPUComputeBackend : CPUBackend
         {
             fn.DisableKeyword("USEBIAS");
         }
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(Otmp, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(Otmp));
         fn.SetInt(k_ID_O_channels, O.shape[1]);
         fn.SetInt(k_ID_X_channels, X.shape[1]);
         fn.SetInt4(k_ID__Stride, strides);
@@ -1066,7 +1066,7 @@ public partial class GPUComputeBackend : CPUBackend
 
             ComputeFunc fnKE = ComputeFuncSingleton.Instance.Get("KernelWinoExpand");
             fnKE.SetTensorAsBuffer(k_ID_Kptr, Pin(K));
-            fnKE.SetTensorAsBuffer(k_ID_Optr, Pin(KWE, clearOnInit: false));
+            fnKE.SetTensorAsBuffer(k_ID_Optr, Pin(KWE));
             fnKE.SetInt(k_ID_O_channels, O.shape[1]);
             fnKE.Dispatch(O.shape[1], 1, 1);
 
@@ -1105,7 +1105,7 @@ public partial class GPUComputeBackend : CPUBackend
         {
             fn.DisableKeyword("USEBIAS");
         }
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(Otmp, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(Otmp));
         fn.SetInt(k_ID_X_channels, X.shape[1]);
         fn.SetInt(k_ID_X_height, X.shape[2]);
         fn.SetInt(k_ID_X_width, X.shape[3]);
@@ -1140,7 +1140,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
         fn.SetTensorAsBuffer(k_ID_Sptr, Pin(S));
         fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
         fn.SetInt(k_ID_LengthO, O.shape.length);
         fn.SetInt(k_ID_batch, batch);
         fn.SetInt(k_ID_channels, channels);
@@ -1161,7 +1161,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_spatialDims, X.shape.length / (X.shape[0] * X.shape[1]));
         fn.SetFloat(k_ID_epsilon, epsilon);
 
-        fn.ScheduleXSBWO(Pin(X), Pin(S), Pin(B), Pin(meanVariance), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXSBWO(Pin(X), Pin(S), Pin(B), Pin(meanVariance), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -1183,7 +1183,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetTensorAsBuffer(k_ID_Wptr, Pin(meanVariance));
         fn.SetTensorAsBuffer(k_ID_Sptr, Pin(S));
         fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
         fn.SetInt(k_ID_axisDim, axisDim);
         fn.SetInt(k_ID_outerLength, outerLength);
         fn.SetFloat(k_ID_epsilon, epsilon);
@@ -1204,7 +1204,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetTensorAsBuffer(k_ID_Zptr, Pin(variance));
         fn.SetTensorAsBuffer(k_ID_Sptr, Pin(S));
         fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
         fn.SetInt(k_ID_LengthO, O.shape.length);
         fn.SetInt(k_ID_batch, batch);
         fn.SetInt(k_ID_channels, channels);
@@ -1220,7 +1220,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetFloat(k_ID_rangeStartFloat, start);
         fn.SetFloat(k_ID_rangeDeltaFloat, delta);
         fn.SetInt(k_ID_O_length, O.shape.length);
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
         fn.Dispatch(ComputeHelper.IDivC(O.shape.length, 4), 1, 1);
     }
 
@@ -1231,7 +1231,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_rangeStartInt, start);
         fn.SetInt(k_ID_rangeDeltaInt, delta);
         fn.SetInt(k_ID_O_length, O.shape.length);
-        fn.SetTensorAsBuffer(k_ID_OIntptr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_OIntptr, Pin(O));
         fn.Dispatch(ComputeHelper.IDivC(O.shape.length, 4), 1, 1);
     }
 
@@ -1239,7 +1239,7 @@ public partial class GPUComputeBackend : CPUBackend
     public override void Relu(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Relu");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -1250,14 +1250,14 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetTensorShapeStrides(k_ID_shapeS, k_ID_stridesS, S.shape);
         fn.SetInt(k_ID_rank, O.shape.rank);
 
-        fn.ScheduleXBO(Pin(X), Pin(S), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXBO(Pin(X), Pin(S), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Relu6(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Relu6");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -1267,28 +1267,28 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetFloat(k_ID_alpha, alpha);
         fn.SetFloat(k_ID_f1, 0.5f * (1f + alpha));
         fn.SetFloat(k_ID_f2, 0.5f * (1f - alpha));
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Tanh(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Tanh");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Softplus(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Softplus");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Sigmoid(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Sigmoid");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -1297,7 +1297,7 @@ public partial class GPUComputeBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get("HardSigmoid");
         fn.SetFloat(k_ID_alpha, alpha);
         fn.SetFloat(k_ID_beta, beta);
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -1305,14 +1305,14 @@ public partial class GPUComputeBackend : CPUBackend
     {
         var fn = ComputeFuncSingleton.Instance.Get("Elu");
         fn.SetFloat(k_ID_alpha, alpha);
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Gelu(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Gelu");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -1321,191 +1321,200 @@ public partial class GPUComputeBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get("Selu");
         fn.SetFloat(k_ID_alpha, alpha);
         fn.SetFloat(k_ID_gamma, gamma);
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Swish(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Swish");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Abs(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("AbsFloat");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Abs(TensorInt X, TensorInt O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("AbsInt");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Neg(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("NegFloat");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Neg(TensorInt X, TensorInt O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("NegInt");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Ceil(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Ceil");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Clip(TensorFloat X, TensorFloat O, float min, float max)
     {
-        var fn = ComputeFuncSingleton.Instance.Get("Clip");
+        var fn = ComputeFuncSingleton.Instance.Get("ClipFloat");
         fn.SetFloat(k_ID_minV, min);
         fn.SetFloat(k_ID_maxV, max);
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
+    }
+
+    /// <inheritdoc/>
+    public override void Clip(TensorInt X, TensorInt O, int min, int max)
+    {
+        var fn = ComputeFuncSingleton.Instance.Get("ClipInt");
+        fn.SetInt(k_ID_minV, min);
+        fn.SetInt(k_ID_maxV, max);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Floor(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Floor");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Round(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Round");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Reciprocal(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Reciprocal");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Square(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Square");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Exp(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Exp");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Log(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Log");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Sqrt(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Sqrt");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Acos(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Acos");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Acosh(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Acosh");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Asin(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Asin");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Asinh(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Asinh");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Atan(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Atan");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Atanh(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Atanh");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Cos(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Cos");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Cosh(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Cosh");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Sin(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Sin");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Sinh(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Sinh");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Tan(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Tan");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Erf(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Erf");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -1513,7 +1522,7 @@ public partial class GPUComputeBackend : CPUBackend
     {
         var fn = ComputeFuncSingleton.Instance.Get("Celu");
         fn.SetFloat(k_ID_alpha, alpha);
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -1522,14 +1531,14 @@ public partial class GPUComputeBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get("Shrink");
         fn.SetFloat(k_ID_bias, bias);
         fn.SetFloat(k_ID_lambd, lambd);
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Softsign(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Softsign");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -1537,7 +1546,7 @@ public partial class GPUComputeBackend : CPUBackend
     {
         var fn = ComputeFuncSingleton.Instance.Get("ThresholdedRelu");
         fn.SetFloat(k_ID_alpha, alpha);
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -1560,7 +1569,7 @@ public partial class GPUComputeBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get("SoftmaxEnd");
         fn.SetInt(k_ID_innerLength, innerLength);
         fn.SetInt(k_ID_reduceLength, reduceLength);
-        fn.ScheduleXSBO(Pin(X), Pin(XexpSums), Pin(Xmax), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXSBO(Pin(X), Pin(XexpSums), Pin(Xmax), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -1583,7 +1592,7 @@ public partial class GPUComputeBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get("LogSoftmaxEnd");
         fn.SetInt(k_ID_innerLength, innerLength);
         fn.SetInt(k_ID_reduceLength, reduceLength);
-        fn.ScheduleXBO(Pin(X), Pin(XexpSums), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXBO(Pin(X), Pin(XexpSums), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -1600,14 +1609,14 @@ public partial class GPUComputeBackend : CPUBackend
             var fn = ComputeFuncSingleton.Instance.Get("ArgMaxFloatFirst");
             fn.SetInt(k_ID_innerLength, offsetReduce);
             fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-            fn.ScheduleXO(Pin(X), Pin(argMax, clearOnInit: false), reduceOpShape.length);
+            fn.ScheduleXO(Pin(X), Pin(argMax), reduceOpShape.length);
         }
         // one hot from argmax
         {
             var fn = ComputeFuncSingleton.Instance.Get("HardmaxEnd");
             fn.SetInt(k_ID_innerLength, offsetReduce);
             fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-            fn.ScheduleXBO(Pin(X), Pin(argMax), Pin(O, clearOnInit: false), O.shape.length);
+            fn.ScheduleXBO(Pin(X), Pin(argMax), Pin(O), O.shape.length);
         }
     }
 
@@ -1620,7 +1629,7 @@ public partial class GPUComputeBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get(reverse ? (exclusive ? "CumSumFloatReverseExclusive" : "CumSumFloatReverseInclusive") : (exclusive ? "CumSumFloatForwardExclusive" : "CumSumFloatForwardInclusive"));
         fn.SetInt(k_ID_innerLength, offsetReduce);
         fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), reduceOpShape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), reduceOpShape.length);
     }
 
     /// <inheritdoc/>
@@ -1632,7 +1641,7 @@ public partial class GPUComputeBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get(reverse ? (exclusive ? "CumSumIntReverseExclusive" : "CumSumIntReverseInclusive") : (exclusive ? "CumSumIntForwardExclusive" : "CumSumIntForwardInclusive"));
         fn.SetInt(k_ID_innerLength, offsetReduce);
         fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), reduceOpShape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), reduceOpShape.length);
     }
 
     /// <inheritdoc/>
@@ -1660,7 +1669,7 @@ public partial class GPUComputeBackend : CPUBackend
                 fn.SetInt(k_ID_sumRank, sumShape.rank);
                 fn.SetInt(k_ID_outRank, O.shape.rank);
 
-                fn.ScheduleXO(Pin(inputTensors[0]), Pin(O, clearOnInit: false), O.shape.length);
+                fn.ScheduleXO(Pin(inputTensors[0]), Pin(O), O.shape.length);
                 return;
             }
             case 2:
@@ -1689,7 +1698,7 @@ public partial class GPUComputeBackend : CPUBackend
                 fn.SetInt(k_ID_sumRank, sumShape.rank);
                 fn.SetInt(k_ID_outRank, O.shape.rank);
 
-                fn.ScheduleXBO(Pin(inputTensors[0]), Pin(inputTensors[1]), Pin(O, clearOnInit: false), O.shape.length);
+                fn.ScheduleXBO(Pin(inputTensors[0]), Pin(inputTensors[1]), Pin(O), O.shape.length);
                 return;
             }
         }
@@ -1748,7 +1757,7 @@ public partial class GPUComputeBackend : CPUBackend
         }
         fn.SetInt(k_ID_rank, O.shape.rank);
 
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -1766,7 +1775,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_strideUpperO, strideUpperO);
 
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
         fn.Dispatch(O.shape.length, 1, 1);
     }
@@ -1802,7 +1811,7 @@ public partial class GPUComputeBackend : CPUBackend
         if (padMode == Layers.PadMode.Constant)
             fn.SetFloat(k_ID_Beta, constant);
 
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -1820,7 +1829,7 @@ public partial class GPUComputeBackend : CPUBackend
         }
         fn.SetInt(k_ID_rank, X.shape.rank);
 
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), X.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), X.shape.length);
     }
 
     bool IsTranspose2D(TensorShape X, int[] permutations, out int Height, out int Width)
@@ -1897,7 +1906,7 @@ public partial class GPUComputeBackend : CPUBackend
             fn.SetInt(k_ID_X_height, equivalentXH);
 
             fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
             fn.Dispatch(equivalentXW, equivalentXH, 1);
         }
@@ -1912,7 +1921,7 @@ public partial class GPUComputeBackend : CPUBackend
             }
             fn.SetInt(k_ID_rank, X.shape.rank);
 
-            fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), X.shape.length);
+            fn.ScheduleXO(Pin(X), Pin(O), X.shape.length);
         }
     }
 
@@ -1939,8 +1948,8 @@ public partial class GPUComputeBackend : CPUBackend
             var fnPool = ComputeFuncSingleton.Instance.Get("ArgMaxReduce");
             fnPool.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
             fnPool.SetTensorAsBuffer(k_ID_XIndices, Pin(Xindices));
-            fnPool.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp, clearOnInit: false));
-            fnPool.SetTensorAsBuffer(k_ID_OIndices, Pin(Oindicestemp, clearOnInit: false));
+            fnPool.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
+            fnPool.SetTensorAsBuffer(k_ID_OIndices, Pin(Oindicestemp));
             fnPool.SetInt(k_ID_SpatialDims, localSpatialLength);
             fnPool.SetInt(k_ID_SpatialDimsO, spatialLengthO);
             fnPool.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
@@ -1956,7 +1965,7 @@ public partial class GPUComputeBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get("GlobalArgMaxReduce");
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
         fn.SetTensorAsBuffer(k_ID_XIndices, Pin(Xindices));
-        fn.SetTensorAsBuffer(k_ID_OIndices, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_OIndices, Pin(O));
         fn.SetInt(k_ID_SpatialDims, localSpatialLength);
         fn.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
@@ -1978,7 +1987,7 @@ public partial class GPUComputeBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get(selectLastIndex ? "ArgMaxFloatLast" : "ArgMaxFloatFirst");
         fn.SetInt(k_ID_innerLength, X.shape.Strides(axis));
         fn.SetInt(k_ID_reduceLength, dimAxis);
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -1989,7 +1998,7 @@ public partial class GPUComputeBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get(selectLastIndex ? "ArgMaxIntLast" : "ArgMaxIntFirst");
         fn.SetInt(k_ID_innerLength, X.shape.Strides(axis));
         fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -2000,7 +2009,7 @@ public partial class GPUComputeBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get(selectLastIndex ? "ArgMinFloatLast" : "ArgMinFloatFirst");
         fn.SetInt(k_ID_innerLength, X.shape.Strides(axis));
         fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -2009,7 +2018,7 @@ public partial class GPUComputeBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get(selectLastIndex ? "ArgMinIntLast" : "ArgMinIntFirst");
         fn.SetInt(k_ID_innerLength, X.shape.Strides(axis));
         fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     void Compare(Tensor A, Tensor B, TensorInt O, string kernel)
@@ -2020,7 +2029,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
         fn.SetInt(k_ID_rank, O.shape.rank);
 
-        fn.ScheduleXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXBO(Pin(A), Pin(B), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -2105,28 +2114,28 @@ public partial class GPUComputeBackend : CPUBackend
     public override void Not(TensorInt X, TensorInt O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("Not");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void HardSwish(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("HardSwish");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Sign(TensorFloat X, TensorFloat O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("SignFloat");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void Sign(TensorInt X, TensorInt O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("SignInt");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -2135,14 +2144,14 @@ public partial class GPUComputeBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get("IsInf");
         fn.SetBool(k_ID_detectNegative, detectNegative);
         fn.SetBool(k_ID_detectPositive, detectPositive);
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
     public override void IsNaN(TensorFloat X, TensorInt O)
     {
         var fn = ComputeFuncSingleton.Instance.Get("IsNaN");
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -2154,7 +2163,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetTensorShapeStrides(k_ID_shapeA, k_ID_stridesA, A.shape);
         fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
         fn.SetInt(k_ID_rank, O.shape.rank);
-        fn.ScheduleXSBO(Pin(C), Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXSBO(Pin(C), Pin(A), Pin(B), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -2164,7 +2173,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
         fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
         fn.SetInt(k_ID_rank, O.shape.rank);
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -2180,7 +2189,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_offsetO, 0);
         fn.SetInt(k_ID_count, length);
         fn.SetInt(k_ID_O_width, wordsWidth * 4);
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
         fn.Dispatch(wordsWidth, wordsHeight, 1);
     }
@@ -2198,7 +2207,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_offsetO, 0);
         fn.SetInt(k_ID_count, length);
         fn.SetInt(k_ID_O_width, wordsWidth * 4);
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
         fn.Dispatch(wordsWidth, wordsHeight, 1);
     }
@@ -2216,7 +2225,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_offsetO, 0);
         fn.SetInt(k_ID_count, length);
         fn.SetInt(k_ID_O_width, wordsWidth * 4);
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
         fn.Dispatch(wordsWidth, wordsHeight, 1);
     }
@@ -2228,7 +2237,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
         fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
         fn.SetInt(k_ID_rank, O.shape.rank);
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -2238,7 +2247,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_endLength, X.shape.Strides(axis));
         fn.SetInt(k_ID_indicesLength, numIndices);
         fn.SetInt(k_ID_axisDim, X.shape[axis]);
-        fn.ScheduleXBO(Pin(X), Pin(indices), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXBO(Pin(X), Pin(indices), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -2248,7 +2257,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_endLength, X.shape.Strides(axis));
         fn.SetInt(k_ID_indicesLength, indices.shape.length);
         fn.SetInt(k_ID_axisDim, X.shape[axis]);
-        fn.ScheduleXBO(Pin(X), Pin(indices), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXBO(Pin(X), Pin(indices), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -2259,7 +2268,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_endLengthX, X.shape.Strides(axis));
         fn.SetInt(k_ID_axisDim, O.shape[axis]);
         fn.SetInt(k_ID_axisDimX, X.shape[axis]);
-        fn.ScheduleXBO(Pin(X), Pin(indices), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXBO(Pin(X), Pin(indices), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -2278,7 +2287,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
         fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
         fn.SetTensorShapeStrides(k_ID_shapeIndices, k_ID_stridesIndices, indices.shape);
-        fn.ScheduleXBO(Pin(X), Pin(indices), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXBO(Pin(X), Pin(indices), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -2300,7 +2309,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_axisDim, X.shape[axis]);
         fn.SetInt(k_ID_axisDimIndices, indices.shape[axis]);
         fn.SetInt(k_ID_reduction, (int)reduction);
-        fn.ScheduleXBO(Pin(updates), Pin(indices), Pin(O, clearOnInit: false), indices.shape.length);
+        fn.ScheduleXBO(Pin(updates), Pin(indices), Pin(O), indices.shape.length);
     }
 
     /// <inheritdoc/>
@@ -2329,7 +2338,7 @@ public partial class GPUComputeBackend : CPUBackend
         }
         fn.SetTensorAsBuffer(k_ID_Iptr, Pin(indices));
         fn.SetTensorAsBuffer(k_ID_Uptr, Pin(updates));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
         fn.Dispatch(updatesLength, indicesLength, 1);
     }
 
@@ -2360,7 +2369,7 @@ public partial class GPUComputeBackend : CPUBackend
         }
         fn.SetTensorAsBuffer(k_ID_Iptr, Pin(indices));
         fn.SetTensorAsBuffer(k_ID_UIntptr, Pin(updates));
-        fn.SetTensorAsBuffer(k_ID_OIntptr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_OIntptr, Pin(O));
         fn.Dispatch(updatesLength, indicesLength, 1);
     }
 
@@ -2379,7 +2388,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_axisDim, O.shape[axis]);
 
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
         fn.Dispatch(O.shape.length, 1, 1);
     }
@@ -2399,7 +2408,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_axisDim, O.shape[axis]);
 
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
         fn.Dispatch(O.shape.length, 1, 1);
     }
@@ -2417,8 +2426,8 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_reduceLength, reduceLength);
         fn.SetInt(k_ID_maxK, k);
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-        fn.SetTensorAsBuffer(k_ID_Valuesptr, Pin(values, clearOnInit: false));
-        fn.SetTensorAsBuffer(k_ID_Indicesptr, Pin(indices, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Valuesptr, Pin(values));
+        fn.SetTensorAsBuffer(k_ID_Indicesptr, Pin(indices));
         fn.Dispatch(innerLength, outerLength, 1);
     }
 
@@ -2443,7 +2452,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
         fn.SetTensorAsBuffer(k_ID_Sptr, Pin(rois));
         fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indices));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
         fn.Dispatch(O.shape[0] * O.shape[1], O.shape[2] * O.shape[3], 1);
     }
@@ -2457,7 +2466,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetFloat(k_ID_mean, mean);
         fn.SetFloat(k_ID_scale, scale);
 
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
         fn.Dispatch(O.shape.length, 1, 1);
     }
@@ -2471,7 +2480,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetFloat(k_ID_low, low);
         fn.SetFloat(k_ID_high, high);
 
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
         fn.Dispatch(O.shape.length, 1, 1);
     }
@@ -2482,7 +2491,7 @@ public partial class GPUComputeBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get(O.dataType == DataType.Float ? "BernoulliFloat" : "BernoulliInt");
         fn.SetInt(k_ID_lengthO, O.shape.length);
         fn.SetInt(k_ID_seed, (int)Random.GetOpSeed(seed));
-        fn.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length);
+        fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
     }
 
     /// <inheritdoc/>
@@ -2499,13 +2508,13 @@ public partial class GPUComputeBackend : CPUBackend
         {
             fn = ComputeFuncSingleton.Instance.Get("CastToFloat");
             fn.SetTensorAsBuffer(k_ID_XIntptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
         }
         else
         {
             fn = ComputeFuncSingleton.Instance.Get("CastToInt");
             fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_OIntptr, Pin(O, clearOnInit: false));
+            fn.SetTensorAsBuffer(k_ID_OIntptr, Pin(O));
         }
         fn.SetInt(k_ID_X_length, X.shape.length);
 
@@ -2518,7 +2527,7 @@ public partial class GPUComputeBackend : CPUBackend
         var length = O.shape.length;
         var fn = ComputeFuncSingleton.Instance.Get("MemCopy");
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
         fn.SetInt(k_ID_offsetX, 0);
         fn.SetInt(k_ID_offsetO, 0);
         fn.SetInt(k_ID_count, length);
@@ -2539,7 +2548,7 @@ public partial class GPUComputeBackend : CPUBackend
         var fn = ComputeFuncSingleton.Instance.Get("MemCopyStride");
         var copyLength = count * length;
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
         fn.SetInt(k_ID_strideX, strideX);
         fn.SetInt(k_ID_strideO, strideO);
         fn.SetInt(k_ID_offsetX, offsetX);
@@ -2580,7 +2589,7 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetInt(k_ID_O_width, N);
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
         fn.SetTensorAsBuffer(k_ID_Wptr, Pin(Y));
-        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+        fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
         fn.SetInt(k_ID_maxXIndex, M * K - 1);
         fn.SetInt(k_ID_maxWIndex, K * N - 1);
 
@@ -2610,7 +2619,7 @@ public partial class GPUComputeBackend : CPUBackend
             fn.SetInt(k_ID_maxWIndex, K * N - 1);
             fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_Wptr, Pin(Y));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
             fn.Dispatch(ComputeHelper.IDivC(N, 4), ComputeHelper.IDivC(M, 4), 1);
         }
@@ -2651,7 +2660,7 @@ public partial class GPUComputeBackend : CPUBackend
             fn.SetInt(k_ID_maxWIndex, K * N - 1);
             fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_Wptr, Pin(Y));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O, clearOnInit: false));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
             fn.Dispatch(workItemsX, workItemsY, workItemsZ);
         }
@@ -2708,15 +2717,15 @@ public partial class GPUComputeBackend : CPUBackend
         endFn.SetInt(k_ID_hActivation, (int)activations[3 * dirIndex + 2]);
         endFn.SetFloat(k_ID_hAlpha, activationAlpha[3 * dirIndex + 2]);
         endFn.SetFloat(k_ID_hBeta, activationAlpha[3 * dirIndex + 2]);
-        endFn.SetTensorAsBuffer(k_ID_Yptr, Pin(Y, clearOnInit: false));
-        endFn.SetTensorAsBuffer(k_ID_YHptr, Pin(Y_h, clearOnInit: false));
-        endFn.SetTensorAsBuffer(k_ID_YCptr, Pin(Y_c, clearOnInit: false));
+        endFn.SetTensorAsBuffer(k_ID_Yptr, Pin(Y));
+        endFn.SetTensorAsBuffer(k_ID_YHptr, Pin(Y_h));
+        endFn.SetTensorAsBuffer(k_ID_YCptr, Pin(Y_c));
         endFn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
         endFn.SetInt(k_ID_bOffset, dirIndex * 8 * hiddenSize);
         endFn.SetTensorAsBuffer(k_ID_Pptr, Pin(P));
         endFn.SetInt(k_ID_pOffset, dirIndex * 3 * hiddenSize);
-        endFn.SetTensorAsBuffer(k_ID_XsixWTptr, Pin(XsixWT, clearOnInit: false));
-        endFn.SetTensorAsBuffer(k_ID_HtxRTptr, Pin(HtxRT, clearOnInit: false));
+        endFn.SetTensorAsBuffer(k_ID_XsixWTptr, Pin(XsixWT));
+        endFn.SetTensorAsBuffer(k_ID_HtxRTptr, Pin(HtxRT));
         endFn.SetTensorAsBuffer(k_ID_SequenceLensptr, Pin(sequenceLens));
 
         for (var i = 0; i < seqLength; i++)

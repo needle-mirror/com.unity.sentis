@@ -184,8 +184,8 @@ namespace Unity.Sentis
         /// <param name="dataType">The data type of the tensor.</param>
         /// <param name="shape">The (unblocked) shape of the tensor.</param>
         /// <param name="axis">The axis on which to block the shape.</param>
-        /// <param name="clearOnInit">Whether to zero the data on allocation. The default value is `true`.</param>
-        public TextureTensorData(DataType dataType, TensorShape shape, int axis, bool clearOnInit = true)
+        /// <param name="clearOnInit">Whether to zero the data on allocation. The default value is `false`.</param>
+        public TextureTensorData(DataType dataType, TensorShape shape, int axis, bool clearOnInit = false)
         {
             m_DataType = dataType;
             SetShape(shape, axis);
@@ -444,9 +444,9 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="X">The tensor to move to the compute backend.</param>
         /// <param name="blockAxis">Which axis to block the tensor shape on.</param>
-        /// <param name="clearOnInit">Whether to zero the data on pinning. The default value is `true`.</param>
+        /// <param name="clearOnInit">Whether to zero the data on pinning. The default value is `false`.</param>
         /// <returns>The pinned `TextureTensorData`.</returns>
-        public static TextureTensorData Pin(Tensor X, int blockAxis, bool clearOnInit = true)
+        public static TextureTensorData Pin(Tensor X, int blockAxis, bool clearOnInit = false)
         {
             var onDevice = X.tensorOnDevice;
             if (onDevice == null)

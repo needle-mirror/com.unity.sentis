@@ -129,7 +129,7 @@ namespace Unity.Sentis.Layers
             var numCondition = condition.shape.length;
 
             var indices = ctx.backend.NewTempTensorInt(condition.shape);
-            ArrayTensorData.Pin(indices, clearOnInit: false);
+            ArrayTensorData.Pin(indices);
 
             var numIndices = 0;
             for (var i = 0; i < numCondition; i++)

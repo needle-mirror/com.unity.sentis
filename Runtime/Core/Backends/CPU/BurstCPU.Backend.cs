@@ -145,7 +145,7 @@ public partial class CPUBackend
     {
         var pinX = Pin(X);
         var pinY = Pin(Y);
-        var pinO = Pin(O, clearOnInit: false);
+        var pinO = Pin(O);
 
         var xShape = X.shape.rank == 1 ? new TensorShape(1, X.shape[0]) : X.shape;
         var yShape = Y.shape.rank == 1 ? new TensorShape(Y.shape[0], 1) : Y.shape;
@@ -190,7 +190,7 @@ public partial class CPUBackend
         var Otmp = (fusedActivation != Layers.FusableActivation.None) ? NewTempTensorFloat(O.shape) : O;
 
         var pinB = Pin(B);
-        var pinO = Pin(Otmp, clearOnInit: false);
+        var pinO = Pin(Otmp);
 
         { // O = broadcast(B)
             // @TODO: move broadcast B directly into MatrixMultiplyJob
@@ -237,14 +237,14 @@ public partial class CPUBackend
         if (B != null)
         {
             job.useBias = true;
-            job.ScheduleXSBO(Pin(X), Pin(K), Pin(B), Pin(O, clearOnInit: false), arrayLength, 1);
+            job.ScheduleXSBO(Pin(X), Pin(K), Pin(B), Pin(O), arrayLength, 1);
         }
         else
         {
             job.useBias = false;
             var pinX = Pin(X);
             var pinW = Pin(K);
-            var pinO = Pin(O, clearOnInit: false);
+            var pinO = Pin(O);
             var fenceBeforeJobStart = JobHandle.CombineDependencies(pinX.fence, pinW.fence, pinO.reuse);
             unsafe
             {
@@ -279,7 +279,7 @@ public partial class CPUBackend
         var outputChannels = O.shape[1];
 
         var columnBuffer = NewTempTensorFloat(new TensorShape(outputChannels * job.kernelSize, job.inputSize));
-        var pinCB = Pin(columnBuffer, clearOnInit: false);
+        var pinCB = Pin(columnBuffer);
 
         for (var batchIndex = 0; batchIndex < batchCount; batchIndex++)
         {
@@ -293,12 +293,12 @@ public partial class CPUBackend
             if (B != null)
             {
                 job.useBias = true;
-                job.ScheduleXBO(pinCB, Pin(B), Pin(Otmp, clearOnInit: false), outputChannels, 1);
+                job.ScheduleXBO(pinCB, Pin(B), Pin(Otmp), outputChannels, 1);
             }
             else
             {
                 job.useBias = false;
-                var pinO = Pin(Otmp, clearOnInit: false);
+                var pinO = Pin(Otmp);
                 var fenceBeforeJobStart = JobHandle.CombineDependencies(pinCB.fence, pinO.reuse);
                 unsafe
                 {
@@ -329,7 +329,7 @@ public partial class CPUBackend
         }
 
         var pinX = Pin(X);
-        var pinO = Pin(O, clearOnInit: false);
+        var pinO = Pin(O);
 
         // for 1D case insert dim 1 at axis 2
         var xShape = rankX == 3 ? X.shape.Unsqueeze(2) : X.shape;
@@ -467,7 +467,7 @@ public partial class CPUBackend
 
         var job = new TransposeJob();
         job.iteratorX.Prepare(reshape, permutations);
-        job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -477,7 +477,7 @@ public partial class CPUBackend
 
         var job = new TransposeJob();
         job.iteratorX.Prepare(reshape, permutationsSpaceToDepth);
-        job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -516,7 +516,7 @@ public partial class CPUBackend
             job.padHeight = 0;
             job.padWidth = pads[0];
         }
-        job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -555,7 +555,7 @@ public partial class CPUBackend
             job.padHeight = 0;
             job.padWidth = pads[0];
         }
-        job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -564,7 +564,7 @@ public partial class CPUBackend
         var job = new ReduceMaxFloatJob();
         job.innerLength = 1;
         job.reduceLength = X.shape.Strides(1);
-        job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -575,7 +575,7 @@ public partial class CPUBackend
         var job = new ReduceMeanFloatJob();
         job.innerLength = 1;
         job.reduceLength = strideX;
-        job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <summary>
@@ -592,7 +592,7 @@ public partial class CPUBackend
         var job = new GlobalAverageVariancePoolJob();
         job.spatialDims = X.shape.Length(axis);
 
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length / 2, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length / 2, 1024);
     }
 
     /// <inheritdoc/>
@@ -601,7 +601,7 @@ public partial class CPUBackend
         var pinX = Pin(X);
         var pinS = Pin(S);
         var pinB = Pin(B);
-        var pinO = Pin(O, clearOnInit: false);
+        var pinO = Pin(O);
 
         // Allocate memory
         var reduceOpShape = ShapeInference.GlobalAverageVariancePool(X.shape);
@@ -636,7 +636,7 @@ public partial class CPUBackend
         job.outerLength = outerLength;
         job.epsilon = epsilon;
 
-        job.ScheduleXSBWO(Pin(X), Pin(S), Pin(B), Pin(meanVariance), Pin(O, clearOnInit: false), outerLength, 1024);
+        job.ScheduleXSBWO(Pin(X), Pin(S), Pin(B), Pin(meanVariance), Pin(O), outerLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -646,7 +646,7 @@ public partial class CPUBackend
         job.channels = X.shape[1];
         job.spatialLength = X.shape.Length(2);
 
-        job.ScheduleBatchXSBO(Pin(X), Pin(S), Pin(B), Pin(O, clearOnInit: true), O.shape.length, 1024);
+        job.ScheduleBatchXSBO(Pin(X), Pin(S), Pin(B), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -657,7 +657,7 @@ public partial class CPUBackend
         var pinB = Pin(B);
         var pinM = Pin(mean);
         var pinV = Pin(variance);
-        var pinO = Pin(O, clearOnInit: false);
+        var pinO = Pin(O);
 
         var job = new BatchNormalizationJob();
         job.channels = X.shape.rank == 1 ? 1 : X.shape[1];
@@ -689,12 +689,12 @@ public partial class CPUBackend
         if (O.dataType == DataType.Float)
         {
             var job = new CastToFloatJob();
-            job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
         else
         {
             var job = new CastToIntJob();
-            job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -704,7 +704,7 @@ public partial class CPUBackend
         var job = new IsInfJob();
         job.detectNegative = detectNegative;
         job.detectPositive = detectPositive;
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -712,7 +712,7 @@ public partial class CPUBackend
     {
         var job = new PReluJob();
         var outputLength = job.broadcast.Prepare(X.shape, S.shape);
-        job.ScheduleBatchXBO(Pin(X), Pin(S), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(X), Pin(S), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -722,7 +722,7 @@ public partial class CPUBackend
         job.alpha = alpha;
         job.f1 = 0.5f * (1f + alpha);
         job.f2 = 0.5f * (1f - alpha);
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -731,7 +731,7 @@ public partial class CPUBackend
         var job = new HardSigmoidJob();
         job.alpha = alpha;
         job.beta = beta;
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -739,14 +739,14 @@ public partial class CPUBackend
     {
         var job = new EluJob();
         job.alpha = alpha;
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Gelu(TensorFloat X, TensorFloat O)
     {
         var job = new GeluJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -755,16 +755,25 @@ public partial class CPUBackend
         var job = new SeluJob();
         job.alpha = alpha;
         job.gamma = gamma;
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Clip(TensorFloat X, TensorFloat O, float min, float max)
     {
-        var job = new ClipJob();
+        var job = new ClipFloatJob();
         job.minV = min;
         job.maxV = max;
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+    }
+
+    /// <inheritdoc/>
+    public virtual void Clip(TensorInt X, TensorInt O, int min, int max)
+    {
+        var job = new ClipIntJob();
+        job.minV = min;
+        job.maxV = max;
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -772,7 +781,7 @@ public partial class CPUBackend
     {
         var job = new CeluJob();
         job.alpha = alpha;
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -781,7 +790,7 @@ public partial class CPUBackend
         var job = new ShrinkJob();
         job.bias = bias;
         job.lambd = lambd;
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -789,7 +798,7 @@ public partial class CPUBackend
     {
         var job = new ThresholdedReluJob();
         job.alpha = alpha;
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -812,7 +821,7 @@ public partial class CPUBackend
                 job.sumRank = sumShape.rank;
                 job.outRank = O.shape.rank;
 
-                job.ScheduleXO(Pin(inputTensors[0]), Pin(O, clearOnInit: false), O.shape.length, 1024);
+                job.ScheduleXO(Pin(inputTensors[0]), Pin(O), O.shape.length, 1024);
                 return;
             }
             case 2:
@@ -831,7 +840,7 @@ public partial class CPUBackend
                 job.sumRank = sumShape.rank;
                 job.outRank = O.shape.rank;
 
-                job.ScheduleXBO(Pin(inputTensors[0]), Pin(inputTensors[1]), Pin(O, clearOnInit: false), O.shape.length, 1024);
+                job.ScheduleXBO(Pin(inputTensors[0]), Pin(inputTensors[1]), Pin(O), O.shape.length, 1024);
                 return;
             }
         }
@@ -843,7 +852,7 @@ public partial class CPUBackend
         unsafe
         {
             // copy tensor data interleaved into O
-            var pinO = Pin(O, clearOnInit: false);
+            var pinO = Pin(O);
             int offsetO = 0;
 
             var job = new CopyStrideJob();
@@ -881,7 +890,7 @@ public partial class CPUBackend
         var job = new SliceJob();
         job.sliceParams.Prepare(X.shape, O.shape, starts, axes, steps);
 
-        job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -890,7 +899,7 @@ public partial class CPUBackend
         var job = new SliceJob();
         job.sliceParams.PrepareSplit(X.shape, O.shape, axis, start);
 
-        job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -900,7 +909,7 @@ public partial class CPUBackend
         job.padMode = padMode;
         job.constant = constant;
         job.padParams.Prepare(X.shape, pad);
-        job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -908,7 +917,7 @@ public partial class CPUBackend
     {
         var job = new TransposeJob();
         job.iteratorX.Prepare(X.shape);
-        job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -916,7 +925,7 @@ public partial class CPUBackend
     {
         var job = new TransposeJob();
         job.iteratorX.Prepare(X.shape, permutations);
-        job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -924,7 +933,7 @@ public partial class CPUBackend
     {
         var job = new PowFloatIntJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -940,7 +949,7 @@ public partial class CPUBackend
         }
         job.rank = O.shape.rank;
 
-        job.ScheduleXSBO(Pin(C), Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXSBO(Pin(C), Pin(A), Pin(B), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -954,7 +963,7 @@ public partial class CPUBackend
         }
         job.rank = O.shape.rank;
 
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -962,7 +971,7 @@ public partial class CPUBackend
     {
         var job = new ClearJob();
         job.length = O.shape.length;
-        job.ScheduleO(Pin(O, clearOnInit: false));
+        job.ScheduleO(Pin(O));
     }
 
     /// <inheritdoc/>
@@ -970,7 +979,7 @@ public partial class CPUBackend
     {
         var job = new SetJob();
         job.memValue = math.asint(value);
-        job.ScheduleO(Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleO(Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -978,7 +987,7 @@ public partial class CPUBackend
     {
         var job = new SetJob();
         job.memValue = value;
-        job.ScheduleO(Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleO(Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -991,7 +1000,7 @@ public partial class CPUBackend
             OpsUtils.PinTensorShapeStrides(X.shape, job.shapeX, job.stridesX);
         }
         job.rank = O.shape.rank;
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -1002,7 +1011,7 @@ public partial class CPUBackend
         job.indicesLength = numIndices;
         job.axisDim = X.shape[axis];
 
-        job.ScheduleBatchXBO(Pin(X), Pin(indices), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleBatchXBO(Pin(X), Pin(indices), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -1012,7 +1021,7 @@ public partial class CPUBackend
         job.innerLength = X.shape.Strides(axis);
         job.indicesLength = indices.shape.length;
         job.axisDim = X.shape[axis];
-        job.ScheduleBatchXBO(Pin(X), Pin(indices), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleBatchXBO(Pin(X), Pin(indices), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -1023,7 +1032,7 @@ public partial class CPUBackend
         job.endLengthX = X.shape.Strides(axis);
         job.axisDim = O.shape[axis];
         job.axisDimX = X.shape[axis];
-        job.ScheduleXBO(Pin(X), Pin(indices), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXBO(Pin(X), Pin(indices), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -1043,7 +1052,7 @@ public partial class CPUBackend
             OpsUtils.PinTensorShapeStrides(indices.shape, job.shapeIndices, job.stridesIndices);
         }
 
-        job.ScheduleXBO(Pin(X), Pin(indices), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXBO(Pin(X), Pin(indices), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -1067,7 +1076,7 @@ public partial class CPUBackend
         // indices. To avoid race conditions updating the output tensor, force these reduction modes to run
         // on a single worker by setting the inner loop length to int.MaxValue.
 
-        job.ScheduleXBO(Pin(updates), Pin(indices), Pin(O, clearOnInit: true), indices.shape.length,
+        job.ScheduleXBO(Pin(updates), Pin(indices), Pin(O), indices.shape.length,
             (reduction == Layers.ScatterReductionMode.None) ? 1024 : int.MaxValue);
     }
 
@@ -1093,7 +1102,7 @@ public partial class CPUBackend
                 trailing *= X.shape[j];
             }
         }
-        job.ScheduleXSBO(Pin(X), Pin(indices), Pin(updates), Pin(O, clearOnInit: true), updatesLength * indicesLength, 1024);
+        job.ScheduleXSBO(Pin(X), Pin(indices), Pin(updates), Pin(O), updatesLength * indicesLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -1118,7 +1127,7 @@ public partial class CPUBackend
                 trailing *= X.shape[j];
             }
         }
-        job.ScheduleXSBO(Pin(X), Pin(indices), Pin(updates), Pin(O, clearOnInit: true), updatesLength * indicesLength, 1024);
+        job.ScheduleXSBO(Pin(X), Pin(indices), Pin(updates), Pin(O), updatesLength * indicesLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -1136,7 +1145,7 @@ public partial class CPUBackend
         }
         job.rankO = O.shape.rank;
 
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -1154,7 +1163,7 @@ public partial class CPUBackend
         }
         job.rankO = O.shape.rank;
 
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -1165,8 +1174,8 @@ public partial class CPUBackend
         int outerLength = X.shape.length / (reduceLength * innerLength);
 
         var pinX = Pin(X);
-        var pinV = Pin(values, clearOnInit: false);
-        var pinI = Pin(indices, clearOnInit: false);
+        var pinV = Pin(values);
+        var pinI = Pin(indices);
         var job = new TopKJob();
         job.innerLength = innerLength;
         job.reduceLength = reduceLength;
@@ -1198,7 +1207,7 @@ public partial class CPUBackend
         job.samplingRatio = samplingRatio;
         job.spatialScale = spatialScale;
         job.mode = mode;
-        job.ScheduleBatchXSBO(Pin(X), Pin(rois), Pin(indices), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleBatchXSBO(Pin(X), Pin(rois), Pin(indices), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -1208,7 +1217,7 @@ public partial class CPUBackend
         job.seed = Random.GetOpSeed(seed);
         job.mean = mean;
         job.scale = scale;
-        job.ScheduleO(Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleO(Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -1218,7 +1227,7 @@ public partial class CPUBackend
         job.seed = Random.GetOpSeed(seed);
         job.low = low;
         job.high = high;
-        job.ScheduleO(Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleO(Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -1227,7 +1236,7 @@ public partial class CPUBackend
         var job = new BernoulliJob();
         job.seed = Random.GetOpSeed(seed);
         job.dataType = O.dataType;
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -1237,7 +1246,7 @@ public partial class CPUBackend
         job.offsetX = 0;
         job.offsetO = 0;
         job.length = X.shape.length;
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false));
+        job.ScheduleXO(Pin(X), Pin(O));
     }
 
     /// <inheritdoc/>
@@ -1257,7 +1266,7 @@ public partial class CPUBackend
         job.strideX = strideX;
         job.strideO = strideO;
         job.length = length;
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), count, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), count, 1024);
     }
 
     /// <inheritdoc/>
@@ -1297,7 +1306,7 @@ public partial class CPUBackend
     /// <param name="layout">The layout of the tensors.</param>
     protected virtual void SinglePassLSTM(TensorFloat X, TensorFloat W, TensorFloat R, TensorFloat B, TensorInt sequenceLens, TensorFloat P, TensorFloat Y, TensorFloat Y_h, TensorFloat Y_c, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, bool isReverse, int dirIndex, Layers.RnnLayout layout)
     {
-        var pinY = Pin(Y, clearOnInit: false);
+        var pinY = Pin(Y);
 
         var pinB = Pin(B);
         var pinP = Pin(P);
@@ -1335,8 +1344,8 @@ public partial class CPUBackend
         var HtxRT = NewTempTensorFloat(new TensorShape(batchSize * 4 * hiddenSize));
         var XsixWT = NewTempTensorFloat(new TensorShape(seqLength * batchSize * 4 * hiddenSize));
 
-        var pinHtxRT = Pin(HtxRT, clearOnInit: false);
-        var pinXsixWT = Pin(XsixWT, clearOnInit: false);
+        var pinHtxRT = Pin(HtxRT);
+        var pinXsixWT = Pin(XsixWT);
 
         ScheduleSGEMM(X, seqLength * batchSize, inputSize, W, 4 * hiddenSize, inputSize, XsixWT, seqLength * batchSize, 4 * hiddenSize, transposeB: true);
 
@@ -1466,7 +1475,7 @@ public partial class CPUBackend
     /// <param name="X">`Tensor` to prepare for CPU backend.</param>
     /// <param name="clearOnInit">Whether to copy tensor data to CPU backend.</param>
     /// <returns>`Tensor` once prepared for CPU backend.</returns>
-    public virtual Tensor PinToDevice(Tensor X, bool clearOnInit = true)
+    public virtual Tensor PinToDevice(Tensor X, bool clearOnInit = false)
     {
         Pin(X, clearOnInit);
         return X;

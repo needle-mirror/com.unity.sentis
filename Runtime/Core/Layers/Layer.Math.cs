@@ -142,18 +142,27 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
         {
-            return new PartialTensor(DataType.Float, inputTensors[0].shape);
+            return new PartialTensor(inputTensors[0].dataType, inputTensors[0].shape);
         }
 
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
-            var min = inputTensors.Length > 1 && inputTensors[1] != null ? inputTensors[1].ToReadOnlySpan<float>()[0] : float.MinValue;
-            var max = inputTensors.Length > 2 && inputTensors[2] != null ? inputTensors[2].ToReadOnlySpan<float>()[0] : float.MaxValue;
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape, inputTensors[0].dataType);
             if (O.shape.HasZeroDims())
                 return O;
-            ctx.backend.Clip(inputTensors[0] as TensorFloat, O, min, max);
+            if (inputTensors[0] is TensorInt)
+            {
+                var min = inputTensors.Length > 1 && inputTensors[1] != null ? inputTensors[1].ToReadOnlySpan<int>()[0] : int.MinValue;
+                var max = inputTensors.Length > 2 && inputTensors[2] != null ? inputTensors[2].ToReadOnlySpan<int>()[0] : int.MaxValue;
+                ctx.backend.Clip(inputTensors[0] as TensorInt, O as TensorInt, min, max);
+            }
+            else
+            {
+                var min = inputTensors.Length > 1 && inputTensors[1] != null ? inputTensors[1].ToReadOnlySpan<float>()[0] : float.MinValue;
+                var max = inputTensors.Length > 2 && inputTensors[2] != null ? inputTensors[2].ToReadOnlySpan<float>()[0] : float.MaxValue;
+                ctx.backend.Clip(inputTensors[0] as TensorFloat, O as TensorFloat, min, max);
+            }
             return O;
         }
 

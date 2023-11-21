@@ -389,7 +389,7 @@ namespace Unity.Sentis.Layers
                 return O;
 
             ArrayTensorData.Pin(X);
-            ArrayTensorData.Pin(O, clearOnInit: false);
+            ArrayTensorData.Pin(O);
 
             uint finalSeed = Random.GetOpSeed(NextSeed);
             finalSeed = finalSeed == 0 ? 1 : finalSeed;

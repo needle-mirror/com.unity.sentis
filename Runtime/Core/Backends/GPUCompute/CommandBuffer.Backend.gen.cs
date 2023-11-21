@@ -20,7 +20,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastPowFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -33,7 +33,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastPowFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -49,7 +49,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O), O.shape.length);
             }
         }
 
@@ -61,7 +61,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastAddFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -74,7 +74,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastAddFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -90,7 +90,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O), O.shape.length);
             }
         }
 
@@ -102,7 +102,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastSubFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -115,7 +115,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastSubFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -131,7 +131,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O), O.shape.length);
             }
         }
 
@@ -143,7 +143,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastMulFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -156,7 +156,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastMulFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -172,7 +172,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O), O.shape.length);
             }
         }
 
@@ -184,7 +184,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastDivFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -197,7 +197,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastDivFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -213,7 +213,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O), O.shape.length);
             }
         }
 
@@ -225,7 +225,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastFModFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -238,7 +238,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastFModFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -254,7 +254,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O), O.shape.length);
             }
         }
 
@@ -266,7 +266,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastPowInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -279,7 +279,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastPowInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -295,7 +295,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O), O.shape.length);
             }
         }
 
@@ -307,7 +307,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastAddInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -320,7 +320,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastAddInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -336,7 +336,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O), O.shape.length);
             }
         }
 
@@ -348,7 +348,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastSubInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -361,7 +361,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastSubInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -377,7 +377,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O), O.shape.length);
             }
         }
 
@@ -389,7 +389,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastMulInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -402,7 +402,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastMulInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -418,7 +418,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O), O.shape.length);
             }
         }
 
@@ -430,7 +430,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastDivInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -443,7 +443,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastDivInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -459,7 +459,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O), O.shape.length);
             }
         }
 
@@ -471,7 +471,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastModInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -484,7 +484,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastModInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -500,7 +500,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O), O.shape.length);
             }
         }
 
@@ -512,7 +512,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastFModInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -525,7 +525,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastFModInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -541,7 +541,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O), O.shape.length);
             }
         }
 
@@ -554,7 +554,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastMinFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(Y));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -567,7 +567,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastMinFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(Y));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -583,7 +583,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, Y.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(X), Pin(Y), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(X), Pin(Y), Pin(O), O.shape.length);
             }
         }
 
@@ -611,7 +611,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastMaxFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(Y));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -624,7 +624,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastMaxFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(Y));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -640,7 +640,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, Y.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(X), Pin(Y), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(X), Pin(Y), Pin(O), O.shape.length);
             }
         }
 
@@ -670,7 +670,7 @@ namespace Unity.Sentis
                 cb.SetFloat(fn, k_ID_beta, normalizationY);
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(Y));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -685,7 +685,7 @@ namespace Unity.Sentis
                 cb.SetFloat(fn, k_ID_beta, normalizationY);
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(Y));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -703,7 +703,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, Y.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(X), Pin(Y), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(X), Pin(Y), Pin(O), O.shape.length);
             }
         }
 
@@ -731,7 +731,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastAddFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(Y));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -744,7 +744,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastAddFloat");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(Y));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -760,7 +760,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, Y.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(X), Pin(Y), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(X), Pin(Y), Pin(O), O.shape.length);
             }
         }
 
@@ -788,7 +788,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastMinInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(Y));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -801,7 +801,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastMinInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(Y));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -817,7 +817,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, Y.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(X), Pin(Y), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(X), Pin(Y), Pin(O), O.shape.length);
             }
         }
 
@@ -845,7 +845,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastMaxInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(Y));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -858,7 +858,7 @@ namespace Unity.Sentis
                 var fn = ComputeFuncSingleton.Instance.Get("BroadcastMaxInt");
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
                 cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(Y));
-                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
                 cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
@@ -874,7 +874,7 @@ namespace Unity.Sentis
                 cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, Y.shape);
                 cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                cb.ScheduleXBO(fn, Pin(X), Pin(Y), Pin(O, clearOnInit: false), O.shape.length);
+                cb.ScheduleXBO(fn, Pin(X), Pin(Y), Pin(O), O.shape.length);
             }
         }
 
@@ -1935,7 +1935,7 @@ namespace Unity.Sentis
             cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
             cb.SetFloat(fn, k_ID_s, s);
             cb.SetFloat(fn, k_ID_b, b);
-            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O, clearOnInit: false));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
             cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
             var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
             var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);

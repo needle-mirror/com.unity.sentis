@@ -119,7 +119,7 @@ public abstract class Tensor : IDisposable
         m_TensorOnDevice?.CompleteAllPendingOperations();
         if (tensorOnDevice is IReadableTensorData)
             return;
-        ArrayTensorData.Pin(this, clearOnInit: false);
+        ArrayTensorData.Pin(this);
     }
 
     /// <summary>

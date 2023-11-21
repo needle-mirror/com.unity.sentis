@@ -18,7 +18,6 @@ namespace Unity.Sentis {
 public partial class CPUBackend
 {
 
-
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
     internal unsafe struct AbsIntJob : IJobParallelFor, IJobResourceDeclarationXO
     {
@@ -175,6 +174,39 @@ public partial class CPUBackend
         public void Execute(int threadIdx)
         {
             Optr[threadIdx] = start + (threadIdx * delta);
+        }
+    }
+
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    unsafe struct ClipFloatJob : IJobParallelFor, IJobResourceDeclarationXO
+    {
+	public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+        public float maxV;
+        public float minV;
+
+        public void Execute(int threadIdx)
+        {
+            float v = Xptr[threadIdx];
+            Optr[threadIdx] = math.min(maxV, math.max(v, minV));
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    unsafe struct ClipIntJob : IJobParallelFor, IJobResourceDeclarationXO
+    {
+	public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
+        public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+
+        public int maxV;
+        public int minV;
+
+        public void Execute(int threadIdx)
+        {
+            int v = Xptr[threadIdx];
+            Optr[threadIdx] = math.min(maxV, math.max(v, minV));
         }
     }
 }

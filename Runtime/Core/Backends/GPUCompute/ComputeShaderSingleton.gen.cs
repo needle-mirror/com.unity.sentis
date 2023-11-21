@@ -14,7 +14,6 @@ namespace Unity.Sentis
                 "LeakyRelu",
                 "PRelu",
                 "Swish",
-                "Clip",
                 "Relu",
                 "Relu6",
                 "Tanh",

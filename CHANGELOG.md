@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 
+## [1.3.0-pre.2] - 2023-11-21
+
+### Fixed
+- Dependency not declared in package manifest
+
+
 ## [1.3.0-pre.1] - 2023-11-09
 
 ### Added

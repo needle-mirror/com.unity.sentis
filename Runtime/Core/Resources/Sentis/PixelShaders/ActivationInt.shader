@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/ActivationInt"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile Sign Not Abs Neg
+            #pragma multi_compile Sign Not Abs Neg Clip
 
             #pragma vertex vert
             #pragma fragment frag
@@ -20,6 +20,10 @@ Shader "Hidden/Sentis/ActivationInt"
             #include "CommonPixelShader.cginc"
 
             DECLARE_TENSOR_BLOCK_STRIDE_O;
+
+            int Alpha;
+            int Beta;
+
             DECLARE_TENSOR(X, int);
 
             int4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
@@ -37,6 +41,9 @@ Shader "Hidden/Sentis/ActivationInt"
                 #endif
                 #ifdef Not
                     v = v == 0 ? 1 : 0;
+                #endif
+                #if defined(Clip)
+                    v = min(Beta, max(v, Alpha));
                 #endif
                 return v;
             }

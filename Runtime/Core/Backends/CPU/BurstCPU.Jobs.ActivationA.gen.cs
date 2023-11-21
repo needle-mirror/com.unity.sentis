@@ -63,26 +63,6 @@ internal unsafe struct SwishJob : IJobParallelFor, IJobResourceDeclarationXO
 
 
 [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
-internal unsafe struct ClipJob : IJobParallelFor, IJobResourceDeclarationXO
-{
-    
-    public float maxV;
-    public float minV;
-    public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
-    public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-
-    public void Execute(int threadIdx)
-    {
-        float v = Xptr[threadIdx];
-        // math.clamp => if the minimum value is is greater than the maximum value, the method returns the minimum value.
-        // this is not the expected behavior so changing it to minmax
-        Optr[threadIdx] = min(maxV, max(v, minV));
-    }
-}
-
-
-
-[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
 internal unsafe struct ReluJob : IJobParallelFor, IJobResourceDeclarationXO
 {
     

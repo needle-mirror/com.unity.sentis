@@ -54,7 +54,7 @@ public partial class CPUBackend : IBackend
         ArrayTensorData.Pin(X);
         ArrayTensorData.Pin(K);
         ArrayTensorData.Pin(B);
-        ArrayTensorData.Pin(Otmp, clearOnInit: false);
+        ArrayTensorData.Pin(Otmp);
 
         int inputGroupedChannels = X.shape[1] / groups;
         int outputGroupedChannels = Otmp.shape[1] / groups;
@@ -117,7 +117,7 @@ public partial class CPUBackend : IBackend
         ArrayTensorData.Pin(X);
         ArrayTensorData.Pin(W);
         ArrayTensorData.Pin(B);
-        ArrayTensorData.Pin(O, clearOnInit: false);
+        ArrayTensorData.Pin(O);
 
         var inputChannels = X.shape[1];
 
@@ -184,8 +184,8 @@ public partial class CPUBackend : IBackend
 
     void Resize1D(TensorFloat X, TensorFloat O, int axis, float scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
     {
-        ArrayTensorData.Pin(X, clearOnInit: false);
-        ArrayTensorData.Pin(O, clearOnInit: false);
+        ArrayTensorData.Pin(X);
+        ArrayTensorData.Pin(O);
 
         var itX = new TensorNDIterator(X.shape);
 
@@ -234,7 +234,7 @@ public partial class CPUBackend : IBackend
     void ApplyLocalPoolingOperator(TensorFloat X, TensorFloat O, int[] pool, int[] stride, int[] pad, Func<float> initOp, Func<float, float, float> accumulateOp, Func<float, int, float> normalizeOp)
     {
         ArrayTensorData.Pin(X);
-        ArrayTensorData.Pin(O, clearOnInit: false);
+        ArrayTensorData.Pin(O);
 
         var itX = new TensorNDIterator(X.shape);
         var itP = new TensorNDIterator(new TensorShape(pool));
@@ -301,7 +301,7 @@ public partial class CPUBackend : IBackend
         // However they bake the division to alpha when exporting to ONNX https://github.com/onnx/tensorflow-onnx/blob/7c37ccb97e0fd478ce093910c4a1411b18e44fd7/tf2onnx/onnx_opset/math.py
 
         ArrayTensorData.Pin(X);
-        ArrayTensorData.Pin(O, clearOnInit: false);
+        ArrayTensorData.Pin(O);
 
         float sizef = size;
 

@@ -420,7 +420,7 @@ namespace Unity.Sentis.Layers
                 if (O.shape.HasZeroDims())
                     return O;
 
-                ArrayTensorData.Pin(O, clearOnInit: false);
+                ArrayTensorData.Pin(O);
                 int nonZeroIndicesIdx = 0;
                 for (var it = new TensorNDIterator(X.shape); it.HasNext(); it.MoveNext())
                 {
@@ -450,7 +450,7 @@ namespace Unity.Sentis.Layers
                 if (O.shape.HasZeroDims())
                     return O;
 
-                ArrayTensorData.Pin(O, clearOnInit: false);
+                ArrayTensorData.Pin(O);
                 int nonZeroIndicesIdx = 0;
                 for (var it = new TensorNDIterator(X.shape); it.HasNext(); it.MoveNext())
                 {

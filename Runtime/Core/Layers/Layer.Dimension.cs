@@ -76,7 +76,7 @@ namespace Unity.Sentis.Layers
 
             Logger.AssertIsTrue(endX >= startX, "Shape.InputError: start value cannot be greater than end value for shape slicing");
             var O = ctx.backend.NewOutputTensorInt(new TensorShape(endX - startX));
-            ArrayTensorData.Pin(O, clearOnInit: false);
+            ArrayTensorData.Pin(O);
             for (var i = startX; i < endX; i++)
                 O[i - startX] = shapeX[i];
             return O;
@@ -122,7 +122,7 @@ namespace Unity.Sentis.Layers
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
             var O = ctx.backend.NewOutputTensorInt(new TensorShape());
-            ArrayTensorData.Pin(O, clearOnInit: false);
+            ArrayTensorData.Pin(O);
             O[0] = inputTensors[0].shape.length;
             return O;
         }

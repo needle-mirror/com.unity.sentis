@@ -1037,6 +1037,22 @@ namespace Unity.Sentis
         }
 
         /// <summary>
+        /// Computes an output tensor by applying the element-wise `Clip` math function: f(x) = clamp(X, min, max).
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="min">The lower clip value.</param>
+        /// <param name="max">The upper clip value.</param>
+        /// <returns>The computed output tensor.</returns>
+        public TensorInt Clip(TensorInt X, int min, int max)
+        {
+            var O = m_Backend.NewOutputTensorInt(X.shape);
+            if (O.shape.HasZeroDims())
+                return O;
+            m_Backend.Clip(X, O, min, max);
+            return O;
+        }
+
+        /// <summary>
         /// Computes an output tensor by applying the element-wise `Floor` math function: f(x) = floor(x).
         /// </summary>
         /// <param name="X">The input tensor.</param>
@@ -2670,7 +2686,7 @@ namespace Unity.Sentis
             var O = m_Backend.NewOutputTensorInt(ShapeInference.Multinomial(X.shape, count));
 
             ArrayTensorData.Pin(X);
-            ArrayTensorData.Pin(O, clearOnInit: false);
+            ArrayTensorData.Pin(O);
 
             uint finalSeed = Random.GetOpSeed(seed);
             finalSeed = finalSeed == 0 ? 1 : finalSeed;

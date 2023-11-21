@@ -13,7 +13,7 @@ public partial class CPUBackend
     {
         var job = new AddFloatJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -21,7 +21,7 @@ public partial class CPUBackend
     {
         var job = new SubFloatJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -29,7 +29,7 @@ public partial class CPUBackend
     {
         var job = new MulFloatJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -37,7 +37,7 @@ public partial class CPUBackend
     {
         var job = new DivFloatJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -45,7 +45,7 @@ public partial class CPUBackend
     {
         var job = new AddIntJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -53,7 +53,7 @@ public partial class CPUBackend
     {
         var job = new SubIntJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -61,7 +61,7 @@ public partial class CPUBackend
     {
         var job = new MulIntJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -69,7 +69,7 @@ public partial class CPUBackend
     {
         var job = new DivIntJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -77,7 +77,7 @@ public partial class CPUBackend
     {
         var job = new PowFloatJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -85,7 +85,7 @@ public partial class CPUBackend
     {
         var job = new GreaterFloatJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -93,7 +93,7 @@ public partial class CPUBackend
     {
         var job = new GreaterIntJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -101,7 +101,7 @@ public partial class CPUBackend
     {
         var job = new GreaterOrEqualFloatJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -109,7 +109,7 @@ public partial class CPUBackend
     {
         var job = new GreaterOrEqualIntJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -117,7 +117,7 @@ public partial class CPUBackend
     {
         var job = new LessFloatJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -125,7 +125,7 @@ public partial class CPUBackend
     {
         var job = new LessOrEqualFloatJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -133,7 +133,7 @@ public partial class CPUBackend
     {
         var job = new EqualFloatJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -141,7 +141,7 @@ public partial class CPUBackend
     {
         var job = new LessIntJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -149,7 +149,7 @@ public partial class CPUBackend
     {
         var job = new LessOrEqualIntJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -157,7 +157,7 @@ public partial class CPUBackend
     {
         var job = new EqualIntJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -165,7 +165,7 @@ public partial class CPUBackend
     {
         var job = new OrJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -173,7 +173,7 @@ public partial class CPUBackend
     {
         var job = new AndJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -181,7 +181,7 @@ public partial class CPUBackend
     {
         var job = new XorJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -189,7 +189,7 @@ public partial class CPUBackend
     {
         var job = new ModIntJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -197,7 +197,7 @@ public partial class CPUBackend
     {
         var job = new FModIntJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -205,7 +205,7 @@ public partial class CPUBackend
     {
         var job = new FModFloatJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -215,7 +215,7 @@ public partial class CPUBackend
         job.s = s;
         job.b = b;
         var outputLength = X.shape.length;
-        job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), outputLength, 1024);
+        job.ScheduleBatchXO(Pin(X), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -232,7 +232,7 @@ public partial class CPUBackend
             var B = tensors[t];
 
             var outputLength = job.broadcast.Prepare(shapeA, B.shape);
-            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO, clearOnInit: false), outputLength, 1024);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO), outputLength, 1024);
 
             A = curO;
             shapeA = shapeA.Broadcast(B.shape);
@@ -256,7 +256,7 @@ public partial class CPUBackend
             var B = tensors[t];
 
             var outputLength = job.broadcast.Prepare(shapeA, B.shape);
-            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO, clearOnInit: false), outputLength, 1024);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO), outputLength, 1024);
 
             A = curO;
             shapeA = shapeA.Broadcast(B.shape);
@@ -282,7 +282,7 @@ public partial class CPUBackend
             var B = tensors[t];
 
             var outputLength = job.broadcast.Prepare(shapeA, B.shape);
-            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO, clearOnInit: false), outputLength, 1024);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO), outputLength, 1024);
 
             A = curO;
             shapeA = shapeA.Broadcast(B.shape);
@@ -306,7 +306,7 @@ public partial class CPUBackend
             var B = tensors[t];
 
             var outputLength = job.broadcast.Prepare(shapeA, B.shape);
-            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO, clearOnInit: false), outputLength, 1024);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO), outputLength, 1024);
 
             A = curO;
             shapeA = shapeA.Broadcast(B.shape);
@@ -330,7 +330,7 @@ public partial class CPUBackend
             var B = tensors[t];
 
             var outputLength = job.broadcast.Prepare(shapeA, B.shape);
-            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO, clearOnInit: false), outputLength, 1024);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO), outputLength, 1024);
 
             A = curO;
             shapeA = shapeA.Broadcast(B.shape);
@@ -354,7 +354,7 @@ public partial class CPUBackend
             var B = tensors[t];
 
             var outputLength = job.broadcast.Prepare(shapeA, B.shape);
-            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO, clearOnInit: false), outputLength, 1024);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO), outputLength, 1024);
 
             A = curO;
             shapeA = shapeA.Broadcast(B.shape);
@@ -368,252 +368,252 @@ public partial class CPUBackend
     public virtual void Abs(TensorFloat X, TensorFloat O)
     {
         var job = new AbsFloatJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Abs(TensorInt X, TensorInt O)
     {
         var job = new AbsIntJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Neg(TensorFloat X, TensorFloat O)
     {
         var job = new NegFloatJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Neg(TensorInt X, TensorInt O)
     {
         var job = new NegIntJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Sign(TensorFloat X, TensorFloat O)
     {
         var job = new SignFloatJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Sign(TensorInt X, TensorInt O)
     {
         var job = new SignIntJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void IsNaN(TensorFloat X, TensorInt O)
     {
         var job = new IsNaNJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Not(TensorInt X, TensorInt O)
     {
         var job = new NotJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Ceil(TensorFloat X, TensorFloat O)
     {
         var job = new CeilJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Floor(TensorFloat X, TensorFloat O)
     {
         var job = new FloorJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Round(TensorFloat X, TensorFloat O)
     {
         var job = new RoundJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Reciprocal(TensorFloat X, TensorFloat O)
     {
         var job = new ReciprocalJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Sqrt(TensorFloat X, TensorFloat O)
     {
         var job = new SqrtJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Square(TensorFloat X, TensorFloat O)
     {
         var job = new SquareJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Exp(TensorFloat X, TensorFloat O)
     {
         var job = new ExpJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Log(TensorFloat X, TensorFloat O)
     {
         var job = new LogJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Acos(TensorFloat X, TensorFloat O)
     {
         var job = new AcosJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Acosh(TensorFloat X, TensorFloat O)
     {
         var job = new AcoshJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Asin(TensorFloat X, TensorFloat O)
     {
         var job = new AsinJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Asinh(TensorFloat X, TensorFloat O)
     {
         var job = new AsinhJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Atan(TensorFloat X, TensorFloat O)
     {
         var job = new AtanJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Atanh(TensorFloat X, TensorFloat O)
     {
         var job = new AtanhJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Cos(TensorFloat X, TensorFloat O)
     {
         var job = new CosJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Cosh(TensorFloat X, TensorFloat O)
     {
         var job = new CoshJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Sin(TensorFloat X, TensorFloat O)
     {
         var job = new SinJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Sinh(TensorFloat X, TensorFloat O)
     {
         var job = new SinhJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Tan(TensorFloat X, TensorFloat O)
     {
         var job = new TanJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Tanh(TensorFloat X, TensorFloat O)
     {
         var job = new TanhJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Relu(TensorFloat X, TensorFloat O)
     {
         var job = new ReluJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Relu6(TensorFloat X, TensorFloat O)
     {
         var job = new Relu6Job();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Softplus(TensorFloat X, TensorFloat O)
     {
         var job = new SoftplusJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Swish(TensorFloat X, TensorFloat O)
     {
         var job = new SwishJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Sigmoid(TensorFloat X, TensorFloat O)
     {
         var job = new SigmoidJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Erf(TensorFloat X, TensorFloat O)
     {
         var job = new ErfJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void Softsign(TensorFloat X, TensorFloat O)
     {
         var job = new SoftsignJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public virtual void HardSwish(TensorFloat X, TensorFloat O)
     {
         var job = new HardSwishJob();
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -624,7 +624,7 @@ public partial class CPUBackend
             var job = new ReduceMinFloatJob();
             job.innerLength = 1;
             job.reduceLength = X.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
             return;
         }
 
@@ -658,7 +658,7 @@ public partial class CPUBackend
                 var job = new ReduceMinFloatJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -673,7 +673,7 @@ public partial class CPUBackend
             var job = new ReduceMinFloatJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -685,7 +685,7 @@ public partial class CPUBackend
             var job = new ReduceMinIntJob();
             job.innerLength = 1;
             job.reduceLength = X.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
             return;
         }
 
@@ -719,7 +719,7 @@ public partial class CPUBackend
                 var job = new ReduceMinIntJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -734,7 +734,7 @@ public partial class CPUBackend
             var job = new ReduceMinIntJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -746,7 +746,7 @@ public partial class CPUBackend
             var job = new ReduceMaxFloatJob();
             job.innerLength = 1;
             job.reduceLength = X.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
             return;
         }
 
@@ -780,7 +780,7 @@ public partial class CPUBackend
                 var job = new ReduceMaxFloatJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -795,7 +795,7 @@ public partial class CPUBackend
             var job = new ReduceMaxFloatJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -807,7 +807,7 @@ public partial class CPUBackend
             var job = new ReduceMaxIntJob();
             job.innerLength = 1;
             job.reduceLength = X.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
             return;
         }
 
@@ -841,7 +841,7 @@ public partial class CPUBackend
                 var job = new ReduceMaxIntJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -856,7 +856,7 @@ public partial class CPUBackend
             var job = new ReduceMaxIntJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -868,7 +868,7 @@ public partial class CPUBackend
             var job = new ReduceSumFloatJob();
             job.innerLength = 1;
             job.reduceLength = X.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
             return;
         }
 
@@ -902,7 +902,7 @@ public partial class CPUBackend
                 var job = new ReduceSumFloatJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -917,7 +917,7 @@ public partial class CPUBackend
             var job = new ReduceSumFloatJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -929,7 +929,7 @@ public partial class CPUBackend
             var job = new ReduceSumIntJob();
             job.innerLength = 1;
             job.reduceLength = X.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
             return;
         }
 
@@ -963,7 +963,7 @@ public partial class CPUBackend
                 var job = new ReduceSumIntJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -978,7 +978,7 @@ public partial class CPUBackend
             var job = new ReduceSumIntJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -990,7 +990,7 @@ public partial class CPUBackend
             var job = new ReduceSumSquareFloatJob();
             job.innerLength = 1;
             job.reduceLength = X.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
             return;
         }
 
@@ -1025,7 +1025,7 @@ public partial class CPUBackend
                 var job = new ReduceSumSquareFloatJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -1038,7 +1038,7 @@ public partial class CPUBackend
                 var job = new ReduceSumFloatJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -1054,14 +1054,14 @@ public partial class CPUBackend
             var job = new ReduceSumSquareFloatJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
         else
         {
             var job = new ReduceSumFloatJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -1073,7 +1073,7 @@ public partial class CPUBackend
             var job = new ReduceSumSquareIntJob();
             job.innerLength = 1;
             job.reduceLength = X.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
             return;
         }
 
@@ -1108,7 +1108,7 @@ public partial class CPUBackend
                 var job = new ReduceSumSquareIntJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -1121,7 +1121,7 @@ public partial class CPUBackend
                 var job = new ReduceSumIntJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -1137,14 +1137,14 @@ public partial class CPUBackend
             var job = new ReduceSumSquareIntJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
         else
         {
             var job = new ReduceSumIntJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -1156,7 +1156,7 @@ public partial class CPUBackend
             var job = new ReduceMeanFloatJob();
             job.innerLength = 1;
             job.reduceLength = X.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
             return;
         }
 
@@ -1190,7 +1190,7 @@ public partial class CPUBackend
                 var job = new ReduceMeanFloatJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -1205,7 +1205,7 @@ public partial class CPUBackend
             var job = new ReduceMeanFloatJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -1217,7 +1217,7 @@ public partial class CPUBackend
             var job = new ReduceProdFloatJob();
             job.innerLength = 1;
             job.reduceLength = X.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
             return;
         }
 
@@ -1251,7 +1251,7 @@ public partial class CPUBackend
                 var job = new ReduceProdFloatJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -1266,7 +1266,7 @@ public partial class CPUBackend
             var job = new ReduceProdFloatJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -1278,7 +1278,7 @@ public partial class CPUBackend
             var job = new ReduceProdIntJob();
             job.innerLength = 1;
             job.reduceLength = X.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
             return;
         }
 
@@ -1312,7 +1312,7 @@ public partial class CPUBackend
                 var job = new ReduceProdIntJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -1327,7 +1327,7 @@ public partial class CPUBackend
             var job = new ReduceProdIntJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -1339,7 +1339,7 @@ public partial class CPUBackend
             var job = new ReduceL1FloatJob();
             job.innerLength = 1;
             job.reduceLength = X.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
             return;
         }
 
@@ -1374,7 +1374,7 @@ public partial class CPUBackend
                 var job = new ReduceL1FloatJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -1387,7 +1387,7 @@ public partial class CPUBackend
                 var job = new ReduceSumFloatJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -1403,14 +1403,14 @@ public partial class CPUBackend
             var job = new ReduceL1FloatJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
         else
         {
             var job = new ReduceSumFloatJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -1422,7 +1422,7 @@ public partial class CPUBackend
             var job = new ReduceL1IntJob();
             job.innerLength = 1;
             job.reduceLength = X.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
             return;
         }
 
@@ -1457,7 +1457,7 @@ public partial class CPUBackend
                 var job = new ReduceL1IntJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -1470,7 +1470,7 @@ public partial class CPUBackend
                 var job = new ReduceSumIntJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -1486,14 +1486,14 @@ public partial class CPUBackend
             var job = new ReduceL1IntJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
         else
         {
             var job = new ReduceSumIntJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -1505,7 +1505,7 @@ public partial class CPUBackend
             var job = new ReduceL2FloatJob();
             job.innerLength = 1;
             job.reduceLength = X.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
             return;
         }
 
@@ -1540,7 +1540,7 @@ public partial class CPUBackend
                 var job = new ReduceSumSquareFloatJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -1553,7 +1553,7 @@ public partial class CPUBackend
                 var job = new ReduceSumFloatJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -1569,14 +1569,14 @@ public partial class CPUBackend
             var job = new ReduceL2FloatJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
         else
         {
             var job = new ReduceSqrtFloatJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -1588,7 +1588,7 @@ public partial class CPUBackend
             var job = new ReduceLogSumFloatJob();
             job.innerLength = 1;
             job.reduceLength = X.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
             return;
         }
 
@@ -1622,7 +1622,7 @@ public partial class CPUBackend
                 var job = new ReduceSumFloatJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -1637,7 +1637,7 @@ public partial class CPUBackend
             var job = new ReduceLogSumFloatJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -1649,7 +1649,7 @@ public partial class CPUBackend
             var job = new ReduceLogSumExpFloatJob();
             job.innerLength = 1;
             job.reduceLength = X.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
             return;
         }
 
@@ -1683,7 +1683,7 @@ public partial class CPUBackend
                 var job = new ReduceLogSumExpFloatJob();
                 job.innerLength = innerLength;
                 job.reduceLength = reduceLength;
-                job.ScheduleBatchXO(Pin(X), Pin(Otmp, clearOnInit: false), Otmp.shape.length, 1024);
+                job.ScheduleBatchXO(Pin(X), Pin(Otmp), Otmp.shape.length, 1024);
 
                 X = Otmp;
                 innerLength = X.shape.Strides(axis);
@@ -1698,7 +1698,7 @@ public partial class CPUBackend
             var job = new ReduceLogSumExpFloatJob();
             job.innerLength = innerLength;
             job.reduceLength = reduceLength;
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -1712,14 +1712,14 @@ public partial class CPUBackend
             var job = new ArgMaxFloatLastJob();
             job.innerLength = X.shape.Strides(axis);
             job.reduceLength = X.shape[axis];
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
         else
         {
             var job = new ArgMaxFloatFirstJob();
             job.innerLength = X.shape.Strides(axis);
             job.reduceLength = X.shape[axis];
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -1733,14 +1733,14 @@ public partial class CPUBackend
             var job = new ArgMaxIntLastJob();
             job.innerLength = X.shape.Strides(axis);
             job.reduceLength = X.shape[axis];
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
         else
         {
             var job = new ArgMaxIntFirstJob();
             job.innerLength = X.shape.Strides(axis);
             job.reduceLength = X.shape[axis];
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -1754,14 +1754,14 @@ public partial class CPUBackend
             var job = new ArgMinFloatLastJob();
             job.innerLength = X.shape.Strides(axis);
             job.reduceLength = X.shape[axis];
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
         else
         {
             var job = new ArgMinFloatFirstJob();
             job.innerLength = X.shape.Strides(axis);
             job.reduceLength = X.shape[axis];
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -1775,14 +1775,14 @@ public partial class CPUBackend
             var job = new ArgMinIntLastJob();
             job.innerLength = X.shape.Strides(axis);
             job.reduceLength = X.shape[axis];
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
         else
         {
             var job = new ArgMinIntFirstJob();
             job.innerLength = X.shape.Strides(axis);
             job.reduceLength = X.shape[axis];
-            job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
     }
 
@@ -1792,7 +1792,7 @@ public partial class CPUBackend
         var job = new SoftmaxJob();
         job.innerLength = X.shape.Strides(axis);
         job.reduceLength = X.shape[axis];
-        job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length / job.reduceLength, 1024);
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length / job.reduceLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -1801,7 +1801,7 @@ public partial class CPUBackend
         var job = new LogSoftmaxJob();
         job.innerLength = X.shape.Strides(axis);
         job.reduceLength = X.shape[axis];
-        job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length / job.reduceLength, 1024);
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length / job.reduceLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -1810,7 +1810,7 @@ public partial class CPUBackend
         var job = new HardmaxJob();
         job.innerLength = X.shape.Strides(axis);
         job.reduceLength = X.shape[axis];
-        job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length / job.reduceLength, 1024);
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length / job.reduceLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -1821,7 +1821,7 @@ public partial class CPUBackend
         job.reduceLength = X.shape[axis];
         job.reverse = reverse;
         job.exclusive = exclusive;
-        job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length / job.reduceLength, 1024);
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length / job.reduceLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -1832,7 +1832,7 @@ public partial class CPUBackend
         job.reduceLength = X.shape[axis];
         job.reverse = reverse;
         job.exclusive = exclusive;
-        job.ScheduleBatchXO(Pin(X), Pin(O, clearOnInit: false), O.shape.length / job.reduceLength, 1024);
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length / job.reduceLength, 1024);
     }
 
     /// <inheritdoc/>
@@ -1842,7 +1842,7 @@ public partial class CPUBackend
         job.widthX = X.shape[-1];
         job.heightX = X.shape[-2];
         job.diagonalK = k;
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), X.shape.Length(0, -1), 32);
+        job.ScheduleXO(Pin(X), Pin(O), X.shape.Length(0, -1), 32);
     }
 
     /// <inheritdoc/>
@@ -1852,7 +1852,7 @@ public partial class CPUBackend
         job.widthX = X.shape[-1];
         job.heightX = X.shape[-2];
         job.diagonalK = k;
-        job.ScheduleXO(Pin(X), Pin(O, clearOnInit: false), X.shape.Length(0, -1), 32);
+        job.ScheduleXO(Pin(X), Pin(O), X.shape.Length(0, -1), 32);
     }
 
     /// <inheritdoc/>

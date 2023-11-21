@@ -70,7 +70,7 @@ namespace Unity.Sentis
                 new[] { "LSTMEnd" });
 
             RegisterKernels("Sentis/ComputeShaders/Activations",
-                new[] { "AbsFloat", "NegFloat", "SignFloat", "AbsInt", "NegInt", "SignInt", "IsInf", "IsNaN" });
+                new[] { "AbsFloat", "NegFloat", "SignFloat", "ClipFloat", "AbsInt", "NegInt", "SignInt", "ClipInt", "IsInf", "IsNaN" });
 
             RegisterKernels("Sentis/ComputeShaders/LogicalOps",
                 new[] { "Or", "And", "Xor", "Not" });

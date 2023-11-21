@@ -51,7 +51,7 @@ You can also use the following methods which are similar to numpy methods:
 |[CastLike](https://github.com/onnx/onnx/blob/main/docs/Operators.md#CastLike) | float, int | float, int | float, int | |
 |[Ceil](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Ceil) | float | float | float | |
 |[Celu](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Celu) | float | float | float | |
-|[Clip](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Clip) | float | float | float | |
+|[Clip](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Clip) | float, int | float, int | float, int | |
 |[Compress](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Compress) | float, int | Not supported | Not supported | |
 |[Concat](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Concat) | float, int | float, int | float, int | |
 |[Constant](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Constant) | - | - | - | The `sparse_value` parameter isn't supported. |

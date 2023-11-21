@@ -1,9 +1,11 @@
 #pragma kernel AbsFloat ABS XFLOAT OFLOAT SUFFIX=AbsFloat
 #pragma kernel NegFloat NEG XFLOAT OFLOAT SUFFIX=NegFloat
 #pragma kernel SignFloat SIGN XFLOAT OFLOAT SUFFIX=SignFloat
+#pragma kernel ClipFloat CLIP XFLOAT OFLOAT SUFFIX=ClipFloat
 #pragma kernel AbsInt ABS XINT OINT SUFFIX=AbsInt
 #pragma kernel NegInt NEG XINT OINT SUFFIX=NegInt
 #pragma kernel SignInt SIGN XINT OINT SUFFIX=SignInt
+#pragma kernel ClipInt CLIP XINT OINT SUFFIX=ClipInt
 #pragma kernel IsNaN ISNAN XFLOAT OINT SUFFIX=IsNaN
 #pragma kernel IsInf ISINF XFLOAT OINT SUFFIX=IsInf
 
@@ -21,6 +23,16 @@ RWStructuredBuffer<int> Optr;
 #ifdef ISINF
 bool detectNegative;
 bool detectPositive;
+#endif
+
+#ifdef CLIP
+#ifdef XFLOAT
+float minV;
+float maxV;
+#else
+int minV;
+int maxV;
+#endif
 #endif
 
 uint2 unrolledDispatchArgs;
@@ -46,6 +58,9 @@ void SUFFIX(uint3 dispatchThreadID : SV_DispatchThreadID)
     #endif
     #ifdef SIGN
     Optr[threadIdx] = sign(v);
+    #endif
+    #ifdef CLIP
+    Optr[threadIdx] = min(maxV, max(v, minV));
     #endif
     #ifdef ISNAN
     Optr[threadIdx] = isnan(v) ? 1 : 0;

@@ -44,8 +44,8 @@ public class ArrayTensorData : ITensorData, IConvertibleToBurstTensorData, IConv
     /// Initializes and returns an instance of `ArrayTensorData`, and allocates storage for a tensor with the shape of `shape`.
     /// </summary>
     /// <param name="shape">The shape of the tensor data to allocate.</param>
-    /// <param name="clearOnInit">Whether to zero the data on allocation. The default value is `true`.</param>
-    public ArrayTensorData(TensorShape shape, bool clearOnInit = true)
+    /// <param name="clearOnInit">Whether to zero the data on allocation. The default value is `false`.</param>
+    public ArrayTensorData(TensorShape shape, bool clearOnInit = false)
     {
         m_Shape = shape;
         m_Array = new NativeTensorArray(m_Shape.length, clearOnInit);
@@ -57,8 +57,8 @@ public class ArrayTensorData : ITensorData, IConvertibleToBurstTensorData, IConv
     /// <param name="shape">The shape of the tensor data.</param>
     /// <param name="data">The allocated data to use as backing data.</param>
     /// <param name="offset">The integer offset from the start of the backing array. The default value is 0.</param>
-    /// <param name="clearOnInit">Whether to zero the data on instantiation. The default value is `true`.</param>
-    public ArrayTensorData(TensorShape shape, NativeTensorArray data, int offset = 0, bool clearOnInit = true)
+    /// <param name="clearOnInit">Whether to zero the data on instantiation. The default value is `false`.</param>
+    public ArrayTensorData(TensorShape shape, NativeTensorArray data, int offset = 0, bool clearOnInit = false)
     {
         m_Shape = shape;
         m_Array = new NativeTensorArray(m_Shape.length, clearOnInit);
@@ -70,8 +70,8 @@ public class ArrayTensorData : ITensorData, IConvertibleToBurstTensorData, IConv
     /// </summary>
     /// <param name="shape">The shape of the tensor data.</param>
     /// <param name="data">The data to use as backing data.</param>
-    /// <param name="clearOnInit">Whether to zero the data on instantiation. The default value is `true`.</param>
-    public ArrayTensorData(TensorShape shape, Array data, bool clearOnInit = true)
+    /// <param name="clearOnInit">Whether to zero the data on instantiation. The default value is `false`.</param>
+    public ArrayTensorData(TensorShape shape, Array data, bool clearOnInit = false)
     {
         m_Shape = shape;
         m_Array = new NativeTensorArrayFromManagedArray(data);
@@ -193,9 +193,9 @@ public class ArrayTensorData : ITensorData, IConvertibleToBurstTensorData, IConv
     /// Moves the tensor into memory on the CPU backend device.
     /// </summary>
     /// <param name="X">The `Tensor` to move to the CPU.</param>
-    /// <param name="clearOnInit">Whether to initialize the backend data. The default value is `true`.</param>
+    /// <param name="clearOnInit">Whether to initialize the backend data. The default value is `false`.</param>
     /// <returns>The pinned `ArrayTensorData`.</returns>
-    public static ArrayTensorData Pin(Tensor X, bool clearOnInit = true)
+    public static ArrayTensorData Pin(Tensor X, bool clearOnInit = false)
     {
         var onDevice = X.tensorOnDevice;
         if (onDevice == null)

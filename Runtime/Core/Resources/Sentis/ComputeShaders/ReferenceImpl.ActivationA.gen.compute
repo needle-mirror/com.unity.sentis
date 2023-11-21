@@ -3,7 +3,6 @@
 #pragma kernel LeakyRelu LEAKYRELU
 #pragma kernel PRelu PRELU
 #pragma kernel Swish SWISH
-#pragma kernel Clip CLIP
 #pragma kernel Relu RELU
 #pragma kernel Relu6 RELU6
 #pragma kernel Tanh TANH
@@ -19,8 +18,6 @@ float alpha;
 float f1;
 float f2;
 float gamma;
-float maxV;
-float minV;
 int rank;
 StructuredBuffer<float> Xptr;
 StructuredBuffer<float> Bptr;
@@ -108,23 +105,6 @@ void Swish(uint3 dispatchThreadID : SV_DispatchThreadID)
         float v = Xptr[threadIdx];
         v = v / (1.0f + exp(-v));
         Optr[threadIdx] = v;
-    }
-}
-#endif
-
-
-#ifdef CLIP
-[numthreads(64, 1, 1)]
-void Clip(uint3 dispatchThreadID : SV_DispatchThreadID)
-{
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
-    {
-        float v = Xptr[threadIdx];
-        // math.clamp => if the minimum value is is greater than the maximum value, the method returns the minimum value.
-        // this is not the expected behavior so changing it to minmax
-        Optr[threadIdx] = min(maxV, max(v, minV));
     }
 }
 #endif

@@ -571,6 +571,15 @@ namespace Unity.Sentis
         void Clip(TensorFloat X, TensorFloat O, float min, float max);
 
         /// <summary>
+        /// Computes an output tensor by applying the element-wise `Clip` math function: f(x) = clamp(x, min, max).
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="min">The lower clip value.</param>
+        /// <param name="max">The upper clip value.</param>
+        void Clip(TensorInt X, TensorInt O, int min, int max);
+
+        /// <summary>
         /// Computes an output tensor by applying the element-wise `Floor` math function: f(x) = floor(x).
         /// </summary>
         /// <param name="X">The input tensor.</param>
@@ -1535,7 +1544,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="clearOnInit">Whether to initialize the backend data. The default value is `true`.</param>
         /// <returns>The pinned input tensor.</returns>
-        Tensor PinToDevice(Tensor X, bool clearOnInit = true);
+        Tensor PinToDevice(Tensor X, bool clearOnInit = false);
 
         /// <summary>
         /// Resets the internal allocator.

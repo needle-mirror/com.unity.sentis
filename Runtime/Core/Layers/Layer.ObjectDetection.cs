@@ -205,7 +205,7 @@ namespace Unity.Sentis.Layers
 
             // create output tensor of correct length by trimming outputData
             var O = ctx.backend.NewOutputTensorInt(new TensorShape(numberOfBoxes, 3));
-            NativeTensorArray.Copy(outputData, ArrayTensorData.Pin(O, clearOnInit: false).array, numberOfBoxes * 3);
+            NativeTensorArray.Copy(outputData, ArrayTensorData.Pin(O).array, numberOfBoxes * 3);
             return O;
         }
 

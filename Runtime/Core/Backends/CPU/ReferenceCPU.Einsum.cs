@@ -12,7 +12,7 @@ namespace Unity.Sentis
                 ArrayTensorData.Pin(inputTensors[i]);
             }
 
-            ArrayTensorData.Pin(O, clearOnInit: false);
+            ArrayTensorData.Pin(O);
 
             var outSize = O.shape.length;
             var sumSize = sumShape.length;

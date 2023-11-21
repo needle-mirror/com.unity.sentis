@@ -149,7 +149,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Pins the tensor as `TextureTensorData` on any axis (choose last).
         /// </summary>
-        static TextureTensorData PinBlockAny(Tensor X, bool clearOnInit = true)
+        static TextureTensorData PinBlockAny(Tensor X, bool clearOnInit = false)
         {
             if (X.tensorOnDevice is TextureTensorData textureTensorData)
                 return textureTensorData;
@@ -159,7 +159,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Pins the tensor as TextureTensorData on any axis except `nonBlockAxis`. (Choose last unless avoid, else one before last.)
         /// </summary>
-        static TextureTensorData PinBlockOther(Tensor X, int nonBlockAxis, bool clearOnInit = true)
+        static TextureTensorData PinBlockOther(Tensor X, int nonBlockAxis, bool clearOnInit = false)
         {
             if (X.tensorOnDevice is TextureTensorData textureTensorData)
                 if (textureTensorData.blockAxis != nonBlockAxis)
@@ -172,7 +172,7 @@ namespace Unity.Sentis
         /// Pins the tensor X blocking along the same axis as a given other TextureTensorData
         /// This can be used to block an output tensor along the same axis as an input tensor for an op
         /// </summary>
-        static TextureTensorData PinAsSame(Tensor X, TextureTensorData other, bool clearOnInit = true)
+        static TextureTensorData PinAsSame(Tensor X, TextureTensorData other, bool clearOnInit = false)
         {
             return TextureTensorData.Pin(X, X.shape.rank - other.shape.rank + other.blockAxis, clearOnInit);
         }
@@ -248,7 +248,7 @@ namespace Unity.Sentis
 
             var func = new PixelFunc("Hidden/Sentis/MatMul");
 
-            var pinO = TextureTensorData.Pin(O, Y.shape.rank == 1 ? -1 : O.shape.rank - 1, clearOnInit: false);
+            var pinO = TextureTensorData.Pin(O, Y.shape.rank == 1 ? -1 : O.shape.rank - 1);
             var pinA = TextureTensorData.Pin(X, X.shape.rank - 1);
             var pinB = TextureTensorData.Pin(Y, Y.shape.rank == 1 ? -1 : Y.shape.rank - 1);
             if (xShape != pinA.shape)
@@ -282,7 +282,7 @@ namespace Unity.Sentis
         {
             var func = new PixelFunc("Hidden/Sentis/Gemm");
 
-            var pinO = TextureTensorData.Pin(O, 1, clearOnInit: false);
+            var pinO = TextureTensorData.Pin(O, 1);
             var pinX = TextureTensorData.Pin(X, xTranspose ? 0 : 1);
             var pinW = TextureTensorData.Pin(Y, yTranspose ? 0 : 1);
             func.SetTensor(k_TensorPropertiesX, pinX);
@@ -305,7 +305,7 @@ namespace Unity.Sentis
         {
             var func = new PixelFunc("Hidden/Sentis/Dense");
 
-            var pinO = TextureTensorData.Pin(O, O.shape.rank - 1, clearOnInit: false);
+            var pinO = TextureTensorData.Pin(O, O.shape.rank - 1);
             var pinX = TextureTensorData.Pin(X, X.shape.rank - 1);
             var pinW = TextureTensorData.Pin(W, W.shape.rank - 1);
             func.SetTensor(k_TensorPropertiesX, pinX);
@@ -342,7 +342,7 @@ namespace Unity.Sentis
 
             var pinX = TextureTensorData.Pin(X, 1);
             var pinK = TextureTensorData.Pin(K, isDepthwise ? 0 : 1);
-            var pinO = TextureTensorData.Pin(O, 1, clearOnInit: false);
+            var pinO = TextureTensorData.Pin(O, 1);
 
             var numSpatialDims = X.shape.rank - 2;
 
@@ -435,7 +435,7 @@ namespace Unity.Sentis
                 func.SetTensor(k_TensorPropertiesB, pinB);
                 func.EnableKeyword("USEBIAS");
             }
-            var pinO = TextureTensorData.Pin(O, 1, clearOnInit: false);
+            var pinO = TextureTensorData.Pin(O, 1);
 
             var numSpatialDims = X.shape.rank - 2;
 
@@ -488,7 +488,7 @@ namespace Unity.Sentis
             var func = new PixelFunc("Hidden/Sentis/Activation");
 
             var pinX = PinBlockAny(X);
-            var pinO = PinAsSame(O, pinX, clearOnInit: false);
+            var pinO = PinAsSame(O, pinX);
 
             func.SetFloat(k_ID_Alpha, alpha);
             func.SetFloat(k_ID_Beta, beta);
@@ -501,12 +501,15 @@ namespace Unity.Sentis
             func.Dispatch(pinO);
         }
 
-        void Activation(TensorInt X, TensorInt O, string kernelName)
+        void Activation(TensorInt X, TensorInt O, string kernelName, int alpha = 0, int beta = 0)
         {
             var func = new PixelFunc("Hidden/Sentis/ActivationInt");
 
             var pinX = PinBlockAny(X);
-            var pinO = PinAsSame(O, pinX, clearOnInit: false);
+            var pinO = PinAsSame(O, pinX);
+
+            func.SetInt(k_ID_Alpha, alpha);
+            func.SetInt(k_ID_Beta, beta);
 
             func.SetTensor(k_TensorPropertiesX, pinX);
             func.SetTensorBlockStride(k_TensorPropertiesO, pinO);
@@ -627,6 +630,12 @@ namespace Unity.Sentis
 
         /// <inheritdoc/>
         public override void Clip(TensorFloat X, TensorFloat O, float min, float max)
+        {
+            Activation(X, O, "Clip", min, max);
+        }
+
+        /// <inheritdoc/>
+        public override void Clip(TensorInt X, TensorInt O, int min, int max)
         {
             Activation(X, O, "Clip", min, max);
         }
@@ -845,7 +854,7 @@ namespace Unity.Sentis
             func.EnableKeyword("IsInf");
 
             var pinX = PinBlockAny(X);
-            var pinO = PinAsSame(O, pinX, clearOnInit: false);
+            var pinO = PinAsSame(O, pinX);
 
             func.SetInt(k_ID_detectNegative, detectNegative ? 1 : 0);
             func.SetInt(k_ID_detectPositive, detectPositive ? 1 : 0);
@@ -861,7 +870,7 @@ namespace Unity.Sentis
             func.EnableKeyword("IsNaN");
 
             var pinX = PinBlockAny(X);
-            var pinO = PinAsSame(O, pinX, clearOnInit: false);
+            var pinO = PinAsSame(O, pinX);
 
             func.SetTensor(k_TensorPropertiesX, pinX);
             func.Dispatch(pinO);
@@ -1753,7 +1762,7 @@ namespace Unity.Sentis
         {
             var pinX = PinBlockAny(X);
             var oAxis = pinX.blockAxis < 0 ? -1 : X.shape.rank - 1 - pinX.blockAxis;
-            var pinO = TextureTensorData.Pin(O, oAxis, clearOnInit: false);
+            var pinO = TextureTensorData.Pin(O, oAxis);
 
             var func = new PixelFunc("Hidden/Sentis/Transpose");
             if (X.dataType == DataType.Int)
@@ -1796,7 +1805,7 @@ namespace Unity.Sentis
             }
 
             // pin O so that the transposed blocked axis matches
-            var pinO = TextureTensorData.Pin(O, oAxis, clearOnInit: false);
+            var pinO = TextureTensorData.Pin(O, oAxis);
 
             var func = new PixelFunc("Hidden/Sentis/Transpose");
             if (X.dataType == DataType.Int)
@@ -1833,7 +1842,7 @@ namespace Unity.Sentis
         void GlobalPool(TensorFloat X, TensorFloat O, string kernelName)
         {
             var pinX = TextureTensorData.Pin(X, 1);
-            var pinO = TextureTensorData.Pin(O, 1, clearOnInit: false);
+            var pinO = TextureTensorData.Pin(O, 1);
 
             var func = new PixelFunc("Hidden/Sentis/GlobalPool");
             func.EnableKeyword(kernelName);
@@ -1862,7 +1871,7 @@ namespace Unity.Sentis
         void LocalPool(TensorFloat X, TensorFloat O, int[] pool, int[] stride, int[] pad, string kernelName)
         {
             var pinX = TextureTensorData.Pin(X, 1);
-            var pinO = TextureTensorData.Pin(O, 1, clearOnInit: false);
+            var pinO = TextureTensorData.Pin(O, 1);
 
             var numSpatialDims = X.shape.rank - 2;
 
@@ -2098,7 +2107,7 @@ namespace Unity.Sentis
             var numSpatialDims = X.shape.rank - 2;
 
             var pinX = TextureTensorData.Pin(X, 1);
-            var pinO = TextureTensorData.Pin(O, 1, clearOnInit: false);
+            var pinO = TextureTensorData.Pin(O, 1);
 
             var func = new PixelFunc("Hidden/Sentis/Upsample");
             switch (numSpatialDims)
@@ -2258,7 +2267,7 @@ namespace Unity.Sentis
             }
 
             {
-                var pinO = TextureTensorData.Pin(O, 1, clearOnInit: false);
+                var pinO = TextureTensorData.Pin(O, 1);
                 var pinS = TextureTensorData.Pin(S, 0);
                 var pinB = TextureTensorData.Pin(B, 0);
                 var func = new PixelFunc("Hidden/Sentis/InstanceNormalizationTail");
@@ -2292,7 +2301,7 @@ namespace Unity.Sentis
             var pinK = PinAsSame(K, pinX);
             var pinS = TextureTensorData.Pin(S, -1);
             var pinB = TextureTensorData.Pin(B, -1);
-            var pinO = PinAsSame(O, pinX, clearOnInit: false);
+            var pinO = PinAsSame(O, pinX);
             var func = new PixelFunc("Hidden/Sentis/LayerNormalizationTail");
 
             func.SetTensor(k_TensorPropertiesX, pinX);
@@ -2375,7 +2384,7 @@ namespace Unity.Sentis
             func.EnableKeyword(O.dataType == DataType.Int ? "BernoulliInt" : "Bernoulli");
 
             var pinX = PinBlockAny(X);
-            var pinO = PinAsSame(O, pinX, clearOnInit: false);
+            var pinO = PinAsSame(O, pinX);
 
             func.SetInt(k_ID_seed, (int)Random.GetOpSeed(seed));
             func.SetTensor(k_TensorPropertiesX, pinX);
@@ -2387,7 +2396,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public override void Range(TensorFloat O, float start, float delta)
         {
-            var pinO = PinBlockAny(O, clearOnInit: false);
+            var pinO = PinBlockAny(O);
 
             var func = new PixelFunc("Hidden/Sentis/Range");
             func.SetFloat(k_ID_rangeStartFloat, start);
@@ -2398,7 +2407,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public override void Range(TensorInt O, int start, int delta)
         {
-            var pinO = PinBlockAny(O, clearOnInit: false);
+            var pinO = PinBlockAny(O);
 
             var func = new PixelFunc("Hidden/Sentis/Range");
             func.EnableKeyword("INT");
@@ -2481,7 +2490,7 @@ namespace Unity.Sentis
         public override void MemCopy(Tensor X, Tensor O)
         {
             var pinX = PinBlockAny(X);
-            var pinO = PinAsSame(O, pinX, clearOnInit: false);
+            var pinO = PinAsSame(O, pinX);
             var func = new PixelFunc("Hidden/Sentis/Copy");
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("INT");

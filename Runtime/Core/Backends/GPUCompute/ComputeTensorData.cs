@@ -49,8 +49,8 @@ public class ComputeTensorData : ITensorData
     /// Initializes and returns an instance of `ComputeTensorData`, and allocates storage for a tensor with the shape of `shape`.
     /// </summary>
     /// <param name="shape">The shape of the tensor data to allocate.</param>
-    /// <param name="clearOnInit">Whether to zero the data on allocation. The default value is `true`.</param>
-    public ComputeTensorData(TensorShape shape, bool clearOnInit = true)
+    /// <param name="clearOnInit">Whether to zero the data on allocation. The default value is `false`.</param>
+    public ComputeTensorData(TensorShape shape, bool clearOnInit = false)
     {
         // Minimum size of 1 to handle 0-dim tensors.
         m_Buffer = new ComputeBuffer(Math.Max(1, shape.length), sizeof(float));
@@ -261,9 +261,9 @@ public class ComputeTensorData : ITensorData
     /// Moves the tensor into GPU memory on the GPUCompute backend device.
     /// </summary>
     /// <param name="X">The tensor to move to the compute backend.</param>
-    /// <param name="clearOnInit">Whether to zero the data on pinning. The default value is `true`.</param>
+    /// <param name="clearOnInit">Whether to zero the data on pinning. The default value is `false`.</param>
     /// <returns>The pinned `ComputeTensorData`.</returns>
-    public static ComputeTensorData Pin(Tensor X, bool clearOnInit = true)
+    public static ComputeTensorData Pin(Tensor X, bool clearOnInit = false)
     {
         var onDevice = X.tensorOnDevice;
         if (onDevice == null)
