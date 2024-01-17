@@ -5,6 +5,7 @@ using UnityEngine.Rendering;
 using System;
 using System.Threading;
 using Unity.Collections;
+using System.Threading.Tasks;
 
 namespace Unity.Sentis {
 /// <summary>
@@ -162,7 +163,7 @@ public class ComputeTensorData : ITensorData
     AsyncGPUReadbackRequest m_AsyncDownloadRequest;
 
     /// <inheritdoc/>
-    public bool IsAsyncReadbackRequestDone()
+    public bool IsReadbackRequestDone()
     {
         if (m_AsyncDownloadRequested)
         {
@@ -176,7 +177,7 @@ public class ComputeTensorData : ITensorData
     }
 
     /// <inheritdoc/>
-    public void AsyncReadbackRequest(Action<bool> callback = null)
+    public void ReadbackRequest(Action<bool> callback = null)
     {
         if (!SystemInfo.supportsAsyncGPUReadback)
         {
@@ -190,6 +191,18 @@ public class ComputeTensorData : ITensorData
         };
         m_AsyncDownloadRequest = AsyncGPUReadback.Request(m_Buffer, m_Buffer.count * sizeof(float), 0 * sizeof(float), task);
         m_AsyncDownloadRequested = true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> ReadbackRequestAsync()
+    {
+        var task = new TaskCompletionSource<bool>();
+        Action<bool> callback = (bool success) =>
+        {
+            task.TrySetResult(success);
+        };
+        ReadbackRequest(callback);
+        return await task.Task;
     }
 
     /// <inheritdoc/>

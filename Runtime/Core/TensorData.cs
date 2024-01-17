@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Unity.Collections;
 using UnityEngine;
 
@@ -27,13 +28,21 @@ public interface ITensorData : IDisposable
     /// Checks if asynchronous readback request is done.
     /// </summary>
     /// <returns>Whether async readback is successful.</returns>
-    bool IsAsyncReadbackRequestDone();
+    bool IsReadbackRequestDone();
 
     /// <summary>
     /// Schedules asynchronous readback of the internal data.
     /// </summary>
     /// <param name="callback">Callback invoked when async readback is finished. Return value indicates if async readback is successful.</param>
-    void AsyncReadbackRequest(Action<bool> callback = null);
+    void ReadbackRequest(Action<bool> callback = null);
+
+    /// <summary>
+    /// Schedules awaitable asynchronous readback of the internal data.
+    ///
+    /// See AsyncReadbackRequest for more info
+    /// </summary>
+    /// <returns>Whether awaitable task for when readback is successful.</returns>
+    Task<bool> ReadbackRequestAsync();
 
     /// <summary>
     /// Blocking call to make sure that internal data is correctly written to and available for CPU read back.

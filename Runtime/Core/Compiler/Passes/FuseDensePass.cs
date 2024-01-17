@@ -67,6 +67,8 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 if (!downStreamLayers.Any(x => x is Layers.Add) && !downStreamLayers.Any(x => x is Layers.ScalarMad))
                     continue;
 
+                bool transposeWeights = layer is Layers.MatMul2D && (layer as Layers.MatMul2D).transposeB;
+
                 Layers.Layer bias;
                 string biasName;
                 if (downStreamLayers.Any(x => x is Layers.ScalarMad))
@@ -76,7 +78,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     if (biasMad.s != 1)
                         continue;
                     var biasS = biasMad.b;
-                    using TensorFloat biasT = ops.ConstantOfShape(new TensorShape(constTensors[weightsName].shape[-1]), biasS);
+                    using TensorFloat biasT = ops.ConstantOfShape(new TensorShape(constTensors[weightsName].shape[transposeWeights ? -2 : -1]), biasS);
                     biasName = bias.name + "_Bias";
                     constTensors.Add(biasName, biasT);
                     model.constants.Add(new Layers.Constant(biasName, biasT));
@@ -95,8 +97,6 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     continue;
 
                 TensorFloat weightT = constTensors[weightsName] as TensorFloat;
-
-                bool transposeWeights = (layer is Layers.MatMul2D && (layer as Layers.MatMul2D).transposeB == true);
 
                 removeLayers.Add(weightsName);
                 removeLayers.Add(bias.name);

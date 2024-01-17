@@ -1777,7 +1777,10 @@ public partial class GPUComputeBackend : CPUBackend
         fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
         fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
-        fn.Dispatch(O.shape.length, 1, 1);
+        var numBlocksY = ComputeHelper.IDivC(O.shape.length, (int)ComputeFunc.SafeDispatchLimit);
+        var numBlocksX = ComputeHelper.IDivC(O.shape.length, numBlocksY);
+        fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX);
+        fn.Dispatch(numBlocksX, numBlocksY, 1);
     }
 
     /// <inheritdoc/>
@@ -2825,7 +2828,7 @@ public partial class GPUComputeBackend : CPUBackend
     }
 
     /// <inheritdoc/>
-    public override Tensor PinToDevice(Tensor X, bool clearOnInit = true)
+    public override Tensor PinToDevice(Tensor X, bool clearOnInit = false)
     {
         Pin(X, clearOnInit);
         return X;

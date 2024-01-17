@@ -8,6 +8,7 @@ using System.Threading;
 using Unity.Jobs;
 using UnityEngine.Experimental.Rendering;
 using static Unity.Sentis.ShaderPropertyID;
+using System.Threading.Tasks;
 
 namespace Unity.Sentis
 {
@@ -302,15 +303,21 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public bool IsAsyncReadbackRequestDone()
+        public bool IsReadbackRequestDone()
         {
             return true;
         }
 
         /// <inheritdoc/>
-        public void AsyncReadbackRequest(Action<bool> task = null)
+        public void ReadbackRequest(Action<bool> task = null)
         {
             task?.Invoke(true);
+        }
+
+        /// <inheritdoc/>
+        public Task<bool> ReadbackRequestAsync()
+        {
+            return Task.FromResult(true);
         }
 
         /// <inheritdoc/>

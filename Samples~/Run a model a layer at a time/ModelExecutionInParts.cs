@@ -13,7 +13,6 @@ public class ModelExecutionInParts : MonoBehaviour
 
     IEnumerator m_Schedule;
     bool m_Started = false;
-    bool m_HasMoreWork = true;
 
     void OnEnable()
     {
@@ -33,20 +32,20 @@ public class ModelExecutionInParts : MonoBehaviour
         }
 
         int it = 0;
-        do
+        while (m_Schedule.MoveNext())
         {
-            m_HasMoreWork = m_Schedule.MoveNext();
             if (++it % k_LayersPerFrame == 0)
                 return;
-
-            // m_Schedule.MoveNext() schedules the next layer
-        } while (m_HasMoreWork);
+        }
 
         var outputTensor = m_Engine.PeekOutput() as TensorFloat;
         outputTensor.MakeReadable();
 
         // Data is now ready to read.
         // See async examples for non-blocking readback.
+
+        // To run the network again just set:
+        // m_Started = false;
     }
 
     void OnDisable()

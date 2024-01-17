@@ -88,11 +88,12 @@ uint start;
 uint strideLower;
 uint strideUpperX;
 uint strideUpperO;
+uint MaxBlockIndexX;
 
 [numthreads(64, 1, 1)]
 void Split(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
-    uint threadIdx = dispatchThreadID.x;
+    uint threadIdx = dispatchThreadID.y * MaxBlockIndexX + dispatchThreadID.x;
     if (threadIdx >= lengthO)
         return;
     uint axisIndex = ((threadIdx % strideUpperO) / strideLower) + start;
@@ -233,12 +234,12 @@ void Transpose2D(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThread
     #else
     LDS_BLOCK[groupThreadID.y][groupThreadID.x] = (x < X_width && y < X_height) ? Xptr[y * X_width + x] : 0.0f;
     #endif
-    
+
     GroupMemoryBarrierWithGroupSync();
-    
+
     x = groupID.y * BLOCK_DIM + groupThreadID.x;
     y = groupID.x * BLOCK_DIM + groupThreadID.y;
-    
+
     if (x < X_height && y < X_width)
     {
         Optr[y * X_height + x] = LDS_BLOCK[groupThreadID.x][groupThreadID.y];

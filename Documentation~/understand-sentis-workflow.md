@@ -135,7 +135,7 @@ public class ClassifyHandwrittenDigit : MonoBehaviour
 }
 ```
 
-2. Download a handwriting recognition ONNX model file, for example the [MNIST Handwritten Digit Recognition model](https://github.com/onnx/models/tree/main/vision/classification/mnist) mnist-8.onnx from the ONNX Model Zoo, and drag it into the `Assets` folder of the Project window.
+2. Download a handwriting recognition ONNX model file, for example the [MNIST Handwritten Digit Recognition model](https://github.com/onnx/models/tree/main/validated/vision/classification/mnist) mnist-8.onnx from the ONNX Model Zoo, and drag it into the `Assets` folder of the Project window.
 3. Drag the model asset into the **modelAsset** field in the Inspector window of the GameObject.
 4. Download the `digit.png` image below and drag it into the `Assets` folder of the Project window. Set `Non-Power of 2` to `None` in the import settings and click `Apply`.
 

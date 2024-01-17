@@ -180,7 +180,7 @@ public class NativeTensorArray : IDisposable
     /// <param name="length">The integer number of elements to allocate.</param>
     /// <param name="clearOnInit">Whether to zero the data after allocating.</param>
     /// <param name="allocator">The allocation type to use as an `Allocator`.</param>
-    public NativeTensorArray(int length, bool clearOnInit = true, Allocator allocator = Allocator.Persistent)
+    public NativeTensorArray(int length, bool clearOnInit = false, Allocator allocator = Allocator.Persistent)
     {
         if (!UnsafeUtility.IsValidAllocator(allocator))
             throw new InvalidOperationException("The NativeTensorArray should use a valid allocator.");

@@ -89,7 +89,7 @@ To copy an output tensor to the screen, follow these steps:
 
 If the image is too bright, the output tensor might be using values from 0 to 255 instead of values from 0 to 1. You can use [WorkerFactory.CreateOps](do-operations-on-tensors.md) to remap the values in the output tensor before you call `RenderToScreen`.
 
-The following script uses a model to change a texture, then copies the result to the screen. You can set `modelAsset` to one of the [style transfer models](https://github.com/onnx/models/tree/main/vision/style_transfer/fast_neural_style) from ONNX, and `inputImage` to a texture. [Check the Texture import settings](convert-texture-to-tensor.md) to make sure the texture matches the shape and layout the model needs.
+The following script uses a model to change a texture, then copies the result to the screen. You can set `modelAsset` to one of the [style transfer models](https://github.com/onnx/models/tree/main/validated/vision/style_transfer/fast_neural_style) from ONNX, and `inputImage` to a texture. [Check the Texture import settings](convert-texture-to-tensor.md) to make sure the texture matches the shape and layout the model needs.
 
 ```
 using UnityEngine;

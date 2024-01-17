@@ -100,7 +100,12 @@ public static class ModelLoader
             stream.Dispose();
     }
 
-    internal static void LoadModelDesc(Stream stream, ref Model model)
+    /// <summary>
+    /// Loads a model description without the external weights from a stream
+    /// </summary>
+    /// <param name="stream">The `Stream` from which to load the binary serialized model</param>
+    /// <param name="model">The model to set the loaded description of</param>
+    public static void LoadModelDesc(Stream stream, ref Model model)
     {
         Profiler.BeginSample("Sentis.LoadModelDesc");
 

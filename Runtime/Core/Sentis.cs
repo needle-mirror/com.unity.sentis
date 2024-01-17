@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine; // CustomYieldInstruction
 using UnityEngine.Assertions;
 using UnityEngine.Rendering;
@@ -186,16 +187,17 @@ public interface IWorker : IDisposable
 public static class WorkerExtensions
 {
     /// <summary>
-    /// Returns a CPU copy of an output tensor. This is a blocking method, so the rest of your code waits until the model fully executes.
+    /// Execute model and returns a CPU copy of all outputs. This is a non blocking call.
     /// </summary>
-    /// <param name="worker">The worker to execute.</param>
-    /// <param name="name">The optional name of the output tensor to copy. The first output tensor is used as a default.</param>
-    /// <returns>A CPU copy of the output tensor.</returns>
-    public static Tensor FinishExecutionAndDownloadOutput(this IWorker worker, string name = null)
+    public static async Task<bool[]> ExecuteAndDownloadOutputsAsync(this IWorker worker, Dictionary<string, Tensor> inputs, List<string> outputs)
     {
-        var output = name == null ? worker.PeekOutput() : worker.PeekOutput(name);
-        output.MakeReadable();
-        return output;
+        worker.Execute(inputs);
+        Task<bool>[] tasks = new Task<bool>[outputs.Count];
+        for (int i = 0; i < outputs.Count; i++)
+        {
+            tasks[i] = worker.PeekOutput(outputs[i]).MakeReadableAsync();
+        }
+        return await Task.WhenAll(tasks);
     }
 
     /// <summary>
@@ -354,7 +356,7 @@ public static class ModelExtensions
     /// <summary>
     /// Initializes and returns an instance of `IWorker` with a `model` to execute. Sentis selects the best backend type available for `deviceType`.
     ///
-    /// This is a convenience method that internally calls `ModelLoader.Load` followed by `WorkerFactory.CreateWorker`.
+    /// This is a convenience method that internally calls `WorkerFactory.CreateWorker`.
     /// </summary>
     /// <param name="model">The model to execute.</param>
     /// <param name="deviceType">The preferred device for execution. For example `DeviceType.GPU` specifies the fast GPU path.</param>

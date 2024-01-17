@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Unity.Collections;
 
 namespace Unity.Sentis {
@@ -112,15 +113,21 @@ public class ArrayTensorData : ITensorData, IConvertibleToBurstTensorData, IConv
     }
 
     /// <inheritdoc/>
-    public bool IsAsyncReadbackRequestDone()
+    public bool IsReadbackRequestDone()
     {
         return true;
     }
 
     /// <inheritdoc/>
-    public void AsyncReadbackRequest(Action<bool> callback = null)
+    public void ReadbackRequest(Action<bool> callback = null)
     {
         callback?.Invoke(true);
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> ReadbackRequestAsync()
+    {
+        return Task.FromResult(true);
     }
 
     /// <inheritdoc/>
@@ -311,15 +318,21 @@ public class SharedArrayTensorData : ITensorData, IConvertibleToBurstTensorData,
     }
 
     /// <inheritdoc/>
-    public bool IsAsyncReadbackRequestDone()
+    public bool IsReadbackRequestDone()
     {
         return true;
     }
 
     /// <inheritdoc/>
-    public void AsyncReadbackRequest(Action<bool> callback = null)
+    public void ReadbackRequest(Action<bool> callback = null)
     {
         callback?.Invoke(true);
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> ReadbackRequestAsync()
+    {
+        return Task.FromResult(true);
     }
 
     /// <inheritdoc/>

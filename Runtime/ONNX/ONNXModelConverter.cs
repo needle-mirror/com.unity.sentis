@@ -866,7 +866,7 @@ namespace Unity.Sentis.ONNX
                 if (node.InputCount == 2)
                 {
                     // Resize-10
-                    net.AddLayer(new Layers.Resize(node.Name, node.Input0, node.Input1, Layers.ScaleMode.Scales, mode, coordinateTransformMode, nearestMode));
+                    net.AddLayer(new Layers.Resize(node.Name, node.Input0, node.Input1, Layers.ScaleMode.Scales, mode, Layers.CoordTransformMode.Asymmetric, Layers.NearestMode.Floor));
                 }
                 else if (node.InputCount == 3)
                 {

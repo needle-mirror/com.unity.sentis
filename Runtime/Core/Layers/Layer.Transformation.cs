@@ -841,7 +841,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override string ToString()
         {
-            return $"{base.ToString()}, coordTransformMode: {coordTransformMode}, nearestMode: {nearestMode}";
+            return $"{base.ToString()}, mode: {mode}, coordTransformMode: {coordTransformMode}, nearestMode: {nearestMode}";
         }
 
         internal override string profilerTag => "Resize";

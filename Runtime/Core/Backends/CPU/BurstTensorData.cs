@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine.Assertions;
@@ -84,8 +85,8 @@ public class BurstTensorData : ITensorData, IDependableMemoryResource, IConverti
     /// Initializes and returns an instance of `BurstTensorData`, and allocates storage for a tensor with the shape of `shape`.
     /// </summary>
     /// <param name="shape">The shape of the tensor data to allocate.</param>
-    /// <param name="clearOnInit">Whether to zero the data on allocation. The default value is `true`.</param>
-    public BurstTensorData(TensorShape shape, bool clearOnInit = true)
+    /// <param name="clearOnInit">Whether to zero the data on allocation. The default value is `false`.</param>
+    public BurstTensorData(TensorShape shape, bool clearOnInit = false)
     {
         m_Count = shape.length;
         m_Shape = shape;
@@ -276,16 +277,24 @@ public class BurstTensorData : ITensorData, IDependableMemoryResource, IConverti
     }
 
     /// <inheritdoc/>
-    public bool IsAsyncReadbackRequestDone()
+    public bool IsReadbackRequestDone()
     {
         return fence.IsCompleted;
     }
 
     /// <inheritdoc/>
-    public void AsyncReadbackRequest(Action<bool> callback = null)
+    public void ReadbackRequest(Action<bool> callback = null)
     {
         fence.Complete();
         callback?.Invoke(true);
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> ReadbackRequestAsync()
+    {
+        while (!fence.IsCompleted)
+            await Task.Yield();
+        return true;
     }
 
     /// <summary>
@@ -303,7 +312,7 @@ public class BurstTensorData : ITensorData, IDependableMemoryResource, IConverti
     /// <param name="X">The `Tensor` to move to the CPU.</param>
     /// <param name="clearOnInit">Whether to initialize the backend data. The default value is `true`.</param>
     /// <returns>The pinned `BurstTensorData`.</returns>
-    public static BurstTensorData Pin(Tensor X, bool clearOnInit = true)
+    public static BurstTensorData Pin(Tensor X, bool clearOnInit = false)
     {
         var onDevice = X.tensorOnDevice;
         if (onDevice == null)

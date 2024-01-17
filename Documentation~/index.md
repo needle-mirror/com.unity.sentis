@@ -1,12 +1,10 @@
 # Sentis overview
 
-This is an experimental package in an open beta program available to Unity users via the [package manager](https://tinyurl.com/4eun48fb). The features and documentation might change before it is verified for release, so it is not ready for production use.
+Sentis is a neural network inference library for Unity. The package is in a "pre-release" state in an open beta program available to all Unity users via the [package manager](https://tinyurl.com/4eun48fb). The features and documentation may change before it is verified for release near the end of 2024. If you would like to release a commercial project with Sentis before it is released, please reach out to [bill.cullen@unity3d.com](mailto:bill.cullen@unity3d.com).
 
-Visit the [Unity Discussions Sentis topic](https://discussions.unity.com/c/10) for additional getting started information, the latest updates, and to collaborate with other beta participants.
+Visit the [Unity Discussions Sentis topic](https://discussions.unity.com/c/10) for more information, communications from our team, and to collaborate with other beta users. If you have an interesting project that would like to collaborate with Unity on, please submit [this form](https://create.unity.com/sentis-project-submission) and we'll be excited to speak with you.
 
-The Sentis package is a neural network inference library for Unity.
-
-You can use Sentis to import trained neural network models into Unity, then run them in real time locally on any platform Unity supports and in the Editor. You can run models on the GPU or the CPU.
+You can use Sentis to import trained neural network models into Unity, and then run them in real-time locally on any runtime platform that Unity supports. Models can be deployed on either the GPU or the CPU.
 
 To use Sentis, it helps if you have some experience in using machine learning models, for example in a framework like [TensorFlow](https://www.tensorflow.org/) or [PyTorch](https://pytorch.org/).
 
@@ -27,6 +25,19 @@ How long a model takes to run depends on the complexity of the model, the platfo
 ## Supported model types
 
 Sentis supports most models in ONNX format with an [opset version](https://github.com/onnx/onnx/blob/main/docs/Versioning.md#released-versions) between 7 and 15. Refer to [Supported ONNX operators](supported-operators.md) for more information.
+
+## Places to find pre-trained models
+There are many places to find pre-trained models either already in the ONNX format or in a format that you can convert. Some popular places include:
+* [Huggingface 🤗](https://huggingface.co/models) A huge database. Many of the newest models are posted here.
+* [Kaggle Models](https://www.kaggle.com/models) Formerly Tensorflow Hub.
+* [Pytorch Hub](https://pytorch.org/hub/) A repository from PyTorch.
+* [Model Zoo](https://github.com/onnx/models) Many smaller older models that work very fast. Now being updated with newer models.
+* [XetData](https://github.com/xetdata/onnx-models) Model Zoo but with some newer models.
+* [Meta Research](https://github.com/facebookresearch) Formerly known as Facebook Research hosts some popular larger models.
+
+For training your own models you may want to check out:
+* [Google Colab](https://colab.research.google.com/) A space to train models online
+* [Kaggle](https://www.kaggle.com/) A popular machine learning commnuity
 
 ## Additional resources
 

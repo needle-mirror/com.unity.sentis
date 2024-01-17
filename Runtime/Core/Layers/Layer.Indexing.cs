@@ -404,6 +404,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
+            Logger.AssertIsFalse(ctx.backend is GPUCommandBufferBackend, "BackendTypeError: GPUCommandBuffer is not supported on the NonZero layer");
             if (inputTensors[0] is TensorInt)
             {
                 var X = inputTensors[0] as TensorInt;

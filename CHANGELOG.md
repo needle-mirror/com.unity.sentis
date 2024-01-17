@@ -5,6 +5,34 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 
+## [1.3.0-pre.3] - 2024-01-17
+
+### Added
+- LoadModelDesc method in ModelLoader now public
+- TensorInt data type for Clip
+- Docs page for exporting models to ONNX format
+- Model sources in documentation
+- Editor menu with links to documentation and project submission form
+
+### Changed
+- clearOnInit default to false in tensor data pinning
+- NonZero asserts on command buffer as unsupported
+- Improved inspector for custom layers and allow horizontal scrolling
+- Rewrote docs and sample code for model execution in parts
+- Package description with links to project submission and email
+
+### Fixed
+- Thread group count for Split
+- Importer no longer fails when inspector is out of focus
+- Docstrings for accuracy
+- Broken links in documentation to onnx model zoo
+- Dense import step with transpose
+- Warnings for async methods in tensor data classes
+- Resize opset 10 imports with correct settings
+
+### Removed
+- Broken Dense to ScaleBias optimization
+
 ## [1.3.0-pre.2] - 2023-11-21
 
 ### Fixed

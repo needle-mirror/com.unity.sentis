@@ -24,6 +24,7 @@ public class ModelAssetEditor : UnityEditor.Editor
         listView.showBorder = true;
         listView.selectionType = SelectionType.Multiple;
         listView.style.flexGrow = 1;
+        listView.horizontalScrollingEnabled = true;
 
         var inputMenu = new Foldout();
         inputMenu.text = name;
@@ -164,7 +165,8 @@ public class ModelAssetEditor : UnityEditor.Editor
         foreach (var layer in layers)
         {
             string ls = layer.ToString();
-            items.Add($"<b>{layer.profilerTag}</b> {ls.Substring(ls.IndexOf('-') + 2)}");
+            string layerType = layer.GetType().Name;
+            items.Add($"<b>{layerType}</b> {ls.Substring(ls.IndexOf('-') + 2)}");
         }
 
         var layerMenu = CreateFoldoutListView(items, $"<b>Layers ({layers.Count})</b>");
@@ -218,7 +220,8 @@ public class ModelAssetEditor : UnityEditor.Editor
         if (modelAsset.modelAssetData == null)
             return rootInspector;
 
-        ModelLoader.LoadModelDesc(modelAsset, ref m_Model);
+        if (m_Model == null)
+            ModelLoader.LoadModelDesc(modelAsset, ref m_Model);
 
         CreateWarningsListView(rootInspector);
         CreateSerializeButton(rootInspector, modelAsset, target.name);

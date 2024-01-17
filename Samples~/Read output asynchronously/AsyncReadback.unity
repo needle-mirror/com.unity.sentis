@@ -133,6 +133,7 @@ GameObject:
   m_Component:
   - component: {fileID: 427442683}
   - component: {fileID: 427442682}
+  - component: {fileID: 427442684}
   m_Layer: 0
   m_Name: AsyncReadbackCompute
   m_TagString: Untagged
@@ -169,6 +170,20 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &427442684
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 427442681}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 107476803ceab7b44b41192179c86917, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  modelAsset: {fileID: 5022602860645237092, guid: fd5e20e9dcb1c2b41b0aeefa8b0ab5d9,
+    type: 3}
 --- !u!1 &841261864
 GameObject:
   m_ObjectHideFlags: 0

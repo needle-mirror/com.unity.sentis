@@ -6,7 +6,7 @@ You can edit a model after you create or load it, using the Sentis `Model` API.
 
 Sometimes your model expects inputs or returns outputs in a format that doesn't match your tensor data. Using the model API you can add, remove and edit inputs, layers, constants and outputs to adjust the model.
 
-In the following example the [mnist-8](https://github.com/onnx/models/blob/main/vision/classification/mnist/model/mnist-8.onnx) model is adjusted to return the softmax of the outputs.
+In the following example the [mnist-8](https://github.com/onnx/models/blob/main/validated/vision/classification/mnist/model/mnist-8.onnx) model is adjusted to return the softmax of the outputs.
 
 ```
 using UnityEngine;

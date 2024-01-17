@@ -274,28 +274,6 @@ namespace Unity.Sentis
 
                 return lmerged;
             });
-            Add((typeof(Layers.Dense), typeof(Layers.ScaleBias)), (l0, l1, constTensors) =>
-            {
-                using TensorFloat weights0 = constTensors[l0.inputs[1]].DataSetToTensor() as TensorFloat;
-                using TensorFloat bias0 = constTensors[l0.inputs[2]].DataSetToTensor() as TensorFloat;
-
-                using TensorFloat scale1 = constTensors[l1.inputs[1]].DataSetToTensor() as TensorFloat;
-                using TensorFloat bias1 = constTensors[l1.inputs[2]].DataSetToTensor() as TensorFloat;
-
-                Layers.Layer lmerged = new Layers.Dense(l0.name, l0.inputs[0], l0.inputs[1], l0.inputs[2]);
-
-                // w = s1*w0
-                using TensorFloat weights = m_Ops.Mul(scale1, weights0);
-                // b = s1*b0+b1
-                using TensorFloat mul = m_Ops.Mul(bias0, scale1);
-                using TensorFloat bias = m_Ops.Add(mul, bias1);
-                using TensorFloat biasReshaped = bias.ShallowReshape(new TensorShape(bias.shape.length)) as TensorFloat;
-
-                constTensors[lmerged.inputs[1]].TensorToDataSet(weights);
-                constTensors[lmerged.inputs[2]].TensorToDataSet(biasReshaped);
-
-                return lmerged;
-            });
             Add((typeof(Layers.Mul), typeof(Layers.Conv)), (l0, l1, constTensors) =>
             {
                 using TensorFloat scale0 = constTensors.ContainsKey(l0.inputs[0]) ? constTensors[l0.inputs[0]].DataSetToTensor() as TensorFloat : constTensors[l0.inputs[1]].DataSetToTensor() as TensorFloat;

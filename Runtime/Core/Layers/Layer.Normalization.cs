@@ -320,6 +320,7 @@ namespace Unity.Sentis.Layers
         /// <inheritdoc/>
         public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
         {
+            Logger.AssertIsFalse(ctx.backend is GPUCommandBufferBackend, "BackendTypeError: GPUCommandBuffer is not supported on the LRN layer");
             var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
             if (O.shape.HasZeroDims())
                 return O;

@@ -1,6 +1,7 @@
 using UnityEngine.Assertions;
 using System;
 using Unity.Collections;
+using System.Threading.Tasks;
 
 namespace Unity.Sentis {
 
@@ -110,7 +111,7 @@ public abstract class Tensor : IDisposable
     }
 
     /// <summary>
-    /// Blocking call to make tensor data read write.
+    /// Blocking call to make tensor data read/write.
     ///
     /// Issues a blocking download of the internal data. And converts tensorData to ArrayTensorData
     /// </summary>
@@ -123,24 +124,36 @@ public abstract class Tensor : IDisposable
     }
 
     /// <summary>
+    /// Non blocking call to make tensor data read/write.
+    ///
+    /// Issues a non blocking download of the internal data. And converts tensorData to ArrayTensorData
+    /// </summary>
+    public async Task<bool> MakeReadableAsync()
+    {
+        await ReadbackRequestAsync();
+        MakeReadable();
+        return true;
+    }
+
+    /// <summary>
     /// Checks if asynchronous readback request it done.
     ///
     /// Returns true if async readback is successful.
     /// </summary>
     /// <returns>Whether the async readback request is successful.</returns>
-    public bool IsAsyncReadbackRequestDone()
+    public bool IsReadbackRequestDone()
     {
         if (m_TensorOnDevice == null)
             return false;
 
-        return m_TensorOnDevice.IsAsyncReadbackRequestDone();
+        return m_TensorOnDevice.IsReadbackRequestDone();
     }
 
     /// <summary>
     /// Schedules asynchronous download of the internal data.
     /// </summary>
     /// <param name="callback">Callback invoked when async readback is finished. Return value indicates if async readback is successful.</param>
-    public void AsyncReadbackRequest(Action<bool> callback = null)
+    public void ReadbackRequest(Action<bool> callback = null)
     {
         if (m_TensorOnDevice == null)
         {
@@ -148,7 +161,18 @@ public abstract class Tensor : IDisposable
             return;
         }
 
-        m_TensorOnDevice.AsyncReadbackRequest(callback);
+        m_TensorOnDevice.ReadbackRequest(callback);
+    }
+
+    /// <summary>
+    /// Schedules asynchronous download task of the internal data.
+    ///
+    /// Boolean indicates if async readback is successful.
+    /// </summary>
+    /// <returns>awaitable task for when the readback request is successful.</returns>
+    public async Task<bool> ReadbackRequestAsync()
+    {
+        return await m_TensorOnDevice.ReadbackRequestAsync();
     }
 
     /// <summary>

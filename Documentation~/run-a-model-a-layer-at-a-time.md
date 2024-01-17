@@ -9,64 +9,58 @@ The following code sample runs the model one layer per frame, and executes the r
 ```
 using UnityEngine;
 using Unity.Sentis;
+using System;
 using System.Collections;
 
-public class StartManualSchedule : MonoBehaviour
+public class ModelExecutionInParts : MonoBehaviour
 {
-    public ModelAsset modelAsset;
-    IWorker worker;
-    Tensor inputTensor;
+    [SerializeField]
+    ModelAsset modelAsset;
+    IWorker m_Engine;
+    Tensor m_Input;
 
-    public Texture2D inputTexture;
-    public RenderTexture outputTexture;
+    // Set this number higher for faster GPUs
+    const int k_LayersPerFrame = 20;
 
-    IEnumerator modelEnumerator;
-    bool started = false;
-    bool hasMoreModelToRun = true;
+    IEnumerator m_Schedule;
+    bool m_Started = false;
 
-    void Start()
+    void OnEnable()
     {
-        Model runtimeModel = ModelLoader.Load(modelAsset);
-        worker = WorkerFactory.CreateWorker(BackendType.GPUCompute, runtimeModel);
-        inputTensor = TextureConverter.ToTensor(inputTexture);
+        var model = ModelLoader.Load(modelAsset);
+        m_Engine = WorkerFactory.CreateWorker(BackendType.GPUCompute, model);
+        m_Input = TensorFloat.Zeros(new TensorShape(1024));
     }
 
     void Update()
     {
-        if (!started)
+        if (!m_Started)
         {
-            modelEnumerator = worker.StartManualSchedule(inputTensor);
-            started = true;
+            // StartManualSchedule starts the scheduling of the model
+            // it returns a IEnumerator to iterate over the model layers, scheduling each layer sequentially
+            m_Schedule = m_Engine.StartManualSchedule(m_Input);
+            m_Started = true;
         }
 
-        // Iterate running the model once per frame
-        // In each iteration of the do-while loop, use the IEnumerator object to run the next layer of the model
-        if (hasMoreModelToRun)
+        int it = 0;
+        while (m_Schedule.MoveNext())
         {
-            // Use MoveNext() to run the next layer of the model. MoveNext() returns true if there's more work to do
-            hasMoreModelToRun = modelEnumerator.MoveNext();
-
-            // Log the progress so far as a float value. 0 means no progress, 1 means complete
-            Debug.Log(worker.scheduleProgress);
+            if (++it % k_LayersPerFrame == 0)
+                return;
         }
 
-        else
-        {
-            // Get the output tensor
-            var outputTensor = worker.PeekOutput() as TensorFloat;
-            // Move the output tensor to CPU before reading the data
-            outputTensor.MakeReadable();
-            float[] outputArray = outputTensor.ToReadOnlyArray();
+        var outputTensor = m_Engine.PeekOutput() as TensorFloat;
+        outputTensor.MakeReadable();
 
-            // turn off the component once the tensor is obtained
-            enabled = false;
-        }
+        // Set this flag to false if we want to run the network again
+        m_Started = false;
     }
 
     void OnDisable()
     {
-        worker.Dispose();
-        inputTensor.Dispose();
+        // Clean up Sentis resources.
+        m_Engine.Dispose();
+        m_Input.Dispose();
     }
 }
 ```
