@@ -34,103 +34,12 @@ public class ModelAssetEditor : UnityEditor.Editor
         return inputMenu;
     }
 
-    ListView CreateListView(List<string> items)
-    {
-        Func<VisualElement> makeItem = () => new Label();
-        Action<VisualElement, int> bindItem = (e, i) => (e as Label).text = items[i];
-
-        var listView = new ListView(items, 16, makeItem, bindItem);
-        listView.showAlternatingRowBackgrounds = AlternatingRowBackground.All;
-        listView.showBorder = true;
-        listView.selectionType = SelectionType.Multiple;
-        listView.style.flexGrow = 1;
-
-        return listView;
-    }
-
-    void CreateWarningsListView(VisualElement rootElement)
-    {
-        if (!m_Model.Warnings.Any())
-            return;
-
-        var warningsError = new List<string>();
-        var warningsWarning = new List<string>();
-        var warningsInfo = new List<string>();
-        var warningsNeutral = new List<string>();
-        foreach (var warning in m_Model.Warnings)
-        {
-            var warningDesc = warning.Message;
-            Model.WarningType messageType = warning.MessageSeverity;
-
-            switch (messageType)
-            {
-                case Model.WarningType.None:
-                    warningsNeutral.Add($"<b>{warning}</b>: {warningDesc}");
-                    break;
-                case Model.WarningType.Info:
-                    warningsInfo.Add($"<b>{warning}</b>: {warningDesc}");
-                    break;
-                case Model.WarningType.Warning:
-                    warningsWarning.Add($"<b>{warning}</b>: {warningDesc}");
-                    break;
-                case Model.WarningType.Error:
-                    warningsError.Add($"<b>{warning}</b>: {warningDesc}");
-                    break;
-            }
-        }
-
-        bool warnings = warningsError.Any() || warningsWarning.Any() || warningsInfo.Any() || warningsNeutral.Any();
-
-        if (warningsError.Any())
-        {
-            rootElement.Add(new HelpBox("Model contains errors. Model will not run.\n", HelpBoxMessageType.Error));
-            rootElement.Add(CreateListView(warningsError));
-        }
-        if (warningsWarning.Any())
-        {
-            rootElement.Add(new HelpBox("Model contains warnings. Behavior might be incorrect.\n", HelpBoxMessageType.Warning));
-            rootElement.Add(CreateListView(warningsWarning));
-        }
-        if (warningsInfo.Any())
-        {
-            rootElement.Add(new HelpBox("Model contains import information.\n", HelpBoxMessageType.Info));
-            rootElement.Add(CreateListView(warningsInfo));
-        }
-        if (warningsNeutral.Any())
-        {
-            rootElement.Add(new HelpBox("Comments: \n", HelpBoxMessageType.None));
-            rootElement.Add(CreateListView(warningsNeutral));
-        }
-        if (warnings)
-        {
-            var box = new Box();
-            box.style.height = 20;
-            var color = box.style.backgroundColor.value;
-            box.style.backgroundColor = new Color(color.r, color.g, color.b, 0.0f);
-            rootElement.Add(box);
-        }
-    }
-
-    void CreateMetadataListView(VisualElement rootElement)
-    {
-        if (!m_Model.Metadata.Any())
-            return;
-
-        var metadata = m_Model.Metadata;
-        var items = new List<string>(metadata.Count);
-        foreach (var keyval in m_Model.Metadata)
-            items.Add($"<b>{keyval.Key}</b> {keyval.Value}");
-
-        var inputMenu = CreateFoldoutListView(items, $"<b>Metadata</b>");
-        rootElement.Add(inputMenu);
-    }
-
     void CreateInputListView(VisualElement rootElement)
     {
         var inputs = m_Model.inputs;
         var items = new List<string>(inputs.Count);
         foreach (var input in inputs)
-            items.Add($"<b>{input.name}</b> {m_Model.GetSymbolicTensorShapeAsString(input.shape)}, {input.dataType}");
+            items.Add($"<b>{input.name}</b> index: {input.index}, shape: {input.shape}, dataType: {input.dataType}");
 
         var inputMenu = CreateFoldoutListView(items, $"<b>Inputs ({inputs.Count})</b>");
         rootElement.Add(inputMenu);
@@ -145,14 +54,14 @@ public class ModelAssetEditor : UnityEditor.Editor
             var ctx = PartialInferenceAnalysis.InferModelPartialTensors(m_Model, false);
             foreach (var output in outputs)
             {
-                var partialTensor = ctx.GetPartialTensor(output);
-                items.Add($"<b>{output}</b> {m_Model.GetSymbolicTensorShapeAsString(partialTensor.shape)}, {partialTensor.dataType}");
+                var partialTensor = ctx.GetPartialTensor(output.index);
+                items.Add($"<b>{output.name}</b> index: {output.index}, shape: {partialTensor.shape}, dataType: {partialTensor.dataType}");
             }
         }
         catch (Exception)
         {
             foreach (var output in outputs)
-                items.Add($"<b>{output}</b>");
+                items.Add($"<b>{output.name}</b>");
         }
         var inputMenu = CreateFoldoutListView(items, $"<b>Outputs ({outputs.Count})</b>");
         rootElement.Add(inputMenu);
@@ -182,7 +91,7 @@ public class ModelAssetEditor : UnityEditor.Editor
         {
             string cs = constant.ToString();
             items.Add($"<b>Constant</b> {cs.Substring(cs.IndexOf('-') + 2)}");
-            totalWeightsSizeInBytes += constant.length * sizeof(float);
+            totalWeightsSizeInBytes += constant.lengthBytes;
         }
 
         var constantsMenu = CreateFoldoutListView(items, $"<b>Constants ({constants.Count})</b>");
@@ -192,15 +101,11 @@ public class ModelAssetEditor : UnityEditor.Editor
 
     public void LoadAndSerializeModel(ModelAsset modelAsset, string name)
     {
-        Model model = new Model();
-        ModelLoader.LoadModelDesc(modelAsset, ref model);
-        ModelLoader.LoadModelWeights(modelAsset, ref model);
         if (!Directory.Exists(Application.streamingAssetsPath))
             Directory.CreateDirectory(Application.streamingAssetsPath);
-        string fullpath = Path.Combine(Application.streamingAssetsPath, $"{name}.sentis");
-        ModelWriter.Save(fullpath, model);
+        var path = Path.Combine(Application.streamingAssetsPath, $"{name}.sentis");
+        ModelWriter.Save(path, modelAsset);
         AssetDatabase.Refresh();
-        model.DisposeWeights();
     }
 
     void CreateSerializeButton(VisualElement rootElement, ModelAsset modelAsset, string name)
@@ -221,17 +126,17 @@ public class ModelAssetEditor : UnityEditor.Editor
             return rootInspector;
 
         if (m_Model == null)
-            ModelLoader.LoadModelDesc(modelAsset, ref m_Model);
+        {
+            m_Model = new Model();
+            ModelLoader.LoadModelDescription(modelAsset.modelAssetData.value, ref m_Model);
+        }
 
-        CreateWarningsListView(rootInspector);
         CreateSerializeButton(rootInspector, modelAsset, target.name);
-        CreateMetadataListView(rootInspector);
         CreateInputListView(rootInspector);
         CreateOutputListView(rootInspector);
         CreateLayersListView(rootInspector);
         CreateConstantsListView(rootInspector);
 
-        rootInspector.Add(new Label($"Source: {m_Model.IrSource}"));
         rootInspector.Add(new Label($"Default Opset Version: {m_Model.DefaultOpsetVersion}"));
         rootInspector.Add(new Label($"Producer Name: {m_Model.ProducerName}"));
 

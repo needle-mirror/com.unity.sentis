@@ -128,5 +128,22 @@ internal unsafe struct SigmoidJob : IJobParallelFor, IJobResourceDeclarationXO
     }
 }
 
+
+
+[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+internal unsafe struct GeluFastJob : IJobParallelFor, IJobResourceDeclarationXO
+{
+    
+    public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+    public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+    float Apply(float v) { return (v * 0.5f) * (tanh(clamp((v + (pow(v, 3.0f) * 0.044714998453855515f)) * 0.7978845834732056f, -16.0f, 16.0f)) + 1); }
+    public void Execute(int threadIdx)
+    {
+        float v = Xptr[threadIdx];
+        Optr[threadIdx] = Apply(v);
+    }
+}
+
 }
 }

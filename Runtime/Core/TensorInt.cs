@@ -1,25 +1,27 @@
 using System;
 using Unity.Collections;
+using UnityEngine.Assertions;
 
 namespace Unity.Sentis {
-
-/// <summary>
-/// Represents data in a multidimensional array-like structure of ints.
-/// </summary>
+/// <inheritdoc/>
 public class TensorInt : Tensor
 {
     /// <inheritdoc/>
     public override DataType dataType => DataType.Int;
 
     /// <inheritdoc/>
-    internal TensorInt(TensorShape shape, ITensorData data = null, ITensorAllocator allocator = null) : base(shape, data, allocator) { }
+    public override int count { get { return shape.length; } }
 
     /// <summary>
-    /// Initializes and returns a tensor with the specified `shape` and an int[] array of `srcData` data.
+    /// Instantiates and returns a Tensor with the specified `shape`, an `ITensorData` `data`.
     /// </summary>
     /// <param name="shape">The shape of the tensor.</param>
-    /// <param name="srcData">The data elements of the tensor.</param>
-    public TensorInt(TensorShape shape, int[] srcData) : this(shape, srcData, 0) { }
+    /// <param name="data">The optional tensor data.</param>
+    internal TensorInt(TensorShape shape, ITensorData data)
+    {
+        this.shape = shape;
+        this.m_DataOnBackend = data;
+    }
 
     /// <summary>
     /// Initializes and returns a tensor with specified `shape` and an int[] array of `srcData` data. Sentis reads `srcData` from `dataStartIndex`.
@@ -29,14 +31,16 @@ public class TensorInt : Tensor
     /// <param name="shape">The shape of the tensor.</param>
     /// <param name="srcData">The data elements of the tensor.</param>
     /// <param name="dataStartIndex">The index of the first tensor element in the srcData array.</param>
-    public TensorInt(TensorShape shape, int[] srcData, int dataStartIndex = 0) : base(shape)
+    public TensorInt(TensorShape shape, int[] srcData, int dataStartIndex = 0)
     {
+        this.shape = shape;
         Logger.AssertIsTrue((srcData.Length - dataStartIndex) >= shape.length, "RangeError: array length {0} is too small compared to shape length {1}", srcData.Length, shape);
 
-        tensorOnDevice = new ArrayTensorData(shape);
-        NativeTensorArray.Copy(srcData, (tensorOnDevice as ArrayTensorData).array, shape.length, dataStartIndex);
-
-        m_TensorAllocator = null;
+        if (shape.length == 0)
+            return;
+        var burstTensorData = new BurstTensorData(shape.length);
+        NativeTensorArray.Copy(srcData, burstTensorData.array, shape.length, dataStartIndex);
+        m_DataOnBackend = burstTensorData;
     }
 
     /// <summary>
@@ -47,14 +51,16 @@ public class TensorInt : Tensor
     /// <param name="shape">The shape of the tensor.</param>
     /// <param name="srcData">The data elements of the tensor.</param>
     /// <param name="dataStartIndex">The index of the first tensor element in the srcData native array.</param>
-    public TensorInt(TensorShape shape, NativeArray<int> srcData, int dataStartIndex = 0) : base(shape)
+    public TensorInt(TensorShape shape, NativeArray<int> srcData, int dataStartIndex = 0)
     {
+        this.shape = shape;
         Logger.AssertIsTrue((srcData.Length - dataStartIndex) >= shape.length, "RangeError: array length {0} is too small compared to shape length {1}", srcData.Length, shape);
 
-        tensorOnDevice = new ArrayTensorData(shape);
-        NativeTensorArray.Copy(srcData, (tensorOnDevice as ArrayTensorData).array, shape.length, dataStartIndex);
-
-        m_TensorAllocator = null;
+        if (shape.length == 0)
+            return;
+        var burstTensorData = new BurstTensorData(shape.length);
+        NativeTensorArray.Copy(srcData, burstTensorData.array, shape.length, dataStartIndex);
+        m_DataOnBackend = burstTensorData;
     }
 
     /// <summary>
@@ -68,39 +74,29 @@ public class TensorInt : Tensor
     /// </summary>
     /// <param name="shape">The shape of the tensor.</param>
     /// <returns>The instantiated zero tensor.</returns>
-    public static TensorInt Zeros(TensorShape shape)
+    public static TensorInt AllocZeros(TensorShape shape)
     {
-        var tensorOnDevice = new ArrayTensorData(shape, clearOnInit: true);
+        var tensorOnDevice = shape.length == 0 ? null : new BurstTensorData(shape.length, clearOnInit: true);
         return new TensorInt(shape, tensorOnDevice);
     }
 
-    /// <inheritdoc/>
-    public override Tensor ShallowReshape(TensorShape newShape)
+    /// <summary>
+    /// Initializes and returns a tensor with the specified `shape` and with no data.
+    /// </summary>
+    /// <param name="shape">The shape of the tensor.</param>
+    /// <returns>The instantiated empty tensor.</returns>
+    public static TensorInt AllocNoData(TensorShape shape)
     {
-        TensorInt copy;
-        if (m_TensorAllocator != null)
-            copy = m_TensorAllocator.Alloc(newShape, DataType.Int, m_TensorOnDevice, AllocScope.LayerOutput) as TensorInt;
-        else
-            copy = new TensorInt(newShape, m_TensorOnDevice, null);
-
-        return copy;
-    }
-
-    /// <inheritdoc/>
-    public override Tensor DeepCopy()
-    {
-        var copy = new TensorInt(shape);
-        if (shape.HasZeroDims())
-            return copy;
-        copy.AttachToDevice(m_TensorOnDevice.Clone());
-        return copy;
+        return new TensorInt(shape, data: null);
     }
 
     /// <inheritdoc/>
     public override void UploadToDevice(ITensorData destination)
     {
-        var data = m_TensorOnDevice.Download<int>(shape.length);
-        destination.Upload(data, shape.length);
+        if (shape.length == 0)
+            return;
+        var data = m_DataOnBackend.Download<int>(shape.length);
+        destination.Upload(data, shape.length); data.Dispose();
         PinToDevice(destination, disposeUnpinned: true);
     }
 
@@ -203,14 +199,12 @@ public class TensorInt : Tensor
     /// <param name="d0">Axis 0.</param>
     public int this[int d0]
     {
-        get { return base.Get<int>(d0); }
-        set { base.Set<int>(d0, value); }
+        get { return base.GetItem<int>(d0); }
+        set { base.SetItem<int>(d0, value); }
     }
 
     /// <summary>
     /// Returns a copy of linear memory representation of the data in this tensor.
-    ///
-    /// If the tensor is the result of computation on a different backend, the method creates a blocking read.
     ///
     /// the returned array is a deepcopy of the tensor, the caller of this methods is now responsible for it.
     /// If you modify the contents of the returned array, it will not modify the underlying tensor
@@ -222,6 +216,15 @@ public class TensorInt : Tensor
     }
 
     /// <summary>
+    /// Returns a NativeArray on the linear memory representation of the data in this tensor.
+    /// </summary>
+    /// <returns>NativeArray of tensor data.</returns>
+    public NativeArray<int>.ReadOnly ToReadOnlyNativeArray()
+    {
+        return base.ToReadOnlyNativeArray<int>();
+    }
+
+    /// <summary>
     /// Returns a ReadOnlySpan on the linear memory representation of the data in this tensor.
     /// </summary>
     /// <returns>Span of tensor data.</returns>
@@ -230,5 +233,4 @@ public class TensorInt : Tensor
         return base.ToReadOnlySpan<int>();
     }
 }
-
 } // namespace Unity.Sentis

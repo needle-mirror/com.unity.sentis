@@ -28,6 +28,7 @@ uint inputChannelsSize;
 uint outputChannelsSize;
 uint kernelChannelSize;
 uint kernelSize;
+uint kernelLength;
 
 uint inputSize;
 uint outputSize;
@@ -108,35 +109,59 @@ void ConvTranspose2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
 
             uint oy = oyChannels * (outputChannels * kernelSize) + baseOutputY * kernelSize + (kernelSize - 1) - oySpatial;
             {
-                wLoad_y0 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y0 = wVal;
                 oy += kernelSize * THREAD_COUNT_Y;
             }
             {
-                wLoad_y1 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y1 = wVal;
                 oy += kernelSize * THREAD_COUNT_Y;
             }
             {
-                wLoad_y2 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y2 = wVal;
                 oy += kernelSize * THREAD_COUNT_Y;
             }
             {
-                wLoad_y3 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y3 = wVal;
                 oy += kernelSize * THREAD_COUNT_Y;
             }
             {
-                wLoad_y4 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y4 = wVal;
                 oy += kernelSize * THREAD_COUNT_Y;
             }
             {
-                wLoad_y5 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y5 = wVal;
                 oy += kernelSize * THREAD_COUNT_Y;
             }
             {
-                wLoad_y6 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y6 = wVal;
                 oy += kernelSize * THREAD_COUNT_Y;
             }
             {
-                wLoad_y7 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y7 = wVal;
                 oy += kernelSize * THREAD_COUNT_Y;
             }
         }
@@ -486,35 +511,59 @@ void ConvTranspose1D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID :
 
             uint oy = oyChannels * (outputChannels * kernelSize) + baseOutputY * kernelSize + (kernelSize - 1) - oySpatial;
             {
-                wLoad_y0 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y0 = wVal;
                 oy += kernelSize * THREAD_COUNT_Y;
             }
             {
-                wLoad_y1 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y1 = wVal;
                 oy += kernelSize * THREAD_COUNT_Y;
             }
             {
-                wLoad_y2 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y2 = wVal;
                 oy += kernelSize * THREAD_COUNT_Y;
             }
             {
-                wLoad_y3 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y3 = wVal;
                 oy += kernelSize * THREAD_COUNT_Y;
             }
             {
-                wLoad_y4 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y4 = wVal;
                 oy += kernelSize * THREAD_COUNT_Y;
             }
             {
-                wLoad_y5 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y5 = wVal;
                 oy += kernelSize * THREAD_COUNT_Y;
             }
             {
-                wLoad_y6 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y6 = wVal;
                 oy += kernelSize * THREAD_COUNT_Y;
             }
             {
-                wLoad_y7 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y7 = wVal;
                 oy += kernelSize * THREAD_COUNT_Y;
             }
         }

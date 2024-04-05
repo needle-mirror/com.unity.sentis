@@ -4,30 +4,9 @@ The table shows which Open Neural Network Exchange (ONNX) operators Sentis suppo
 
 When you import a model, each ONNX operator in the model graph becomes a Sentis layer. A Sentis layer has the same name as the ONNX operator, unless the table shows the operator maps to a different layer. Refer to [How Sentis optimizes a model](models-concept.md#how-sentis-optimizes-a-model) for more information.
 
-If you use a GPU Worker and the model has a layer that isn't supported, or has a layer that uses an input tensor data type that isn't supported, Sentis falls back to using `BackendType.CPU` for the layer, which uses Burst. If `BackendType.CPU` isn't supported, Sentis falls back to using a slower CPU implementation of the layer that doesn't use Burst.
-
-Refer to [the API reference](../api/index.html) for more information on each Sentis layer.
+If you use a GPU Worker and the model has a layer that isn't supported, Sentis defaults to using `BackendType.CPU` for the layer that uses Burst. If `BackendType.CPU` isn't supported, Sentis resorts to utilizing a slower CPU implementation of the layer that doesn't use Burst.
 
 ## Supported operators
-
-### Ops utility methods
-
-You can use an `Ops` object to operate on tensors on a backend outside of a model. There are methods for most of the ONNX layers, and methods for operating between tensors and floats.
-
-|Method name|First argument|Second argument|
-|-|-|-|
-|Add | Tensor | float |
-|Add | float | Tensor |
-|Sub | Tensor | float |
-|Sub | float | Tensor |
-|Mul | Tensor | float |
-|Mul | float | Tensor |
-|Div | Tensor | float |
-
-You can also use the following methods which are similar to numpy methods:
-
-- `Split`, which returns a slice of a tensor along a certain axis
-- `Set`, which sets a slice of a tensor along a certain axis
 
 ### ONNX operators
 
@@ -46,9 +25,9 @@ You can also use the following methods which are similar to numpy methods:
 |[Atanh](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Atanh) | float | float | float | |
 |[AveragePool](https://github.com/onnx/onnx/blob/main/docs/Operators.md#AveragePool) | float | float (1D and 2D only) | float (1D and 2D only) | The `ceil_mode` and `count_include_pad` parameters aren't supported. |
 |[BatchNormalization](https://github.com/onnx/onnx/blob/main/docs/Operators.md#BatchNormalization) | float | float | float | The `momentum`, `spatial` and `training_mode` parameters aren't supported. |
-|[Bernoulli](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Bernoulli) | float | float | float | |
-|[Cast](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Cast) | float, int | float, int | float, int | |
-|[CastLike](https://github.com/onnx/onnx/blob/main/docs/Operators.md#CastLike) | float, int | float, int | float, int | |
+|[Bernoulli](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Bernoulli) | float, int | float, int | float, int | |
+|[Cast](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Cast) | float, int, short | float, int, short | float, int, short | |
+|[CastLike](https://github.com/onnx/onnx/blob/main/docs/Operators.md#CastLike) | float, int, short | float, int, short | float, int, short | |
 |[Ceil](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Ceil) | float | float | float | |
 |[Celu](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Celu) | float | float | float | |
 |[Clip](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Clip) | float, int | float, int | float, int | |
@@ -104,12 +83,12 @@ You can also use the following methods which are similar to numpy methods:
 |[Mul](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Mul) | float, int | float, int | float, int | |
 |[Multinomial](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Multinomial) | float | Not supported | Not supported | |
 |[Neg](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Neg) | float, int | float, int | float, int | |
-|[NonMaxSuppression](https://github.com/onnx/onnx/blob/main/docs/Operators.md#NonMaxSuppression) | float | Not supported | Not supported | |
+|[NonMaxSuppression](https://github.com/onnx/onnx/blob/main/docs/Operators.md#NonMaxSuppression) | float | float | Not supported | |
 |[NonZero](https://github.com/onnx/onnx/blob/main/docs/Operators.md#NonZero) | float, int | Not supported | Not supported | |
 |[Not](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Not) | int | int | int | |
 |[OneHot](https://github.com/onnx/onnx/blob/main/docs/Operators.md#OneHot) | float, int | float, int | float, int | |
 |[Or](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Or) | int | int | int | |
-|[Pad](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Pad) | float | float | float | |
+|[Pad](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Pad) | float, int | float, int | float, int | |
 |[Pow](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Pow) | float, int | float, int | float, int | |
 |[PRelu](https://github.com/onnx/onnx/blob/main/docs/Operators.md#PRelu) | float | float | float | |
 |[RandomNormal](https://github.com/onnx/onnx/blob/main/docs/Operators.md#RandomNormal) | float | float | float | |
@@ -130,20 +109,20 @@ You can also use the following methods which are similar to numpy methods:
 |[ReduceSumSquare](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceSumSquare) | float, int | float, int | float, int | |
 |[Relu](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Relu) | float | float | float | |
 |[Reshape](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Reshape) | float, int | float, int | float, int | |
-|[Resize](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Resize) | float | float (1D, 2D and 3D) | float (1D, 2D and 3D) | The `cubic_coeff_a`, `exclude_outside`, `extrapolation_value` and `roi`  parameters aren't supported. |
+|[Resize](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Resize) | float | float | float | The `cubic_coeff_a`, `exclude_outside`, `extrapolation_value` and `roi`  parameters aren't supported. |
 |[RoiAlign](https://github.com/onnx/onnx/blob/main/docs/Operators.md#RoiAlign) | float | float | float | The `coordinate_transformation_mode` parameter isn't supported. |
 |[Round](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Round) | float | float | float | |
 |[Scatter (deprecated)](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Scatter) | float, int | float, int | float, int | The operator maps to the Sentis layer `ScatterElements`. |
 |[ScatterElements](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ScatterElements) | float, int | float, int (no ScatterReductionMode) | float, int | |
 |[ScatterND](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ScatterND) | float, int | float, int | float, int | |
 |[Selu](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Selu) | float | float | float | |
-|[Shape](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Shape) | - | - | - | |
+|[Shape](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Shape) | - | - | - | The operator returns a CPU tensor without downloading the input tensor. |
 |[Shrink](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Shrink) | float | float | float | |
 |[Sigmoid](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Sigmoid) | float | float | float | |
 |[Sign](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Sign) | float, int | float, int | float, int | |
 |[Sin](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Sin) | float | float | float | |
 |[Sinh](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Sinh) | float | float | float | |
-|[Size](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Size) | - | - | - | |
+|[Size](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Size) | - | - | - | The operator returns a CPU tensor without downloading the input tensor. |
 |[Slice](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Slice) | float, int | float, int | float, int | |
 |[Softmax](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Softmax) | float | float | float | |
 |[Softplus](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Softplus) | float | float | float | |
@@ -162,7 +141,7 @@ You can also use the following methods which are similar to numpy methods:
 |[Transpose](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Transpose) | float, int | float, int | float, int | |
 |[Trilu](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Trilu) | float, int | float, int | float, int | |
 |[Unsqueeze](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Unsqueeze) | float, int | float, int | float, int | |
-|[Upsample (deprecated)](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Upsample) | float | float (1D, 2D and 3D) | float (1D, 2D and 3D) | The operator maps to the Sentis layer `Resize`. |
+|[Upsample (deprecated)](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Upsample) | float | float | float | The operator maps to the Sentis layer `Resize`. |
 |[Where](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Where) | float, int | float, int | float, int | |
 |[Xor](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Xor) | int | int | int | |
 
@@ -173,11 +152,17 @@ Sentis might create the following layers when it [optimizes the model](models-co
 |Name|Supported data types with `BackendType.CPU`|Supported data types with `BackendType.GPUCompute`|Supported data types with `BackendType.GPUPixel`|
 |-|-|-|-|
 |Dense | float | float | float |
+|DequantizeUint8 | byte | byte | byte |
 |Gelu | float | float | float |
+|GeluFast | float | float | float |
 |MatMul2D | float | float | float |
+|MoveDim | float, int | float, int | float, int |
+|Narrow | float, int | float, int | float, int |
 |Relu6 | float | float | float |
-|ScalarMad | float | float | float |
-|Square | float | float | float |
+|ScalarMad | float, int | float, int | float, int |
+|Select | float, int | float, int | float, int |
+|SliceSet | float, int | float, int | float, int |
+|Square | float, int | float, int | float, int |
 |Swish | float | float | float |
 |ScaleBias | float | float | float |
 
@@ -224,7 +209,8 @@ The following ONNX operators aren't supported in the current version of Sentis.
 ## Additional resources
 
 - [ONNX operator schemas](https://github.com/onnx/onnx/blob/main/docs/Operators.md)
-- [Export an ONNX file from a machine learning framework](export-an-onnx-file.md)
+- [Export an ONNX file from a machine learning framework](export-convert-onnx.md)
 - [Profile a model](profile-a-model.md)
+- [Supported functional methods](supported-functional-methods.md)
 
 

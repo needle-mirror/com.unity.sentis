@@ -2,6 +2,7 @@
 
 #pragma kernel EinsumOne EINSUMONE
 #pragma kernel EinsumTwo EINSUMTWO
+#include "HLSLSupport.cginc"
 #include "Tensor.cginc"
 
 int sumLengths[8];

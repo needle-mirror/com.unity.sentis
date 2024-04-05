@@ -1,33 +1,33 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Sentis;
-using Unity.Sentis.Layers;
-using UnityEngine.Serialization;
 
 public class RunModelOnFullScreen : MonoBehaviour
 {
+    Model m_Model;
     IWorker m_Engine;
-    GPUComputeOps m_Ops = new GPUComputeOps();
     TensorFloat m_TensorY;
     Dictionary<string, Tensor> m_Inputs;
 
     void OnEnable()
     {
         Debug.Log("When running this example, the game vew should fade from black to white to black");
-        var model = new Model();
-        model.AddInput("x", DataType.Float, new SymbolicTensorShape(new SymbolicTensorDim(1), new SymbolicTensorDim(4), new SymbolicTensorDim('w'), new SymbolicTensorDim('h')));
-        model.AddInput("y", DataType.Float, new SymbolicTensorShape());
-        model.AddLayer(new Add("z", "x", "y"));
-        model.AddOutput("z");
-        m_Engine = WorkerFactory.CreateWorker(BackendType.GPUCompute, model);
+        m_Model = Functional.Compile(
+            forward: (x, y) => x + y,
+            inputDefs: (
+                new InputDef(DataType.Float, new SymbolicTensorShape(SymbolicTensorDim.Int(1), SymbolicTensorDim.Int(4), SymbolicTensorDim.Param(0), SymbolicTensorDim.Param(1))),
+                new InputDef(DataType.Float, new SymbolicTensorShape())
+            )
+        );
+        m_Engine = WorkerFactory.CreateWorker(BackendType.GPUCompute, m_Model);
 
         // The value of Y will be added to all pixel values.
         m_TensorY = new TensorFloat(0.1f);
 
         m_Inputs = new Dictionary<string, Tensor>
         {
-            { "x", null },
-            { "y", m_TensorY },
+            { m_Model.inputs[0].name, null },
+            { m_Model.inputs[1].name, m_TensorY },
         };
     }
 
@@ -36,13 +36,12 @@ public class RunModelOnFullScreen : MonoBehaviour
         foreach (var tensor in m_Inputs.Values) { tensor?.Dispose(); }
 
         m_Engine.Dispose();
-        m_Ops.Dispose();
     }
 
     void Update()
     {
         // readback tensor from GPU to CPU to use tensor indexing
-        m_TensorY.MakeReadable();
+        m_TensorY.CompleteOperationsAndDownload();
         m_TensorY[0] = Mathf.Sin(Time.timeSinceLevelLoad);
     }
 
@@ -51,7 +50,7 @@ public class RunModelOnFullScreen : MonoBehaviour
         // TextureToTensor takes optional parameters for resampling, channel swizzles etc
         using TensorFloat frameInputTensor = TextureConverter.ToTensor(source);
 
-        m_Inputs["x"] = frameInputTensor;
+        m_Inputs[m_Model.inputs[0].name] = frameInputTensor;
 
         m_Engine.Execute(m_Inputs);
         TensorFloat output = m_Engine.PeekOutput() as TensorFloat;

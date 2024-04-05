@@ -5,6 +5,43 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 
+## [1.4.0-pre.1] - 2024-04-05
+
+### Added
+- Fast path for Scatter and Gather ops.
+- Quantization API for quantizing model weights to Float16 or Uint8.
+- TensorByte and TensorShort tensor types for quantization.
+- Pad operator to support 'axes' input, 'TensorInt' input and 'wrap' mode.
+- GeluFast op for tiny stories optimization.
+- Tensor 'Reshape' method for changing shape without backend.
+- Functional API for compiling models with torch-like syntax.
+- Analytics reporting on model import.
+
+### Changed
+- Reworked async API with awaitable methods on tensor readback.
+- Reworked tensor allocation scheme.
+- Renamed tensor fields and methods.
+- Reworked model serialization to use flatbuffers.
+- Random layers accept integer seed rather than float.
+- Improved NonMaxSuppression inference drastically and added GPUCompute backend.
+
+### Fixed
+- Dispatch limit issues on Split operator.
+- Optimization pass where Dense has transposed weights.
+- Import settings for Resize op on opset 10.
+- Links to external sources in docs.
+- Edge cases in ScatterElements and GatherElements infer correctly.
+- Conv operator going out of bounds on GPUCompute and GPUCommandBuffer.
+
+### Removed
+- Broken optimization pass for Dense > ScaleBias.
+- ArrayTensorData class and methods.
+- 'CreateWorker' method from model extensions.
+- Mapping of param symbolic tensor dims to original names.
+- Model API for adding inputs, constants, layers to model (in favour of Functional API).
+- Ops for tensor operations (in favour of Functional API).
+
+
 ## [1.3.0-pre.3] - 2024-01-17
 
 ### Added
@@ -32,6 +69,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Removed
 - Broken Dense to ScaleBias optimization
+
 
 ## [1.3.0-pre.2] - 2023-11-21
 

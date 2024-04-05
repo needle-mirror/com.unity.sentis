@@ -43,11 +43,11 @@ public class TensorIndexing : MonoBehaviour
         Assert.AreEqual(1 * 2 * 3 * 4, shapeB.length);
 
         // Tensor zero-filled of shape (1,2,3,4).
-        var tensorB = TensorFloat.Zeros(shape: shapeB);
+        var tensorB = TensorFloat.AllocZeros(shape: shapeB);
 
         // You can access tensors via their accessors.
-        // If your tensor data is on the GPU you need to call MakeReadable before accessing with indexes.
-        tensorA.MakeReadable();
+        // If your tensor data is on the GPU you need to call CompleteOperationsAndDownload before accessing with indexes.
+        tensorA.CompleteOperationsAndDownload();
         Assert.AreEqual(1, tensorA[0, 0, 0]);
         Assert.AreEqual(2, tensorA[0, 0, 1]);
         Assert.AreEqual(3, tensorA[0, 0, 2]);
@@ -68,8 +68,8 @@ public class TensorIndexing : MonoBehaviour
         Assert.AreEqual(5, tensorA.shape.RavelIndex(0, 1, 2)); // [0,1,2] = 0*2*3+1*3+2 = 5
 
         // Accessors can be used to set values in the tensor.
-        // If your tensor data is on the GPU you need to call MakeReadable before accessing with indexes.
-        tensorB.MakeReadable();
+        // If your tensor data is on the GPU you need to call CompleteOperationsAndDownload before accessing with indexes.
+        tensorB.CompleteOperationsAndDownload();
         tensorB[0, 0, 0, 0] = 2.0f;
         tensorB[0, 1, 1, 1] = 3.0f;
         Assert.AreEqual(2.0f, tensorB[0, 0, 0, 0]);
@@ -77,11 +77,11 @@ public class TensorIndexing : MonoBehaviour
 
         // To get the tensor as a flattened array, call ToReadOnlyArray.
         // Tensors can also be created from a slice of a bigger array
-        // If your tensor data is on the GPU you need to call MakeReadable before calling ToReadOnlyArray.
-        tensorA.MakeReadable();
+        // If your tensor data is on the GPU you need to call CompleteOperationsAndDownload before calling ToReadOnlyArray.
+        tensorA.CompleteOperationsAndDownload();
         var arrayA = tensorA.ToReadOnlyArray();
         var tensorC = new TensorInt(shape: new TensorShape(2), srcData: arrayA, dataStartIndex: 3);
-        tensorC.MakeReadable();
+        tensorC.CompleteOperationsAndDownload();
         Assert.AreEqual(4, tensorC[0]);
         Assert.AreEqual(5, tensorC[1]);
 
@@ -89,17 +89,17 @@ public class TensorIndexing : MonoBehaviour
         var tensorD = new TensorFloat(srcData: 5.0f);
         Assert.AreEqual(0, tensorD.shape.rank);
         Assert.AreEqual(new TensorShape(), tensorD.shape);
-        tensorD.MakeReadable();
+        tensorD.CompleteOperationsAndDownload();
         Assert.AreEqual(5.0f, tensorD[0]);
 
         // Tensors can also have 0-dim shape, in this case they are empty.
-        var tensorE = TensorFloat.Zeros(shape: new TensorShape(0, 4, 5));
+        var tensorE = TensorFloat.AllocZeros(shape: new TensorShape(0, 4, 5));
         Assert.AreEqual(3, tensorE.shape.rank);
         Assert.AreEqual(0, tensorE.shape.length);
         Assert.IsTrue(tensorE.shape.HasZeroDims());
 
         // Array.Empty<float>()
-        tensorE.MakeReadable();
+        tensorE.CompleteOperationsAndDownload();
         var arrayE = tensorE.ToReadOnlyArray();
         Assert.AreEqual(0, arrayE.Length);
     }

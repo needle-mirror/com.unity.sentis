@@ -123,6 +123,37 @@ static class ComputeHelper
         fn.SetInt8(strideNameID, pStrides);
     }
 
+    public static unsafe void SetTensorStrides(this ComputeFunc fn, int strideNameID, TensorShape shape)
+    {
+        int* pShape = stackalloc int[TensorShape.maxRank];
+        int* pStrides = stackalloc int[TensorShape.maxRank];
+        OpsUtils.PinTensorShapeStrides(shape, pShape, pStrides);
+
+        fn.SetInt8(strideNameID, pStrides);
+    }
+
+
+    // SetTensorShape and/or Strides above always sets 8-sized arrays on the GPU, and these arrays are valid
+    // for rank elements starting from the end of the array - ie from the highest address - ie Shape[maxRank-1],
+    // up to (inclusively) Shape[maxRank - 1 - rank + 1] and all other heading elements are invalid (garbage).
+    // With the *CompactedAtHead versions, dimension numbers from 0 to rank-1 can directly be used to index
+    // these shape and strides arrays.
+    public static unsafe void SetTensorStridesCompactedAtHead(this ComputeFunc fn, int strideNameID, TensorShape shape)
+    {
+        int* pStrides = stackalloc int[shape.rank];
+        OpsUtils.PinTensorStridesCompact(shape, pStrides);
+        fn.SetInt8(strideNameID, pStrides, numElements: shape.rank);
+    }
+
+    public static unsafe void SetTensorShapesCompactedAtHead(this ComputeFunc fn, int strideNameID, TensorShape shape)
+    {
+        // Note the following is defensive (UnsafeGetPtr shouldn't be called with TensorShape.maxRank) and we add this
+        // because this is an unsafe scope, but rank-0 is not supported and we should never be called in that case.
+        int rank = Math.Max(shape.rank, 1);
+        int* compactShape = shape.UnsafeGetPtr(TensorShape.maxRank - rank);
+        fn.SetInt8(strideNameID, compactShape, numElements: shape.rank);
+    }
+
     // for setting uint4 and int4 values, no padding required
     static readonly int[] s_scratchPadInt4 = new int[4];
 
@@ -149,16 +180,16 @@ static class ComputeHelper
         fn.shader.SetInts(nameID, s_scratchPadInt16);
     }
 
-    public static unsafe void SetInt8(this ComputeFunc fn, int nameID, int* ptr)
+    public static unsafe void SetInt8(this ComputeFunc fn, int nameID, int* ptr, int numElements = 8)
     {
         fixed (int* dst = &s_scratchPadInt8[0])
         {
-            UnsafeUtility.MemCpyStride(dst, 4 * sizeof(int), ptr, 1 * sizeof(int), sizeof(int), 8);
+            UnsafeUtility.MemCpyStride(dst, 4 * sizeof(int), ptr, 1 * sizeof(int), sizeof(int), numElements);
         }
         fn.shader.SetInts(nameID, s_scratchPadInt8);
     }
 
-    public static unsafe void SetInt8(this ComputeFunc fn, int nameID, int[] ptr)
+    public static unsafe void SetInt8(this ComputeFunc fn, int nameID, ReadOnlySpan<int> ptr)
     {
         Logger.AssertIsTrue(ptr.Length <= 8, "cannot pin array > 8, got {0}", ptr.Length);
         for (int i = 0; i < ptr.Length; i++)
@@ -183,7 +214,9 @@ static class ComputeHelper
 
     public static void Dispatch(this ComputeFunc fn, int workItemsX, int workItemsY, int workItemsZ)
     {
+#if SENTIS_DEBUG
         Profiler.BeginSample(fn.kernelName);
+#endif
         var x = IDivC(workItemsX, (int)fn.threadGroupSizeX);
         var y = IDivC(workItemsY, (int)fn.threadGroupSizeY);
         var z = IDivC(workItemsZ, (int)fn.threadGroupSizeZ);
@@ -193,8 +226,9 @@ static class ComputeHelper
             D.LogWarning($"Exceeded safe compute dispatch group count limit per dimension [{x}, {y}, {z}] for {fn.kernelName}");
 
         fn.shader.Dispatch(fn.kernelIndex, x, y, z);
-
+#if SENTIS_DEBUG
         Profiler.EndSample();
+#endif
     }
 
     public static void ScheduleXSBWO(this ComputeFunc fn, ComputeTensorData X, ComputeTensorData S, ComputeTensorData B, ComputeTensorData W, ComputeTensorData O, int numThread)

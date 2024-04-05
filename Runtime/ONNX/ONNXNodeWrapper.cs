@@ -4,6 +4,8 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using Unity.Mathematics;
+using static Unity.Sentis.ONNX.ONNXModelConverter;
 
 [assembly: InternalsVisibleToAttribute("Unity.Sentis.EditorTests")]
 
@@ -38,12 +40,12 @@ namespace Unity.Sentis.ONNX
         public string Input7 { get { return GetRequiredInput(7); } }
         public string Input8 { get { return GetRequiredInput(8); } }
 
-        public float? Seed
+        public int? Seed
         {
             get
             {
                 if (HasAttribute("seed"))
-                    return GetRequiredFloat("seed");
+                    return math.asint(GetRequiredFloat("seed"));
                 return null;
             }
         }
@@ -63,18 +65,18 @@ namespace Unity.Sentis.ONNX
         // ---------------------------------------------------------------------------------
         // Implementation
         private NodeProto m_ONNXNode;
-        private List<Model.ImporterWarning> m_ImporterWarnings;
+        private List<ImporterWarning> m_ImporterWarnings;
 
-        public ONNXNodeWrapper(NodeProto ONNXNode, List<Model.ImporterWarning> importerWarnings)
+        public ONNXNodeWrapper(NodeProto ONNXNode)
         {
             m_ONNXNode = ONNXNode;
-            m_ImporterWarnings = importerWarnings;
+            m_ImporterWarnings = new List<ImporterWarning>();
         }
 
         // Logging helpers
-        public void Warn(string message, Model.WarningType severity)
+        public void Warn(string message, WarningType severity)
         {
-            m_ImporterWarnings.Add(new Model.ImporterWarning(Name, severity, message));
+            m_ImporterWarnings.Add(new ImporterWarning(message, severity));
             Debug.LogWarning(message);
         }
 
@@ -88,40 +90,40 @@ namespace Unity.Sentis.ONNX
         {
             AttributeProto attr;
             if (TryFindAttribute(name, out attr))
-                Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored.", Model.WarningType.Warning);
+                Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored.", WarningType.Warning);
         }
         public void UnsupportedAttribute(string name, int defaultValue)
         {
             if (GetOptionalInt(name, defaultValue) != defaultValue)
-                Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", Model.WarningType.Warning);
+                Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", WarningType.Warning);
         }
         public void UnsupportedAttribute(string name, float defaultValue)
         {
             if (GetOptionalFloat(name, defaultValue) != defaultValue)
-                Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", Model.WarningType.Warning);
+                Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", WarningType.Warning);
         }
         public void UnsupportedAttribute(string name, string defaultValue)
         {
             if (GetOptionalString(name, defaultValue) != defaultValue)
-                Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", Model.WarningType.Warning);
+                Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", WarningType.Warning);
         }
         public void UnsupportedAttribute(string name, int[] defaultValue)
         {
             var valueArray = GetOptionalIntArray(name, defaultValue);
             if (!Enumerable.SequenceEqual(valueArray, defaultValue))
-                Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", Model.WarningType.Warning);
+                Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", WarningType.Warning);
         }
         public void UnsupportedAttribute(string name, string[] defaultValue)
         {
             var stringArray = GetOptionalStringArray(name, defaultValue);
             if (!Enumerable.SequenceEqual(stringArray, defaultValue))
-                Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", Model.WarningType.Warning);
+                Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", WarningType.Warning);
         }
         public void UnsupportedAttribute(string name, Func<int, bool> predicate, int[] defaultValue)
         {
             var valueArray = GetOptionalIntArray(name, defaultValue);
             if (!Enumerable.All(valueArray, predicate))
-                Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", Model.WarningType.Warning);
+                Warn($"<b>{OperatorType}:</b> Unsupported attribute `<b>{name}</b>`. Value will be ignored and defaulted to [{string.Join(", ", defaultValue)}].", WarningType.Warning);
         }
         public void IgnoredAttribute(string name, string reasonToIgnore) { }
 
@@ -229,7 +231,7 @@ namespace Unity.Sentis.ONNX
             if (!HasAttribute("dtype"))
                 return defaultValue;
             var dtype = (TensorProto.Types.DataType)GetRequiredInt("dtype");
-            return DataTypeFromOnnxDataType(dtype, defaultValue, () => Warn($"DataType `{dtype}` is not supported.", Model.WarningType.Warning));
+            return DataTypeFromOnnxDataType(dtype, defaultValue, () => Warn($"DataType `{dtype}` is not supported.", WarningType.Warning));
         }
 
         public static DataType DataTypeFromOnnxDataType(TensorProto.Types.DataType dataType, DataType defaultValue = DataType.Float, Action OnUnsupported = null)
@@ -291,6 +293,9 @@ namespace Unity.Sentis.ONNX
                 case "edge":
                     modeType = Layers.PadMode.Edge;
                     break;
+                case "wrap":
+                    modeType = Layers.PadMode.Wrap;
+                    break;
             }
             return modeType;
         }
@@ -322,7 +327,7 @@ namespace Unity.Sentis.ONNX
                 if (Enum.TryParse<Layers.RnnActivation>(activationStrings[i], out var activation))
                     activations[i] = activation;
                 else
-                    Warn($"RnnActivation `{activationStrings[i]}` is not supported for type {OperatorType}.", Model.WarningType.Warning);
+                    Warn($"RnnActivation `{activationStrings[i]}` is not supported for type {OperatorType}.", WarningType.Warning);
             }
 
             return activations;
@@ -347,7 +352,7 @@ namespace Unity.Sentis.ONNX
             if (mode == "linear" || mode == "bilinear")
                 outputMode = Layers.InterpolationMode.Linear;
             else if (mode != "nearest")
-                Warn($"Mode `{mode}` is not supported for type {OperatorType}.", Model.WarningType.Warning);
+                Warn($"Mode `{mode}` is not supported for type {OperatorType}.", WarningType.Warning);
 
             return outputMode;
         }
@@ -371,7 +376,7 @@ namespace Unity.Sentis.ONNX
             else if (mode == "asymmetric")
                 outputMode = Layers.CoordTransformMode.Asymmetric;
             else
-                Warn($"Mode `{mode}` is not supported for type {OperatorType}.", Model.WarningType.Warning);
+                Warn($"Mode `{mode}` is not supported for type {OperatorType}.", WarningType.Warning);
 
             return outputMode;
         }
@@ -390,7 +395,7 @@ namespace Unity.Sentis.ONNX
             else if (mode == "ceil")
                 outputMode = Layers.NearestMode.Ceil;
             else
-                Warn($"Mode `{mode}` is not supported for type {OperatorType}.", Model.WarningType.Warning);
+                Warn($"Mode `{mode}` is not supported for type {OperatorType}.", WarningType.Warning);
 
             return outputMode;
         }

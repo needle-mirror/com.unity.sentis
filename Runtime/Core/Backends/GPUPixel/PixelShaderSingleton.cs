@@ -29,10 +29,10 @@ namespace Unity.Sentis
 
             if (!m_shaderNameToMaterial.TryGetValue(kernelName, out var material) || material == null)
             {
-                Profiler.BeginSample(kernelName);
+                ProfilerMarkers.LoadPixelShader.Begin();
                 material = new Material(Shader.Find(kernelName));
                 m_shaderNameToMaterial[kernelName] = material;
-                Profiler.EndSample();
+                ProfilerMarkers.LoadPixelShader.End();
                 return material;
             }
 

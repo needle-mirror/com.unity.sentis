@@ -10,12 +10,6 @@ namespace Unity.Sentis {
 public interface ITensorData : IDisposable
 {
     /// <summary>
-    /// Reserves memory for `count` elements.
-    /// </summary>
-    /// <param name="count">The number of elements to reserve in memory.</param>
-    void Reserve(int count);
-
-    /// <summary>
     /// Uploads a contiguous block of tensor data to internal storage.
     /// </summary>
     /// <param name="data">The data to upload.</param>
@@ -70,9 +64,9 @@ public interface ITensorData : IDisposable
     int maxCapacity { get; }
 
     /// <summary>
-    /// On what device backend are the data elements stored.
+    /// On what backend are the data elements stored.
     /// </summary>
-    DeviceType deviceType { get; }
+    BackendType backendType { get; }
 }
 
 /// <summary>

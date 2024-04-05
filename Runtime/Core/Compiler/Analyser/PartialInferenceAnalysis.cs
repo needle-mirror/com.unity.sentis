@@ -9,36 +9,32 @@ namespace Unity.Sentis.Compiler.Analyser
     {
         public static PartialInferenceContext InferModelPartialTensors(Model model, bool useConstantWeights, IDictionary<string, TensorShape> inputShapes = null)
         {
-            Profiler.BeginSample("Sentis.Compiler.Analyser.ShapeInferenceAnalysis.InferModelSymbolicTensors");
+            ProfilerMarkers.InferModelSymbolicTensors.Begin();
 
             var ctx = new PartialInferenceContext();
 
             foreach (var constant in model.constants)
             {
                 if (useConstantWeights)
-                    ctx.AddPartialTensor(constant.name, PartialTensor.FromTensor(constant.DataSetToTensor()));
+                    ctx.AddPartialTensor(constant.index, PartialTensor.FromTensor(constant.WeightsToTensor()));
                 else
-                    ctx.AddPartialTensor(constant.name, new PartialTensor(constant.dataType, new SymbolicTensorShape(constant.shape)));
+                    ctx.AddPartialTensor(constant.index, new PartialTensor(constant.dataType, new SymbolicTensorShape(constant.shape)));
             }
 
             // model inputs
             foreach (var input in model.inputs)
             {
-                if (inputShapes != null && inputShapes.TryGetValue(input.name, out var inputShape))
-                    ctx.AddPartialTensor(input.name, new PartialTensor(input.dataType, new SymbolicTensorShape(inputShape)));
+                if (inputShapes != null && inputShapes.TryGetValue(input.index, out var inputShape))
+                    ctx.AddPartialTensor(input.index, new PartialTensor(input.dataType, new SymbolicTensorShape(inputShape)));
                 else
-                    ctx.AddPartialTensor(input.name, new PartialTensor(input.dataType, input.shape));
+                    ctx.AddPartialTensor(input.index, new PartialTensor(input.dataType, input.shape));
             }
 
+            // Partial tensor inference
             foreach (var layer in model.layers)
-            {
-                // symbolic tensor inference
-                var layerInputSymbolicTensors = ctx.GetPartialTensors(layer.inputs);
-                var layerOutputSymbolicTensor = layer.InferPartialTensor(layerInputSymbolicTensors, ctx);
-                ctx.AddPartialTensor(layer.name, layerOutputSymbolicTensor);
-            }
+                layer.InferPartial(ctx);
 
-            Profiler.EndSample();
+            ProfilerMarkers.InferModelSymbolicTensors.End();
 
             return ctx;
         }

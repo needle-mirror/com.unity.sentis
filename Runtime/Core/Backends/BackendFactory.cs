@@ -5,33 +5,18 @@ namespace Unity.Sentis {
 
 static class BackendFactory
 {
-    public static Ops CreateOps(BackendType backendType, ITensorAllocator allocator, bool verbose)
+    public static IBackend CreateBackend(BackendType backendType)
     {
         switch (backendType)
         {
             case BackendType.GPUCompute:
-                return new GPUComputeOps(allocator);
+                return new GPUComputeBackend();
             case BackendType.GPUCommandBuffer:
-                return new GPUCommandBufferOps(allocator);
+                return new GPUCommandBufferBackend();
             case BackendType.GPUPixel:
-                return new GPUPixelOps(allocator);
+                return new GPUPixelBackend();
             default:
-                return new CPUOps(allocator);
-        }
-    }
-
-    public static IBackend CreateBackend(BackendType backendType, ITensorAllocator allocator, bool verbose)
-    {
-        switch (backendType)
-        {
-            case BackendType.GPUCompute:
-                return new GPUComputeBackend(allocator);
-            case BackendType.GPUCommandBuffer:
-                return new GPUCommandBufferBackend(allocator);
-            case BackendType.GPUPixel:
-                return new GPUPixelBackend(allocator);
-            default:
-                return new CPUBackend(allocator);
+                return new CPUBackend();
         }
     }
 
@@ -42,25 +27,11 @@ static class BackendFactory
             backendType = BackendType.GPUPixel;
         }
 
-        IVars vars;
-        if (backendType == BackendType.GPUPixel)
-        {
-            //TODO PixelShader worker uses Blit/Textures, cannot re-use vars unless the dispatch mechanism allows rendering to sub part of the texture
-            vars = new GenericVarsWithReuse(forceCachingByShape: true);
-        }
-        else
-        {
-            vars = new DefaultVars();
-        }
+        IModelStorage vars = new ModelStorage();
 
-        ITensorAllocator allocator = vars.GetAllocator();
+        var backend = CreateBackend(backendType);
 
-        if (workerConfiguration.verbose)
-            D.Log($"Storage type: {vars.GetType()}. Allocator type: {allocator.GetType()}.");
-
-        var backend = CreateBackend(backendType, allocator, workerConfiguration.verbose);
-
-        return new GenericWorker(model, backend, vars, workerConfiguration.verbose, workerConfiguration.takeoverWeights);
+        return new GenericWorker(model, backend, vars, workerConfiguration.takeoverWeights);
     }
 }
 } // namespace Unity.Sentis

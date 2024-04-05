@@ -1,3 +1,6 @@
+// Disable Integer divides might be much slower, try using uints if possible.
+#pragma warning (disable: 3556)
+
 #define MAX_THREAD_COUNT 64
 #if (MAX_THREAD_COUNT>=256)
 #define NUMTHREADS(t256,t128,t64) [numthreads t256]

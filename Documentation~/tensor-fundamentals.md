@@ -29,7 +29,7 @@ A model usually needs an input tensor in a certain format. For example, a model 
 
 If your tensor doesn't match the format the model needs, you might get unexpected results. 
 
-You can use [Ops.Transpose](xref:Unity.Sentis.Ops.Transpose(Of T)(T)) to convert a tensor to a different format. Refer to [Create and modify tensors](do-basic-tensor-operations.md) for more information.
+You can use the Sentis functional API to convert a tensor to a different format. Refer to [Edit a model](edit-a-model.md) for more information.
 
 Refer to [Create input for a model](create-an-input-tensor.md) for more information if you need to convert a texture to a tensor in a specific format.
 
@@ -39,9 +39,9 @@ Sentis stores tensor data in GPU memory or CPU memory.
 
 Sentis usually stores tensors in the memory that matches the [back end type](create-an-engine.md#back-end-types) you use. For example if you use the `BackendType.GPUCompute` back end type, Sentis usually stores tensors in GPU memory.
 
-You can only read from and write to the elements of a tensor directly if the tensor is on the CPU, and it can be slow. It's faster if you use the optimized methods in the `Ops` API.
+You can only read from and write to the elements of a tensor directly if the tensor is on the CPU, and it can be slow. It's faster to edit your model with the functional API.
 
-If you need to read from and write to the elements of a tensor directly, use `Tensor.MakeReadable()`. Sentis performs a blocking readback of the tensor to the CPU. The next time you use this tensor in a model or operation on the GPU there will be an automatic blocking upload.   
+If you need to read from and write to the elements of a tensor directly, use [`CompleteOperationsAndDownload`](xref:Unity.Sentis.Tensor.CompleteOperationsAndDownload). Sentis performs a blocking readback of the tensor to the CPU. The next time you use this tensor in a model or operation on the GPU there will be an automatic blocking upload.   
 
 To avoid Sentis performing a blocking readback and upload, you can also use a compute shader, Burst or a native array to read from and write to the tensor data directly in memory. Refer to [Access tensor data directly](access-tensor-data-directly.md) for more information.
 

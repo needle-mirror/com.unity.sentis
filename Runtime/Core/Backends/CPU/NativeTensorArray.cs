@@ -6,20 +6,20 @@ using Unity.Collections.LowLevel.Unsafe;
 
 namespace Unity.Sentis
 {
-
 ///see https://referencesource.microsoft.com/#mscorlib/system/runtime/interopservices/safehandle.cs
 class NativeMemorySafeHandle : SafeHandle
 {
     readonly Allocator m_AllocatorLabel;
+    const int k_Alignment = sizeof(float);
 
     [ReliabilityContract(Consistency.WillNotCorruptState, Cer.MayFail)]
-    public unsafe NativeMemorySafeHandle(long size, int alignment, bool clearOnInit, Allocator allocator) : base(IntPtr.Zero, true)
+    public unsafe NativeMemorySafeHandle(long size, bool clearOnInit, Allocator allocator) : base(IntPtr.Zero, true)
     {
         m_AllocatorLabel = allocator;
         if (size <= 0)
             return;
 
-        SetHandle((IntPtr)UnsafeUtility.Malloc(size, alignment, allocator));
+        SetHandle((IntPtr)UnsafeUtility.Malloc(size, k_Alignment, allocator));
         if (clearOnInit)
             UnsafeUtility.MemClear((void*)handle, size);
     }
@@ -72,7 +72,15 @@ public enum DataType
     /// <summary>
     /// Use 32-bit signed integer data.
     /// </summary>
-    Int
+    Int,
+    /// <summary>
+    /// Use 16-bit signed integer data - padded on a int32 buffer.
+    /// </summary>
+    Short,
+    /// <summary>
+    /// Use 8-bit signed integer data - padded on a int32 buffer.
+    /// </summary>
+    Byte,
 }
 
 /// <summary>
@@ -81,14 +89,6 @@ public enum DataType
 public class NativeTensorArrayFromManagedArray : NativeTensorArray
 {
     readonly int m_PinnedMemoryByteOffset;
-
-    /// <summary>
-    /// Initializes and returns an instance of `NativeTensorArrayFromManagedArray` from an `Array` and an integer offset.
-    /// </summary>
-    /// <param name="srcData">The data for the `Tensor` as an `Array`.</param>
-    /// <param name="srcOffset">The integer offset to use for the backing data.</param>
-    public NativeTensorArrayFromManagedArray(Array srcData, int srcOffset = 0)
-        : this(srcData, srcOffset, sizeof(float), srcData.Length - srcOffset) { }
 
     /// <summary>
     /// Initializes and returns an instance of `NativeTensorArrayFromManagedArray` from an `Array` and a integer offset and count.
@@ -106,25 +106,19 @@ public class NativeTensorArrayFromManagedArray : NativeTensorArray
     /// <param name="srcElementOffset">The integer offset to use for the backing data.</param>
     /// <param name="srcElementSize">The integer size to use for the backing data in bytes.</param>
     /// <param name="numDestElement">The integer count to use for the backing data.</param>
-    unsafe NativeTensorArrayFromManagedArray(Array srcData, int srcElementOffset, int srcElementSize, int numDestElement)
+    public NativeTensorArrayFromManagedArray(Array srcData, int srcElementOffset, int srcElementSize, int numDestElement)
         : base(new PinnedMemorySafeHandle(srcData), numDestElement)
     {
         m_PinnedMemoryByteOffset = srcElementSize * srcElementOffset;
 
         //Safety checks
-        int requiredAlignment = DataItemSize();
         int srcLengthInByte = (srcData.Length - srcElementOffset) * srcElementSize;
-        int dstLengthInByte = numDestElement * DataItemSize();
-        IntPtr pinnedPtrWithOffset = (IntPtr)base.RawPtr + m_PinnedMemoryByteOffset;
+        int dstLengthInByte = numDestElement * k_DataItemSize;
         if (srcElementOffset > srcData.Length)
             throw new ArgumentOutOfRangeException(nameof(srcElementOffset), "SrcElementOffset must be <= srcData.Length");
         if (dstLengthInByte > srcLengthInByte)
             throw new ArgumentOutOfRangeException(nameof(numDestElement), "NumDestElement too big for srcData and srcElementOffset");
-
-        if (pinnedPtrWithOffset.ToInt64() % requiredAlignment != 0)
-            throw new InvalidOperationException($"The NativeTensorArrayFromManagedArray source ptr (including offset) need to be aligned on {requiredAlignment} bytes.");
-
-        var neededSrcPaddedLengthInByte = numDestElement * DataItemSize();
+        var neededSrcPaddedLengthInByte = numDestElement * k_DataItemSize;
         if (srcLengthInByte < neededSrcPaddedLengthInByte)
             throw new InvalidOperationException($"The NativeTensorArrayFromManagedArray source ptr (including offset) is to small to account for extra padding.");
     }
@@ -143,13 +137,9 @@ public class NativeTensorArray : IDisposable
     readonly int m_Length;
 
     /// <summary>
-    /// Gets the size in bytes of an individual element.
+    /// Size in bytes of an individual element.
     /// </summary>
-    /// <returns>The size in bytes of an element.</returns>
-    protected int DataItemSize()
-    {
-        return sizeof(float);
-    }
+    public const int k_DataItemSize = sizeof(float);
 
     void CheckElementAccess(long index)
     {
@@ -188,7 +178,7 @@ public class NativeTensorArray : IDisposable
             throw new ArgumentOutOfRangeException(nameof (length), "Length must be >= 0");
 
         m_Length = length;
-        m_SafeHandle = new NativeMemorySafeHandle(m_Length * DataItemSize(), DataItemSize(), clearOnInit, allocator);
+        m_SafeHandle = new NativeMemorySafeHandle(m_Length * k_DataItemSize, clearOnInit, allocator);
         m_Allocator = allocator;
     }
 
@@ -197,7 +187,7 @@ public class NativeTensorArray : IDisposable
     /// </summary>
     public unsafe void ZeroMemory()
     {
-        var numByteToClear = m_Length * DataItemSize();
+        var numByteToClear = m_Length * k_DataItemSize;
         UnsafeUtility.MemClear(RawPtr, numByteToClear);
     }
 
@@ -210,18 +200,9 @@ public class NativeTensorArray : IDisposable
     }
 
     /// <summary>
-    /// The size in bytes of an element of the stored type.
-    /// </summary>
-    public int SizeOfType => DataItemSize();
-
-    /// <summary>
     /// The number of allocated elements.
     /// </summary>
     public int Length => m_Length;
-    /// <summary>
-    /// The number of allocated elements as a 64-bit integer.
-    /// </summary>
-    public long LongLength => m_Length;
 
     /// <summary>
     /// The raw pointer of the backing data.
@@ -426,7 +407,7 @@ public class NativeTensorArray : IDisposable
         if (destinationIndex + length > destinationArray.Length)
             throw new ArgumentException($"Cannot copy {length} element to sourceIndex {destinationIndex} and Sentis array of length {destinationArray.Length}.");
 
-        int itemSize = sourceArray.DataItemSize();
+        int itemSize = k_DataItemSize;
         void* srcPtr = (byte*)sourceArray.RawPtr + sourceIndex * itemSize;
         void* dstPtr = (byte*)destinationArray.RawPtr + destinationIndex * itemSize;
         UnsafeUtility.MemCpy(dstPtr, srcPtr, length * itemSize);
@@ -455,7 +436,7 @@ public class NativeTensorArray : IDisposable
 
         fixed (void* dstPtr = &destinationArray[destinationIndex])
         {
-            int itemSize = sourceArray.DataItemSize();
+            int itemSize = k_DataItemSize;
             void* srcPtr = (byte*)sourceArray.RawPtr + sourceIndex * itemSize;
             UnsafeUtility.MemCpy(dstPtr, srcPtr, length * itemSize);
         }
@@ -482,7 +463,7 @@ public class NativeTensorArray : IDisposable
         if (destinationIndex + length > destinationArray.Length)
             throw new ArgumentException($"Cannot copy {length} element to sourceIndex {destinationIndex} and array of length {destinationArray.Length}.");
 
-        int itemSize = sourceArray.DataItemSize();
+        int itemSize = k_DataItemSize;
         void* srcPtr = (byte*)sourceArray.RawPtr + sourceIndex * itemSize;
         void* dstPtr = (byte*)destinationArray.GetUnsafeReadOnlyPtr<T>() + destinationIndex * itemSize;
 
@@ -512,7 +493,7 @@ public class NativeTensorArray : IDisposable
 
         fixed (void* srcPtr = &sourceArray[sourceIndex])
         {
-            int itemSize = destinationArray.DataItemSize();
+            int itemSize = k_DataItemSize;
             void* dstPtr = (byte*)destinationArray.RawPtr + destinationIndex * itemSize;
             UnsafeUtility.MemCpy(dstPtr, srcPtr, length * itemSize);
         }
@@ -539,7 +520,7 @@ public class NativeTensorArray : IDisposable
         if (destinationIndex + length > destinationArray.Length)
             throw new ArgumentException($"Cannot copy {length} element to sourceIndex {destinationIndex} and Sentis array of length {destinationArray.Length}.");
 
-        int itemSize = destinationArray.DataItemSize();
+        int itemSize = k_DataItemSize;
         void* srcPtr = (byte*)sourceArray.GetUnsafeReadOnlyPtr<T>() + sourceIndex * itemSize;
         void* dstPtr = (byte*)destinationArray.RawPtr + destinationIndex * itemSize;
         UnsafeUtility.MemCpy(dstPtr, srcPtr, length * itemSize);
@@ -566,7 +547,7 @@ public class NativeTensorArray : IDisposable
         if (destinationIndex + length > destinationArray.Length)
             throw new ArgumentException($"Cannot copy {length} element to sourceIndex {destinationIndex} and Sentis array of length {destinationArray.Length}.");
 
-        int itemSize = destinationArray.DataItemSize();
+        int itemSize = k_DataItemSize;
         void* srcPtr = (byte*)sourceArray.GetUnsafeReadOnlyPtr<T>() + sourceIndex * itemSize;
         void* dstPtr = (byte*)destinationArray.RawPtr + destinationIndex * itemSize;
         UnsafeUtility.MemCpy(dstPtr, srcPtr, length * itemSize);
@@ -583,7 +564,7 @@ public class NativeTensorArray : IDisposable
     /// <exception cref="ArgumentException">Thrown if the given indexes and length are out of bounds of the source or destination array.</exception>
     public static unsafe void BlockCopy(NativeTensorArray sourceArray, int sourceOffset, byte[] destinationArray, int destinationByteOffset, int lengthInBytes)
     {
-        int itemSize = sourceArray.SizeOfType;
+        int itemSize = k_DataItemSize;
         int srcLengthBytes = sourceArray.Length * itemSize;
         int srcOffsetBytes = sourceOffset * itemSize;
 
@@ -622,7 +603,7 @@ public class NativeTensorArray : IDisposable
 
         if (sourceByteOffset + lengthInBytes > sourceArray.Length)
             throw new ArgumentException($"Cannot copy {lengthInBytes} bytes from sourceByteOffset {sourceByteOffset} and byte[] array of {sourceArray.Length} num bytes.");
-        var fullDestPaddedSizeInByte = destinationArray.Length * destinationArray.DataItemSize();
+        var fullDestPaddedSizeInByte = destinationArray.Length * k_DataItemSize;
         if (destinationByteOffset + lengthInBytes > fullDestPaddedSizeInByte)
             throw new ArgumentException($"Cannot copy {lengthInBytes} bytes to destinationByteOffset {destinationByteOffset} and byte[] array of {destinationArray.Length} num bytes.");
 
@@ -633,5 +614,4 @@ public class NativeTensorArray : IDisposable
         }
     }
 }
-
 } // namespace Unity.Sentis

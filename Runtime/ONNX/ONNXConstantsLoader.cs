@@ -18,9 +18,10 @@ namespace Unity.Sentis.ONNX
             var shape = GetShape(tensorProto);
             var dataType = GetDataType(tensorProto);
 
+            var constant = new Layers.Constant(tensorProto.Name, shape, dataType, shape.length * NativeTensorArray.k_DataItemSize);
             if (shape.HasZeroDims())
             {
-                return new Layers.Constant(tensorProto.Name, shape, dataType, null);
+                return constant;
             }
 
             Assert.AreEqual(tensorProto.DataLocation, TensorProto.Types.DataLocation.External);
@@ -32,7 +33,8 @@ namespace Unity.Sentis.ONNX
             weightStream.Read(byteArray, 0, length);
 
             var tensorData = GetTensorData(byteArray, length, shape, (TensorProto.Types.DataType)tensorProto.DataType);
-            return new Layers.Constant(tensorProto.Name, shape, dataType, tensorData);
+            constant.weights = tensorData;
+            return constant;
         }
 
         public static Layers.Constant LoadConstant(TensorProto tensorProto, string directoryPath = null)
@@ -47,9 +49,11 @@ namespace Unity.Sentis.ONNX
             var shape = GetShape(tensorProto);
             var dataType = GetDataType(tensorProto);
 
+            var constant = new Layers.Constant(tensorProto.Name, shape, dataType, shape.length * NativeTensorArray.k_DataItemSize);
+
             if (shape.HasZeroDims())
             {
-                return new Layers.Constant(tensorProto.Name, shape, dataType, null);
+                return constant;
             }
 
             NativeTensorArray tensorData = new NativeTensorArray(shape.length);
@@ -112,7 +116,8 @@ namespace Unity.Sentis.ONNX
                 throw new OnnxLayerImportException("Could not read tensor data for constant tensor.");
             }
 
-            return new Layers.Constant(tensorProto.Name, shape, dataType, tensorData);
+            constant.weights = tensorData;
+            return constant;
         }
 
         static TensorShape GetShape(TensorProto tensorProto)

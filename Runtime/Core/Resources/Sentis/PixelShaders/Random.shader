@@ -51,6 +51,7 @@ Shader "Hidden/Sentis/Random"
                 // following Unity.Mathematics.Random
                 uint4 randomState4 = WangHash((index4 != 4294967295u ? index4 : 2147483647u) + 62u);
                 #if defined(Bernoulli) | defined(BernoulliInt)
+                randomState4 = NextState(randomState4);
                 return mask4 * (SampleBlockX(blockIndexO) > ToFloat4(randomState4) ? 1 : 0);
                 #endif
                 #ifdef RandomUniform

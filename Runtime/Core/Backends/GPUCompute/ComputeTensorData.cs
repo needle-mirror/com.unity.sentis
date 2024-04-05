@@ -16,9 +16,9 @@ public interface IConvertibleToComputeTensorData
     /// <summary>
     /// Implement this method to convert to `ComputeTensorData`.
     /// </summary>
-    /// <param name="shape">The shape of the tensor using the tensor data.</param>
+    /// <param name="count"></param>
     /// <returns>Converted `ComputeTensorData`.</returns>
-    ComputeTensorData ConvertToComputeTensorData(TensorShape shape);
+    ComputeTensorData ConvertToComputeTensorData(int count);
 }
 
 /// <summary>
@@ -28,18 +28,13 @@ public class ComputeTensorData : ITensorData
 {
     bool m_DisposeBufferAfterUse;
     ComputeBuffer m_Buffer;
-    TensorShape m_Shape;
+    int m_Count;
 
     /// <inheritdoc/>
-    public int maxCapacity => m_Shape.length;
+    public int maxCapacity => m_Count;
 
     /// <inheritdoc/>
-    public DeviceType deviceType => DeviceType.GPU;
-
-    /// <summary>
-    /// The shape of the tensor using this data as a `TensorShape`.
-    /// </summary>
-    public TensorShape shape => m_Shape;
+    public BackendType backendType => BackendType.GPUCompute;
 
     /// <summary>
     /// The data storage as a compute buffer.
@@ -49,30 +44,42 @@ public class ComputeTensorData : ITensorData
     /// <summary>
     /// Initializes and returns an instance of `ComputeTensorData`, and allocates storage for a tensor with the shape of `shape`.
     /// </summary>
-    /// <param name="shape">The shape of the tensor data to allocate.</param>
+    /// <param name="count">The number of elements.</param>
     /// <param name="clearOnInit">Whether to zero the data on allocation. The default value is `false`.</param>
-    public ComputeTensorData(TensorShape shape, bool clearOnInit = false)
+    public ComputeTensorData(int count, bool clearOnInit = false)
     {
+        ProfilerMarkers.ComputeTensorDataNewEmpty.Begin();
+        m_Count = count;
+
         // Minimum size of 1 to handle 0-dim tensors.
-        m_Buffer = new ComputeBuffer(Math.Max(1, shape.length), sizeof(float));
+        m_Buffer = new ComputeBuffer(Math.Max(1, count), sizeof(float));
 
         // @TODO: consider zero initialization only for "debug" mode
         if (clearOnInit)
         {
-            var empty = new NativeArray<float>(shape.length, Allocator.Temp, NativeArrayOptions.ClearMemory);
+            var empty = new NativeArray<float>(count, Allocator.Temp, NativeArrayOptions.ClearMemory);
             m_Buffer.SetData(empty);
             empty.Dispose();
         }
 
-        m_Shape = shape;
+        m_DisposeBufferAfterUse = true;
+        ProfilerMarkers.ComputeTensorDataNewEmpty.End();
+    }
 
+    /// <summary>
+    /// Initializes and returns an instance of `ComputeTensorData` from an already existing compute buffer.
+    /// </summary>
+    public ComputeTensorData(ComputeBuffer buffer)
+    {
+        m_Count = buffer.count;
+        m_Buffer = buffer;
         m_DisposeBufferAfterUse = true;
     }
 
     /// <inheritdoc/>
     public ITensorData Clone()
     {
-        var copy = new ComputeTensorData(m_Shape);
+        var copy = new ComputeTensorData(m_Count);
 
         int length = m_Buffer.count;
 
@@ -90,19 +97,21 @@ public class ComputeTensorData : ITensorData
     /// <summary>
     /// Initializes and returns an instance of `ComputeTensorData` with given data and offset.
     /// </summary>
-    /// <param name="shape">The shape of the tensor data.</param>
+    /// <param name="count">The number of elements.</param>
     /// <param name="array">The allocated data to use as backing data.</param>
     /// <param name="offset">The integer offset from the start of the backing array. The default value is 0.</param>
-    public ComputeTensorData(TensorShape shape, NativeTensorArray array, int offset = 0)
+    public ComputeTensorData(int count, NativeTensorArray array, int offset = 0)
     {
-        // Minimum size of 1 to handle 0-dim tensors.
-        m_Buffer = new ComputeBuffer(Math.Max(1, shape.length), sizeof(float));
-        if (shape.length != 0)
-            m_Buffer.SetData(array.GetNativeArrayHandle<float>(), offset, 0, shape.length);
+        ProfilerMarkers.ComputeTensorDataNewArray.Begin();
+        m_Count = count;
 
-        m_Shape = shape;
+        // Minimum size of 1 to handle 0-dim tensors.
+        m_Buffer = new ComputeBuffer(Math.Max(1, count), sizeof(float));
+        if (count != 0)
+            m_Buffer.SetData(array.GetNativeArrayHandle<float>(), offset, 0, count);
 
         m_DisposeBufferAfterUse = true;
+        ProfilerMarkers.ComputeTensorDataNewArray.End();
     }
 
     /// <summary>
@@ -123,27 +132,13 @@ public class ComputeTensorData : ITensorData
     /// </summary>
     public void Dispose()
     {
-        // It isn't safe to Release RT from a finalizer thread
-        if (Thread.CurrentThread == CPUBackend.MainThread)
-        {
-            if (m_DisposeBufferAfterUse)
-            {
-                m_Buffer.Dispose();
-                m_Buffer = null;
-            }
-
-            m_DisposeBufferAfterUse = false;
-        }
-    }
-
-    /// <inheritdoc/>
-    public void Reserve(int count)
-    {
-        if (count > maxCapacity)
+        if (m_DisposeBufferAfterUse)
         {
             m_Buffer.Dispose();
-            m_Buffer = new ComputeBuffer(count, sizeof(float));
+            m_Buffer = null;
         }
+
+        m_DisposeBufferAfterUse = false;
     }
 
     /// <inheritdoc/>
@@ -216,7 +211,7 @@ public class ComputeTensorData : ITensorData
         if (count == 0)
             return new NativeArray<T>(0, Allocator.Temp);
 
-        Profiler.BeginSample("Sentis.ComputeTensorData.DownloadDataFromGPU");
+        ProfilerMarkers.ComputeTensorDataDownload.Begin();
 
         if (m_AsyncDownloadRequested)
         {
@@ -225,8 +220,8 @@ public class ComputeTensorData : ITensorData
                 m_AsyncDownloadRequest.WaitForCompletion();
 
             var reqData = m_AsyncDownloadRequest.GetData<T>();
-            Profiler.EndSample();
-            return reqData;
+            ProfilerMarkers.ComputeTensorDataDownload.End();
+            return reqData.GetSubArray(0, dstCount);
         }
 
         if (!SystemInfo.supportsAsyncGPUReadback)
@@ -241,9 +236,9 @@ public class ComputeTensorData : ITensorData
 
         var data = m_AsyncDownloadRequest.GetData<T>();
 
-        Profiler.EndSample();
+        ProfilerMarkers.ComputeTensorDataDownload.End();
 
-        return data;
+        return data.GetSubArray(0, dstCount);
     }
 
     /// <inheritdoc/>
@@ -267,7 +262,7 @@ public class ComputeTensorData : ITensorData
     /// <returns>The string summary of the `ComputeTensorData`.</returns>
     public override string ToString()
     {
-        return string.Format("GPU<ComputeTensorData>:{0} buffer: {1}", m_Shape, m_Buffer);
+        return string.Format("GPU<ComputeTensorData>:{0} buffer: {1}", m_Count, m_Buffer);
     }
 
     /// <summary>
@@ -278,22 +273,22 @@ public class ComputeTensorData : ITensorData
     /// <returns>The pinned `ComputeTensorData`.</returns>
     public static ComputeTensorData Pin(Tensor X, bool clearOnInit = false)
     {
-        var onDevice = X.tensorOnDevice;
+        var onDevice = X.dataOnBackend;
         if (onDevice == null)
         {
-            X.AttachToDevice(new ComputeTensorData(X.shape, clearOnInit));
-            return X.tensorOnDevice as ComputeTensorData;
+            X.AttachToDevice(new ComputeTensorData(X.count, clearOnInit));
+            return X.dataOnBackend as ComputeTensorData;
         }
 
         if (onDevice is ComputeTensorData)
             return onDevice as ComputeTensorData;
 
         if (onDevice is IConvertibleToComputeTensorData asConvertible)
-            X.AttachToDevice(asConvertible.ConvertToComputeTensorData(X.shape));
+            X.AttachToDevice(asConvertible.ConvertToComputeTensorData(X.count));
         else
-            X.UploadToDevice(new ComputeTensorData(X.shape, clearOnInit: false)); // device is not compatible, create new array and upload
+            X.UploadToDevice(new ComputeTensorData(X.count, clearOnInit: false)); // device is not compatible, create new array and upload
 
-        return X.tensorOnDevice as ComputeTensorData;
+        return X.dataOnBackend as ComputeTensorData;
     }
 }
 } // namespace Unity.Sentis

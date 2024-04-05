@@ -1,30 +1,43 @@
 # Get output from a model
 
+The following information describes how to get the output from a model. To get intermediate tensors from layers other than the model outputs, refer to [Get output from any layer](profile-a-model.md#get-output-from-any-layer).
+
 ## Get the tensor output
 
-Use `PeekOutput` to access the output of the tensor. `PeekOutput` returns a `Tensor` object, so you usually need to cast it to a `TensorFloat` or a `TensorInt`. For example:
+To obtain the tensor output, you have two options: you can either use PeekOutput to get a reference to an output, or you can `TakeOwnership` of the original tensor. Refer to the following sections to understand the methods available for retrieving the tensor output, along with their respective strengths and weaknesses.
+
+### Use PeekOutput
+
+Use [`PeekOutput`](Unity.Sentis.IWorker.PeekOutput) to get a reference to the output of the tensor. `PeekOutput` returns a `Tensor` object, so you usually need to cast it to a `TensorFloat` or a `TensorInt`. For example:
 
 ```
 worker.Execute(inputTensor);
 TensorFloat outputTensor = worker.PeekOutput() as TensorFloat;
 ```
 
-The result of `PeekOutput` is a shallow copy that points to the same memory as the original output, which means the following:
+The result of `PeekOutput` is a reference that is owned by Sentis worker memory allocator. This implies the following:
 
 - You don't need to use `Dispose` on the output.
 - If you change the output or you rerun the worker, both the worker output and the `PeekOutput` copy change.
 - If you use `Dispose` on the worker, the `PeekOutput` copy will also be disposed.
 
+If you call `Execute` again, the tensor will be overwritten.
+
+> [!NOTE]
+> Be careful about reading data from an output tensor, as in a lot of cases you might inadvertently cause a  there may be a performance cost because Sentis waits for the model to finish running before downloading the data from the GPU or Burst to the CPU. To avoid this cost, you can [read output from a model asynchronously](read-output-async.md). Additionally, you can [profile a model](profile-a-model.md) to gain a better understanding of its performance. 
+
+### Take ownership of the original tensor
+
 To take ownership of the original tensor instead, do either of the following:
 
-- Use `TakeOwnership` on the tensor after you use `PeekOutput`.
-- Use `FinishExecutionAndDownloadOutput` instead of `PeekOutput`. Sentis downloads the tensor from native memory.
+* Use [`CompleteOperationsAndDownload`](xref:Unity.Sentis.Tensor.CompleteOperationsAndDownload) on the tensor after you use `PeekOutput`.
+* Use [`TakeOutputOwnership`](xref:Unity.Sentis.IWorker.TakeOutputOwnership) instead of `PeekOutput`. Sentis downloads the tensor from native memory.
 
-If you use either method, you must `Dispose` of the tensor when you're finished with it.
+If you take ownership of the original tensor, you are responsible for the lifetime of the output:
 
-When you read data from the tensor that `PeekOutput` returns, there might be a performance cost because Sentis waits for the model to finish running then downloads the data from the GPU or Burst to the CPU. You can [read output from a model asynchronously](read-output-async.md) to avoid this cost. You can also [profile a model](profile-a-model.md) to understand more about the performance of a model. 
-
-To get intermediate tensors from layers other than the model outputs, refer to [Get output from any layer](profile-a-model.md#get-output-from-any-layer).
+* You must `Dispose` of the tensor once you've finished using it. 
+* The tensor will not be overwritten if you call `Execute` again.
+* The memory allocator will need to re-allocate the output if the worker is run again.
 
 ## Multiple outputs
 
@@ -54,12 +67,12 @@ public class GetMultipleOutputs : MonoBehaviour
         worker = WorkerFactory.CreateWorker(BackendType.GPUCompute, runtimeModel);
         worker.Execute(inputTensor);
 
-        // Iterate through the output layer names of the model and print the output from each
-        foreach (var outputName in runtimeModel.outputs)
+        // Iterate through the outputs of the model and print the output tensor from each
+        foreach (var output in runtimeModel.outputs)
         {
-            TensorFloat outputTensor = worker.PeekOutput(outputName) as TensorFloat;
+            TensorFloat outputTensor = worker.PeekOutput(output.name) as TensorFloat;
             // Make the tensor readable by downloading it to the CPU
-            outputTensor.MakeReadable();
+            outputTensor.CompleteOperationsAndDownload();
             outputTensor.PrintDataPart(10);
         }
     }

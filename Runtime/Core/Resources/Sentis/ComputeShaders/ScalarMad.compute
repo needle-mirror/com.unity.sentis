@@ -1,0 +1,60 @@
+#pragma kernel ScalarMad
+#pragma multi_compile _ INT
+
+#include "Tensor.cginc"
+
+uint LengthO;
+uint MaxBlockIndexX;
+
+#ifdef INT
+#define DTYPE int
+#define DTYPE4 int4
+int sInt;
+int bInt;
+#else
+#define DTYPE float
+#define DTYPE4 float4
+float s;
+float b;
+#endif
+StructuredBuffer<DTYPE> Xptr;
+RWStructuredBuffer<DTYPE> Optr;
+
+
+[numthreads(64, 1, 1)]
+void ScalarMad(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID)
+{
+    uint4 idx = groupID.y * MaxBlockIndexX + (groupID.x << 8 | uint4(0,64,128,192) | groupThreadID.x);
+    #if defined(SHADER_API_MOBILE)
+    idx = min(idx, LengthO);
+    #endif
+
+    DTYPE4 x = DTYPE4(Xptr[idx.x], Xptr[idx.y], Xptr[idx.z], Xptr[idx.w]);
+#ifdef INT
+    int4 O = sInt*x+bInt;
+#else
+    float4 O = s*x+b;
+#endif
+
+    #if defined(SHADER_API_MOBILE)
+    if (idx.x <= LengthO)
+        Optr[idx.x] = O.x;
+    if (idx.y <= LengthO)
+        Optr[idx.y] = O.y;
+    if (idx.z <= LengthO)
+        Optr[idx.z] = O.z;
+    if (idx.w <= LengthO)
+        Optr[idx.w] = O.w;
+
+    #else
+    uint4 storeIndex = 0xFFFFFFFF;
+    storeIndex.x = idx.x <= LengthO ? idx.x : storeIndex.x;
+    storeIndex.y = idx.y <= LengthO ? idx.y : storeIndex.y;
+    storeIndex.z = idx.z <= LengthO ? idx.z : storeIndex.z;
+    storeIndex.w = idx.w <= LengthO ? idx.w : storeIndex.w;
+    Optr[storeIndex.x] = O.x;
+    Optr[storeIndex.y] = O.y;
+    Optr[storeIndex.z] = O.z;
+    Optr[storeIndex.w] = O.w;
+    #endif
+}

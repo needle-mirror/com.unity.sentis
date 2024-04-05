@@ -38,8 +38,8 @@ Shader "Hidden/Sentis/Reduce"
 
             #define FLT_MAX asfloat(0x7F7FFFFF) //  3.402823466 E + 38
             #define FLT_MIN asfloat(0xFF7FFFFF) // -3.402823466 E + 38
-            #define INT_MAX 0x7FFFFFFF //  2147483647
-            #define INT_MIN 0x80000000 // –2147483648
+            #define INT_MAX 2147483647
+            #define INT_MIN -2147483647 // on metal this needs to be -2147483647 rather than -2147483648
 
             inline DTYPE4 Default4()
             {

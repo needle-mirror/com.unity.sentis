@@ -18,10 +18,10 @@ namespace Unity.Sentis
                 "Relu6",
                 "Tanh",
                 "Sigmoid",
+                "GeluFast",
             });
             RegisterKernels("Sentis/ComputeShaders/ReferenceImpl.ActivationB.gen", new[] {
                 "HardSigmoid",
-                "Square",
                 "Gelu",
                 "Erf",
                 "Celu",
@@ -56,6 +56,7 @@ namespace Unity.Sentis
                 "PadReflectND",
                 "PadSymmetricND",
                 "PadEdgeND",
+                "PadWrapND",
             });
             RegisterKernels("Sentis/ComputeShaders/ReferenceImpl.PoolA.gen", new[] {
                 "MaxPool2D",
@@ -70,7 +71,9 @@ namespace Unity.Sentis
             RegisterKernels("Sentis/ComputeShaders/ReferenceImpl.IndexingOpsA.gen", new[] {
                 "Tile",
                 "Gather",
+                "GatherElementsFast",
                 "GatherElements",
+                "ScatterElementsFast",
                 "ScatterElements",
                 "Expand",
                 "Slice",

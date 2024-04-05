@@ -1,3 +1,39 @@
+# Upgrade from Sentis 1.3 to Sentis 1.4
+
+To upgrade from Sentis 1.3 to Sentis 1.4, do the following:
+
+- Reimport models that were previously imported in an earlier version of Sentis.
+- Reexport serialized .sentis files and encrypted serialized models using Sentis 1.4.
+- Replace uses of `IWorker.FinishExecutionAndDownloadOutput` with `IWorker.TakeOutputOwnership`.
+- Replace uses of `Tensor.TakeOwnership` with `Tensor.CompleteOperationsAndDownload`.
+- Replace uses of `Tensor.tensorOnDevice` with `Tensor.dataOnBackend`.
+- Replace uses of `Tensor.Zeros` with `Tensor.AllocZeros`.
+- Replace uses of the `Tensor.shape` setter with `Tensor.Reshape`.
+- Remove uses of `Tensor.ShallowReshape`, use `Tensor.Reshape` to reshape a tensor in place or `Tensor.AllocNoData` and `IBackend.Reshape` to create a new reshaped tensor.
+- Remove uses of `Tensor.DeepCopy`, use `Tensor.AllocNoData` and `IBackend.MemCopy` to copy a tensor.
+- Remove uses of the `Model` API, use the functional API to edit models:
+    - Remove `Model.AddInput`, use `InputDef` for inputs in a `Functional.Compile` call.
+    - Remove `Model.AddConstant`, use `Functional.Tensor` in a `Functional.Compile` call.
+    - Remove `Model.AddLayer` and `Layer` constructors, use `Functional` methods in a `Functional.Compile` call.
+- Edit `Model.AddOuput` parameters to include both the output name and output index (from the inspector).
+- When calling `Model.outputs`, use `Model.Output.name` to get the name of the output.
+- Replace uses of `Layer.name` and `Constant.name` with `Layer.index` and `Constant.index`.
+- Remove uses of the `Ops` API, use the functional API to build models to operate on tensors, or use `IBackend` to operate on allocated tensors. 
+- Replace uses of `ArrayTensorData` and `SharedArrayTensorData` with `BurstTensorData`.
+- Remove `CustomLayer` custom ONNX layer importers as these are not compatible with Sentis 1.4 serialization. These will be reimplemented in an upcoming release.
+- Replace uses of `IBackend.deviceType` with `IBackend.backendType` to get the back end type.
+- Remove allocation of tensors using `IBackend` methods, either allocate tensors with `Tensor` or `IModelStorage`.
+- Remove offset from constructors of `BurstTensorData`, if the offset needs to be greater than zero use a `NativeTensorArrayFromManagedArray` in the `BurstTensorData` constructor.
+- Replace uses of `IWorker.StartManualSchedule` with `IWorker.ExecuteLayerByLayer`.
+- Replace uses of `ITensorData.shape` with `Tensor.shape`.
+- Remove uses of `ITensorData.AsyncReadbackRequest` and `ITensorData.IsAsyncReadbackRequestDone`, use `Tensor.ReadbackRequest`, `Tensor.ReadbackRequestAsync`, and `Tensor.IsReadbackRequestDone` for async readback of tensor data.
+- Remove uses of `Model.Metadata`, this is not compatible with Sentis 1.4 serialization.
+- Remove references to `Model.Warnings`, these are not compatible with Sentis 1.4 serialization, use the console to view importer errors and warnings.
+- Remove uses of `Model.CreateWorker`, use `WorkerFactory.CreateWorker` to create a worker.
+- Remove uses of `Model.ShallowCopy`, use the functional API to copy a model.
+- Replace constructors of `SymbolicTensorDim` with `SymbolicTensorDim.Int`, `SymbolicTensorDim.Param` and `SymbolicTensorDim.Unknown` static methods.
+
+
 # Upgrade from Sentis 1.1 or 1.2 to Sentis 1.3
 
 To upgrade from Sentis 1.1 or 1.2 to Sentis 1.3, do the following:

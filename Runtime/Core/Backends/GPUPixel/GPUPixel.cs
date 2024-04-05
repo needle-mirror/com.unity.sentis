@@ -52,6 +52,19 @@ namespace Unity.Sentis
             m_Material.EnableKeyword(keyword);
         }
 
+        public void DisableKeyword(string keyword)
+        {
+            m_Material.DisableKeyword(keyword);
+        }
+
+        public void SetKeyword(string keyword, bool state)
+        {
+            if (state)
+                m_Material.EnableKeyword(keyword);
+            else
+                m_Material.DisableKeyword(keyword);
+        }
+
         internal void SetTensor(TensorProperties tensorProperties, TextureTensorData pinX)
         {
             m_Material.SetTexture(tensorProperties.k_ID_Ptr, pinX.bufferAsTexture);
@@ -82,10 +95,27 @@ namespace Unity.Sentis
     static class PixelShaderHelper
     {
         static readonly float[] k_ScratchPadFloat8 = new float[8];
+        static readonly float[] k_ScratchPadFloat4 = new float[4];
 
-        public static unsafe void SetInt8(this PixelFunc func, int nameID, int* ptr)
+        public static unsafe void SetInt4(this PixelFunc func, int nameID, int* ptr)
         {
-            for (var i = 0; i < 8; i++)
+            for (var i = 0; i < 4; i++)
+                k_ScratchPadFloat4[i] = ptr[i];
+
+            func.SetFloatArray(nameID, k_ScratchPadFloat4);
+        }
+
+        public static unsafe void SetInt4(this PixelFunc func, int nameID, int[] intArr)
+        {
+            for (var i = 0; i < 4; i++)
+                k_ScratchPadFloat4[i] = intArr[i];
+
+            func.SetFloatArray(nameID, k_ScratchPadFloat4);
+        }
+
+        public static unsafe void SetInt8(this PixelFunc func, int nameID, int* ptr, int numElements = 8)
+        {
+            for (var i = 0; i < numElements; i++)
                 k_ScratchPadFloat8[i] = ptr[i];
 
             func.SetFloatArray(nameID, k_ScratchPadFloat8);
@@ -102,6 +132,27 @@ namespace Unity.Sentis
                 func.SetInt8(properties.k_ID_Strides, pStrides);
             }
             func.SetInt(properties.k_ID_Rank, shape.rank);
+        }
+
+        // SetTensorShape and/or Strides above always sets 8-sized arrays on the GPU, and these arrays are valid
+        // for rank elements starting from the end of the array - ie from the highest address - ie Shape[maxRank-1],
+        // up to (inclusively) Shape[maxRank - 1 - rank + 1] and all other heading elements are invalid (garbage).
+        // With the *CompactedAtHead versions, dimension numbers from 0 to rank-1 can directly be used to index
+        // these shape and strides arrays.
+        public static unsafe void SetTensorStridesCompactedAtHead(this PixelFunc func, int strideNameID, TensorShape shape)
+        {
+            int* pStrides = stackalloc int[shape.rank];
+            OpsUtils.PinTensorStridesCompact(shape, pStrides);
+            func.SetInt8(strideNameID, pStrides, numElements: shape.rank);
+        }
+
+        public static unsafe void SetTensorShapesCompactedAtHead(this PixelFunc fn, int strideNameID, TensorShape shape)
+        {
+            // Note the following is defensive (UnsafeGetPtr shouldn't be called with TensorShape.maxRank) and we add this
+            // because this is an unsafe scope, but rank-0 is not supported and we should never be called in that case.
+            int rank = Math.Max(shape.rank, 1);
+            int* compactShape = shape.UnsafeGetPtr(TensorShape.maxRank - rank);
+            fn.SetInt8(strideNameID, compactShape, numElements: shape.rank);
         }
 
         public static void SetShape(this PixelFunc func, int nameID, TensorShape shape)
@@ -134,24 +185,67 @@ namespace Unity.Sentis
     /// <summary>
     /// Represents a GPUPixel backend ops.
     /// </summary>
-    public class GPUPixelBackend : CPUBackend
+    public class GPUPixelBackend : IBackend
     {
         /// <summary>
         /// Initializes and returns an instance of `GPUPixelBackend`.
         /// </summary>
-        /// <param name="allocator">The allocator to use when allocating tensors.</param>
-        public GPUPixelBackend(ITensorAllocator allocator = null)
-            : base(allocator) { }
+        public GPUPixelBackend()
+        {
+        }
 
         /// <inheritdoc/>
-        public override DeviceType deviceType => DeviceType.CPU;
+        public BackendType backendType => BackendType.GPUPixel;
+
+        TensorClassPool<TensorFloat> m_TensorFloatPool = new TensorClassPool<TensorFloat>();
+        TensorClassPool<TensorInt> m_TensorIntPool = new TensorClassPool<TensorInt>();
+
+        Tensor AllocTensor(TensorShape shape, DataType dataType)
+        {
+            switch (dataType)
+            {
+                case DataType.Float:
+                    var tensorf = m_TensorFloatPool.AdoptFromPool();
+                    if (tensorf == null)
+                        tensorf = TensorFloat.AllocNoData(shape);
+                    tensorf.shape = shape;
+                    return tensorf;
+                case DataType.Int:
+                    var tensori = m_TensorIntPool.AdoptFromPool();
+                    if (tensori == null)
+                        tensori = TensorInt.AllocNoData(shape);
+                    tensori.shape = shape;
+                    return tensori;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
+        void ReleaseTensor(Tensor tensor)
+        {
+            if (tensor == null)
+                return;
+            tensor.dataOnBackend.Dispose();
+            tensor.dataOnBackend = null;
+            switch (tensor.dataType)
+            {
+                case DataType.Float:
+                    m_TensorFloatPool.ReleaseToPool(tensor as TensorFloat);
+                    break;
+                case DataType.Int:
+                    m_TensorIntPool.ReleaseToPool(tensor as TensorInt);
+                    break;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
 
         /// <summary>
         /// Pins the tensor as `TextureTensorData` on any axis (choose last).
         /// </summary>
         static TextureTensorData PinBlockAny(Tensor X, bool clearOnInit = false)
         {
-            if (X.tensorOnDevice is TextureTensorData textureTensorData)
+            if (X.dataOnBackend is TextureTensorData textureTensorData)
                 return textureTensorData;
             return TextureTensorData.Pin(X, X.shape.rank - 1, clearOnInit);
         }
@@ -161,7 +255,7 @@ namespace Unity.Sentis
         /// </summary>
         static TextureTensorData PinBlockOther(Tensor X, int nonBlockAxis, bool clearOnInit = false)
         {
-            if (X.tensorOnDevice is TextureTensorData textureTensorData)
+            if (X.dataOnBackend is TextureTensorData textureTensorData)
                 if (textureTensorData.blockAxis != nonBlockAxis)
                     return textureTensorData;
             var axis = nonBlockAxis == X.shape.rank - 1 ? X.shape.rank - 2 : X.shape.rank - 1;
@@ -183,8 +277,8 @@ namespace Unity.Sentis
         /// </summary>
         static void PinBothSame(Tensor A, Tensor B)
         {
-            var pinA = A.tensorOnDevice as TextureTensorData;
-            var pinB = B.tensorOnDevice as TextureTensorData;
+            var pinA = A.dataOnBackend as TextureTensorData;
+            var pinB = B.dataOnBackend as TextureTensorData;
             if (pinA == null == pinB is null)
                 pinA = PinBlockAny(A);
             else if (pinB != null)
@@ -193,25 +287,43 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Cast(Tensor X, Tensor O)
+        public void Cast(TensorInt X, TensorFloat O)
         {
-            if (X.dataType == O.dataType)
-            {
-                MemCopy(X, O);
-                return;
-            }
-
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX, false);
 
             var func = new PixelFunc("Hidden/Sentis/Cast");
-            func.EnableKeyword(X.dataType == DataType.Int ? "IntToFloat" : "FloatToInt");
+            func.EnableKeyword("IntToFloat");
             func.SetTensor(k_TensorPropertiesX, pinX);
             func.Dispatch(pinO);
         }
 
         /// <inheritdoc/>
-        public override void MemClear(Tensor O)
+        public void Cast(TensorFloat X, TensorInt O)
+        {
+            var pinX = PinBlockAny(X);
+            var pinO = PinAsSame(O, pinX, false);
+
+            var func = new PixelFunc("Hidden/Sentis/Cast");
+            func.EnableKeyword("FloatToInt");
+            func.SetTensor(k_TensorPropertiesX, pinX);
+            func.Dispatch(pinO);
+        }
+
+        /// <inheritdoc/>
+        public void Cast(TensorShort X, TensorFloat O)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc/>
+        public void DequantizeLinear(TensorByte X, TensorFloat O, float scale, byte zeroPoint)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc/>
+        public void MemClear(Tensor O)
         {
             if (O.dataType == DataType.Float)
                 MemSet(O as TensorFloat, 0f);
@@ -220,7 +332,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void MemSet(TensorFloat O, float value)
+        public void MemSet(TensorFloat O, float value)
         {
             var func = new PixelFunc("Hidden/Sentis/ConstantOfShape");
             var pinO = PinBlockAny(O, false);
@@ -230,7 +342,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void MemSet(TensorInt O, int value)
+        public void MemSet(TensorInt O, int value)
         {
             var func = new PixelFunc("Hidden/Sentis/ConstantOfShape");
             var pinO = PinBlockAny(O, false);
@@ -240,7 +352,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void MatMul(TensorFloat X, TensorFloat Y, TensorFloat O)
+        public void MatMul(TensorFloat X, TensorFloat Y, TensorFloat O)
         {
             var xShape = X.shape.rank == 1 ? new TensorShape(1, X.shape[0]) : X.shape;
             var yShape = Y.shape.rank == 1 ? new TensorShape(Y.shape[0], 1) : Y.shape;
@@ -278,13 +390,13 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void MatMul2D(TensorFloat X, TensorFloat Y, TensorFloat O, bool xTranspose, bool yTranspose)
+        public void MatMul2D(TensorFloat X, TensorFloat Y, TensorFloat O, bool xTranspose, bool yTranspose)
         {
             var func = new PixelFunc("Hidden/Sentis/Gemm");
 
-            var pinO = TextureTensorData.Pin(O, 1);
             var pinX = TextureTensorData.Pin(X, xTranspose ? 0 : 1);
             var pinW = TextureTensorData.Pin(Y, yTranspose ? 0 : 1);
+            var pinO = TextureTensorData.Pin(O, 1);
             func.SetTensor(k_TensorPropertiesX, pinX);
             func.SetTensor(k_TensorPropertiesW, pinW);
 
@@ -301,7 +413,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Dense(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Layers.FusableActivation fusedActivation)
+        public void Dense(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Layers.FusableActivation fusedActivation)
         {
             var func = new PixelFunc("Hidden/Sentis/Dense");
 
@@ -330,12 +442,11 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Conv(TensorFloat X, TensorFloat K, TensorFloat B, TensorFloat O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
+        public void Conv(TensorFloat X, TensorFloat K, TensorFloat B, TensorFloat O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
         {
             if (X.shape.rank > 5)
             {
-                base.Conv(X, K, B, O, groups, strides, pads, dilations, fusedActivation);
-                return;
+                throw new NotImplementedException();
             }
 
             var isDepthwise = K.shape[0] == groups && K.shape[1] == 1;
@@ -417,12 +528,11 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void ConvTranspose(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Span<int> strides, Span<int> pads, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
+        public void ConvTranspose(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Span<int> strides, Span<int> pads, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
         {
             if (X.shape.rank > 5)
             {
-                base.ConvTranspose(X, W, B, O, strides, pads, outputPadding, fusedActivation);
-                return;
+                throw new NotImplementedException();
             }
 
             var func = new PixelFunc("Hidden/Sentis/ConvTranspose");
@@ -520,188 +630,200 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Relu(TensorFloat X, TensorFloat O)
+        public void Relu(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Relu");
         }
 
         /// <inheritdoc/>
-        public override void Relu6(TensorFloat X, TensorFloat O)
+        public void Relu6(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Relu6");
         }
 
         /// <inheritdoc/>
-        public override void LeakyRelu(TensorFloat X, TensorFloat O, float alpha)
+        public void LeakyRelu(TensorFloat X, TensorFloat O, float alpha)
         {
             Logger.AssertIsTrue(alpha <= 1, "LeakyRelu.ValueError: alpha is supposed to be <= 1, got {0}", alpha);
             Activation(X, O, "LeakyRelu", alpha);
         }
 
         /// <inheritdoc/>
-        public override void Tanh(TensorFloat X, TensorFloat O)
+        public void Tanh(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Tanh");
         }
 
         /// <inheritdoc/>
-        public override void Softplus(TensorFloat X, TensorFloat O)
+        public void Softplus(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Softplus");
         }
 
         /// <inheritdoc/>
-        public override void Sigmoid(TensorFloat X, TensorFloat O)
+        public void Sigmoid(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Sigmoid");
         }
 
         /// <inheritdoc/>
-        public override void HardSigmoid(TensorFloat X, TensorFloat O, float alpha, float beta)
+        public void HardSigmoid(TensorFloat X, TensorFloat O, float alpha, float beta)
         {
             Activation(X, O, "HardSigmoid", alpha, beta);
         }
 
         /// <inheritdoc/>
-        public override void Elu(TensorFloat X, TensorFloat O, float alpha)
+        public void Elu(TensorFloat X, TensorFloat O, float alpha)
         {
             Activation(X, O, "Elu", alpha);
         }
 
         /// <inheritdoc/>
-        public override void Gelu(TensorFloat X, TensorFloat O)
+        public void Gelu(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Gelu");
         }
 
         /// <inheritdoc/>
-        public override void Shrink(TensorFloat X, TensorFloat O, float bias, float lambd)
+        public void GeluFast(TensorFloat X, TensorFloat O)
+        {
+            Activation(X, O, "GeluFast");
+        }
+
+        /// <inheritdoc/>
+        public void Shrink(TensorFloat X, TensorFloat O, float bias, float lambd)
         {
             Activation(X, O, "Shrink", bias, lambd);
         }
 
         /// <inheritdoc/>
-        public override void Selu(TensorFloat X, TensorFloat O, float alpha, float gamma)
+        public void Selu(TensorFloat X, TensorFloat O, float alpha, float gamma)
         {
             Activation(X, O, "Selu", alpha, gamma);
         }
 
         /// <inheritdoc/>
-        public override void Swish(TensorFloat X, TensorFloat O)
+        public void Swish(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Swish");
         }
 
         /// <inheritdoc/>
-        public override void Abs(TensorFloat X, TensorFloat O)
+        public void Abs(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Abs");
         }
 
         /// <inheritdoc/>
-        public override void Abs(TensorInt X, TensorInt O)
+        public void Abs(TensorInt X, TensorInt O)
         {
             Activation(X, O, "Abs");
         }
 
         /// <inheritdoc/>
-        public override void Neg(TensorFloat X, TensorFloat O)
+        public void Neg(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Neg");
         }
 
         /// <inheritdoc/>
-        public override void Neg(TensorInt X, TensorInt O)
+        public void Neg(TensorInt X, TensorInt O)
         {
             Activation(X, O, "Neg");
         }
 
         /// <inheritdoc/>
-        public override void Not(TensorInt X, TensorInt O)
+        public void Not(TensorInt X, TensorInt O)
         {
             Activation(X, O, "Not");
         }
 
         /// <inheritdoc/>
-        public override void Ceil(TensorFloat X, TensorFloat O)
+        public void Ceil(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Ceil");
         }
 
         /// <inheritdoc/>
-        public override void Clip(TensorFloat X, TensorFloat O, float min, float max)
+        public void Clip(TensorFloat X, TensorFloat O, float min, float max)
         {
             Activation(X, O, "Clip", min, max);
         }
 
         /// <inheritdoc/>
-        public override void Clip(TensorInt X, TensorInt O, int min, int max)
+        public void Clip(TensorInt X, TensorInt O, int min, int max)
         {
             Activation(X, O, "Clip", min, max);
         }
 
         /// <inheritdoc/>
-        public override void Floor(TensorFloat X, TensorFloat O)
+        public void Floor(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Floor");
         }
 
         /// <inheritdoc/>
-        public override void Round(TensorFloat X, TensorFloat O)
+        public void Round(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Round");
         }
 
         /// <inheritdoc/>
-        public override void Reciprocal(TensorFloat X, TensorFloat O)
+        public void Reciprocal(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Reciprocal");
         }
 
         /// <inheritdoc/>
-        public override void Square(TensorFloat X, TensorFloat O)
+        public void Square(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Square");
         }
 
         /// <inheritdoc/>
-        public override void Exp(TensorFloat X, TensorFloat O)
+        public void Square(TensorInt X, TensorInt O)
+        {
+            Activation(X, O, "Square");
+        }
+
+        /// <inheritdoc/>
+        public void Exp(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Exp");
         }
 
         /// <inheritdoc/>
-        public override void Log(TensorFloat X, TensorFloat O)
+        public void Log(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Log");
         }
 
         /// <inheritdoc/>
-        public override void Sqrt(TensorFloat X, TensorFloat O)
+        public void Sqrt(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Sqrt");
         }
 
         /// <inheritdoc/>
-        public override void Celu(TensorFloat X, TensorFloat O, float alpha)
+        public void Celu(TensorFloat X, TensorFloat O, float alpha)
         {
             Activation(X, O, "Celu", alpha);
         }
 
         /// <inheritdoc/>
-        public override void HardSwish(TensorFloat X, TensorFloat O)
+        public void HardSwish(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "HardSwish");
         }
 
         /// <inheritdoc/>
-        public override void Softsign(TensorFloat X, TensorFloat O)
+        public void Softsign(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Softsign");
         }
 
         /// <inheritdoc/>
-        public override void ScalarMad(TensorFloat X, TensorFloat O, float s, float b)
+        public void ScalarMad(TensorFloat X, TensorFloat O, float s, float b)
         {
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX, false);
@@ -717,115 +839,132 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Sign(TensorFloat X, TensorFloat O)
+        public void ScalarMad(TensorInt X, TensorInt O, int s, int b)
+        {
+            var pinX = PinBlockAny(X);
+            var pinO = PinAsSame(O, pinX, false);
+
+            var func = new PixelFunc("Hidden/Sentis/ScalarMad");
+            func.EnableKeyword("INT");
+
+            func.SetTensor(k_TensorPropertiesX, pinX);
+
+            func.SetInt(k_ID_sInt, s);
+            func.SetInt(k_ID_bInt, b);
+
+            func.Dispatch(pinO);
+        }
+
+        /// <inheritdoc/>
+        public void Sign(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Sign");
         }
 
         /// <inheritdoc/>
-        public override void Sign(TensorInt X, TensorInt O)
+        public void Sign(TensorInt X, TensorInt O)
         {
             Activation(X, O, "Sign");
         }
 
         /// <inheritdoc/>
-        public override void ThresholdedRelu(TensorFloat X, TensorFloat O, float alpha)
+        public void ThresholdedRelu(TensorFloat X, TensorFloat O, float alpha)
         {
             Activation(X, O, "ThresholdedRelu", alpha);
         }
 
         /// <inheritdoc/>
-        public override void PRelu(TensorFloat X, TensorFloat S, TensorFloat O)
+        public void PRelu(TensorFloat X, TensorFloat S, TensorFloat O)
         {
             Broadcast(X, S, O, "PRelu");
         }
 
         /// <inheritdoc/>
-        public override void And(TensorInt A, TensorInt B, TensorInt O)
+        public void And(TensorInt A, TensorInt B, TensorInt O)
         {
             Broadcast(A, B, O, "And");
         }
 
         /// <inheritdoc/>
-        public override void Equal(TensorFloat A, TensorFloat B, TensorInt O)
+        public void Equal(TensorFloat A, TensorFloat B, TensorInt O)
         {
             Broadcast(A, B, O, "Equal");
         }
 
         /// <inheritdoc/>
-        public override void Equal(TensorInt A, TensorInt B, TensorInt O)
+        public void Equal(TensorInt A, TensorInt B, TensorInt O)
         {
             Broadcast(A, B, O, "EqualInt");
         }
 
         /// <inheritdoc/>
-        public override void Greater(TensorFloat A, TensorFloat B, TensorInt O)
+        public void Greater(TensorFloat A, TensorFloat B, TensorInt O)
         {
             Broadcast(A, B, O, "Greater");
         }
 
         /// <inheritdoc/>
-        public override void Greater(TensorInt A, TensorInt B, TensorInt O)
+        public void Greater(TensorInt A, TensorInt B, TensorInt O)
         {
             Broadcast(A, B, O, "GreaterInt");
         }
 
         /// <inheritdoc/>
-        public override void GreaterOrEqual(TensorFloat A, TensorFloat B, TensorInt O)
+        public void GreaterOrEqual(TensorFloat A, TensorFloat B, TensorInt O)
         {
             Broadcast(A, B, O, "GreaterOrEqual");
         }
 
         /// <inheritdoc/>
-        public override void GreaterOrEqual(TensorInt A, TensorInt B, TensorInt O)
+        public void GreaterOrEqual(TensorInt A, TensorInt B, TensorInt O)
         {
             Broadcast(A, B, O, "GreaterOrEqualInt");
         }
 
         /// <inheritdoc/>
-        public override void Less(TensorFloat A, TensorFloat B, TensorInt O)
+        public void Less(TensorFloat A, TensorFloat B, TensorInt O)
         {
             Broadcast(A, B, O, "Less");
         }
 
         /// <inheritdoc/>
-        public override void Less(TensorInt A, TensorInt B, TensorInt O)
+        public void Less(TensorInt A, TensorInt B, TensorInt O)
         {
             Broadcast(A, B, O, "LessInt");
         }
 
         /// <inheritdoc/>
-        public override void LessOrEqual(TensorFloat A, TensorFloat B, TensorInt O)
+        public void LessOrEqual(TensorFloat A, TensorFloat B, TensorInt O)
         {
             Broadcast(A, B, O, "LessOrEqual");
         }
 
         /// <inheritdoc/>
-        public override void LessOrEqual(TensorInt A, TensorInt B, TensorInt O)
+        public void LessOrEqual(TensorInt A, TensorInt B, TensorInt O)
         {
             Broadcast(A, B, O, "LessOrEqualInt");
         }
 
         /// <inheritdoc/>
-        public override void Or(TensorInt A, TensorInt B, TensorInt O)
+        public void Or(TensorInt A, TensorInt B, TensorInt O)
         {
             Broadcast(A, B, O, "Or");
         }
 
         /// <inheritdoc/>
-        public override void Xor(TensorInt A, TensorInt B, TensorInt O)
+        public void Xor(TensorInt A, TensorInt B, TensorInt O)
         {
             Broadcast(A, B, O, "Xor");
         }
 
         /// <inheritdoc/>
-        public override void Where(TensorInt C, Tensor A, Tensor B, Tensor O)
+        public void Where(TensorInt C, Tensor A, Tensor B, Tensor O)
         {
             PinBothSame(A, B);
             PinBothSame(A, C);
-            var pinX = C.tensorOnDevice as TextureTensorData;
-            var pinA = A.tensorOnDevice as TextureTensorData;
-            var pinB = B.tensorOnDevice as TextureTensorData;
+            var pinX = C.dataOnBackend as TextureTensorData;
+            var pinA = A.dataOnBackend as TextureTensorData;
+            var pinB = B.dataOnBackend as TextureTensorData;
             var pinO = PinAsSame(O, pinA, false);
 
             var func = new PixelFunc("Hidden/Sentis/Where");
@@ -848,7 +987,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void IsInf(TensorFloat X, TensorInt O, bool detectNegative, bool detectPositive)
+        public void IsInf(TensorFloat X, TensorInt O, bool detectNegative, bool detectPositive)
         {
             var func = new PixelFunc("Hidden/Sentis/IsInfNaN");
             func.EnableKeyword("IsInf");
@@ -864,7 +1003,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void IsNaN(TensorFloat X, TensorInt O)
+        public void IsNaN(TensorFloat X, TensorInt O)
         {
             var func = new PixelFunc("Hidden/Sentis/IsInfNaN");
             func.EnableKeyword("IsNaN");
@@ -877,192 +1016,198 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Acos(TensorFloat X, TensorFloat O)
+        public void Acos(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Acos");
         }
 
         /// <inheritdoc/>
-        public override void Acosh(TensorFloat X, TensorFloat O)
+        public void Acosh(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Acosh");
         }
 
         /// <inheritdoc/>
-        public override void Asin(TensorFloat X, TensorFloat O)
+        public void Asin(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Asin");
         }
 
         /// <inheritdoc/>
-        public override void Asinh(TensorFloat X, TensorFloat O)
+        public void Asinh(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Asinh");
         }
 
         /// <inheritdoc/>
-        public override void Atan(TensorFloat X, TensorFloat O)
+        public void Atan(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Atan");
         }
 
         /// <inheritdoc/>
-        public override void Atanh(TensorFloat X, TensorFloat O)
+        public void Atanh(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Atanh");
         }
 
         /// <inheritdoc/>
-        public override void Cos(TensorFloat X, TensorFloat O)
+        public void Cos(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Cos");
         }
 
         /// <inheritdoc/>
-        public override void Cosh(TensorFloat X, TensorFloat O)
+        public void Cosh(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Cosh");
         }
 
         /// <inheritdoc/>
-        public override void Sin(TensorFloat X, TensorFloat O)
+        public void Sin(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Sin");
         }
 
         /// <inheritdoc/>
-        public override void Sinh(TensorFloat X, TensorFloat O)
+        public void Sinh(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Sinh");
         }
 
         /// <inheritdoc/>
-        public override void Tan(TensorFloat X, TensorFloat O)
+        public void Tan(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Tan");
         }
 
         /// <inheritdoc/>
-        public override void Erf(TensorFloat X, TensorFloat O)
+        public void Erf(TensorFloat X, TensorFloat O)
         {
             Activation(X, O, "Erf");
         }
 
         /// <inheritdoc/>
-        public override void Add(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Add(TensorFloat A, TensorFloat B, TensorFloat O)
         {
             Broadcast(A, B, O, "Add");
         }
 
         /// <inheritdoc/>
-        public override void Add(TensorInt A, TensorInt B, TensorInt O)
+        public void Add(TensorInt A, TensorInt B, TensorInt O)
         {
             Broadcast(A, B, O, "AddInt");
         }
 
         /// <inheritdoc/>
-        public override void Sub(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Sub(TensorFloat A, TensorFloat B, TensorFloat O)
         {
             Broadcast(A, B, O, "Sub");
         }
 
         /// <inheritdoc/>
-        public override void Sub(TensorInt A, TensorInt B, TensorInt O)
+        public void Sub(TensorInt A, TensorInt B, TensorInt O)
         {
             Broadcast(A, B, O, "SubInt");
         }
 
         /// <inheritdoc/>
-        public override void Div(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Div(TensorFloat A, TensorFloat B, TensorFloat O)
         {
             Broadcast(A, B, O, "Div");
         }
 
         /// <inheritdoc/>
-        public override void Div(TensorInt A, TensorInt B, TensorInt O)
+        public void Div(TensorInt A, TensorInt B, TensorInt O)
         {
             Broadcast(A, B, O, "DivInt");
         }
 
         /// <inheritdoc/>
-        public override void Pow(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Pow(TensorFloat A, TensorFloat B, TensorFloat O)
         {
             Broadcast(A, B, O, "Pow");
         }
 
         /// <inheritdoc/>
-        public override void Pow(TensorFloat A, TensorInt B, TensorFloat O)
+        public void Pow(TensorFloat A, TensorInt B, TensorFloat O)
         {
             Broadcast(A, B, O, "PowInt");
         }
 
         /// <inheritdoc/>
-        public override void FMod(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void FMod(TensorFloat A, TensorFloat B, TensorFloat O)
         {
             Broadcast(A, B, O, "FMod");
         }
 
         /// <inheritdoc/>
-        public override void FMod(TensorInt A, TensorInt B, TensorInt O)
+        public void FMod(TensorInt A, TensorInt B, TensorInt O)
         {
             Broadcast(A, B, O, "FModInt");
         }
 
         /// <inheritdoc/>
-        public override void Mod(TensorInt A, TensorInt B, TensorInt O)
+        public void Mod(TensorFloat A, TensorFloat B, TensorFloat O)
+        {
+            Broadcast(A, B, O, "Mod");
+        }
+
+        /// <inheritdoc/>
+        public void Mod(TensorInt A, TensorInt B, TensorInt O)
         {
             Broadcast(A, B, O, "ModInt");
         }
 
         /// <inheritdoc/>
-        public override void Mul(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Mul(TensorFloat A, TensorFloat B, TensorFloat O)
         {
             Broadcast(A, B, O, "Mul");
         }
 
         /// <inheritdoc/>
-        public override void Mul(TensorInt A, TensorInt B, TensorInt O)
+        public void Mul(TensorInt A, TensorInt B, TensorInt O)
         {
             Broadcast(A, B, O, "MulInt");
         }
 
         /// <inheritdoc/>
-        public override void Sum(TensorFloat[] inputs, TensorFloat O)
+        public void Sum(TensorFloat[] inputs, TensorFloat O)
         {
             Broadcast(inputs, O, "Add");
         }
         /// <inheritdoc/>
-        public override void Min(TensorFloat[] inputs, TensorFloat O)
+        public void Min(TensorFloat[] inputs, TensorFloat O)
         {
             Broadcast(inputs, O, "Min");
         }
 
         /// <inheritdoc/>
-        public override void Min(TensorInt[] inputs, TensorInt O)
+        public void Min(TensorInt[] inputs, TensorInt O)
         {
             Broadcast(inputs, O, "MinInt");
         }
 
         /// <inheritdoc/>
-        public override void Max(TensorFloat[] inputs, TensorFloat O)
+        public void Max(TensorFloat[] inputs, TensorFloat O)
         {
             Broadcast(inputs, O, "Max");
         }
 
         /// <inheritdoc/>
-        public override void Max(TensorInt[] inputs, TensorInt O)
+        public void Max(TensorInt[] inputs, TensorInt O)
         {
             Broadcast(inputs, O, "MaxInt");
         }
 
         /// <inheritdoc/>
-        public override void Mean(TensorFloat[] inputs, TensorFloat O)
+        public void Mean(TensorFloat[] inputs, TensorFloat O)
         {
             Broadcast(inputs, O, "Mean");
         }
 
         /// <inheritdoc/>
-        public override void Expand(Tensor X, Tensor O)
+        public void Expand(Tensor X, Tensor O)
         {
             var func = new PixelFunc("Hidden/Sentis/Expand");
             if (X.dataType == DataType.Int)
@@ -1086,10 +1231,20 @@ namespace Unity.Sentis
             var normalization = 1.0f / inputs.Length;
             for (var t = 1; t < inputs.Length; t++)
             {
-                var nextX = inputs[t];
-                var oTmp = t == inputs.Length - 1 ? O : NewTensor(TensorShapeHelper.BroadcastShape(curX, nextX), O.dataType, AllocScope.InternalToLayer);
-                Broadcast(curX, inputs[t], oTmp, kernelName, t == 1 ? normalization : 1.0f, normalization);
-                curX = oTmp;
+                if (t == inputs.Length - 1)
+                {
+                    Broadcast(curX, inputs[t], O, kernelName, t == 1 ? normalization : 1.0f, normalization);
+                    if (t > 1)
+                        ReleaseTensor(curX);
+                }
+                else
+                {
+                    var oTmp = AllocTensor(TensorShapeHelper.BroadcastShape(curX, inputs[t]), O.dataType);
+                    Broadcast(curX, inputs[t], oTmp, kernelName, t == 1 ? normalization : 1.0f, normalization);
+                    if (t > 1)
+                        ReleaseTensor(curX);
+                    curX = oTmp;
+                }
             }
         }
 
@@ -1097,8 +1252,8 @@ namespace Unity.Sentis
         {
             var isALarger = A.shape.length > B.shape.length;
             PinBothSame(isALarger ? A : B, isALarger ? B : A);
-            var pinA = A.tensorOnDevice as TextureTensorData;
-            var pinB = B.tensorOnDevice as TextureTensorData;
+            var pinA = A.dataOnBackend as TextureTensorData;
+            var pinB = B.dataOnBackend as TextureTensorData;
             var pinO = PinAsSame(O, pinA, false);
 
             var func = new PixelFunc("Hidden/Sentis/Broadcast");
@@ -1121,8 +1276,9 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Concat(Tensor[] inputs, Tensor O, int axis)
+        public void Concat(Tensor[] inputs, Tensor O, int axis)
         {
+            // TODO refactor method to avoid texture leak
             axis = O.shape.Axis(axis);
 
             var oShape = O.shape;
@@ -1151,7 +1307,7 @@ namespace Unity.Sentis
 
                 pinB = PinAsSame(tensor, pinA);
                 oShape[axis] += pinB.shape[axis];
-                var pinO = PinAsSame(oShape == O.shape ? O : NewTensor(oShape, O.dataType, AllocScope.InternalToLayer), pinA, false);
+                var pinO = PinAsSame(oShape == O.shape ? O : AllocTensor(oShape, O.dataType), pinA, false);
 
                 func.SetTensor(k_TensorPropertiesA, pinA);
                 func.SetTensor(k_TensorPropertiesB, pinB);
@@ -1179,7 +1335,7 @@ namespace Unity.Sentis
 
         unsafe void Slice(Tensor X, Tensor O, int* startsLocal, int* stepsLocal)
         {
-            if (!(X.tensorOnDevice is TextureTensorData))
+            if (!(X.dataOnBackend is TextureTensorData))
             {
                 // find axis that isn't sliced along
                 for (var axis = X.shape.rank - 1; axis >= 0; axis--)
@@ -1234,45 +1390,124 @@ namespace Unity.Sentis
             func.Dispatch(pinO);
         }
 
+        unsafe void SliceSet(Tensor X, Tensor values, Tensor O, int* startsLocal, int* stepsLocal)
+        {
+            if (!(X.dataOnBackend is TextureTensorData))
+            {
+                // find axis that isn't sliced along
+                for (var axis = X.shape.rank - 1; axis >= 0; axis--)
+                {
+                    if (X.shape[axis] == values.shape[axis] && startsLocal[axis] == 1 && stepsLocal[axis] == 1)
+                    {
+                        TextureTensorData.Pin(X, axis);
+                        break;
+                    }
+                }
+            }
+
+            var pinX = PinBlockAny(X);
+            var pinV = PinAsSame(values, pinX);
+            var pinO = PinAsSame(O, pinX, false);
+
+            var func = new PixelFunc("Hidden/Sentis/SliceSet");
+            if (X.dataType == DataType.Int)
+                func.EnableKeyword("INT");
+
+            func.SetTensor(k_TensorPropertiesX, pinX);
+            func.SetTensor(k_TensorPropertiesV, pinV);
+
+            TensorShape vShape;
+
+            if (pinX.dimAxis == pinV.dimAxis && startsLocal[pinX.blockAxis] == 1 && stepsLocal[pinX.blockAxis] == 1)
+            {
+                func.EnableKeyword("BLOCKWISE");
+                func.SetShape(k_TensorPropertiesO.k_ID_Shape, pinO.blockedShape);
+                func.SetShape(k_TensorPropertiesV.k_ID_Shape, pinV.blockedShape);
+                vShape = pinV.blockedShape;
+            }
+            else
+            {
+                func.SetTensorBlockStride(k_TensorPropertiesO, pinO);
+                func.SetTensorBlockStride(k_TensorPropertiesV, pinV);
+                func.SetTensorBlockStride(k_TensorPropertiesX, pinX);
+                func.SetShape(k_TensorPropertiesO.k_ID_Shape, pinO.shape);
+                func.SetShape(k_TensorPropertiesV.k_ID_Shape, pinV.shape);
+                vShape = pinV.shape;
+            }
+
+            var strideV = 1;
+            var stridesV = stackalloc int[8];
+            var starts = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
+            var steps = stackalloc int[8] { 1, 1, 1, 1, 1, 1, 1, 1 };
+            for (var i = 0; i < pinX.shape.rank; i++)
+            {
+                var axis = pinV.shape.rank - 1 - i;
+                starts[i] = startsLocal[axis];
+                steps[i] = stepsLocal[axis];
+                stridesV[i] = strideV;
+                strideV *= vShape[axis];
+            }
+
+            func.SetInt8(k_ID_Starts, starts);
+            func.SetInt8(k_ID_Steps, steps);
+            func.SetInt8(k_TensorPropertiesV.k_ID_Strides, stridesV);
+
+            func.Dispatch(pinO);
+        }
+
+        unsafe void PrepareSliceLocal(TensorShape shape, ReadOnlySpan<int> starts, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps, int* startsLocal, int* stepsLocal)
+        {
+            for (var i = 0; i < 8; i++)
+            {
+                stepsLocal[i] = 1;
+            }
+
+            for (var i = 0; i < starts.Length; i++)
+            {
+                var axis = axes == null ? i : shape.Axis(axes[i]);
+                var step = steps != null ? steps[i] : 1;
+                var dim = shape[axis];
+
+                var clampAdjustDirection = step < 0 ? -1 : 0;
+
+                var start = starts[i];
+                start = start < 0 ? dim + start : start;
+                start = Mathf.Clamp(start, 0, dim + clampAdjustDirection);
+
+                startsLocal[axis] = start;
+                stepsLocal[axis] = step;
+            }
+        }
+
         /// <inheritdoc/>
-        public override void Slice(Tensor X, Tensor O, ReadOnlySpan<int> starts, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps)
+        public void Slice(Tensor X, Tensor O, ReadOnlySpan<int> starts, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps)
         {
             unsafe
             {
                 var startsLocal = stackalloc int[TensorShape.maxRank];
                 var stepsLocal = stackalloc int[TensorShape.maxRank];
-
-                for (var i = 0; i < 8; i++)
-                {
-                    stepsLocal[i] = 1;
-                }
-
-                for (var i = 0; i < starts.Length; i++)
-                {
-                    var axis = axes == null ? i : X.shape.Axis(axes[i]);
-                    var step = steps != null ? steps[i] : 1;
-                    var dim = X.shape[axis];
-
-                    var clampAdjustDirection = step < 0 ? -1 : 0;
-
-                    var start = starts[i];
-                    start = start < 0 ? dim + start : start;
-                    start = Mathf.Clamp(start, 0, dim + clampAdjustDirection);
-
-                    startsLocal[axis] = start;
-                    stepsLocal[axis] = step;
-                }
-
+                PrepareSliceLocal(X.shape, starts, axes, steps, startsLocal, stepsLocal);
                 Slice(X, O, startsLocal, stepsLocal);
+            }
+        }
+
+        /// <inheritdoc/>
+        public void SliceSet(Tensor X, Tensor values, Tensor O, ReadOnlySpan<int> starts, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps)
+        {
+            unsafe
+            {
+                var startsLocal = stackalloc int[TensorShape.maxRank];
+                var stepsLocal = stackalloc int[TensorShape.maxRank];
+                PrepareSliceLocal(X.shape, starts, axes, steps, startsLocal, stepsLocal);
+                SliceSet(X, values, O, startsLocal, stepsLocal);
             }
         }
 
         void SoftmaxActivation(Tensor X, TensorFloat O, int reduceAxis, string endKernelName)
         {
-            //Allocate temp tensors
             var reduceOpShape = X.shape.Reduce(reduceAxis);
-            var B = NewTempTensorFloat(reduceOpShape);
-            var S = NewTempTensorFloat(reduceOpShape);
+            var B = AllocTensor(reduceOpShape, DataType.Float);
+            var S = AllocTensor(reduceOpShape, DataType.Float);
 
             reduceAxis = X.shape.Axis(reduceAxis);
 
@@ -1312,28 +1547,31 @@ namespace Unity.Sentis
                 func.SetInt(k_TensorPropertiesX.k_ID_DimAxis, dimAxis);
                 func.Dispatch(pinO);
             }
+
+            ReleaseTensor(B);
+            ReleaseTensor(S);
         }
 
         /// <inheritdoc/>
-        public override void Softmax(TensorFloat X, TensorFloat O, int axis)
+        public void Softmax(TensorFloat X, TensorFloat O, int axis)
         {
             SoftmaxActivation(X, O, axis, "SOFTMAXEND");
         }
 
         /// <inheritdoc/>
-        public override void LogSoftmax(TensorFloat X, TensorFloat O, int axis)
+        public void LogSoftmax(TensorFloat X, TensorFloat O, int axis)
         {
             SoftmaxActivation(X, O, axis, "LOGSOFTMAXEND");
         }
 
         /// <inheritdoc/>
-        public override void Hardmax(TensorFloat X, TensorFloat O, int axis)
+        public void Hardmax(TensorFloat X, TensorFloat O, int axis)
         {
             axis = X.shape.Axis(axis);
 
             // Allocate temp tensors
             var reduceOpShape = X.shape.Reduce(axis);
-            var argMax = NewTempTensorInt(reduceOpShape);
+            var argMax = AllocTensor(reduceOpShape, DataType.Int);
 
             // argmax
             ReduceIndices(X, argMax, "ArgMax", axis, false);
@@ -1349,10 +1587,12 @@ namespace Unity.Sentis
             func.SetInt(k_TensorPropertiesO.k_ID_DimAxis, pinO.blockedShape[axis]);
 
             func.Dispatch(pinO);
+
+            ReleaseTensor(argMax);
         }
 
         /// <inheritdoc/>
-        public override void OneHot(TensorInt X, TensorInt O, int axis, int depth, int offValue, int onValue)
+        public void OneHot(TensorInt X, TensorInt O, int axis, int depth, int offValue, int onValue)
         {
             axis = O.shape.Axis(axis);
 
@@ -1372,7 +1612,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void OneHot(TensorInt X, TensorFloat O, int axis, int depth, float offValue, float onValue)
+        public void OneHot(TensorInt X, TensorFloat O, int axis, int depth, float offValue, float onValue)
         {
             axis = O.shape.Axis(axis);
 
@@ -1409,7 +1649,7 @@ namespace Unity.Sentis
 
         void Reduce(Tensor X, Tensor O, ReadOnlySpan<int> axes, bool keepdim, string fullKernelName, string startKernelName = null, string middleKernelName = null, string endKernelName = null)
         {
-            var Oout = keepdim ? O : NewTensor(X.shape.Reduce(axes, true), X.dataType, AllocScope.InternalToLayer);
+            var Oout = keepdim ? O : AllocTensor(X.shape.Reduce(axes, true), X.dataType);
 
             startKernelName ??= fullKernelName;
             middleKernelName ??= fullKernelName;
@@ -1426,9 +1666,10 @@ namespace Unity.Sentis
                 Assert.AreNotEqual(0, X.shape[axis], "ValueError: zero-size array to reduction operation which has no identity.");
 
                 shapeXReduced[axis] = 1;
-                var Otmp = NewTensor(shapeXReduced, O.dataType, AllocScope.InternalToLayer);
+                var Otmp = AllocTensor(shapeXReduced, O.dataType);
                 Reduce(X, Otmp, axis, isInitial ? startKernelName : middleKernelName);
-
+                if (!isInitial)
+                    ReleaseTensor(X);
                 X = Otmp;
 
                 isInitial = false;
@@ -1437,104 +1678,109 @@ namespace Unity.Sentis
             {
                 var axis = allAxes ? axesDim - 1 : X.shape.Axis(axes[axesDim - 1]);
                 Reduce(X, Oout, axis, isInitial ? fullKernelName : endKernelName);
+                if (!isInitial)
+                    ReleaseTensor(X);
             }
 
             if (!keepdim)
+            {
                 Reshape(Oout, O);
+                ReleaseTensor(Oout);
+            }
         }
 
         /// <inheritdoc/>
-        public override void ReduceMax(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceMax(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             Reduce(X, O, axes, keepdim, "ReduceMax");
         }
 
         /// <inheritdoc/>
-        public override void ReduceMax(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceMax(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
             Reduce(X, O, axes, keepdim, "ReduceMaxInt");
         }
 
         /// <inheritdoc/>
-        public override void ReduceMean(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceMean(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             Reduce(X, O, axes, keepdim, "ReduceMean");
         }
 
         /// <inheritdoc/>
-        public override void ReduceMin(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceMin(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             Reduce(X, O, axes, keepdim, "ReduceMin");
         }
 
         /// <inheritdoc/>
-        public override void ReduceMin(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceMin(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
             Reduce(X, O, axes, keepdim, "ReduceMinInt");
         }
 
         /// <inheritdoc/>
-        public override void ReduceProd(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceProd(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             Reduce(X, O, axes, keepdim, "ReduceProd");
         }
 
         /// <inheritdoc/>
-        public override void ReduceProd(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceProd(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
             Reduce(X, O, axes, keepdim, "ReduceProdInt");
         }
 
         /// <inheritdoc/>
-        public override void ReduceSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             Reduce(X, O, axes, keepdim, "ReduceSum");
         }
 
         /// <inheritdoc/>
-        public override void ReduceSum(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceSum(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
             Reduce(X, O, axes, keepdim, "ReduceSumInt");
         }
 
         /// <inheritdoc/>
-        public override void ReduceL1(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceL1(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             Reduce(X, O, axes, keepdim, "ReduceL1", "ReduceL1", "ReduceSum", "ReduceSum");
         }
 
         /// <inheritdoc/>
-        public override void ReduceL1(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceL1(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
             Reduce(X, O, axes, keepdim, "ReduceL1Int", "ReduceL1Int", "ReduceSumInt", "ReduceSumInt");
         }
 
         /// <inheritdoc/>
-        public override void ReduceL2(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceL2(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             Reduce(X, O, axes, keepdim, "ReduceL2", "ReduceSumSquare", "ReduceSum", "ReduceSqrt");
         }
 
         /// <inheritdoc/>
-        public override void ReduceLogSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceLogSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             Reduce(X, O, axes, keepdim, "ReduceLogSum", "ReduceSum", "ReduceSum", "ReduceLogSum");
         }
 
         /// <inheritdoc/>
-        public override void ReduceLogSumExp(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceLogSumExp(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             Reduce(X, O, axes, keepdim, "ReduceLogSumExp");
         }
 
         /// <inheritdoc/>
-        public override void ReduceSumSquare(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceSumSquare(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             Reduce(X, O, axes, keepdim, "ReduceSumSquare", "ReduceSumSquare", "ReduceSum", "ReduceSum");
         }
 
         /// <inheritdoc/>
-        public override void ReduceSumSquare(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceSumSquare(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
             Reduce(X, O, axes, keepdim, "ReduceSumSquareInt", "ReduceSumSquareInt", "ReduceSumInt", "ReduceSumInt");
         }
@@ -1559,40 +1805,45 @@ namespace Unity.Sentis
 
         void ReduceIndices(Tensor X, TensorInt O, string kernelName, int axis, bool keepdim, bool selectLastIndex)
         {
-            var Otmp = keepdim ? O : NewOutputTensorInt(X.shape.Reduce(axis, true));
-
-            ReduceIndices(X, Otmp, kernelName, axis, selectLastIndex);
-
-            if (!keepdim)
+            if (keepdim)
+            {
+                ReduceIndices(X, O, kernelName, axis, selectLastIndex);
+            }
+            else
+            {
+                var Otmp = AllocTensor(X.shape.Reduce(axis, true), DataType.Int);
+                ReduceIndices(X, Otmp, kernelName, axis, selectLastIndex);
                 Reshape(Otmp, O);
+                ReleaseTensor(Otmp);
+            }
         }
 
         /// <inheritdoc/>
-        public override void ArgMax(TensorFloat X, TensorInt O, int axis, bool keepdim, bool selectLastIndex)
+        public void ArgMax(TensorFloat X, TensorInt O, int axis, bool keepdim, bool selectLastIndex)
         {
             ReduceIndices(X, O, "ArgMax", axis, keepdim, selectLastIndex);
         }
 
         /// <inheritdoc/>
-        public override void ArgMax(TensorInt X, TensorInt O, int axis, bool keepdim, bool selectLastIndex)
+        public void ArgMax(TensorInt X, TensorInt O, int axis, bool keepdim, bool selectLastIndex)
         {
             ReduceIndices(X, O, "ArgMax", axis, keepdim, selectLastIndex);
         }
 
         /// <inheritdoc/>
-        public override void ArgMin(TensorFloat X, TensorInt O, int axis, bool keepdim, bool selectLastIndex)
+        public void ArgMin(TensorFloat X, TensorInt O, int axis, bool keepdim, bool selectLastIndex)
         {
             ReduceIndices(X, O, "ArgMin", axis, keepdim, selectLastIndex);
         }
 
         /// <inheritdoc/>
-        public override void ArgMin(TensorInt X, TensorInt O, int axis, bool keepdim, bool selectLastIndex)
+        public void ArgMin(TensorInt X, TensorInt O, int axis, bool keepdim, bool selectLastIndex)
         {
             ReduceIndices(X, O, "ArgMin", axis, keepdim, selectLastIndex);
         }
 
         /// <inheritdoc/>
-        public override void Gather(Tensor X, TensorInt indices, Tensor O, int axis)
+        public void Gather(Tensor X, TensorInt indices, Tensor O, int axis)
         {
             var pinX = PinBlockAny(X);
             var pinB = PinBlockAny(indices);
@@ -1613,29 +1864,46 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void GatherElements(Tensor X, TensorInt indices, Tensor O, int axis)
+        public void GatherElements(Tensor X, TensorInt indices, Tensor O, int axis)
         {
+            axis = X.shape.Axis(axis); // need positive axis below
+
             var pinX = PinBlockAny(X);
             var pinB = PinBlockAny(indices);
             var pinO = PinBlockAny(O, false);
 
+            bool fastPathPossible = ShapeInference.ScatterGatherElementsSupportsFastPath(pinB.shape, pinX.shape, axis);
+            // We handle both the generic and fast path in the same shader file, see NoFastPath keyword below
             var func = new PixelFunc("Hidden/Sentis/GatherElements");
+
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("GatherInt");
-            func.SetInt(k_ID_endLength, pinO.shape.Strides(axis));
-            func.SetInt(k_ID_endLengthX, pinX.shape.Strides(axis));
-            func.SetInt(k_ID_axisDim, pinO.shape[axis]);
-            func.SetInt(k_ID_axisDimX, pinX.shape[axis]);
             func.SetTensor(k_TensorPropertiesX, pinX);
             func.SetTensorBlockStride(k_TensorPropertiesX, pinX);
             func.SetTensor(k_TensorPropertiesB, pinB);
             func.SetTensorBlockStride(k_TensorPropertiesB, pinB);
             func.SetTensorBlockStride(k_TensorPropertiesO, pinO);
+
+            func.SetInt(k_ID_inputAxisSize, pinX.shape[axis]);
+            if (fastPathPossible)
+            {
+                func.SetInt(k_ID_inputAxisElementStride, pinX.shape.Strides(axis));
+                func.SetInt(k_ID_indicesAxisElementStride, indices.shape.Strides(axis));
+                func.SetInt(k_ID_indicesAxisMinusOneElementStride, indices.shape[axis] * indices.shape.Strides(axis));
+            }
+            else
+            {
+                func.EnableKeyword("NoFastPath");
+                func.SetTensorStridesCompactedAtHead(k_TensorPropertiesO.k_ID_Strides, indices.shape);
+                func.SetTensorStridesCompactedAtHead(k_TensorPropertiesX.k_ID_Strides, pinX.shape);
+                func.SetInt(k_ID_posAxis, axis);
+                func.SetInt(k_TensorPropertiesX.k_ID_Rank, pinX.shape.rank);
+            }
             func.Dispatch(pinO);
         }
 
         /// <inheritdoc/>
-        public override void GatherND(Tensor X, TensorInt indices, Tensor O, int batchDims)
+        public void GatherND(Tensor X, TensorInt indices, Tensor O, int batchDims)
         {
             var pinX = PinBlockAny(X);
             var pinB = PinBlockAny(indices);
@@ -1660,15 +1928,19 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void ScatterElements(Tensor X, TensorInt indices, Tensor updates, Tensor O, int axis, Layers.ScatterReductionMode reduction)
+        public void ScatterElements(Tensor X, TensorInt indices, Tensor updates, Tensor O, int axis, Layers.ScatterReductionMode reduction)
         {
-            axis = X.shape.Axis(axis);
+            axis = X.shape.Axis(axis); // need positive axis below
+
             var pinX = PinBlockOther(X, axis);
             var pinB = PinAsSame(indices, pinX);
             var pinW = PinAsSame(updates, pinX);
             var pinO = PinAsSame(O, pinX, false);
 
+            bool fastPathPossible = ShapeInference.ScatterGatherElementsSupportsFastPath(pinB.blockedShape, pinX.blockedShape, axis);
+            // We handle both the generic and fast path in the same shader file, see NoFastPath keyword below
             var func = new PixelFunc("Hidden/Sentis/ScatterElements");
+
             if (X.dataType == DataType.Int)
                 func.EnableKeyword("ScatterInt");
             switch (reduction)
@@ -1685,6 +1957,7 @@ namespace Unity.Sentis
                 default:
                     throw new ArgumentOutOfRangeException(nameof(reduction), reduction, null);
             }
+
             func.SetTensor(k_TensorPropertiesX, pinX);
             func.SetTensorBlockStride(k_TensorPropertiesX, pinX);
             func.SetTensor(k_TensorPropertiesB, pinB);
@@ -1692,16 +1965,40 @@ namespace Unity.Sentis
             func.SetTensor(k_TensorPropertiesW, pinW);
             func.SetTensorBlockStride(k_TensorPropertiesW, pinW);
             func.SetTensorBlockStride(k_TensorPropertiesO, pinO);
-            func.SetInt(k_ID_DimAxis, pinO.blockedShape[axis]);
             func.SetInt(k_ID_NumIndices, pinB.blockedShape[axis]);
-            func.SetInt(k_ID_StrideAxis, pinO.blockedShape.Strides(axis));
+
+            Logger.AssertIsTrue(pinB.blockedShape.length < int.MaxValue, "ScatterElements: indices is too large.");
+            func.SetInt(k_ID_indicesLinearSize, pinB.blockedShape.length);
+
+            func.SetInt(k_ID_outAxisSize, pinO.blockedShape[axis]);
+            if (fastPathPossible)
+            {
+                func.SetInt(k_ID_outAxisElementStride, pinO.blockedShape.Strides(axis));
+                func.SetInt(k_ID_indicesAxisElementStride, pinB.blockedShape.Strides(axis));
+            }
+            else
+            {
+                func.EnableKeyword("NoFastPath");
+                func.SetTensorStridesCompactedAtHead(k_TensorPropertiesO.k_ID_Strides, pinO.blockedShape);
+                func.SetTensorShapesCompactedAtHead(k_TensorPropertiesB.k_ID_Shape, pinB.blockedShape);
+                func.SetTensorStridesCompactedAtHead(k_TensorPropertiesB.k_ID_Strides, pinB.blockedShape);
+                func.SetInt(k_ID_posAxis, axis);
+                func.SetInt(k_TensorPropertiesX.k_ID_Rank, pinX.shape.rank);
+            }
+
+            if (pinB.dimAxis != pinX.dimAxis)
+            {
+                func.SetInt4(k_ID_indicesDiv4RemainderMask, pinB.blockedAxisDiv4RemainderMask);
+                func.EnableKeyword("UseDiv4Mask");
+            }
+
             func.Dispatch(pinO);
         }
 
-        void ScatterND(Tensor X, TensorInt indices, Tensor updates, Tensor O, Layers.ScatterReductionMode reduction)
+        void ScatterND(Tensor X, TensorInt indices, Tensor updates, Tensor O, DataType dataType, Layers.ScatterReductionMode reduction)
         {
             var func = new PixelFunc("Hidden/Sentis/ScatterND");
-            if (X.dataType == DataType.Int)
+            if (dataType == DataType.Int)
                 func.EnableKeyword("ScatterInt");
 
             var K = indices.shape[-1];
@@ -1746,19 +2043,19 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void ScatterND(TensorFloat X, TensorInt indices, TensorFloat updates, TensorFloat O, Layers.ScatterReductionMode reduction)
+        public void ScatterND(TensorFloat X, TensorInt indices, TensorFloat updates, TensorFloat O, Layers.ScatterReductionMode reduction)
         {
-            ScatterND(X, indices, updates, O, reduction);
+            ScatterND(X, indices, updates, O, DataType.Float, reduction);
         }
 
         /// <inheritdoc/>
-        public override void ScatterND(TensorInt X, TensorInt indices, TensorInt updates, TensorInt O, Layers.ScatterReductionMode reduction)
+        public void ScatterND(TensorInt X, TensorInt indices, TensorInt updates, TensorInt O, Layers.ScatterReductionMode reduction)
         {
-            ScatterND(X, indices, updates, O, reduction);
+            ScatterND(X, indices, updates, O, DataType.Int, reduction);
         }
 
         /// <inheritdoc/>
-        public override void Transpose(Tensor X, Tensor O)
+        public void Transpose(Tensor X, Tensor O)
         {
             var pinX = PinBlockAny(X);
             var oAxis = pinX.blockAxis < 0 ? -1 : X.shape.rank - 1 - pinX.blockAxis;
@@ -1791,7 +2088,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Transpose(Tensor X, Tensor O, int[] permutations)
+        public void Transpose(Tensor X, Tensor O, ReadOnlySpan<int> permutations)
         {
             var pinX = PinBlockAny(X);
             var oAxis = pinX.blockAxis;
@@ -1857,13 +2154,13 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void GlobalAveragePool(TensorFloat X, TensorFloat O)
+        public void GlobalAveragePool(TensorFloat X, TensorFloat O)
         {
             GlobalPool(X, O, "AVGPOOL");
         }
 
         /// <inheritdoc/>
-        public override void GlobalMaxPool(TensorFloat X, TensorFloat O)
+        public void GlobalMaxPool(TensorFloat X, TensorFloat O)
         {
             GlobalPool(X, O, "MAXPOOL");
         }
@@ -1902,25 +2199,25 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void MaxPool(TensorFloat X, TensorFloat O, int[] kernelShape, int[] strides, int[] pads)
+        public void MaxPool(TensorFloat X, TensorFloat O, int[] kernelShape, int[] strides, int[] pads)
         {
             if (X.shape.rank > 4)
-                base.MaxPool(X, O, kernelShape, strides, pads);
+                throw new NotImplementedException();
             else
                 LocalPool(X, O, kernelShape, strides, pads, "MAXPOOL");
         }
 
         /// <inheritdoc/>
-        public override void AveragePool(TensorFloat X, TensorFloat O, int[] kernelShape, int[] strides, int[] pads)
+        public void AveragePool(TensorFloat X, TensorFloat O, int[] kernelShape, int[] strides, int[] pads)
         {
             if (X.shape.rank > 4)
-                base.AveragePool(X, O, kernelShape, strides, pads);
+                throw new NotImplementedException();
             else
                 LocalPool(X, O, kernelShape, strides, pads, "AVGPOOL");
         }
 
         /// <inheritdoc/>
-        public override void DepthToSpace(TensorFloat X, TensorFloat O, int blocksize, Layers.DepthToSpaceMode mode)
+        public void DepthToSpace(TensorFloat X, TensorFloat O, int blocksize, Layers.DepthToSpaceMode mode)
         {
             var func = new PixelFunc("Hidden/Sentis/DepthToSpace");
 
@@ -1951,7 +2248,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void SpaceToDepth(TensorFloat X, TensorFloat O, int blocksize)
+        public void SpaceToDepth(TensorFloat X, TensorFloat O, int blocksize)
         {
             var func = new PixelFunc("Hidden/Sentis/SpaceToDepth");
 
@@ -1977,7 +2274,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Split(Tensor X, Tensor O, int axis, int start)
+        public void Split(Tensor X, Tensor O, int axis, int start)
         {
             axis = X.shape.Axis(axis);
 
@@ -2000,9 +2297,9 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Tile(Tensor X, Tensor O, ReadOnlySpan<int> repeats)
+        public void Tile(Tensor X, Tensor O, ReadOnlySpan<int> repeats)
         {
-            var pinX = X.tensorOnDevice as TextureTensorData;
+            var pinX = X.dataOnBackend as TextureTensorData;
             var xRank = X.shape.rank;
             var blockAxis = pinX?.blockAxis ?? 0;
 
@@ -2030,10 +2327,87 @@ namespace Unity.Sentis
             func.Dispatch(pinO);
         }
 
-        /// <inheritdoc/>
-        public override void Pad(TensorFloat X, TensorFloat O, ReadOnlySpan<int> pad, Layers.PadMode padMode, float constant)
+        void ResizeND(TensorFloat X, TensorFloat O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
         {
-            var pinX = X.tensorOnDevice as TextureTensorData;
+            // calculate first and last axes with scaling
+            var firstScaleAxis = scale.Length;
+            var lastScaleAxis = 0;
+            for (var i = 0; i < scale.Length; i++)
+            {
+                if (scale[i] != 1f)
+                {
+                    firstScaleAxis = Mathf.Min(firstScaleAxis, i);
+                    lastScaleAxis = Mathf.Max(lastScaleAxis, i);
+                }
+            }
+
+            if (firstScaleAxis > lastScaleAxis)
+            {
+                // no scale
+                MemCopy(X, O);
+                return;
+            }
+
+            // block on channels if not scaled channels otherwise block before first scale axis
+            var blockAxis = scale.Length > 1 && scale[1] == 1f ? 1 : firstScaleAxis - 1;
+
+            for (var i = firstScaleAxis; i <= lastScaleAxis; i++)
+            {
+                if (scale[i] == 1f)
+                    continue;
+                var oShape = ShapeInference.Resize(X.shape, i, scale[i]);
+                var oCurr = i == lastScaleAxis ? O : AllocTensor(oShape, DataType.Float) as TensorFloat;
+                Resize1D(X, oCurr, blockAxis, i, scale[i], interpolationMode, nearestMode, coordTransformMode);
+                if (i != firstScaleAxis)
+                    ReleaseTensor(X);
+                X = oCurr;
+            }
+        }
+
+        void Resize1D(TensorFloat X, TensorFloat O, int blockAxis, int axis, float scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
+        {
+            var pinX = TextureTensorData.Pin(X, blockAxis);
+            var pinO = TextureTensorData.Pin(O, blockAxis);
+
+            var func = new PixelFunc("Hidden/Sentis/Resize1D");
+
+            OpsUtils.GetScaleAndBias(X.shape[axis], O.shape[axis], scale, coordTransformMode, interpolationMode, nearestMode, out float outputScale, out float outputBias);
+            func.SetFloat(k_ID_Scale, outputScale);
+            func.SetFloat(k_ID_Bias, outputBias);
+
+            if (interpolationMode == Layers.InterpolationMode.Nearest)
+            {
+                switch (nearestMode)
+                {
+                    case Layers.NearestMode.RoundPreferFloor:
+                    case Layers.NearestMode.Ceil:
+                        func.EnableKeyword("NEAREST_CEIL");
+                        break;
+                    case Layers.NearestMode.RoundPreferCeil:
+                    case Layers.NearestMode.Floor:
+                        func.EnableKeyword("NEAREST_FLOOR");
+                        break;
+                    default:
+                        throw new NotImplementedException();
+                }
+            }
+            else //if (interpolationMode == Layers.InterpolationMode.Linear)
+            {
+                func.EnableKeyword("LINEAR");
+            }
+
+            func.SetInt(k_ID_innerLength, pinO.blockedShape.Strides(axis));
+            func.SetInt(k_ID_outAxisSize, pinO.blockedShape[axis]);
+            func.SetInt(k_ID_inputAxisSize, pinX.blockedShape[axis]);
+            func.SetTensor(k_TensorPropertiesX, pinX);
+
+            func.Dispatch(pinO);
+        }
+
+        /// <inheritdoc/>
+        public void Pad(TensorFloat X, TensorFloat O, ReadOnlySpan<int> pad, Layers.PadMode padMode, float constant)
+        {
+            var pinX = X.dataOnBackend as TextureTensorData;
             var xRank = X.shape.rank;
             var blockAxis = pinX?.blockAxis ?? 0;
 
@@ -2058,6 +2432,7 @@ namespace Unity.Sentis
             {
                 case Layers.PadMode.Constant:
                     func.EnableKeyword("CONSTANT");
+                    func.SetFloat(k_ID_memValueFloat, constant);
                     break;
                 case Layers.PadMode.Reflect:
                     func.EnableKeyword("REFLECT");
@@ -2067,6 +2442,9 @@ namespace Unity.Sentis
                     break;
                 case Layers.PadMode.Symmetric:
                     func.EnableKeyword("SYMMETRIC");
+                    break;
+                case Layers.PadMode.Wrap:
+                    func.EnableKeyword("WRAP");
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(padMode), padMode, null);
@@ -2090,17 +2468,83 @@ namespace Unity.Sentis
             func.SetShape(k_ID_DimX, pinX.blockedShape);
             func.SetStrides(k_TensorPropertiesX.k_ID_Strides, pinX.blockedShape);
 
-            func.SetFloat(k_ID_Beta, constant);
+            func.Dispatch(pinO);
+        }
+
+        /// <inheritdoc/>
+        public void Pad(TensorInt X, TensorInt O, ReadOnlySpan<int> pad, Layers.PadMode padMode, int constant)
+        {
+            var pinX = X.dataOnBackend as TextureTensorData;
+            var xRank = X.shape.rank;
+            var blockAxis = pinX?.blockAxis ?? 0;
+
+            if (pinX == null || (blockAxis >= 0 && pad[blockAxis] + pad[blockAxis + xRank] > 0))
+            {
+                // repin X again if pad on blocked axis
+                blockAxis = xRank - 1;
+                for (; blockAxis >= 0; blockAxis--)
+                {
+                    if (X.shape[blockAxis] > 1 && pad[blockAxis] + pad[blockAxis + xRank] == 0)
+                        break;
+                }
+
+                pinX = TextureTensorData.Pin(X, blockAxis);
+            }
+
+            var pinO = PinAsSame(O, pinX, false);
+
+            var func = new PixelFunc("Hidden/Sentis/Pad");
+            func.EnableKeyword("INT");
+
+            switch (padMode)
+            {
+                case Layers.PadMode.Constant:
+                    func.EnableKeyword("CONSTANT");
+                    func.SetInt(k_ID_memValueInt, constant);
+                    break;
+                case Layers.PadMode.Reflect:
+                    func.EnableKeyword("REFLECT");
+                    break;
+                case Layers.PadMode.Edge:
+                    func.EnableKeyword("EDGE");
+                    break;
+                case Layers.PadMode.Symmetric:
+                    func.EnableKeyword("SYMMETRIC");
+                    break;
+                case Layers.PadMode.Wrap:
+                    func.EnableKeyword("WRAP");
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(padMode), padMode, null);
+            }
+
+            func.SetTensor(k_TensorPropertiesX, pinX);
+            func.SetInt(k_ID_MaxBlockIndexX, pinX.blockedShape.length - 1);
+
+            unsafe
+            {
+                var padArray = stackalloc int[8];
+                for (var i = 0; i < xRank; i++)
+                {
+                    padArray[i] = pad[xRank - 1 - i];
+                }
+
+                func.SetInt8(k_ID_Pad, padArray);
+            }
+
+            func.SetShape(k_ID_DimO, pinO.blockedShape);
+            func.SetShape(k_ID_DimX, pinX.blockedShape);
+            func.SetStrides(k_TensorPropertiesX.k_ID_Strides, pinX.blockedShape);
 
             func.Dispatch(pinO);
         }
 
         /// <inheritdoc/>
-        public override void Resize(TensorFloat X, TensorFloat O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
+        public void Resize(TensorFloat X, TensorFloat O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
         {
             if (X.shape.rank > 5 || scale[0] != 1f || scale[1] != 1f)
             {
-                base.Resize(X, O, scale, interpolationMode, nearestMode, coordTransformMode);
+                ResizeND(X, O, scale, interpolationMode, nearestMode, coordTransformMode);
                 return;
             }
 
@@ -2176,11 +2620,11 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void ScaleBias(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O)
+        public void ScaleBias(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O)
         {
             var func = new PixelFunc("Hidden/Sentis/ScaleBias");
 
-            var pinX = X.tensorOnDevice as TextureTensorData;
+            var pinX = X.dataOnBackend as TextureTensorData;
             pinX ??= TextureTensorData.Pin(X, X.shape.rank - 2);
             var pinS = TextureTensorData.Pin(S, 0);
             var pinB = TextureTensorData.Pin(B, 0);
@@ -2205,7 +2649,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void BatchNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat mean, TensorFloat variance, TensorFloat O, float epsilon)
+        public void BatchNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat mean, TensorFloat variance, TensorFloat O, float epsilon)
         {
             var func = new PixelFunc("Hidden/Sentis/BatchNormalization");
 
@@ -2232,13 +2676,13 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void InstanceNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O, float epsilon)
+        public void InstanceNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O, float epsilon)
         {
             var spatialSize = X.shape.Strides(1);
             var pinX = TextureTensorData.Pin(X, 1);
             var pooledShape = ShapeInference.GlobalPool(X.shape);
-            var A = NewTempTensorFloat(pooledShape);
-            var K = NewTempTensorFloat(pooledShape);
+            var A = AllocTensor(pooledShape, DataType.Float);
+            var K = AllocTensor(pooledShape, DataType.Float);
             var pinA = PinAsSame(A, pinX, false);
             var pinK = PinAsSame(K, pinX, false);
 
@@ -2283,15 +2727,18 @@ namespace Unity.Sentis
 
                 func.Dispatch(pinO);
             }
+
+            ReleaseTensor(A);
+            ReleaseTensor(K);
         }
 
         /// <inheritdoc/>
-        public override void LayerNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O, float epsilon)
+        public void LayerNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O, float epsilon)
         {
             var axis = X.shape.Axis(-1);
             var reducedShape = X.shape.Reduce(axis);
-            var A = NewTempTensorFloat(reducedShape);
-            var K = NewTempTensorFloat(reducedShape);
+            var A = AllocTensor(reducedShape, DataType.Float);
+            var K = AllocTensor(reducedShape, DataType.Float);
 
             Reduce(X, A, axis, "ReduceMean");
             Reduce(X, K, axis, "ReduceMeanSquare");
@@ -2313,10 +2760,13 @@ namespace Unity.Sentis
             func.SetFloat(k_ID_epsilon, epsilon);
 
             func.Dispatch(pinO);
+
+            ReleaseTensor(A);
+            ReleaseTensor(K);
         }
 
         /// <inheritdoc/>
-        public override void RoiAlign(TensorFloat X, TensorFloat rois, TensorInt indices, TensorFloat O, Layers.RoiPoolingMode mode, int outputHeight, int outputWidth, int samplingRatio, float spatialScale)
+        public void RoiAlign(TensorFloat X, TensorFloat rois, TensorInt indices, TensorFloat O, Layers.RoiPoolingMode mode, int outputHeight, int outputWidth, int samplingRatio, float spatialScale)
         {
             var pinX = TextureTensorData.Pin(X, 1);
             var pinB = PinBlockAny(indices);
@@ -2348,13 +2798,13 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void RandomUniform(TensorFloat O, float low, float high, float? seed)
+        public void RandomUniform(TensorFloat O, float low, float high, int? seed)
         {
             var pinO = PinBlockAny(O, false);
 
             var func = new PixelFunc("Hidden/Sentis/Random");
             func.EnableKeyword("RandomUniform");
-            func.SetInt(k_ID_seed, (int)Random.GetOpSeed(seed));
+            func.SetInt(k_ID_seed, (int)Random.GetSeed(seed));
             func.SetFloat(k_ID_low, low);
             func.SetFloat(k_ID_high, high);
             func.SetTensorBlockStride(k_TensorPropertiesO, pinO);
@@ -2363,13 +2813,13 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void RandomNormal(TensorFloat O, float mean, float scale, float? seed)
+        public void RandomNormal(TensorFloat O, float mean, float scale, int? seed)
         {
             var pinO = PinBlockAny(O, false);
 
             var func = new PixelFunc("Hidden/Sentis/Random");
             func.EnableKeyword("RandomNormal");
-            func.SetInt(k_ID_seed, (int)Random.GetOpSeed(seed));
+            func.SetInt(k_ID_seed, (int)Random.GetSeed(seed));
             func.SetFloat(k_ID_mean, mean);
             func.SetFloat(k_ID_scale, scale);
             func.SetTensorBlockStride(k_TensorPropertiesO, pinO);
@@ -2378,7 +2828,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Bernoulli(TensorFloat X, Tensor O, float? seed)
+        public void Bernoulli(TensorFloat X, Tensor O, int? seed)
         {
             var func = new PixelFunc("Hidden/Sentis/Random");
             func.EnableKeyword(O.dataType == DataType.Int ? "BernoulliInt" : "Bernoulli");
@@ -2386,7 +2836,7 @@ namespace Unity.Sentis
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX);
 
-            func.SetInt(k_ID_seed, (int)Random.GetOpSeed(seed));
+            func.SetInt(k_ID_seed, (int)Random.GetSeed(seed));
             func.SetTensor(k_TensorPropertiesX, pinX);
             func.SetTensorBlockStride(k_TensorPropertiesO, pinO);
 
@@ -2394,7 +2844,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Range(TensorFloat O, float start, float delta)
+        public void Range(TensorFloat O, float start, float delta)
         {
             var pinO = PinBlockAny(O);
 
@@ -2405,7 +2855,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Range(TensorInt O, int start, int delta)
+        public void Range(TensorInt O, int start, int delta)
         {
             var pinO = PinBlockAny(O);
 
@@ -2434,18 +2884,18 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Tril(Tensor X, Tensor O, int k)
+        public void Tril(Tensor X, Tensor O, int k)
         {
             Trilu(X, O, k, false);
         }
 
         /// <inheritdoc/>
-        public override void Triu(Tensor X, Tensor O, int k)
+        public void Triu(Tensor X, Tensor O, int k)
         {
             Trilu(X, O, k, true);
         }
 
-        void CumSum(Tensor X, Tensor O, int axis, bool reverse, bool exclusive)
+        void CumSum(Tensor X, Tensor O, DataType dataType, int axis, bool reverse, bool exclusive)
         {
             axis = X.shape.Axis(axis);
 
@@ -2453,7 +2903,7 @@ namespace Unity.Sentis
             var pinO = PinAsSame(O, pinX, false);
 
             var func = new PixelFunc("Hidden/Sentis/CumSum");
-            if (X.dataType == DataType.Int)
+            if (dataType == DataType.Int)
                 func.EnableKeyword("INT");
             func.EnableKeyword(reverse ? "REVERSE" : "FORWARD");
             func.EnableKeyword(exclusive ? "EXCLUSIVE" : "INCLUSIVE");
@@ -2465,29 +2915,19 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void CumSum(TensorFloat X, TensorFloat O, int axis, bool reverse, bool exclusive)
+        public void CumSum(TensorFloat X, TensorFloat O, int axis, bool reverse, bool exclusive)
         {
-            CumSum(X, O, axis, reverse, exclusive);
+            CumSum(X, O, DataType.Float, axis, reverse, exclusive);
         }
 
         /// <inheritdoc/>
-        public override void CumSum(TensorInt X, TensorInt O, int axis, bool reverse, bool exclusive)
+        public void CumSum(TensorInt X, TensorInt O, int axis, bool reverse, bool exclusive)
         {
-            CumSum(X, O, axis, reverse, exclusive);
+            CumSum(X, O, DataType.Int, axis, reverse, exclusive);
         }
 
         /// <inheritdoc/>
-        public override Tensor ShallowReshape(Tensor X, TensorShape shape, AllocScope allocScope)
-        {
-            var O = NewTensor(shape, X.dataType, allocScope);
-            if (O.shape.HasZeroDims())
-                return O;
-            Reshape(X, O);
-            return O;
-        }
-
-        /// <inheritdoc/>
-        public override void MemCopy(Tensor X, Tensor O)
+        public void MemCopy(Tensor X, Tensor O)
         {
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX);
@@ -2499,11 +2939,11 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Reshape(Tensor X, Tensor O)
+        public void Reshape(Tensor X, Tensor O)
         {
             TextureTensorData pinO;
 
-            if (X.tensorOnDevice is TextureTensorData pinX)
+            if (X.dataOnBackend is TextureTensorData pinX)
             {
                 // try and pin O in a layout that can be read in float4 blocks from x
                 var blockAxis = O.shape.rank - 1;
@@ -2538,6 +2978,73 @@ namespace Unity.Sentis
             }
 
             func.Dispatch(pinO);
+        }
+
+        /// <inheritdoc/>
+        public void TopP(TensorFloat X, TensorFloat random, TensorInt O)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc/>
+        public void LSTM(TensorFloat X, TensorFloat W, TensorFloat R, TensorFloat B, TensorInt sequenceLens, TensorFloat initialH, TensorFloat initialC, TensorFloat P, TensorFloat Y, TensorFloat Yh, TensorFloat Yc, Layers.RnnDirection direction, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, Layers.RnnLayout layout)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc/>
+        public void TopK(TensorFloat X, TensorFloat values, TensorInt indices, int k, int axis, bool largest)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc/>
+        public void Einsum(TensorFloat[] inputTensors, TensorFloat O, TensorIndex[] operandIndices, TensorIndex outputIndices, TensorIndex sumIndices, TensorShape sumShape)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc/>
+        public void MemCopyStride(Tensor X, Tensor O, int strideX, int strideO, int length, int count, int offsetX, int offsetO)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void NonMaxSuppression(TensorFloat boxes, TensorFloat scores, TensorInt selectedBoxes, int maxOutputBoxesPerClass, float iouThreshold, float scoreThreshold, Layers.CenterPointBox centerPointBox)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc/>
+        public void CompressWithIndices(Tensor X, TensorInt indices, Tensor O, int numIndices, int axis)
+        {
+            var pinX = PinBlockAny(X);
+            var pinB = PinBlockAny(indices);
+            var pinO = PinBlockAny(O, false);
+
+            var func = new PixelFunc("Hidden/Sentis/Gather");
+            if (X.dataType == DataType.Int)
+                func.EnableKeyword("GatherInt");
+            func.SetInt(k_ID_endLength, X.shape.Strides(axis));
+            func.SetInt(k_ID_indicesLength, numIndices);
+            func.SetInt(k_ID_axisDim, X.shape[axis]);
+            func.SetTensor(k_TensorPropertiesX, pinX);
+            func.SetTensorBlockStride(k_TensorPropertiesX, pinX);
+            func.SetTensor(k_TensorPropertiesB, pinB);
+            func.SetTensorBlockStride(k_TensorPropertiesB, pinB);
+            func.SetTensorBlockStride(k_TensorPropertiesO, pinO);
+            func.Dispatch(pinO);
+        }
+
+        /// <inheritdoc/>
+        public Tensor PinToDevice(Tensor X, bool clearOnInit = false)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc/>
+        public void Dispose()
+        {
         }
     }
 } // namespace Unity.Sentis

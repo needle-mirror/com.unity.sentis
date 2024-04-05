@@ -7,7 +7,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Abs` math layer: f(x) = |x|.
     /// </summary>
     [Serializable]
-    public class Abs : Activation
+    class Abs : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Abs` math layer.
@@ -18,16 +18,16 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape, inputTensors[0].dataType);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
-                return O;
-            if (inputTensors[0] is TensorInt)
-                ctx.backend.Abs(inputTensors[0] as TensorInt, O as TensorInt);
+                return;
+            if (X is TensorInt)
+                ctx.backend.Abs(X as TensorInt, O as TensorInt);
             else
-                ctx.backend.Abs(inputTensors[0] as TensorFloat, O as TensorFloat);
-            return O;
+                ctx.backend.Abs(X as TensorFloat, O as TensorFloat);
         }
 
         internal override string profilerTag => "Abs";
@@ -39,7 +39,7 @@ namespace Unity.Sentis.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Serializable]
-    public class Add : Broadcast
+    class Add : Broadcast
     {
         /// <summary>
         /// Initializes and returns an instance of `Add` math operation layer.
@@ -54,16 +54,17 @@ namespace Unity.Sentis.Layers
         internal override Func<PartialTensorElement, PartialTensorElement, PartialTensorElement> InferPartialOp => (a, b) => a + b;
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensor(TensorShapeHelper.BroadcastShape(inputTensors[0], inputTensors[1]), inputTensors[0].dataType);
+            var A = ctx.vars.GetTensor(inputs[0]);
+            var B = ctx.vars.GetTensor(inputs[1]);
+            var O = ctx.vars.AllocateTensorAndStore(index, TensorShapeHelper.BroadcastShape(A, B), A.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
-                return O;
-            if (inputTensors[0] is TensorInt)
-                ctx.backend.Add(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt, O as TensorInt);
+                return;
+            if (A is TensorInt)
+                ctx.backend.Add(A as TensorInt, B as TensorInt, O as TensorInt);
             else
-                ctx.backend.Add(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, O as TensorFloat);
-            return O;
+                ctx.backend.Add(A as TensorFloat, B as TensorFloat, O as TensorFloat);
         }
 
         internal override string profilerTag => "Add";
@@ -73,7 +74,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Ceil` math layer: f(x) = ceil(x).
     /// </summary>
     [Serializable]
-    public class Ceil : Activation
+    class Ceil : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Ceil` math layer.
@@ -84,13 +85,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Ceil(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Ceil(X, O);
         }
 
         internal override string profilerTag => "Ceil";
@@ -101,7 +102,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(1, 2)]
-    public class Clip : Layer
+    class Clip : Layer
     {
         /// <summary>
         /// Initializes and returns an instance of `Clip` math layer with no min or max tensors.
@@ -110,7 +111,7 @@ namespace Unity.Sentis.Layers
         /// <param name="input">The name to use for the input tensor of the layer.</param>
         public Clip(string name, string input)
         {
-            this.name = name;
+            this.index = name;
             this.inputs = new[] { input };
         }
 
@@ -122,7 +123,7 @@ namespace Unity.Sentis.Layers
         /// <param name="min">The name to use for the min scalar tensor of the layer.</param>
         public Clip(string name, string input, string min)
         {
-            this.name = name;
+            this.index = name;
             this.inputs = new[] { input, min };
         }
 
@@ -135,35 +136,36 @@ namespace Unity.Sentis.Layers
         /// <param name="max">The name to use for the max scalar tensor of the layer.</param>
         public Clip(string name, string input, string min, string max)
         {
-            this.name = name;
+            this.index = name;
             this.inputs = new[] { input, min, max };
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            return new PartialTensor(inputTensors[0].dataType, inputTensors[0].shape);
+            var X = ctx.GetPartialTensor(inputs[0]);
+            ctx.AddPartialTensor(index, new PartialTensor(X.dataType, X.shape));
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape, inputTensors[0].dataType);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
-                return O;
-            if (inputTensors[0] is TensorInt)
+                return;
+            if (X is TensorInt)
             {
-                var min = inputTensors.Length > 1 && inputTensors[1] != null ? inputTensors[1].ToReadOnlySpan<int>()[0] : int.MinValue;
-                var max = inputTensors.Length > 2 && inputTensors[2] != null ? inputTensors[2].ToReadOnlySpan<int>()[0] : int.MaxValue;
-                ctx.backend.Clip(inputTensors[0] as TensorInt, O as TensorInt, min, max);
+                var min = inputs.Length > 1 && ctx.vars.GetTensor(inputs[1]) != null ? ctx.vars.GetTensor(inputs[1]).ToReadOnlySpan<int>()[0] : int.MinValue;
+                var max = inputs.Length > 2 && ctx.vars.GetTensor(inputs[2]) != null ? ctx.vars.GetTensor(inputs[2]).ToReadOnlySpan<int>()[0] : int.MaxValue;
+                ctx.backend.Clip(X as TensorInt, O as TensorInt, min, max);
             }
             else
             {
-                var min = inputTensors.Length > 1 && inputTensors[1] != null ? inputTensors[1].ToReadOnlySpan<float>()[0] : float.MinValue;
-                var max = inputTensors.Length > 2 && inputTensors[2] != null ? inputTensors[2].ToReadOnlySpan<float>()[0] : float.MaxValue;
-                ctx.backend.Clip(inputTensors[0] as TensorFloat, O as TensorFloat, min, max);
+                var min = inputs.Length > 1 && ctx.vars.GetTensor(inputs[1]) != null ? ctx.vars.GetTensor(inputs[1]).ToReadOnlySpan<float>()[0] : float.MinValue;
+                var max = inputs.Length > 2 && ctx.vars.GetTensor(inputs[2]) != null ? ctx.vars.GetTensor(inputs[2]).ToReadOnlySpan<float>()[0] : float.MaxValue;
+                ctx.backend.Clip(X as TensorFloat, O as TensorFloat, min, max);
             }
-            return O;
         }
 
         internal override string profilerTag => "Clip";
@@ -174,7 +176,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(1)]
-    public class CumSum : Layer
+    class CumSum : Layer
     {
         /// <summary>
         /// Whether to perform the cumulative sum from the end of the axis.
@@ -195,30 +197,31 @@ namespace Unity.Sentis.Layers
         /// <param name="exclusive">Whether to include the respective input element in the cumulative sum.</param>
         public CumSum(string name, string input, string axis, bool reverse, bool exclusive)
         {
-            this.name = name;
+            this.index = name;
             this.inputs = new[] { input, axis };
             this.reverse = reverse;
             this.exclusive = exclusive;
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            return new PartialTensor(inputTensors[0].dataType, inputTensors[0].shape);
+            var X = ctx.GetPartialTensor(inputs[0]);
+            ctx.AddPartialTensor(index, new PartialTensor(X.dataType, X.shape));
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape, inputTensors[0].dataType);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
-                return O;
-            var axis = inputTensors[1].ToReadOnlySpan<int>()[0];
-            if (inputTensors[0] is TensorInt)
-                ctx.backend.CumSum(inputTensors[0] as TensorInt, O as TensorInt, axis, reverse, exclusive);
+                return;
+            var axis = ctx.vars.GetTensor(inputs[1]).ToReadOnlySpan<int>()[0];
+            if (X is TensorInt)
+                ctx.backend.CumSum(X as TensorInt, O as TensorInt, axis, reverse, exclusive);
             else
-                ctx.backend.CumSum(inputTensors[0] as TensorFloat, O as TensorFloat, axis, reverse, exclusive);
-            return O;
+                ctx.backend.CumSum(X as TensorFloat, O as TensorFloat, axis, reverse, exclusive);
         }
 
         /// <inheritdoc/>
@@ -227,7 +230,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, reverse: {reverse}, exclusive: {exclusive}";
         }
 
-        internal override string profilerTag => "Hardmax";
+        internal override string profilerTag => "CumSum";
     }
 
     /// <summary>
@@ -236,7 +239,7 @@ namespace Unity.Sentis.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Serializable]
-    public class Dense : FusedActivation
+    class Dense : FusedActivation
     {
         /// <summary>
         /// Initializes and returns an instance of `Dense` math operation layer.
@@ -248,29 +251,32 @@ namespace Unity.Sentis.Layers
         /// <param name="fusedActivation">The fusable activation to apply to the output tensor of the layer.</param>
         public Dense(string name, string input, string weights, string bias, FusableActivation fusedActivation = FusableActivation.None)
         {
-            this.name = name;
+            this.index = name;
             inputs = new[] { input, weights, bias };
             this.fusedActivation = fusedActivation;
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            var shapeB = inputTensors[2].shape;
-            var shapeOut = inputTensors[0].shape.MatMul(inputTensors[1].shape);
+            var X = ctx.GetPartialTensor(inputs[0]);
+            var W = ctx.GetPartialTensor(inputs[1]);
+            var B = ctx.GetPartialTensor(inputs[2]);
+            var shapeOut = X.shape.MatMul(W.shape);
             if (shapeOut.hasRank)
-                shapeOut[-1] = SymbolicTensorDim.MaxDefinedDim(shapeB[0], shapeOut[-1]);
-            return new PartialTensor(DataType.Float, shapeOut);
+                shapeOut[-1] = SymbolicTensorDim.MaxDefinedDim(B.shape[0], shapeOut[-1]);
+            ctx.AddPartialTensor(index, new PartialTensor(DataType.Float, shapeOut));
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape.MatMul(inputTensors[1].shape));
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var W = ctx.vars.GetTensor(inputs[1]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape.MatMul(W.shape), DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Dense(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat, O, fusedActivation);
-            return O;
+                return;
+            ctx.backend.Dense(X as TensorFloat, W as TensorFloat, ctx.vars.GetTensor(inputs[2]) as TensorFloat, O, fusedActivation);
         }
 
         internal override string profilerTag => "Dense";
@@ -282,7 +288,7 @@ namespace Unity.Sentis.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Serializable]
-    public class Div : Broadcast
+    class Div : Broadcast
     {
         /// <summary>
         /// Initializes and returns an instance of `Div` math operation layer.
@@ -294,16 +300,17 @@ namespace Unity.Sentis.Layers
             : base(name, a, b) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensor(TensorShapeHelper.BroadcastShape(inputTensors[0], inputTensors[1]), inputTensors[0].dataType);
+            var A = ctx.vars.GetTensor(inputs[0]);
+            var B = ctx.vars.GetTensor(inputs[1]);
+            var O = ctx.vars.AllocateTensorAndStore(index, TensorShapeHelper.BroadcastShape(A, B), A.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
-                return O;
-            if (inputTensors[0] is TensorInt)
-                ctx.backend.Div(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt, O as TensorInt);
+                return;
+            if (A is TensorInt)
+                ctx.backend.Div(A as TensorInt, B as TensorInt, O as TensorInt);
             else
-                ctx.backend.Div(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, O as TensorFloat);
-            return O;
+                ctx.backend.Div(A as TensorFloat, B as TensorFloat, O as TensorFloat);
         }
 
         internal override string profilerTag => "Div";
@@ -319,7 +326,7 @@ namespace Unity.Sentis.Layers
     /// The equation may contain ellipsis ("...") to enable broadcasting. Ellipsis must indicate a fixed number of dimensions. Specifically, every occurrence of ellipsis in the equation must represent the same number of dimensions. The right-hand side may contain exactly one ellipsis. In implicit mode, the ellipsis dimensions are set to the beginning of the output. The equation string may contain space (U+0020) character.
     /// </description>
     [Serializable]
-    public class Einsum : Layer
+    class Einsum : Layer
     {
         /// <summary>
         /// The equation of the Einstein summation as a comma-separated list of subscript labels.
@@ -337,7 +344,7 @@ namespace Unity.Sentis.Layers
         /// <param name="equation">The equation of the Einstein summation as a comma-separated list of subscript labels.</param>
         public Einsum(string name, string[] inputs, string equation)
         {
-            this.name = name;
+            this.index = name;
             this.inputs = inputs;
             this.equation = equation;
             operandShapes = new TensorShape[inputs.Length];
@@ -345,27 +352,32 @@ namespace Unity.Sentis.Layers
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
+            var inputTensors = ctx.GetPartialTensors(inputs);
             var operandIndices = new TensorIndex[inputTensors.Length];
             var shape = EinsumHelper.ParseEquationStringShape(equation, inputTensors.Select(i => i.shape).ToArray(), ref operandIndices, out _, out _);
-            return new PartialTensor(DataType.Float, shape);
+            ctx.AddPartialTensor(index, new PartialTensor(DataType.Float, shape));
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            for (var i = 0; i < inputTensors.Length; i++)
-                operandShapes[i] = inputTensors[i].shape;
+            TensorFloat[] tensors = new TensorFloat[inputs.Length];
+            for (var i = 0; i < inputs.Length; i++)
+            {
+                var tensor = ctx.vars.GetTensor(inputs[i]) as TensorFloat;
+                tensors[i] = tensor;
+                operandShapes[i] = tensor.shape;
+            }
             EinsumHelper.ParseEquationString(equation, operandShapes, ref operandIndices, out var outputIndices, out var outputShape, out var sumIndices, out var sumShape, out var numIndices);
-            var O = ctx.backend.NewOutputTensorFloat(outputShape);
+            var O = ctx.vars.AllocateTensorAndStore(index, outputShape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            if (inputTensors.Length > 2)
-                CPUBackend.EinsumND(Array.ConvertAll(inputTensors, i => i as TensorFloat), O, operandShapes, operandIndices, outputIndices, outputShape, sumIndices, sumShape, numIndices);
+                return;
+            if (tensors.Length > 2)
+                CPUBackend.EinsumND(tensors, O, operandShapes, operandIndices, outputIndices, outputShape, sumIndices, sumShape, numIndices);
             else
-                ctx.backend.Einsum(Array.ConvertAll(inputTensors, i => i as TensorFloat), O, operandIndices, outputIndices, sumIndices, sumShape);
-            return O;
+                ctx.backend.Einsum(tensors, O, operandIndices, outputIndices, sumIndices, sumShape);
         }
 
         /// <inheritdoc/>
@@ -381,7 +393,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Exp` math layer: f(x) = e^{x}.
     /// </summary>
     [Serializable]
-    public class Exp : Activation
+    class Exp : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Exp` math layer.
@@ -392,13 +404,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Exp(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Exp(X, O);
         }
 
         internal override string profilerTag => "Exp";
@@ -408,7 +420,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Floor` math layer: f(x) = floor(x).
     /// </summary>
     [Serializable]
-    public class Floor : Activation
+    class Floor : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Floor` math layer.
@@ -419,13 +431,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Floor(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Floor(X, O);
         }
 
         internal override string profilerTag => "Floor";
@@ -435,7 +447,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Log` math layer: f(x) = log(x).
     /// </summary>
     [Serializable]
-    public class Log : Activation
+    class Log : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Log` math layer.
@@ -446,13 +458,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Log(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Log(X, O);
         }
 
         internal override string profilerTag => "Log";
@@ -462,7 +474,7 @@ namespace Unity.Sentis.Layers
     /// Represents a `MatMul` math operation layer which performs a matrix multiplication operation: f(a, b) = a x b.
     /// </summary>
     [Serializable]
-    public class MatMul : Layer
+    class MatMul : Layer
     {
         /// <summary>
         /// Initializes and returns an instance of `MatMul` math layer.
@@ -472,27 +484,30 @@ namespace Unity.Sentis.Layers
         /// <param name="input1">The name to use for the second input tensor of the layer.</param>
         public MatMul(string name, string input0, string input1)
         {
-            this.name = name;
+            this.index = name;
             this.inputs = new[] { input0, input1 };
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            return new PartialTensor(inputTensors[0].dataType, inputTensors[0].shape.MatMul(inputTensors[1].shape));
+            var A = ctx.GetPartialTensor(inputs[0]);
+            var B = ctx.GetPartialTensor(inputs[1]);
+            ctx.AddPartialTensor(index, new PartialTensor(A.dataType, A.shape.MatMul(B.shape)));
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape.MatMul(inputTensors[1].shape));
+            var A = ctx.vars.GetTensor(inputs[0]);
+            var B = ctx.vars.GetTensor(inputs[1]);
+            var O = ctx.vars.AllocateTensorAndStore(index, A.shape.MatMul(B.shape), DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            if (inputTensors[0].shape.HasZeroDims() || inputTensors[1].shape.HasZeroDims())
+                return;
+            if (A.shape.HasZeroDims() || B.shape.HasZeroDims())
                 ctx.backend.MemSet(O, 0.0f);
             else
-                ctx.backend.MatMul(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, O);
-            return O;
+                ctx.backend.MatMul(A as TensorFloat, B as TensorFloat, O);
         }
 
         internal override string profilerTag => "MatMul";
@@ -502,7 +517,7 @@ namespace Unity.Sentis.Layers
     /// Represents a `MatMul2D` math operation layer which performs a matrix multiplication operation with optional transposes: f(a, b) = a' x b'.
     /// </summary>
     [Serializable]
-    public class MatMul2D : Layer
+    class MatMul2D : Layer
     {
         /// <summary>
         /// Whether to transpose the first input before performing the matrix multiplication.
@@ -523,40 +538,44 @@ namespace Unity.Sentis.Layers
         /// <param name="transpose1">Whether to transpose the second input before performing the matrix multiplication.</param>
         public MatMul2D(string name, string input0, bool transpose0, string input1, bool transpose1)
         {
-            this.name = name;
+            this.index = name;
             this.inputs = new[] { input0, input1 };
             this.transposeA = transpose0;
             this.transposeB = transpose1;
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            var shapeX = inputTensors[0].shape;
-            var shapeY = inputTensors[1].shape;
+            var A = ctx.GetPartialTensor(inputs[0]);
+            var B = ctx.GetPartialTensor(inputs[1]);
 
-            shapeX.DeclareRank(2);
-            shapeY.DeclareRank(2);
+            var shapeA = A.shape;
+            var shapeB = B.shape;
 
-            var mulXDim = transposeA ? shapeX[0] : shapeX[1];
-            var mulYDim = transposeB ? shapeY[1] : shapeY[0];
+            shapeA.DeclareRank(2);
+            shapeB.DeclareRank(2);
+
+            var mulXDim = transposeA ? shapeA[0] : shapeA[1];
+            var mulYDim = transposeB ? shapeB[1] : shapeB[0];
             Logger.AssertIsFalse(mulXDim != mulYDim, "MatMul2D.ValueError: failed, dims not equal");
 
-            var shapeOut = new SymbolicTensorShape(transposeA ? shapeX[1] : shapeX[0], transposeB ? shapeY[0] : shapeY[1]);
-            return new PartialTensor(inputTensors[0].dataType, shapeOut);
+            var shapeOut = new SymbolicTensorShape(transposeA ? shapeA[1] : shapeA[0], transposeB ? shapeB[0] : shapeB[1]);
+            ctx.AddPartialTensor(index, new PartialTensor(A.dataType, shapeOut));
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(ShapeInference.Gemm(inputTensors[0].shape, inputTensors[1].shape, transposeA, transposeB));
+            var A = ctx.vars.GetTensor(inputs[0]);
+            var B = ctx.vars.GetTensor(inputs[1]);
+            var O = ctx.vars.AllocateTensorAndStore(index, ShapeInference.Gemm(A.shape, B.shape, transposeA, transposeB), DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            if (inputTensors[0].shape.HasZeroDims() || inputTensors[1].shape.HasZeroDims())
+                return;
+            if (A.shape.HasZeroDims() || B.shape.HasZeroDims())
                 ctx.backend.MemSet(O, 0.0f);
             else
-                ctx.backend.MatMul2D(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, O, transposeA, transposeB);
-            return O;
+                ctx.backend.MatMul2D(A as TensorFloat, B as TensorFloat, O, transposeA, transposeB);
         }
 
         /// <inheritdoc/>
@@ -574,7 +593,7 @@ namespace Unity.Sentis.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Serializable]
-    public class Max : Broadcast
+    class Max : Broadcast
     {
         /// <summary>
         /// Initializes and returns an instance of `Max` math operation layer.
@@ -585,16 +604,20 @@ namespace Unity.Sentis.Layers
             : base(name, inputs) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensor(TensorShapeHelper.BroadcastShape(inputTensors), inputTensors[0].dataType);
+            Tensor[] tensors = new Tensor[inputs.Length];
+            for (int i = 0; i < inputs.Length; i++)
+            {
+                tensors[i] = ctx.vars.GetTensor(inputs[i]);
+            }
+            var O = ctx.vars.AllocateTensorAndStore(index, TensorShapeHelper.BroadcastShape(tensors), ctx.vars.GetTensor(inputs[0]).dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
-                return O;
-            if (inputTensors[0] is TensorInt)
-                ctx.backend.Max(Array.ConvertAll(inputTensors, i => i as TensorInt), O as TensorInt);
+                return;
+            if (ctx.vars.GetTensor(inputs[0]) is TensorInt)
+                ctx.backend.Max(Array.ConvertAll(tensors, i => i as TensorInt), O as TensorInt);
             else
-                ctx.backend.Max(Array.ConvertAll(inputTensors, i => i as TensorFloat), O as TensorFloat);
-            return O;
+                ctx.backend.Max(Array.ConvertAll(tensors, i => i as TensorFloat), O as TensorFloat);
         }
 
         internal override string profilerTag => "Max";
@@ -606,7 +629,7 @@ namespace Unity.Sentis.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Serializable]
-    public class Mean : Broadcast
+    class Mean : Broadcast
     {
         /// <summary>
         /// Initializes and returns an instance of `Mean` math operation layer.
@@ -617,13 +640,17 @@ namespace Unity.Sentis.Layers
             : base(name, inputs) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(inputTensors));
+            TensorFloat[] tensors = new TensorFloat[inputs.Length];
+            for (int i = 0; i < inputs.Length; i++)
+            {
+                tensors[i] = ctx.vars.GetTensor(inputs[i]) as TensorFloat;
+            }
+            var O = ctx.vars.AllocateTensorAndStore(index, TensorShapeHelper.BroadcastShape(tensors), DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Mean(Array.ConvertAll(inputTensors, i => i as TensorFloat), O);
-            return O;
+                return;
+            ctx.backend.Mean(tensors, O);
         }
 
         internal override string profilerTag => "Mean";
@@ -635,7 +662,7 @@ namespace Unity.Sentis.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Serializable]
-    public class Min : Broadcast
+    class Min : Broadcast
     {
         /// <summary>
         /// Initializes and returns an instance of `Min` math operation layer.
@@ -646,16 +673,20 @@ namespace Unity.Sentis.Layers
             : base(name, inputs) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensor(TensorShapeHelper.BroadcastShape(inputTensors), inputTensors[0].dataType);
+            Tensor[] tensors = new Tensor[inputs.Length];
+            for (int i = 0; i < inputs.Length; i++)
+            {
+                tensors[i] = ctx.vars.GetTensor(inputs[i]);
+            }
+            var O = ctx.vars.AllocateTensorAndStore(index, TensorShapeHelper.BroadcastShape(tensors), ctx.vars.GetTensor(inputs[0]).dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
-                return O;
-            if (inputTensors[0] is TensorInt)
-                ctx.backend.Min(Array.ConvertAll(inputTensors, i => i as TensorInt), O as TensorInt);
+                return;
+            if (ctx.vars.GetTensor(inputs[0]) is TensorInt)
+                ctx.backend.Min(Array.ConvertAll(tensors, i => i as TensorInt), O as TensorInt);
             else
-                ctx.backend.Min(Array.ConvertAll(inputTensors, i => i as TensorFloat), O as TensorFloat);
-            return O;
+                ctx.backend.Min(Array.ConvertAll(tensors, i => i as TensorFloat), O as TensorFloat);
         }
 
         internal override string profilerTag => "Min";
@@ -671,7 +702,7 @@ namespace Unity.Sentis.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Serializable]
-    public class Mod : Broadcast
+    class Mod : Broadcast
     {
         /// <summary>
         /// Whether to have the sign of the remainder the same as that of the dividend rather than that of the divisor.
@@ -692,18 +723,27 @@ namespace Unity.Sentis.Layers
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensor(TensorShapeHelper.BroadcastShape(inputTensors[0], inputTensors[1]), inputTensors[0].dataType);
+            var A = ctx.vars.GetTensor(inputs[0]);
+            var B = ctx.vars.GetTensor(inputs[1]);
+            var O = ctx.vars.AllocateTensorAndStore(index, TensorShapeHelper.BroadcastShape(A, B), A.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
-                return O;
+                return;
             if (!fmod)
-                ctx.backend.Mod(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt, O as TensorInt);
-            else if (inputTensors[0] is TensorInt)
-                ctx.backend.FMod(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt, O as TensorInt);
+            {
+                if (A is TensorInt)
+                    ctx.backend.Mod(A as TensorInt, B as TensorInt, O as TensorInt);
+                else
+                    ctx.backend.Mod(A as TensorFloat, B as TensorFloat, O as TensorFloat);
+            }
             else
-                ctx.backend.FMod(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, O as TensorFloat);
-            return O;
+            {
+                if (A is TensorInt)
+                    ctx.backend.FMod(A as TensorInt, B as TensorInt, O as TensorInt);
+                else
+                    ctx.backend.FMod(A as TensorFloat, B as TensorFloat, O as TensorFloat);
+            }
         }
 
         /// <inheritdoc/>
@@ -721,7 +761,7 @@ namespace Unity.Sentis.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Serializable]
-    public class Mul : Broadcast
+    class Mul : Broadcast
     {
         /// <summary>
         /// Initializes and returns an instance of `Mul` math operation layer.
@@ -736,16 +776,17 @@ namespace Unity.Sentis.Layers
         internal override Func<PartialTensorElement, PartialTensorElement, PartialTensorElement> InferPartialOp => (a, b) => a * b;
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensor(TensorShapeHelper.BroadcastShape(inputTensors[0], inputTensors[1]), inputTensors[0].dataType);
+            var A = ctx.vars.GetTensor(inputs[0]);
+            var B = ctx.vars.GetTensor(inputs[1]);
+            var O = ctx.vars.AllocateTensorAndStore(index, TensorShapeHelper.BroadcastShape(A, B), A.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
-                return O;
-            if (inputTensors[0] is TensorInt)
-                ctx.backend.Mul(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt, O as TensorInt);
+                return;
+            if (A is TensorInt)
+                ctx.backend.Mul(A as TensorInt, B as TensorInt, O as TensorInt);
             else
-                ctx.backend.Mul(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, O as TensorFloat);
-            return O;
+                ctx.backend.Mul(A as TensorFloat, B as TensorFloat, O as TensorFloat);
         }
 
         internal override string profilerTag => "Mul";
@@ -755,7 +796,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Neg` math layer: f(x) = -x.
     /// </summary>
     [Serializable]
-    public class Neg : Activation
+    class Neg : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Neg` math layer.
@@ -766,16 +807,16 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape, inputTensors[0].dataType);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
-                return O;
-            if (inputTensors[0] is TensorInt)
-                ctx.backend.Neg(inputTensors[0] as TensorInt, O as TensorInt);
+                return;
+            if (X is TensorInt)
+                ctx.backend.Neg(X as TensorInt, O as TensorInt);
             else
-                ctx.backend.Neg(inputTensors[0] as TensorFloat, O as TensorFloat);
-            return O;
+                ctx.backend.Neg(X as TensorFloat, O as TensorFloat);
         }
 
         internal override string profilerTag => "Neg";
@@ -787,7 +828,7 @@ namespace Unity.Sentis.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Serializable]
-    public class Pow : Broadcast
+    class Pow : Broadcast
     {
         /// <summary>
         /// Initializes and returns an instance of `Pow` math operation layer.
@@ -799,16 +840,17 @@ namespace Unity.Sentis.Layers
             : base(name, a, b) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(inputTensors[0], inputTensors[1]));
+            var A = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var B = ctx.vars.GetTensor(inputs[1]);
+            var O = ctx.vars.AllocateTensorAndStore(index, TensorShapeHelper.BroadcastShape(A, B), DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            if (inputTensors[1] is TensorInt)
-                ctx.backend.Pow(inputTensors[0] as TensorFloat, inputTensors[1] as TensorInt, O);
+                return;
+            if (B is TensorInt)
+                ctx.backend.Pow(A, B as TensorInt, O);
             else
-                ctx.backend.Pow(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, O);
-            return O;
+                ctx.backend.Pow(A, B as TensorFloat, O);
         }
 
         internal override string profilerTag => "Pow";
@@ -818,7 +860,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Reciprocal` math layer: f(x) = 1 / x.
     /// </summary>
     [Serializable]
-    public class Reciprocal : Activation
+    class Reciprocal : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Reciprocal` math layer.
@@ -829,13 +871,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Reciprocal(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Reciprocal(X as TensorFloat, O);
         }
 
         internal override string profilerTag => "Reciprocal";
@@ -845,7 +887,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Round` math layer: f(x) = round(x).
     /// </summary>
     [Serializable]
-    public class Round : Activation
+    class Round : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Round` math layer.
@@ -856,13 +898,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Round(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Round(X as TensorFloat, O);
         }
 
         internal override string profilerTag => "Round";
@@ -872,19 +914,31 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Mad` math operation: multiplies and adds bias to a tensor: f(T, s, b) = s * T + b.
     /// </summary>
     [Serializable]
-    public class ScalarMad : Activation
+    class ScalarMad : Activation
     {
         /// <summary>
-        /// Input scalar for multiplication.
+        /// Whether to do int or float scalar operation.
         /// </summary>
-        public float s;
+        public DataType dataType;
         /// <summary>
-        /// Input bias for addition.
+        /// Input float scalar for multiplication.
         /// </summary>
-        public float b;
+        public float sFloat;
+        /// <summary>
+        /// Input float bias for addition.
+        /// </summary>
+        public float bFloat;
+        /// <summary>
+        /// Input int scalar for multiplication.
+        /// </summary>
+        public int sInt;
+        /// <summary>
+        /// Input int bias for addition.
+        /// </summary>
+        public int bInt;
 
         /// <summary>
-        /// Initializes and returns an instance of `ScalarMad` math layer.
+        /// Initializes and returns an instance of `ScalarMad` math layer with float scale and bias.
         /// </summary>
         /// <param name="name">The name to use for the output tensor of the layer.</param>
         /// <param name="input">The name to use for the input tensor of the layer.</param>
@@ -893,24 +947,43 @@ namespace Unity.Sentis.Layers
         public ScalarMad(string name, string input, float s, float b)
             : base(name, input)
         {
-            this.s = s;
-            this.b = b;
+            dataType = DataType.Float;
+            sFloat = s;
+            bFloat = b;
+        }
+
+        /// <summary>
+        /// Initializes and returns an instance of `ScalarMad` math layer with int scale and bias.
+        /// </summary>
+        /// <param name="name">The name to use for the output tensor of the layer.</param>
+        /// <param name="input">The name to use for the input tensor of the layer.</param>
+        /// <param name="s">The value of the scale for the scalarmad function.</param>
+        /// <param name="b">The value of the bias for the scalarmad function.</param>
+        public ScalarMad(string name, string input, int s, int b)
+            : base(name, input)
+        {
+            dataType = DataType.Int;
+            sInt = s;
+            bInt = b;
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.ScalarMad(inputTensors[0] as TensorFloat, O, s, b);
-            return O;
+                return;
+            if (dataType == DataType.Float)
+                ctx.backend.ScalarMad(X as TensorFloat, O as TensorFloat, sFloat, bFloat);
+            else
+                ctx.backend.ScalarMad(X as TensorInt, O as TensorInt, sInt, bInt);
         }
 
         /// <inheritdoc/>
         public override string ToString()
         {
-            return $"{base.ToString()}, s: {s}, b: {b}";
+            return dataType == DataType.Float ? $"{base.ToString()}, sFloat: {sFloat}, bFloat: {bFloat}" : $"{base.ToString()}, sInt: {sInt}, bInt: {bInt}";
         }
 
         internal override string profilerTag => "ScalarMad";
@@ -920,7 +993,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Shrink` math layer: f(x) = x + bias if x &lt; lambd. f(x) = x - bias if x &gt; lambd. Otherwise f(x) = 0.
     /// </summary>
     [Serializable]
-    public class Shrink : Layer
+    class Shrink : Layer
     {
         /// <summary>
         /// The value of the bias for the shrink function.
@@ -940,26 +1013,27 @@ namespace Unity.Sentis.Layers
         /// <param name="lambd">The value of lambda for the shrink function.</param>
         public Shrink(string name, string input, float bias, float lambd)
         {
-            this.name = name;
+            this.index = name;
             inputs = new[] { input };
             this.bias = bias;
             this.lambd = lambd;
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            return new PartialTensor(inputTensors[0].dataType, inputTensors[0].shape);
+            var X = ctx.GetPartialTensor(inputs[0]);
+            ctx.AddPartialTensor(index, new PartialTensor(X.dataType, X.shape));
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Shrink(inputTensors[0] as TensorFloat, O, bias, lambd);
-            return O;
+                return;
+            ctx.backend.Shrink(X as TensorFloat, O, bias, lambd);
         }
 
         /// <inheritdoc/>
@@ -975,7 +1049,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Sign` math layer: f(x) = 1 if x > 0. f(x) = -1 if x &lt; 0. Otherwise f(x) = 0.
     /// </summary>
     [Serializable]
-    public class Sign : Layer
+    class Sign : Layer
     {
         /// <summary>
         /// Initializes and returns an instance of `Sign` math layer.
@@ -984,27 +1058,28 @@ namespace Unity.Sentis.Layers
         /// <param name="input">The name to use for the input tensor of the layer.</param>
         public Sign(string name, string input)
         {
-            this.name = name;
+            this.index = name;
             this.inputs = new[] { input };
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            return new PartialTensor(inputTensors[0].dataType, inputTensors[0].shape);
+            var X = ctx.GetPartialTensor(inputs[0]);
+            ctx.AddPartialTensor(index, new PartialTensor(X.dataType, X.shape));
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensor(inputTensors[0].shape, inputTensors[0].dataType);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
-                return O;
-            if (inputTensors[0] is TensorInt)
-                ctx.backend.Sign(inputTensors[0] as TensorInt, O as TensorInt);
+                return;
+            if (X is TensorInt)
+                ctx.backend.Sign(X as TensorInt, O as TensorInt);
             else
-                ctx.backend.Sign(inputTensors[0] as TensorFloat, O as TensorFloat);
-            return O;
+                ctx.backend.Sign(X as TensorFloat, O as TensorFloat);
         }
 
         internal override string profilerTag => "Sign";
@@ -1014,7 +1089,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Sqrt` math layer: f(x) = sqrt(x).
     /// </summary>
     [Serializable]
-    public class Sqrt : Activation
+    class Sqrt : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Sqrt` math layer.
@@ -1025,13 +1100,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Sqrt(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Sqrt(X as TensorFloat, O);
         }
 
         internal override string profilerTag => "Sqrt";
@@ -1041,7 +1116,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Square` math layer: f(x) = x * x.
     /// </summary>
     [Serializable]
-    public class Square : Activation
+    class Square : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Square` math layer.
@@ -1052,13 +1127,16 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Square(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            if (X is TensorInt)
+                ctx.backend.Square(X as TensorInt, O as TensorInt);
+            else
+                ctx.backend.Square(X as TensorFloat, O as TensorFloat);
         }
 
         internal override string profilerTag => "Square";
@@ -1070,7 +1148,7 @@ namespace Unity.Sentis.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Serializable]
-    public class Sub : Broadcast
+    class Sub : Broadcast
     {
         /// <summary>
         /// Initializes and returns an instance of `Sub` math operation layer.
@@ -1085,16 +1163,17 @@ namespace Unity.Sentis.Layers
         internal override Func<PartialTensorElement, PartialTensorElement, PartialTensorElement> InferPartialOp => (a, b) => a - b;
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensor(TensorShapeHelper.BroadcastShape(inputTensors[0], inputTensors[1]), inputTensors[0].dataType);
+            var A = ctx.vars.GetTensor(inputs[0]);
+            var B = ctx.vars.GetTensor(inputs[1]);
+            var O = ctx.vars.AllocateTensorAndStore(index, TensorShapeHelper.BroadcastShape(A, B), A.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
-                return O;
-            if (inputTensors[0] is TensorInt)
-                ctx.backend.Sub(inputTensors[0] as TensorInt, inputTensors[1] as TensorInt, O as TensorInt);
+                return;
+            if (A is TensorInt)
+                ctx.backend.Sub(A as TensorInt, B as TensorInt, O as TensorInt);
             else
-                ctx.backend.Sub(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, O as TensorFloat);
-            return O;
+                ctx.backend.Sub(A as TensorFloat, B as TensorFloat, O as TensorFloat);
         }
 
         internal override string profilerTag => "Sub";
@@ -1106,7 +1185,7 @@ namespace Unity.Sentis.Layers
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     [Serializable]
-    public class Sum : Broadcast
+    class Sum : Broadcast
     {
         /// <summary>
         /// Initializes and returns an instance of `Sum` math operation layer.
@@ -1117,13 +1196,17 @@ namespace Unity.Sentis.Layers
             : base(name, inputs) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(TensorShapeHelper.BroadcastShape(inputTensors));
+            TensorFloat[] tensors = new TensorFloat[inputs.Length];
+            for (int i = 0; i < inputs.Length; i++)
+            {
+                tensors[i] = ctx.vars.GetTensor(inputs[i]) as TensorFloat;
+            }
+            var O = ctx.vars.AllocateTensorAndStore(index, TensorShapeHelper.BroadcastShape(tensors), DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Sum(Array.ConvertAll(inputTensors, i => i as TensorFloat), O);
-            return O;
+                return;
+            ctx.backend.Sum(tensors, O);
         }
 
         internal override string profilerTag => "Sum";

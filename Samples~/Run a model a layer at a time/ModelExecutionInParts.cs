@@ -18,16 +18,16 @@ public class ModelExecutionInParts : MonoBehaviour
     {
         var model = ModelLoader.Load(modelAsset);
         m_Engine = WorkerFactory.CreateWorker(BackendType.GPUCompute, model);
-        m_Input = TensorFloat.Zeros(new TensorShape(1024));
+        m_Input = TensorFloat.AllocZeros(new TensorShape(1024));
     }
 
     void Update()
     {
         if (!m_Started)
         {
-            // StartManualSchedule starts the scheduling of the model
+            // ExecuteLayerByLayer starts the scheduling of the model
             // it returns a IEnumerator to iterate over the model layers, scheduling each layer sequentially
-            m_Schedule = m_Engine.StartManualSchedule(m_Input);
+            m_Schedule = m_Engine.ExecuteLayerByLayer(m_Input);
             m_Started = true;
         }
 
@@ -38,8 +38,8 @@ public class ModelExecutionInParts : MonoBehaviour
                 return;
         }
 
-        var outputTensor = m_Engine.PeekOutput() as TensorFloat;
-        outputTensor.MakeReadable();
+        var outputTensor = m_Engine.PeekOutput();
+        outputTensor.CompleteOperationsAndDownload();
 
         // Data is now ready to read.
         // See async examples for non-blocking readback.

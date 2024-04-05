@@ -123,6 +123,7 @@ namespace Unity.Sentis
         int m_DimAxis;
         int m_DimAxisDiv4;
         int m_StrideAxis;
+        int[] m_BlockedAxisDiv4RemainderMask;
 
         /// <summary>
         /// Returns the backing texture storing the tensor data.
@@ -166,6 +167,11 @@ namespace Unity.Sentis
         /// </summary>
         public int dimAxisDiv4 => m_DimAxisDiv4;
         /// <summary>
+        /// A 4 int mask with 1 or 0 in each component to indicate whether the last blocked slice along the blocked axis has a valid entry or not.
+        /// eg. if dimAxis % 4 = ceil(dimAxis/4)*4 - dimAxis = 3, blockedAxisDiv4RemainderMask = {1, 1, 1, 0};
+        /// </summary>
+        public int[] blockedAxisDiv4RemainderMask => m_BlockedAxisDiv4RemainderMask;
+        /// <summary>
         /// The size of the stride of the blocked axis.
         /// </summary>
         public int strideAxis => m_StrideAxis;
@@ -188,6 +194,7 @@ namespace Unity.Sentis
         /// <param name="clearOnInit">Whether to zero the data on allocation. The default value is `false`.</param>
         public TextureTensorData(DataType dataType, TensorShape shape, int axis, bool clearOnInit = false)
         {
+            m_BlockedAxisDiv4RemainderMask = new int[4];
             m_DataType = dataType;
             SetShape(shape, axis);
             var numPixels = m_BlockedShape.length;
@@ -219,12 +226,26 @@ namespace Unity.Sentis
                 m_StrideAxis = newShape.Strides(newBlockedAxis);
                 m_DimAxisDiv4 = ComputeHelper.IDivC(m_DimAxis, 4);
                 m_BlockedShape[newBlockedAxis] = m_DimAxisDiv4;
+                int remainder = m_DimAxisDiv4 * 4 - m_DimAxis;
+                int leadingOneCount = 4 - remainder;
+                for (var i = 0; i < leadingOneCount; i++)
+                {
+                    m_BlockedAxisDiv4RemainderMask[i] = 1;
+                }
+                for (var i = leadingOneCount; i < 4; i++)
+                {
+                    m_BlockedAxisDiv4RemainderMask[i] = 0;
+                }
             }
             else
             {
                 m_DimAxis = 1;
                 m_StrideAxis = newShape.length;
                 m_DimAxisDiv4 = 1;
+                m_BlockedAxisDiv4RemainderMask[0]
+                    = m_BlockedAxisDiv4RemainderMask[1]
+                    = m_BlockedAxisDiv4RemainderMask[2]
+                    = m_BlockedAxisDiv4RemainderMask[3] = 1;
             }
         }
 
@@ -296,13 +317,6 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Reserve(int count)
-        {
-            if (count > maxCapacity)
-                throw new ArgumentException("TextureTensorData buffer is too small to reserve " + count + " elements.");
-        }
-
-        /// <inheritdoc/>
         public bool IsReadbackRequestDone()
         {
             return true;
@@ -361,7 +375,7 @@ namespace Unity.Sentis
                         break;
                     }
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(dataType), dataType, null);
+                        throw new NotImplementedException();
                 }
             }
 
@@ -384,7 +398,7 @@ namespace Unity.Sentis
         {
             var count = shape.length;
 
-            Profiler.BeginSample("Sentis.TextureTensorData.DownloadDataFromGPU");
+            ProfilerMarkers.TextureTensorDataDownload.Begin();
             Assert.IsTrue(maxCapacity >= count);
 
             var linearRenderTexture = bufferAsTexture;
@@ -436,13 +450,13 @@ namespace Unity.Sentis
                         break;
                     }
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(dataType), dataType, null);
+                        throw new NotImplementedException();
                 }
             }
 
             RenderTexture.active = previousActiveRT;
 
-            Profiler.EndSample();
+            ProfilerMarkers.TextureTensorDataDownload.End();
             return data;
         }
 
@@ -455,18 +469,19 @@ namespace Unity.Sentis
         /// <returns>The pinned `TextureTensorData`.</returns>
         public static TextureTensorData Pin(Tensor X, int blockAxis, bool clearOnInit = false)
         {
-            var onDevice = X.tensorOnDevice;
+            Assert.IsTrue(X.dataType == DataType.Float || X.dataType == DataType.Int, "Unsupported DataType");
+            var onDevice = X.dataOnBackend;
             if (onDevice == null)
             {
                 X.AttachToDevice(new TextureTensorData(X.dataType, X.shape, blockAxis, clearOnInit));
-                return X.tensorOnDevice as TextureTensorData;
+                return X.dataOnBackend as TextureTensorData;
             }
 
             if (onDevice is TextureTensorData textureTensorData)
             {
                 var newTextureTensorData = textureTensorData.SwitchBlockedLayout(X.shape, blockAxis);
                 X.AttachToDevice(newTextureTensorData);
-                return X.tensorOnDevice as TextureTensorData;
+                return X.dataOnBackend as TextureTensorData;
             }
 
             // TODO as IConvertibleToTextureTensorData
@@ -474,7 +489,7 @@ namespace Unity.Sentis
             //else
             X.UploadToDevice(new TextureTensorData(X.dataType, X.shape, blockAxis, clearOnInit: false)); // device is not compatible, create new array and upload
 
-            return X.tensorOnDevice as TextureTensorData;
+            return X.dataOnBackend as TextureTensorData;
         }
 
         /// <summary>
@@ -504,7 +519,7 @@ namespace Unity.Sentis
         public int maxCapacity => shape.length;
 
         /// <inheritdoc/>
-        public DeviceType deviceType => DeviceType.GPU;
+        public BackendType backendType => BackendType.GPUPixel;
 
         /// <summary>
         /// Returns a string that represents the `TextureTensorData`.

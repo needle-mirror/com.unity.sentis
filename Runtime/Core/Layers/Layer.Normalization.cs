@@ -7,7 +7,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `ScaleBias` normalization layer: f(x, s, b) = x * s + b.
     /// </summary>
     [Serializable]
-    public class ScaleBias : Layer
+    class ScaleBias : Layer
     {
         /// <summary>
         /// Initializes and returns an instance of `ScaleBias` normalization layer.
@@ -18,40 +18,46 @@ namespace Unity.Sentis.Layers
         /// <param name="bias">The name to use for the bias tensor of the layer.</param>
         public ScaleBias(string name, string input, string scale, string bias)
         {
-            this.name = name;
+            this.index = name;
             inputs = new[] { input, scale, bias };
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            var dataType = inputTensors[0].dataType;
-            var shapeX = inputTensors[0].shape;
-            var shapeScale = inputTensors[1].shape;
-            var shapeBias = inputTensors[2].shape;
+            var X = ctx.GetPartialTensor(inputs[0]);
+            var scale = ctx.GetPartialTensor(inputs[1]);
+            var bias = ctx.GetPartialTensor(inputs[2]);
+            var dataType = X.dataType;
+            var shapeX = X.shape;
+            var shapeScale = scale.shape;
+            var shapeBias = bias.shape;
             var c = SymbolicTensorDim.Unknown;
             shapeScale.DeclareRank(1);
             c = SymbolicTensorDim.MaxDefinedDim(c, shapeScale[0]);
             shapeBias.DeclareRank(1);
             c = SymbolicTensorDim.MaxDefinedDim(c, shapeBias[0]);
             if (!shapeX.hasRank)
-                return new PartialTensor(dataType);
+            {
+                ctx.AddPartialTensor(index, new PartialTensor(dataType));
+                return;
+            }
 
             Logger.AssertIsTrue(shapeX.hasRank ? shapeX.rank >= 2 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", 2, shapeX.rank);
 
             var shapeOut = new SymbolicTensorShape(shapeX);
             shapeOut[1] = SymbolicTensorDim.MaxDefinedDim(shapeOut[1], c);
-            return new PartialTensor(dataType, shapeOut);
+            ctx.AddPartialTensor(index, new PartialTensor(dataType, shapeOut));
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.ScaleBias(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.ScaleBias(X as TensorFloat, ctx.vars.GetTensor(inputs[1]) as TensorFloat, ctx.vars.GetTensor(inputs[2]) as TensorFloat, O);
         }
 
         internal override string profilerTag => "ScaleBias";
@@ -61,7 +67,7 @@ namespace Unity.Sentis.Layers
     /// Represents an `InstanceNormalization` normalization layer. This computes the mean variance on the spatial dims of the input tensor and normalizes them according to `scale` and `bias` tensors.
     /// </summary>
     [Serializable]
-    public class InstanceNormalization : Layer
+    class InstanceNormalization : Layer
     {
         /// <summary>
         /// The epsilon value the layer uses to avoid division by zero.
@@ -78,7 +84,7 @@ namespace Unity.Sentis.Layers
         /// <param name="epsilon">The epsilon value the layer uses to avoid division by zero. The default value is 1e-5f.</param>
         public InstanceNormalization(string name, string input, string scale, string bias, float epsilon = 1e-5f)
         {
-            this.name = name;
+            this.index = name;
             inputs = new[] { input, scale, bias };
             if (epsilon == 0)
                 epsilon = Mathf.Epsilon; // safety check to prevent division by zero
@@ -86,38 +92,42 @@ namespace Unity.Sentis.Layers
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            var dataType = inputTensors[0].dataType;
-            var shapeX = inputTensors[0].shape;
-            var shapeScale = inputTensors[1].shape;
-            var shapeBias = inputTensors[2].shape;
+            var X = ctx.GetPartialTensor(inputs[0]);
+            var scale = ctx.GetPartialTensor(inputs[1]);
+            var bias = ctx.GetPartialTensor(inputs[2]);
+            var dataType = X.dataType;
+            var shapeX = X.shape;
+            var shapeScale = scale.shape;
+            var shapeBias = bias.shape;
             var c = SymbolicTensorDim.Unknown;
             shapeScale.DeclareRank(1);
             c = SymbolicTensorDim.MaxDefinedDim(c, shapeScale[0]);
             shapeBias.DeclareRank(1);
             c = SymbolicTensorDim.MaxDefinedDim(c, shapeBias[0]);
             if (!shapeX.hasRank)
-                return new PartialTensor(dataType);
+            {
+                ctx.AddPartialTensor(index, new PartialTensor(dataType));
+                return;
+            }
 
             Logger.AssertIsTrue(shapeX.hasRank ? shapeX.rank >= 2 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", 2, shapeX.rank);
             shapeScale.DeclareRank(1);
 
             var shapeOut = new SymbolicTensorShape(shapeX);
             shapeOut[1] = SymbolicTensorDim.MaxDefinedDim(shapeOut[1], c);
-            return new PartialTensor(dataType, shapeOut);
+            ctx.AddPartialTensor(index, new PartialTensor(dataType, shapeOut));
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            // @TODO: support other types of Normalization at test time.
-            // Currently supported only pool=1 (InstanceNormalization)
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.InstanceNormalization(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat, O, epsilon);
-            return O;
+                return;
+            ctx.backend.InstanceNormalization(X as TensorFloat, ctx.vars.GetTensor(inputs[1]) as TensorFloat, ctx.vars.GetTensor(inputs[2]) as TensorFloat, O, epsilon);
         }
 
         /// <inheritdoc/>
@@ -126,14 +136,14 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, epsilon: {epsilon}";
         }
 
-        internal override string profilerTag => "Normalization";
+        internal override string profilerTag => "InstanceNormalization";
     }
 
     /// <summary>
     /// Represents an `LayerNormalization` normalization layer. This computes the mean variance on the last dimension of the input tensor and normalizes it according to `scale` and `bias` tensors.
     /// </summary>
     [Serializable]
-    public class LayerNormalization : Layer
+    class LayerNormalization : Layer
     {
         /// <summary>
         /// The epsilon value the layer uses to avoid division by zero.
@@ -150,7 +160,7 @@ namespace Unity.Sentis.Layers
         /// <param name="epsilon">The epsilon value the layer uses to avoid division by zero. The default value is 1e-5f.</param>
         public LayerNormalization(string name, string input, string scale, string bias, float epsilon = 1e-5f)
         {
-            this.name = name;
+            this.index = name;
             inputs = new[] { input, scale, bias };
 
             if (epsilon == 0)
@@ -159,33 +169,40 @@ namespace Unity.Sentis.Layers
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            var shapeX = inputTensors[0].shape;
+            var X = ctx.GetPartialTensor(inputs[0]);
+            var scale = ctx.GetPartialTensor(inputs[1]);
+            var bias = ctx.GetPartialTensor(inputs[2]);
+            var dataType = X.dataType;
+            var shapeX = X.shape;
+            var shapeScale = scale.shape;
+            var shapeBias = bias.shape;
 
             if (!shapeX.hasRank)
-                return new PartialTensor(inputTensors[0].dataType, SymbolicTensorShape.UnknownShape);
+            {
+                ctx.AddPartialTensor(index, new PartialTensor(dataType, SymbolicTensorShape.UnknownShape));
+                return;
+            }
 
             Logger.AssertIsTrue(shapeX.rank >= 1, "RankError: incorrect rank, expecting at least {0}, got {1}", 1, shapeX.rank);
 
-            var shapeScale = inputTensors[1].shape;
-            var shapeBias = inputTensors[2].shape;
             shapeScale.DeclareRank(1);
             shapeBias.DeclareRank(1);
 
             var shape = new SymbolicTensorShape(shapeX);
             shape[-1] = SymbolicTensorDim.MaxDefinedDim(shape[-1], SymbolicTensorDim.MaxDefinedDim(shapeScale[0], shapeBias[0]));
-            return new PartialTensor(inputTensors[0].dataType, shape);
+            ctx.AddPartialTensor(index, new PartialTensor(dataType, shape));
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.LayerNormalization(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat, O, epsilon);
-            return O;
+                return;
+            ctx.backend.LayerNormalization(X as TensorFloat, ctx.vars.GetTensor(inputs[1]) as TensorFloat, ctx.vars.GetTensor(inputs[2]) as TensorFloat, O, epsilon);
         }
 
         /// <inheritdoc/>
@@ -201,7 +218,7 @@ namespace Unity.Sentis.Layers
     /// Represents an `BatchNormalization` normalization layer. This computes the mean variance on the second dimension of the input tensor and normalizes it according to `scale` and `bias` tensors.
     /// </summary>
     [Serializable]
-    public class BatchNormalization : Layer
+    class BatchNormalization : Layer
     {
         /// <summary>
         /// The epsilon value the layer uses to avoid division by zero.
@@ -220,22 +237,34 @@ namespace Unity.Sentis.Layers
         /// <param name="epsilon">The epsilon value the layer uses to avoid division by zero. The default value is 1e-5f.</param>
         public BatchNormalization(string name, string input, string scale, string bias, string mean, string variance, float epsilon = 1e-5f)
         {
-            this.name = name;
+            this.index = name;
             inputs = new[] { input, scale, bias, mean, variance };
             this.epsilon = epsilon;
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            var shapeX = inputTensors[0].shape;
+            var X = ctx.GetPartialTensor(inputs[0]);
+            var scale = ctx.GetPartialTensor(inputs[1]);
+            var bias = ctx.GetPartialTensor(inputs[2]);
+            var mean = ctx.GetPartialTensor(inputs[3]);
+            var var = ctx.GetPartialTensor(inputs[4]);
+            var dataType = X.dataType;
+            var shapeX = X.shape;
+            var shapeScale = scale.shape;
+            var shapeBias = bias.shape;
+            var shapeMean = mean.shape;
+            var shapeVar = var.shape;
 
             if (!shapeX.hasRank)
-                return new PartialTensor(inputTensors[0].dataType, SymbolicTensorShape.UnknownShape);
+            {
+                ctx.AddPartialTensor(index, new PartialTensor(dataType, SymbolicTensorShape.UnknownShape));
+                return;
+            }
 
             Logger.AssertIsTrue(shapeX.rank >= 1, "RankError: incorrect rank, expecting at least {0}, got {1}", 1, shapeX.rank);
 
-            SymbolicTensorShape shapeScale = inputTensors[1].shape, shapeBias = inputTensors[2].shape, shapeMean = inputTensors[3].shape, shapeVar = inputTensors[4].shape;
             shapeScale.DeclareRank(1);
             shapeBias.DeclareRank(1);
             shapeMean.DeclareRank(1);
@@ -244,17 +273,17 @@ namespace Unity.Sentis.Layers
             var shape = new SymbolicTensorShape(shapeX);
             if (shapeX.rank > 1)
                 shape[1] = SymbolicTensorDim.MaxDefinedDim(shape[1], SymbolicTensorDim.MaxDefinedDim(shapeScale[0], SymbolicTensorDim.MaxDefinedDim(shapeBias[0], SymbolicTensorDim.MaxDefinedDim(shapeMean[0], shapeVar[0]))));
-            return new PartialTensor(inputTensors[0].dataType, shape);
+            ctx.AddPartialTensor(index, new PartialTensor(dataType, shape));
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.BatchNormalization(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, inputTensors[2] as TensorFloat, inputTensors[3] as TensorFloat, inputTensors[4] as TensorFloat, O, epsilon);
-            return O;
+                return;
+            ctx.backend.BatchNormalization(X as TensorFloat, ctx.vars.GetTensor(inputs[1]) as TensorFloat, ctx.vars.GetTensor(inputs[2]) as TensorFloat, ctx.vars.GetTensor(inputs[3]) as TensorFloat, ctx.vars.GetTensor(inputs[4]) as TensorFloat, O, epsilon);
         }
 
         /// <inheritdoc/>
@@ -270,7 +299,7 @@ namespace Unity.Sentis.Layers
     /// Represents an `LRN` local response normalization layer. This normalizes the input tensor over local input regions.
     /// </summary>
     [Serializable]
-    public class LRN : Layer
+    class LRN : Layer
     {
         /// <summary>
         /// The scaling parameter to use for the normalization.
@@ -300,7 +329,7 @@ namespace Unity.Sentis.Layers
         /// <param name="count">The number of channels to sum over.</param>
         public LRN(string name, string input, float alpha, float beta, float bias, int count)
         {
-            this.name = name;
+            this.index = name;
             inputs = new[] { input };
             this.alpha = alpha;
             this.beta = beta;
@@ -309,23 +338,53 @@ namespace Unity.Sentis.Layers
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            var shapeX = inputTensors[0].shape;
-            Logger.AssertIsTrue(shapeX.hasRank ? shapeX.rank >= 2 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", 2, shapeX.rank);
+            var X = ctx.GetPartialTensor(inputs[0]);
+            Logger.AssertIsTrue(X.shape.hasRank ? X.shape.rank >= 2 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", 2, X.shape.rank);
 
-            return new PartialTensor(inputTensors[0].dataType, shapeX);
+            ctx.AddPartialTensor(index, new PartialTensor(X.dataType, X.shape));
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
             Logger.AssertIsFalse(ctx.backend is GPUCommandBufferBackend, "BackendTypeError: GPUCommandBuffer is not supported on the LRN layer");
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, X.dataType, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.LRN(inputTensors[0] as TensorFloat, O, alpha, beta, bias, count);
-            return O;
+                return;
+
+            // https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf
+            // However divide the sum by size to follow onnx and pytorch implementation
+            // ONNX https://github.com/onnx/onnx/blob/master/docs/Operators.md#LRN
+            // PYTORCH https://github.com/pytorch/pytorch/blob/1465970a343e61f2f2b104859ca7f5d7e03f5d02/torch/nn/functional.py#L2069
+            // Tensorflow don't and follow the paper to the letter https://github.com/tensorflow/tensorflow/blob/e6faa845c51bb69465146d93646947fd2ba53efa/tensorflow/python/kernel_tests/lrn_op_test.py#L53
+            // However they bake the division to alpha when exporting to ONNX https://github.com/onnx/tensorflow-onnx/blob/7c37ccb97e0fd478ce093910c4a1411b18e44fd7/tf2onnx/onnx_opset/math.py
+
+            BurstTensorData.Pin(X);
+            BurstTensorData.Pin(O);
+
+            float sizef = count;
+
+            var itRemap = new TensorNDIterator(O.shape);
+            for (var it = new TensorNDIterator(O.shape); it.HasNext(); it.MoveNext())
+            {
+                int c = it[1];
+                float regionCenter = (sizef - 1.0f) / 2.0f;
+                int regionStart = Math.Max(0, c - (int)Mathf.Floor(regionCenter));
+                int regionEnd = Math.Min(X.shape[1], c + (int)Mathf.Ceil(regionCenter) + 1);
+                float sumOfSquared = 0.0f;
+                for (int ci = regionStart; ci < regionEnd; ++ci)
+                {
+                    itRemap.CopyNDIndex(it);
+                    itRemap[1] = ci;
+                    float regionValue = X[itRemap.index];
+                    sumOfSquared += regionValue * regionValue;
+                }
+
+                O[it.index] = X[it.index] / Mathf.Pow(bias + alpha * sumOfSquared / sizef, beta);
+            }
         }
 
         /// <inheritdoc/>

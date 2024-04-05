@@ -29,6 +29,7 @@ uint dilationWidth;
 uint inputChannelsSize;
 uint outputChannelsSize;
 uint kernelChannelSize;
+uint kernelLength;
 
 uint inputSize;
 uint outputSize;
@@ -107,35 +108,59 @@ void Conv2D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_Group
         {
             uint oy = baseOutputY * K + outerK + groupThreadID.x;
             {
-                wLoad_y0 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y0 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y1 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y1 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y2 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y2 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y3 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y3 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y4 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y4 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y5 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y5 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y6 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y6 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y7 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y7 = wVal;
                 oy += kyyStride;
             }
         }
@@ -463,35 +488,59 @@ void Conv2D_1x1(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_Group
         {
             uint oy = baseOutputY * K + outerK + groupThreadID.x;
             {
-                wLoad_y0 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y0 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y1 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y1 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y2 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y2 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y3 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y3 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y4 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y4 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y5 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y5 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y6 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y6 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y7 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y7 = wVal;
                 oy += kyyStride;
             }
         }
@@ -805,35 +854,59 @@ void Conv1D_KxK(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_Group
         {
             uint oy = baseOutputY * K + outerK + groupThreadID.x;
             {
-                wLoad_y0 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y0 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y1 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y1 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y2 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y2 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y3 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y3 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y4 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y4 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y5 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y5 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y6 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y6 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y7 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y7 = wVal;
                 oy += kyyStride;
             }
         }
@@ -1149,35 +1222,59 @@ void Conv1D_1x1(uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_Group
         {
             uint oy = baseOutputY * K + outerK + groupThreadID.x;
             {
-                wLoad_y0 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y0 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y1 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y1 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y2 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y2 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y3 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y3 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y4 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y4 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y5 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y5 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y6 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y6 = wVal;
                 oy += kyyStride;
             }
             {
-                wLoad_y7 = Wptr[oy];
+                float wVal = 0.0f;
+                if (oy < kernelLength)
+                    wVal = Wptr[oy];
+                wLoad_y7 = wVal;
                 oy += kyyStride;
             }
         }

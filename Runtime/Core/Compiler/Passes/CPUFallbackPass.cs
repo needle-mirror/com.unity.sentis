@@ -56,7 +56,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             {
                 var layer = model.layers[layerIndex];
 
-                if (!layersOnCPU.Contains(layer.name))
+                if (!layersOnCPU.Contains(layer.index))
                     continue;
 
                 NoDataDependencyInputs attribute = (NoDataDependencyInputs)Attribute.GetCustomAttribute(layer.GetType(), typeof(NoDataDependencyInputs));
@@ -89,7 +89,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             // ONNX-Bad: replace gather with int[] and not tensor
             Dictionary<string, Layers.Constant> constants = new Dictionary<string, Layers.Constant>();
             foreach (var c in model.constants)
-                constants[c.name] = c;
+                constants[c.index] = c;
 
             // Algorithm:
             // if layer is on cpu :
@@ -100,7 +100,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             Dictionary<string, string> remapConstants = new Dictionary<string, string>();
             foreach (var layer in model.layers)
             {
-                if (layersOnCPU.Contains(layer.name))
+                if (layersOnCPU.Contains(layer.index))
                     continue;
 
                 // layer not on cpu, check if input that is supposed to be on gpu is a constant on the cpu
@@ -119,16 +119,16 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     if (!(constants.ContainsKey(input) && layersOnCPU.Contains(input)))
                         continue;
 
-                    if (remapConstants.TryGetValue(input, out string newName))
+                    if (remapConstants.TryGetValue(input, out string newIndex))
                     {
-                        layer.inputs[i] = newName;
+                        layer.inputs[i] = newIndex;
                     }
                     else
                     {
-                        var constant = new Layers.Constant(model.GetUniqueName(input), constants[input].DataSetToTensor());
+                        var constant = new Layers.Constant(model.GetUniqueIndex(input), constants[input].WeightsToTensor());
                         model.constants.Add(constant);
-                        layer.inputs[i] = constant.name;
-                        remapConstants[input] = constant.name;
+                        layer.inputs[i] = constant.index;
+                        remapConstants[input] = constant.index;
                     }
                 }
             }

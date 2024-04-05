@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/ScalarMad"
         Pass
         {
             CGPROGRAM
-            #pragma ScalarMad
+            #pragma multi_compile _ INT
 
             #pragma vertex vert
             #pragma fragment frag
@@ -19,17 +19,29 @@ Shader "Hidden/Sentis/ScalarMad"
             #include "CommonVertexShader.cginc"
             #include "CommonPixelShader.cginc"
 
-            DECLARE_TENSOR(X, float);
 
+            #if defined(INT)
+            #define DTYPE4 int4
+            int sInt;
+            int bInt;
+            DECLARE_TENSOR(X, int);
+            #else
+            #define DTYPE4 float4
             float s;
             float b;
+            DECLARE_TENSOR(X, float);
+            #endif
 
-            float4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
+            DTYPE4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
                 uint blockIndexO = GetBlockIndexO(screenPos);
-                float4 vx = SampleBlockX(blockIndexO);
+                DTYPE4 vx = SampleBlockX(blockIndexO);
 
+                #if defined(INT)
+                int4 v = sInt * vx + bInt;
+                #else
                 float4 v = s * vx + b;
+                #endif
 
                 return v;
             }

@@ -8,7 +8,6 @@ using static Unity.Sentis.BurstTensorData;
 
 namespace Unity.Sentis {
 
-// BurstCPU.Core.cs -- definition of class CPUBackend, Pin(), BurstTensorData
 // BurstCPU.Backend.cs  -- impl. IBackend, job schedulers
 // BurstCPU.Jobs.cs -- impl. jobs
 
@@ -19,72 +18,55 @@ public partial class CPUBackend
 
     static BLASPlugin s_BLAS = BLASPluginFactory.CreateNativeBLASPlugin();
 
-    /// <inheritdoc/>
-    public virtual Tensor NewTensor(TensorShape shape, DataType dataType, AllocScope scope)
+    // Do we need this class or operate on BurstTensorData instead?
+    TensorClassPool<TensorFloat> m_TensorFloatPool = new TensorClassPool<TensorFloat>();
+    TensorClassPool<TensorInt> m_TensorIntPool = new TensorClassPool<TensorInt>();
+    TensorDataPool<BurstTensorData> m_MemoryPool = new TensorDataPool<BurstTensorData>();
+
+    TensorFloat AllocTensorFloat(TensorShape shape)
     {
-        return m_Allocator.Alloc(shape, dataType, DeviceType.CPU, scope);
+        BurstTensorData data = m_MemoryPool.AdoptFromPool(shape.length);
+        if (data == null)
+            data = new BurstTensorData(shape.length);
+        var tensor = m_TensorFloatPool.AdoptFromPool();
+        if (tensor == null)
+            tensor = TensorFloat.AllocNoData(shape);
+
+        tensor.shape = shape;
+        tensor.dataOnBackend = data;
+        return tensor;
     }
 
-    /// <summary>
-    /// Allocate a new `Tensor` of a given shape and data type using the `AllocScope.LayerOutput` scope.
-    /// </summary>
-    /// <param name="shape">The shape of the tensor.</param>
-    /// <param name="dataType">The data type of the tensor.</param>
-    /// <returns>The allocated tensor.</returns>
-    public Tensor NewOutputTensor(TensorShape shape, DataType dataType)
+    TensorInt AllocTensorInt(TensorShape shape)
     {
-        return NewTensor(shape, dataType, AllocScope.LayerOutput);
+        BurstTensorData data = m_MemoryPool.AdoptFromPool(shape.length);
+        if (data == null)
+            data = new BurstTensorData(shape.length);
+        var tensor = m_TensorIntPool.AdoptFromPool();
+        if (tensor == null)
+            tensor = TensorInt.AllocNoData(shape);
+
+        tensor.shape = shape;
+        tensor.dataOnBackend = data;
+        return tensor;
     }
 
-    /// <summary>
-    /// Allocate a new `TensorFloat` of a given shape using the `AllocScope.LayerOutput` scope.
-    /// </summary>
-    /// <param name="shape">The shape of the tensor.</param>
-    /// <returns>The allocated tensor.</returns>
-    public TensorFloat NewOutputTensorFloat(TensorShape shape)
+    void ReleaseTensorFloat(TensorFloat tensor)
     {
-        return NewTensor(shape, DataType.Float, AllocScope.LayerOutput) as TensorFloat;
+        if (tensor == null)
+            return;
+        m_MemoryPool.ReleaseToPool(tensor.dataOnBackend as BurstTensorData);
+        tensor.dataOnBackend = null;
+        m_TensorFloatPool.ReleaseToPool(tensor as TensorFloat);
     }
 
-    /// <summary>
-    /// Allocate a new `TensorInt` of a given shape using the `AllocScope.LayerOutput` scope.
-    /// </summary>
-    /// <param name="shape">The shape of the tensor.</param>
-    /// <returns>The allocated tensor.</returns>
-    public TensorInt NewOutputTensorInt(TensorShape shape)
+    void ReleaseTensorInt(TensorInt tensor)
     {
-        return NewTensor(shape, DataType.Int, AllocScope.LayerOutput) as TensorInt;
-    }
-
-    /// <summary>
-    /// Allocate a new `Tensor` of a given shape and data type using the `AllocScope.InternalToLayer` scope.
-    /// </summary>
-    /// <param name="shape">The shape of the tensor.</param>
-    /// <param name="dataType">The data type of the tensor.</param>
-    /// <returns>The allocated tensor.</returns>
-    public Tensor NewTempTensor(TensorShape shape, DataType dataType)
-    {
-        return NewTensor(shape, dataType, AllocScope.InternalToLayer);
-    }
-
-    /// <summary>
-    /// Allocate a new `TensorFloat` of a given shape using the `AllocScope.InternalToLayer` scope.
-    /// </summary>
-    /// <param name="shape">The shape of the tensor.</param>
-    /// <returns>The allocated tensor.</returns>
-    public TensorFloat NewTempTensorFloat(TensorShape shape)
-    {
-        return NewTensor(shape, DataType.Float, AllocScope.InternalToLayer) as TensorFloat;
-    }
-
-    /// <summary>
-    /// Allocate a new `TensorInt` of a given shape using the `AllocScope.InternalToLayer` scope.
-    /// </summary>
-    /// <param name="shape">The shape of the tensor.</param>
-    /// <returns>The allocated tensor.</returns>
-    public TensorInt NewTempTensorInt(TensorShape shape)
-    {
-        return NewTensor(shape, DataType.Int, AllocScope.InternalToLayer) as TensorInt;
+        if (tensor == null)
+            return;
+        m_MemoryPool.ReleaseToPool(tensor.dataOnBackend as BurstTensorData);
+        tensor.dataOnBackend = null;
+        m_TensorIntPool.ReleaseToPool(tensor as TensorInt);
     }
 
     unsafe void ScheduleSGEMM(
@@ -131,7 +113,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void MatMul2D(TensorFloat X, TensorFloat Y, TensorFloat O, bool xTranspose, bool yTranspose)
+    public void MatMul2D(TensorFloat X, TensorFloat Y, TensorFloat O, bool xTranspose, bool yTranspose)
     {
         ScheduleSGEMM(
             X, X.shape[0], X.shape[1],
@@ -141,7 +123,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void MatMul(TensorFloat X, TensorFloat Y, TensorFloat O)
+    public void MatMul(TensorFloat X, TensorFloat Y, TensorFloat O)
     {
         var pinX = Pin(X);
         var pinY = Pin(Y);
@@ -185,9 +167,9 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Dense(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Layers.FusableActivation fusedActivation)
+    public void Dense(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Layers.FusableActivation fusedActivation)
     {
-        var Otmp = (fusedActivation != Layers.FusableActivation.None) ? NewTempTensorFloat(O.shape) : O;
+        var Otmp = (fusedActivation != Layers.FusableActivation.None) ? AllocTensorFloat(O.shape) : O;
 
         var pinB = Pin(B);
         var pinO = Pin(Otmp);
@@ -206,7 +188,10 @@ public partial class CPUBackend
             Otmp, O.shape.Length(0, -1), O.shape[-1], accumulateC: true);
 
         if (fusedActivation != Layers.FusableActivation.None)
+        {
             ApplyFusedActivation(Otmp, O, fusedActivation);
+            ReleaseTensorFloat(Otmp);
+        }
     }
 
     void ApplyFusedActivation(TensorFloat X, TensorFloat O, Layers.FusableActivation fusedActivation)
@@ -224,7 +209,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Conv(TensorFloat X, TensorFloat K, TensorFloat B, TensorFloat O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
+    public void Conv(TensorFloat X, TensorFloat K, TensorFloat B, TensorFloat O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
     {
         if (X.shape.rank > 5)
         {
@@ -260,7 +245,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void ConvTranspose(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Span<int> strides, Span<int> pads, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
+    public void ConvTranspose(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Span<int> strides, Span<int> pads, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
     {
         if (X.shape.rank >= 5)
         {
@@ -268,7 +253,7 @@ public partial class CPUBackend
             return;
         }
 
-        var Otmp = (fusedActivation != Layers.FusableActivation.None) ? NewTempTensorFloat(O.shape) : O;
+        var Otmp = (fusedActivation != Layers.FusableActivation.None) ? AllocTensorFloat(O.shape) : O;
 
         var job = new ConvTransposeJob();
 
@@ -278,7 +263,7 @@ public partial class CPUBackend
         var inputChannels = X.shape[1];
         var outputChannels = O.shape[1];
 
-        var columnBuffer = NewTempTensorFloat(new TensorShape(outputChannels * job.kernelSize, job.inputSize));
+        var columnBuffer = AllocTensorFloat(new TensorShape(outputChannels * job.kernelSize, job.inputSize));
         var pinCB = Pin(columnBuffer);
 
         for (var batchIndex = 0; batchIndex < batchCount; batchIndex++)
@@ -312,11 +297,15 @@ public partial class CPUBackend
         }
 
         if (fusedActivation != Layers.FusableActivation.None)
+        {
             ApplyFusedActivation(Otmp, O, fusedActivation);
+            ReleaseTensorFloat(Otmp);
+        }
+        ReleaseTensorFloat(columnBuffer);
     }
 
     /// <inheritdoc/>
-    public virtual void Resize(TensorFloat X, TensorFloat O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
+    public void Resize(TensorFloat X, TensorFloat O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
     {
         int rankX = X.shape.rank;
 
@@ -445,7 +434,7 @@ public partial class CPUBackend
     static readonly int[] permutationsSpaceToDepth = new int[] { 0, 3, 5, 1, 2, 4 };
 
     /// <inheritdoc/>
-    public virtual void DepthToSpace(TensorFloat X, TensorFloat O, int blocksize, Layers.DepthToSpaceMode mode)
+    public void DepthToSpace(TensorFloat X, TensorFloat O, int blocksize, Layers.DepthToSpaceMode mode)
     {
         int[] permutations;
         int dim1, dim3;
@@ -471,7 +460,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void SpaceToDepth(TensorFloat X, TensorFloat O, int blocksize)
+    public void SpaceToDepth(TensorFloat X, TensorFloat O, int blocksize)
     {
         var reshape = new TensorShape(X.shape[0], X.shape[1], X.shape[2] / blocksize, blocksize, X.shape[3] / blocksize, blocksize);
 
@@ -481,7 +470,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void MaxPool(TensorFloat X, TensorFloat O, int[] kernelShape, int[] strides, int[] pads)
+    public void MaxPool(TensorFloat X, TensorFloat O, int[] kernelShape, int[] strides, int[] pads)
     {
         if (X.shape.rank > 4)
         {
@@ -520,7 +509,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void AveragePool(TensorFloat X, TensorFloat O, int[] kernelShape, int[] strides, int[] pads)
+    public void AveragePool(TensorFloat X, TensorFloat O, int[] kernelShape, int[] strides, int[] pads)
     {
         if (X.shape.rank > 4)
         {
@@ -559,7 +548,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void GlobalMaxPool(TensorFloat X, TensorFloat O)
+    public void GlobalMaxPool(TensorFloat X, TensorFloat O)
     {
         var job = new ReduceMaxFloatJob();
         job.innerLength = 1;
@@ -568,7 +557,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void GlobalAveragePool(TensorFloat X, TensorFloat O)
+    public void GlobalAveragePool(TensorFloat X, TensorFloat O)
     {
         int strideX = X.shape.Strides(1);
 
@@ -584,7 +573,7 @@ public partial class CPUBackend
     /// <param name="X">The input tensor.</param>
     /// <param name="O">The output tensor to be computed and filled.</param>
     /// <param name="axis">The axis from which to pool.</param>
-    public virtual void GlobalAverageVariancePool(TensorFloat X, TensorFloat O, int axis)
+    public void GlobalAverageVariancePool(TensorFloat X, TensorFloat O, int axis)
     {
         if (O.shape.HasZeroDims())
             return;
@@ -596,7 +585,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void InstanceNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O, float epsilon)
+    public void InstanceNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O, float epsilon)
     {
         var pinX = Pin(X);
         var pinS = Pin(S);
@@ -605,7 +594,7 @@ public partial class CPUBackend
 
         // Allocate memory
         var reduceOpShape = ShapeInference.GlobalAverageVariancePool(X.shape);
-        var meanVariance = NewTempTensorFloat(reduceOpShape);
+        var meanVariance = AllocTensorFloat(reduceOpShape);
 
         GlobalAverageVariancePool(X, meanVariance, 2);
 
@@ -615,10 +604,11 @@ public partial class CPUBackend
         job.epsilon = epsilon;
 
         job.ScheduleXSBWO(pinX, pinS, pinB, Pin(meanVariance), pinO, O.shape.length, 1024);
+        ReleaseTensorFloat(meanVariance);
     }
 
     /// <inheritdoc/>
-    public virtual void LayerNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O, float epsilon)
+    public void LayerNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O, float epsilon)
     {
         int axis = X.shape.Axis(-1);
 
@@ -628,7 +618,7 @@ public partial class CPUBackend
         int axisDim = X.shape[axis];
         int outerLength = X.shape.Length(0, -1);
 
-        var meanVariance = NewTempTensorFloat(reducedShape);
+        var meanVariance = AllocTensorFloat(reducedShape);
         GlobalAverageVariancePool(X, meanVariance, -1);
 
         var job = new LayerNormalizationTailJob();
@@ -637,10 +627,11 @@ public partial class CPUBackend
         job.epsilon = epsilon;
 
         job.ScheduleXSBWO(Pin(X), Pin(S), Pin(B), Pin(meanVariance), Pin(O), outerLength, 1024);
+        ReleaseTensorFloat(meanVariance);
     }
 
     /// <inheritdoc/>
-    public virtual void ScaleBias(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O)
+    public void ScaleBias(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O)
     {
         var job = new ScaleBiasJob();
         job.channels = X.shape[1];
@@ -650,7 +641,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void BatchNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat mean, TensorFloat variance, TensorFloat O, float epsilon)
+    public void BatchNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat mean, TensorFloat variance, TensorFloat O, float epsilon)
     {
         var pinX = Pin(X);
         var pinS = Pin(S);
@@ -678,28 +669,37 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Cast(Tensor X, Tensor O)
+    public void Cast(TensorFloat X, TensorInt O)
     {
-        if (X.dataType == O.dataType)
-        {
-            MemCopy(X, O);
-            return;
-        }
-
-        if (O.dataType == DataType.Float)
-        {
-            var job = new CastToFloatJob();
-            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
-        }
-        else
-        {
-            var job = new CastToIntJob();
-            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
-        }
+        var job = new CastFloatToIntJob();
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
-    public virtual void IsInf(TensorFloat X, TensorInt O, bool detectNegative, bool detectPositive)
+    public void Cast(TensorInt X, TensorFloat O)
+    {
+        var job = new CastIntToFloatJob();
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+    }
+
+    /// <inheritdoc/>
+    public void Cast(TensorShort X, TensorFloat O)
+    {
+        var job = new CastHalfToFloatJob();
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+    }
+
+    /// <inheritdoc/>
+    public void DequantizeLinear(TensorByte X, TensorFloat O, float scale, byte zeroPoint)
+    {
+        var job = new DequantizeUint8Job();
+        job.scale = scale;
+        job.zeroPoint = zeroPoint;
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+    }
+
+    /// <inheritdoc/>
+    public void IsInf(TensorFloat X, TensorInt O, bool detectNegative, bool detectPositive)
     {
         var job = new IsInfJob();
         job.detectNegative = detectNegative;
@@ -708,7 +708,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void PRelu(TensorFloat X, TensorFloat S, TensorFloat O)
+    public void PRelu(TensorFloat X, TensorFloat S, TensorFloat O)
     {
         var job = new PReluJob();
         var outputLength = job.broadcast.Prepare(X.shape, S.shape);
@@ -716,7 +716,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void LeakyRelu(TensorFloat X, TensorFloat O, float alpha)
+    public void LeakyRelu(TensorFloat X, TensorFloat O, float alpha)
     {
         var job = new LeakyReluJob();
         job.alpha = alpha;
@@ -726,7 +726,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void HardSigmoid(TensorFloat X, TensorFloat O, float alpha, float beta)
+    public void HardSigmoid(TensorFloat X, TensorFloat O, float alpha, float beta)
     {
         var job = new HardSigmoidJob();
         job.alpha = alpha;
@@ -735,7 +735,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Elu(TensorFloat X, TensorFloat O, float alpha)
+    public void Elu(TensorFloat X, TensorFloat O, float alpha)
     {
         var job = new EluJob();
         job.alpha = alpha;
@@ -743,14 +743,21 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Gelu(TensorFloat X, TensorFloat O)
+    public void Gelu(TensorFloat X, TensorFloat O)
     {
         var job = new GeluJob();
         job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
-    public virtual void Selu(TensorFloat X, TensorFloat O, float alpha, float gamma)
+    public void GeluFast(TensorFloat X, TensorFloat O)
+    {
+        var job = new GeluFastJob();
+        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+    }
+
+    /// <inheritdoc/>
+    public void Selu(TensorFloat X, TensorFloat O, float alpha, float gamma)
     {
         var job = new SeluJob();
         job.alpha = alpha;
@@ -759,7 +766,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Clip(TensorFloat X, TensorFloat O, float min, float max)
+    public void Clip(TensorFloat X, TensorFloat O, float min, float max)
     {
         var job = new ClipFloatJob();
         job.minV = min;
@@ -768,7 +775,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Clip(TensorInt X, TensorInt O, int min, int max)
+    public void Clip(TensorInt X, TensorInt O, int min, int max)
     {
         var job = new ClipIntJob();
         job.minV = min;
@@ -777,7 +784,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Celu(TensorFloat X, TensorFloat O, float alpha)
+    public void Celu(TensorFloat X, TensorFloat O, float alpha)
     {
         var job = new CeluJob();
         job.alpha = alpha;
@@ -785,7 +792,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Shrink(TensorFloat X, TensorFloat O, float bias, float lambd)
+    public void Shrink(TensorFloat X, TensorFloat O, float bias, float lambd)
     {
         var job = new ShrinkJob();
         job.bias = bias;
@@ -794,7 +801,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void ThresholdedRelu(TensorFloat X, TensorFloat O, float alpha)
+    public void ThresholdedRelu(TensorFloat X, TensorFloat O, float alpha)
     {
         var job = new ThresholdedReluJob();
         job.alpha = alpha;
@@ -802,7 +809,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Einsum(TensorFloat[] inputTensors, TensorFloat O, TensorIndex[] operandIndices, TensorIndex outputIndices, TensorIndex sumIndices, TensorShape sumShape)
+    public void Einsum(TensorFloat[] inputTensors, TensorFloat O, TensorIndex[] operandIndices, TensorIndex outputIndices, TensorIndex sumIndices, TensorShape sumShape)
     {
         switch (inputTensors.Length)
         {
@@ -847,7 +854,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Concat(Tensor[] inputs, Tensor O, int axis)
+    public void Concat(Tensor[] inputs, Tensor O, int axis)
     {
         unsafe
         {
@@ -885,7 +892,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Slice(Tensor X, Tensor O, ReadOnlySpan<int> starts, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps)
+    public void Slice(Tensor X, Tensor O, ReadOnlySpan<int> starts, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps)
     {
         var job = new SliceJob();
         job.sliceParams.Prepare(X.shape, O.shape, starts, axes, steps);
@@ -894,7 +901,16 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Split(Tensor X, Tensor O, int axis, int start)
+    public void SliceSet(Tensor X, Tensor values, Tensor O, ReadOnlySpan<int> starts, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps)
+    {
+        MemCopy(X, O);
+        var job = new SliceSetJob();
+        job.sliceParams.Prepare(O.shape, values.shape, starts, axes, steps);
+        job.ScheduleBatchXO(Pin(values), Pin(O), values.shape.length, 1024);
+    }
+
+    /// <inheritdoc/>
+    public void Split(Tensor X, Tensor O, int axis, int start)
     {
         var job = new SliceJob();
         job.sliceParams.PrepareSplit(X.shape, O.shape, axis, start);
@@ -903,25 +919,35 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Pad(TensorFloat X, TensorFloat O, ReadOnlySpan<int> pad, Layers.PadMode padMode, float constant)
+    public void Pad(TensorFloat X, TensorFloat O, ReadOnlySpan<int> pad, Layers.PadMode padMode, float constant)
+    {
+        var job = new PadJob();
+        job.padMode = padMode;
+        job.constant = math.asint(constant);
+        job.padParams.Prepare(X.shape, pad, padMode);
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+    }
+
+    /// <inheritdoc/>
+    public void Pad(TensorInt X, TensorInt O, ReadOnlySpan<int> pad, Layers.PadMode padMode, int constant)
     {
         var job = new PadJob();
         job.padMode = padMode;
         job.constant = constant;
-        job.padParams.Prepare(X.shape, pad);
+        job.padParams.Prepare(X.shape, pad, padMode);
         job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
-    public virtual void Transpose(Tensor X, Tensor O)
+    public void Transpose(Tensor X, Tensor O)
     {
         var job = new TransposeJob();
-        job.iteratorX.Prepare(X.shape);
+        job.iteratorX.Prepare(X.shape, Array.Empty<int>());
         job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
-    public virtual void Transpose(Tensor X, Tensor O, int[] permutations)
+    public void Transpose(Tensor X, Tensor O, ReadOnlySpan<int> permutations)
     {
         var job = new TransposeJob();
         job.iteratorX.Prepare(X.shape, permutations);
@@ -929,7 +955,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Pow(TensorFloat A, TensorInt B, TensorFloat O)
+    public void Pow(TensorFloat A, TensorInt B, TensorFloat O)
     {
         var job = new PowFloatIntJob();
         var outputLength = job.broadcast.Prepare(A.shape, B.shape);
@@ -937,7 +963,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Where(TensorInt C, Tensor A, Tensor B, Tensor O)
+    public void Where(TensorInt C, Tensor A, Tensor B, Tensor O)
     {
         var job = new WhereJob();
         unsafe
@@ -953,7 +979,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Tile(Tensor X, Tensor O, ReadOnlySpan<int> repeats)
+    public void Tile(Tensor X, Tensor O, ReadOnlySpan<int> repeats)
     {
         var job = new TileJob();
         unsafe
@@ -967,7 +993,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void MemClear(Tensor O)
+    public void MemClear(Tensor O)
     {
         var job = new ClearJob();
         job.length = O.shape.length;
@@ -975,7 +1001,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void MemSet(TensorFloat O, float value)
+    public void MemSet(TensorFloat O, float value)
     {
         var job = new SetJob();
         job.memValue = math.asint(value);
@@ -983,7 +1009,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void MemSet(TensorInt O, int value)
+    public void MemSet(TensorInt O, int value)
     {
         var job = new SetJob();
         job.memValue = value;
@@ -991,7 +1017,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Expand(Tensor X, Tensor O)
+    public void Expand(Tensor X, Tensor O)
     {
         var job = new ExpandJob();
         unsafe
@@ -1004,7 +1030,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void CompressWithIndices(Tensor X, TensorInt indices, Tensor O, int numIndices, int axis)
+    public void CompressWithIndices(Tensor X, TensorInt indices, Tensor O, int numIndices, int axis)
     {
         var job = new GatherJob();
         job.innerLength = X.shape.Strides(axis);
@@ -1015,7 +1041,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Gather(Tensor X, TensorInt indices, Tensor O, int axis)
+    public void Gather(Tensor X, TensorInt indices, Tensor O, int axis)
     {
         var job = new GatherJob();
         job.innerLength = X.shape.Strides(axis);
@@ -1025,18 +1051,42 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void GatherElements(Tensor X, TensorInt indices, Tensor O, int axis)
+    public void GatherElements(Tensor X, TensorInt indices, Tensor O, int axis)
     {
-        var job = new GatherElementsJob();
-        job.endLength = O.shape.Strides(axis);
-        job.endLengthX = X.shape.Strides(axis);
-        job.axisDim = O.shape[axis];
-        job.axisDimX = X.shape[axis];
-        job.ScheduleXBO(Pin(X), Pin(indices), Pin(O), O.shape.length, 1024);
+        // See ScatterElements and compute code for more info
+        axis = X.shape.Axis(axis); // note: this is safe since the ranks all match
+
+        bool fastPathPossible = ShapeInference.ScatterGatherElementsSupportsFastPath(indices.shape, X.shape, axis);
+        if (fastPathPossible)
+        {
+            var job = new GatherElementsFastJob();
+            job.inputAxisSize = X.shape[axis];
+            job.indicesAxisElementStride = indices.shape.Strides(axis);
+            job.inputAxisElementStride = X.shape.Strides(axis);
+            job.indicesAxisMinusOneElementStride = indices.shape[axis] * indices.shape.Strides(axis);
+
+            job.ScheduleXBO(Pin(X), Pin(indices), Pin(O), indices.shape.length, 1024);
+        }
+        else
+        {
+            var job = new GatherElementsJob();
+            job.inputAxisSize = X.shape[axis];
+
+            unsafe
+            {
+                OpsUtils.PinTensorStridesCompact(X.shape, job.stridesX);
+                OpsUtils.PinTensorStridesCompact(indices.shape, job.stridesO);
+            }
+            job.posAxis = axis;
+            job.rank = X.shape.rank;
+
+            job.ScheduleXBO(Pin(X), Pin(indices), Pin(O), indices.shape.length, 1024);
+        }
+
     }
 
     /// <inheritdoc/>
-    public virtual void GatherND(Tensor X, TensorInt indices, Tensor O, int batchDims)
+    public void GatherND(Tensor X, TensorInt indices, Tensor O, int batchDims)
     {
         var job = new GatherNDJob();
         job.rankX = X.shape.rank;
@@ -1056,7 +1106,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void ScatterElements(Tensor X, TensorInt indices, Tensor updates, Tensor O, int axis, Layers.ScatterReductionMode reduction)
+    public void ScatterElements(Tensor X, TensorInt indices, Tensor updates, Tensor O, int axis, Layers.ScatterReductionMode reduction)
     {
         if (X.dataType == DataType.Int && reduction != Layers.ScatterReductionMode.None)
         {
@@ -1065,23 +1115,47 @@ public partial class CPUBackend
         }
 
         MemCopy(X, O);
+        axis = X.shape.Axis(axis); // note: this is safe since the ranks of X and indices match
 
-        var job = new ScatterElementsJob();
-        job.endLength = X.shape.Strides(axis);
-        job.axisDim = X.shape[axis];
-        job.axisDimIndices = indices.shape[axis];
-        job.reduction = (int)reduction;
+        bool fastPathPossible = ShapeInference.ScatterGatherElementsSupportsFastPath(indices.shape, X.shape, axis);
+        if (fastPathPossible)
+        {
+            var job = new ScatterElementsFastJob();
+            job.outAxisSize = X.shape[axis];
+            job.indicesAxisElementStride = indices.shape.Strides(axis);
+            job.outAxisElementStride = X.shape.Strides(axis);
+            job.indicesAxisMinusOneElementStride = indices.shape[axis] * indices.shape.Strides(axis);
+            job.reductionType = (int)reduction;
 
-        // When reduction != ScatterReductionMode.None, the reduction is allowed to have duplicate output
-        // indices. To avoid race conditions updating the output tensor, force these reduction modes to run
-        // on a single worker by setting the inner loop length to int.MaxValue.
+            // When reduction != ScatterReductionMode.None, the reduction is allowed to have duplicate output
+            // indices. To avoid race conditions updating the output tensor, force these reduction modes to run
+            // on a single worker by setting the inner loop length to int.MaxValue.
 
-        job.ScheduleXBO(Pin(updates), Pin(indices), Pin(O), indices.shape.length,
-            (reduction == Layers.ScatterReductionMode.None) ? 1024 : int.MaxValue);
+            job.ScheduleXBO(Pin(updates), Pin(indices), Pin(O), indices.shape.length,
+                (reduction == Layers.ScatterReductionMode.None) ? 1024 : int.MaxValue);
+        }
+        else
+        {
+            var job = new ScatterElementsJob();
+            job.outAxisSize = X.shape[axis];
+            job.reductionType = (int)reduction;
+
+            unsafe
+            {
+                OpsUtils.PinTensorStridesCompact(X.shape, job.stridesO);
+                OpsUtils.PinTensorStridesCompact(indices.shape, job.stridesX); // WARNING: Remember that X in the shader code is updates, but here X is the input tensor!
+            }
+            job.posAxis = axis;
+            job.rank = X.shape.rank;
+
+
+            job.ScheduleXBO(Pin(updates), Pin(indices), Pin(O), indices.shape.length,
+                (reduction == Layers.ScatterReductionMode.None) ? 1024 : int.MaxValue);
+        }
     }
 
     /// <inheritdoc/>
-    public virtual void ScatterND(TensorFloat X, TensorInt indices, TensorFloat updates, TensorFloat O, Layers.ScatterReductionMode reduction)
+    public void ScatterND(TensorFloat X, TensorInt indices, TensorFloat updates, TensorFloat O, Layers.ScatterReductionMode reduction)
     {
         MemCopy(X, O);
 
@@ -1106,7 +1180,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void ScatterND(TensorInt X, TensorInt indices, TensorInt updates, TensorInt O, Layers.ScatterReductionMode reduction)
+    public void ScatterND(TensorInt X, TensorInt indices, TensorInt updates, TensorInt O, Layers.ScatterReductionMode reduction)
     {
         MemCopy(X, O);
 
@@ -1131,7 +1205,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void OneHot(TensorInt X, TensorInt O, int axis, int depth, int offValue, int onValue)
+    public void OneHot(TensorInt X, TensorInt O, int axis, int depth, int offValue, int onValue)
     {
         var job = new OneHotJob();
         job.depth = depth;
@@ -1149,7 +1223,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void OneHot(TensorInt X, TensorFloat O, int axis, int depth, float offValue, float onValue)
+    public void OneHot(TensorInt X, TensorFloat O, int axis, int depth, float offValue, float onValue)
     {
         var job = new OneHotJob();
         job.depth = depth;
@@ -1167,7 +1241,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void TopK(TensorFloat X, TensorFloat values, TensorInt indices, int k, int axis, bool largest)
+    public void TopK(TensorFloat X, TensorFloat values, TensorInt indices, int k, int axis, bool largest)
     {
         int reduceLength = X.shape[axis];
         int innerLength = X.shape.Strides(axis);
@@ -1191,7 +1265,13 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void RoiAlign(TensorFloat X, TensorFloat rois, TensorInt indices, TensorFloat O, Layers.RoiPoolingMode mode, int outputHeight, int outputWidth, int samplingRatio, float spatialScale)
+    public void NonMaxSuppression(TensorFloat boxes, TensorFloat scores, TensorInt selectedBoxes, int maxOutputBoxesPerClass, float iouThreshold, float scoreThreshold, Layers.CenterPointBox centerPointBox)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public void RoiAlign(TensorFloat X, TensorFloat rois, TensorInt indices, TensorFloat O, Layers.RoiPoolingMode mode, int outputHeight, int outputWidth, int samplingRatio, float spatialScale)
     {
         var job = new RoiAlignJob();
         job.numRois = rois.shape[0];
@@ -1211,36 +1291,47 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void RandomNormal(TensorFloat O, float mean, float scale, float? seed)
+    public void RandomNormal(TensorFloat O, float mean, float scale, int? seed)
     {
         var job = new RandomNormalJob();
-        job.seed = Random.GetOpSeed(seed);
+        job.seed = Random.GetSeed(seed);
         job.mean = mean;
         job.scale = scale;
         job.ScheduleO(Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
-    public virtual void RandomUniform(TensorFloat O, float low, float high, float? seed)
+    public void RandomUniform(TensorFloat O, float low, float high, int? seed)
     {
         var job = new RandomUniformJob();
-        job.seed = Random.GetOpSeed(seed);
+        job.seed = Random.GetSeed(seed);
         job.low = low;
         job.high = high;
         job.ScheduleO(Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
-    public virtual void Bernoulli(TensorFloat X, Tensor O, float? seed)
+    public void Bernoulli(TensorFloat X, Tensor O, int? seed)
     {
         var job = new BernoulliJob();
-        job.seed = Random.GetOpSeed(seed);
+        job.seed = Random.GetSeed(seed);
         job.dataType = O.dataType;
         job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
-    public virtual void MemCopy(Tensor X, Tensor O)
+    public void TopP(TensorFloat X, TensorFloat random, TensorInt O)
+    {
+        var batch = O.shape.length;
+        var job = new TopPJob();
+        job.count = O.shape[-1];
+        job.innerLength = X.shape[-1];
+        job.outerLength = batch;
+        job.ScheduleXBO(Pin(X), Pin(random), Pin(O), batch, 1024);
+    }
+
+    /// <inheritdoc/>
+    public void MemCopy(Tensor X, Tensor O)
     {
         var job = new CopyJob();
         job.offsetX = 0;
@@ -1250,7 +1341,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void MemCopyStride(Tensor X, Tensor O, int strideX, int strideO, int length, int count, int offsetX, int offsetO)
+    public void MemCopyStride(Tensor X, Tensor O, int strideX, int strideO, int length, int count, int offsetX, int offsetO)
     {
         if (length == 0 || count == 0)
             return;
@@ -1270,9 +1361,29 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void Reshape(Tensor X, Tensor O)
+    public void Reshape(Tensor X, Tensor O)
     {
         MemCopy(X, O);
+    }
+
+    /// <inheritdoc/>
+    public void ScalarMad(TensorFloat X, TensorFloat O, float s, float b)
+    {
+        var job = new ScalarMadFloatJob();
+        job.s = s;
+        job.b = b;
+        var outputLength = X.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), outputLength, 1024);
+    }
+
+    /// <inheritdoc/>
+    public void ScalarMad(TensorInt X, TensorInt O, int s, int b)
+    {
+        var job = new ScalarMadIntJob();
+        job.s = s;
+        job.b = b;
+        var outputLength = X.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), outputLength, 1024);
     }
 
     /// <summary>
@@ -1304,7 +1415,7 @@ public partial class CPUBackend
     /// <param name="isReverse">Whether the direction is reverse.</param>
     /// <param name="dirIndex">Which pass this is in a bidirectional LSTM.</param>
     /// <param name="layout">The layout of the tensors.</param>
-    protected virtual void SinglePassLSTM(TensorFloat X, TensorFloat W, TensorFloat R, TensorFloat B, TensorInt sequenceLens, TensorFloat P, TensorFloat Y, TensorFloat Y_h, TensorFloat Y_c, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, bool isReverse, int dirIndex, Layers.RnnLayout layout)
+    protected void SinglePassLSTM(TensorFloat X, TensorFloat W, TensorFloat R, TensorFloat B, TensorInt sequenceLens, TensorFloat P, TensorFloat Y, TensorFloat Y_h, TensorFloat Y_c, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, bool isReverse, int dirIndex, Layers.RnnLayout layout)
     {
         var pinY = Pin(Y);
 
@@ -1341,8 +1452,8 @@ public partial class CPUBackend
             yStrideBatch = seqLength * numDirections * hiddenSize;
         }
 
-        var HtxRT = NewTempTensorFloat(new TensorShape(batchSize * 4 * hiddenSize));
-        var XsixWT = NewTempTensorFloat(new TensorShape(seqLength * batchSize * 4 * hiddenSize));
+        var HtxRT = AllocTensorFloat(new TensorShape(batchSize * 4 * hiddenSize));
+        var XsixWT = AllocTensorFloat(new TensorShape(seqLength * batchSize * 4 * hiddenSize));
 
         var pinHtxRT = Pin(HtxRT);
         var pinXsixWT = Pin(XsixWT);
@@ -1390,6 +1501,9 @@ public partial class CPUBackend
                     endJob.Schedule(batchSize, 1, JobHandle.CombineDependencies(pinY.reuse, pinY_h.reuse, JobHandle.CombineDependencies(pinY_c.reuse, pinP.fence, JobHandle.CombineDependencies(pinB.fence, pinXsixWT.fence, JobHandle.CombineDependencies(pinHtxRT.fence, pinSequenceLens.fence)))));
             }
         }
+
+        ReleaseTensorFloat(HtxRT);
+        ReleaseTensorFloat(XsixWT);
     }
 
     /// <summary>
@@ -1420,7 +1534,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public virtual void LSTM(TensorFloat X, TensorFloat W, TensorFloat R, TensorFloat B, TensorInt sequenceLens, TensorFloat initialH, TensorFloat initialC, TensorFloat P, TensorFloat Y, TensorFloat Yh, TensorFloat Yc, Layers.RnnDirection direction, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, Layers.RnnLayout layout)
+    public void LSTM(TensorFloat X, TensorFloat W, TensorFloat R, TensorFloat B, TensorInt sequenceLens, TensorFloat initialH, TensorFloat initialC, TensorFloat P, TensorFloat Y, TensorFloat Yh, TensorFloat Yc, Layers.RnnDirection direction, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, Layers.RnnLayout layout)
     {
         var seqLength = X.shape[layout == Layers.RnnLayout.SequenceFirst ? 0 : 1];
         var batchSize = X.shape[layout == Layers.RnnLayout.SequenceFirst ? 1 : 0];
@@ -1428,30 +1542,30 @@ public partial class CPUBackend
         var hiddenSize = R.shape[2];
         var numDirections = W.shape[0];
 
-        var W1 = numDirections == 2 ? NewTempTensorFloat(new TensorShape(1, 4 * hiddenSize, inputSize)) : W;
-        var R1 = numDirections == 2 ? NewTempTensorFloat(new TensorShape(1, 4 * hiddenSize, hiddenSize)) : R;
+        var W1 = numDirections == 2 ? AllocTensorFloat(new TensorShape(1, 4 * hiddenSize, inputSize)) : W;
+        var R1 = numDirections == 2 ? AllocTensorFloat(new TensorShape(1, 4 * hiddenSize, hiddenSize)) : R;
 
         var Bi = B;
-        if (Bi == null)
+        if (B == null)
         {
-            Bi = NewTempTensorFloat(new TensorShape(numDirections, 8 * hiddenSize));
+            Bi = AllocTensorFloat(new TensorShape(numDirections, 8 * hiddenSize));
             MemClear(Bi);
         }
         var sequenceLensi = sequenceLens;
-        if (sequenceLensi == null)
+        if (sequenceLens == null)
         {
-            sequenceLensi = NewTempTensorInt(new TensorShape(batchSize));
+            sequenceLensi = AllocTensorInt(new TensorShape(batchSize));
             MemSet(sequenceLensi, math.asint(seqLength));
         }
         var Pi = P;
-        if (Pi == null)
+        if (P == null)
         {
-            Pi = NewTempTensorFloat(new TensorShape(numDirections, 3 * hiddenSize));
+            Pi = AllocTensorFloat(new TensorShape(numDirections, 3 * hiddenSize));
             MemClear(Pi);
         }
 
-        var Y_h1 = layout == Layers.RnnLayout.SequenceFirst ? (numDirections == 2 ? NewTempTensorFloat(new TensorShape(1, batchSize, hiddenSize)) : Yh) : NewTempTensorFloat(new TensorShape(batchSize, 1, hiddenSize));
-        var Y_c1 = layout == Layers.RnnLayout.SequenceFirst ? (numDirections == 2 ? NewTempTensorFloat(new TensorShape(1, batchSize, hiddenSize)) : Yc) : NewTempTensorFloat(new TensorShape(batchSize, 1, hiddenSize));
+        var Y_h1 = layout == Layers.RnnLayout.SequenceFirst ? (numDirections == 2 ? AllocTensorFloat(new TensorShape(1, batchSize, hiddenSize)) : Yh) : AllocTensorFloat(new TensorShape(batchSize, 1, hiddenSize));
+        var Y_c1 = layout == Layers.RnnLayout.SequenceFirst ? (numDirections == 2 ? AllocTensorFloat(new TensorShape(1, batchSize, hiddenSize)) : Yc) : AllocTensorFloat(new TensorShape(batchSize, 1, hiddenSize));
 
         var Y_hcLower = layout == Layers.RnnLayout.SequenceFirst ? batchSize * hiddenSize : hiddenSize;
         var Y_hcUpper = layout == Layers.RnnLayout.SequenceFirst ? 1 : batchSize;
@@ -1467,6 +1581,29 @@ public partial class CPUBackend
             SetRnnOutput(Y_h1, Yh, i, Y_hcUpper, Y_hcLower, numDirections * Y_hcLower);
             SetRnnOutput(Y_c1, Yc, i, Y_hcUpper, Y_hcLower, numDirections * Y_hcLower);
         }
+
+        if (numDirections == 2)
+        {
+            ReleaseTensorFloat(W1);
+            ReleaseTensorFloat(R1);
+        }
+        if (B == null)
+        {
+            ReleaseTensorFloat(Bi);
+        }
+        if (sequenceLens == null)
+        {
+            ReleaseTensorInt(sequenceLensi);
+        }
+        if (P == null)
+        {
+            ReleaseTensorFloat(Pi);
+        }
+        if (layout != Layers.RnnLayout.SequenceFirst || numDirections == 2)
+        {
+            ReleaseTensorFloat(Y_h1);
+            ReleaseTensorFloat(Y_c1);
+        }
     }
 
     /// <summary>
@@ -1475,7 +1612,7 @@ public partial class CPUBackend
     /// <param name="X">`Tensor` to prepare for CPU backend.</param>
     /// <param name="clearOnInit">Whether to copy tensor data to CPU backend.</param>
     /// <returns>`Tensor` once prepared for CPU backend.</returns>
-    public virtual Tensor PinToDevice(Tensor X, bool clearOnInit = false)
+    public Tensor PinToDevice(Tensor X, bool clearOnInit = false)
     {
         Pin(X, clearOnInit);
         return X;

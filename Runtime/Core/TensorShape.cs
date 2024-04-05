@@ -321,6 +321,17 @@ public unsafe struct TensorShape
     }
 
     /// <summary>
+    /// Returns rank-sized shape int*
+    /// </summary>
+    internal unsafe int* UnsafeGetPtr(int axis)
+    {
+        fixed (int* shape = &m_D7)
+        {
+            return &shape[axis];
+        }
+    }
+
+    /// <summary>
     /// Update TensorShape Length
     /// shape (3,4,5,6) => length = 3*4*5*6
     /// </summary>
@@ -1011,7 +1022,7 @@ public unsafe struct TensorShape
     /// </summary>
     /// <param name="permutations">An array indexing the new tensor axis from the old ones.</param>
     /// <returns>The transposed tensor shape.</returns>
-    public TensorShape Transpose(int[] permutations)
+    public TensorShape Transpose(ReadOnlySpan<int> permutations)
     {
         Logger.AssertAreEqual(rank, permutations.Length, "ValueError: shape ranks and permutations length do not match {0}, {1}", this, permutations.Length);
 
@@ -1165,6 +1176,74 @@ public unsafe struct TensorShape
 
         strided.RecomputeLength();
         return strided;
+    }
+
+    /// <summary>
+    /// Compares two `TensorShape` objects. Returns `true` if the two shapes have equal sized trailing "tailLength" innermost dimensions.
+    /// Assumes both shapes have at least rank >= tailLength
+    /// </summary>
+    /// <param name="a">The first shape to compare.</param>
+    /// <param name="b">The second shape to compare.</param>
+    /// <param name="tailLength">The number of innermost dimensions to compare.</param>
+    /// <param name="innermostNonMatchingDimension">Output the innermost dimension number that didn't match, starting at -1 (-tailLength-1 if all match).</param>
+    /// <returns>
+    /// True if tailLength == 0.
+    /// Otherwise true if the two shapes are equal along the tailLength innermost dimensions.
+    /// </returns>
+    internal static bool InnermostEqual(TensorShape a, TensorShape b, int tailLength, out int innermostNonMatchingDimension)
+    {
+        innermostNonMatchingDimension = -1 - tailLength;
+
+        if (tailLength > a.rank || tailLength > b.rank)
+            return false;
+
+        if (tailLength <= 0)
+            return true;
+
+        for (var i = 0; i < tailLength; i++)
+        {
+            if (a[a.rank - 1 - i] != b[b.rank - 1 - i])
+            {
+                innermostNonMatchingDimension = -1 - i;
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Compares two `TensorShape` objects. Returns `true` if the two shapes have equal sized heading "headLength" outermost dimensions.
+    /// Assumes both shapes have at least rank >= headLength
+    /// </summary>
+    /// <param name="a">The first shape to compare.</param>
+    /// <param name="b">The second shape to compare.</param>
+    /// <param name="tailLength">The number of outermost dimensions to compare.</param>
+    /// <param name="outermostNonMatchingDimension">Output the outermost dimension number that didn't matchheadLength (headLength if all match).</param>
+    /// <returns>
+    /// True if headLength == 0.
+    /// Otherwise true if the two shapes are equal along the headLength outermost dimensions.
+    /// </returns>
+    internal static bool OutermostEqual(TensorShape a, TensorShape b, int headLength, out int outermostNonMatchingDimension)
+    {
+        outermostNonMatchingDimension = headLength;
+
+        if (headLength > a.rank || headLength > b.rank)
+            return false;
+
+        if (headLength <= 0)
+            return true;
+
+        for (var i = 0; i < headLength; i++)
+        {
+            if (a[i] != b[i])
+            {
+                outermostNonMatchingDimension = i;
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

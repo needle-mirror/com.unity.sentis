@@ -13,8 +13,6 @@ namespace Unity.Sentis
         public int intSeed;
         [FieldOffset(0)]
         public uint uintSeed;
-        [FieldOffset(0)]
-        public float floatSeed;
     }
 
     /// <summary>
@@ -44,21 +42,21 @@ namespace Unity.Sentis
 
         internal Random() { }
 
-        internal Random(float seed)
+        internal Random(int seed)
         {
-            m_Random = new System.Random(new Seed { floatSeed = seed }.intSeed);
+            m_Random = new System.Random(new Seed { intSeed = seed }.intSeed);
         }
 
         // Returns float with random bytes to be used as seed for Random Op
-        internal float NextFloatSeed()
+        internal int NextSeed()
         {
-            return new Seed { intSeed = SystemRandom.Next(int.MinValue, int.MaxValue) }.floatSeed;
+            return new Seed { intSeed = SystemRandom.Next(int.MinValue, int.MaxValue) }.intSeed;
         }
 
         // Returns uint with random bytes to be used as seed inside Op and be passed to a job or as a seed for Mathematics.Random
-        internal static uint GetOpSeed(float? seed)
+        internal static uint GetSeed(int? seed)
         {
-            return seed.HasValue ? new Seed { floatSeed = seed.Value }.uintSeed : new Seed { intSeed = s_Random.Next(int.MinValue, int.MaxValue) }.uintSeed;
+            return seed.HasValue ? new Seed { intSeed = seed.Value }.uintSeed : new Seed { intSeed = s_Random.Next(int.MinValue, int.MaxValue) }.uintSeed;
         }
     }
 }

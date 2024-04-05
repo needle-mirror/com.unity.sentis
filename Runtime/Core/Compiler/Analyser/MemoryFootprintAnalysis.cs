@@ -17,7 +17,7 @@ namespace Unity.Sentis.Compiler.Analyser
                 {
                     if (string.IsNullOrEmpty(input))
                         continue;
-                    if (prevLayer != null && input != prevLayer.name)
+                    if (prevLayer != null && input != prevLayer.index)
                         allInputsExceptFromPreviousLayer.Add(input);
                 }
                 prevLayer = layer;
@@ -25,14 +25,13 @@ namespace Unity.Sentis.Compiler.Analyser
 
             var allOutputs = new HashSet<string>();
             foreach (var output in model.outputs)
-                allOutputs.Add(output);
-            allOutputs.Add(GraphLogicAnalysis.GetDefaultOutputName(model));
+                allOutputs.Add(output.index);
 
             var requireStorage = new HashSet<Layers.Layer>();
             foreach (var layer in model.layers)
             {
-                if (allInputsExceptFromPreviousLayer.Contains(layer.name) ||
-                    allOutputs.Contains(layer.name))
+                if (allInputsExceptFromPreviousLayer.Contains(layer.index) ||
+                    allOutputs.Contains(layer.index))
                     requireStorage.Add(layer);
             }
 

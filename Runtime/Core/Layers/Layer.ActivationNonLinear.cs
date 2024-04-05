@@ -6,7 +6,7 @@ namespace Unity.Sentis.Layers
     /// Represents a `LogSoftmax` activation layer along an axis: f(x, axis) = log(Softmax(x, axis)).
     /// </summary>
     [Serializable]
-    public class LogSoftmax : Activation
+    class LogSoftmax : Activation
     {
         /// <summary>
         /// The axis along which to apply the `LogSoftmax` activation function.
@@ -26,13 +26,13 @@ namespace Unity.Sentis.Layers
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.LogSoftmax(inputTensors[0] as TensorFloat, O, axis);
-            return O;
+                return;
+            ctx.backend.LogSoftmax(X as TensorFloat, O, axis);
         }
 
         /// <inheritdoc/>
@@ -48,7 +48,7 @@ namespace Unity.Sentis.Layers
     /// Represents a `Softmax` activation layer along an axis: f(x, axis) = exp(X) / ReduceSum(exp(X), axis).
     /// </summary>
     [Serializable]
-    public class Softmax : Activation
+    class Softmax : Activation
     {
         /// <summary>
         /// The axis along which to apply the `Softmax` activation function.
@@ -68,13 +68,13 @@ namespace Unity.Sentis.Layers
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Softmax(inputTensors[0] as TensorFloat, O, axis);
-            return O;
+                return;
+            ctx.backend.Softmax(X, O, axis);
         }
 
         /// <inheritdoc/>

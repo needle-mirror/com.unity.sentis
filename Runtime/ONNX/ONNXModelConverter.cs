@@ -6,7 +6,6 @@ using System.Runtime.CompilerServices;
 using Google.Protobuf;
 using Google.Protobuf.Collections;
 using Onnx;
-using System.Reflection;
 
 [assembly: InternalsVisibleTo("Unity.Sentis.Tests")]
 [assembly: InternalsVisibleTo("Unity.Sentis.ONNX")]
@@ -29,19 +28,6 @@ namespace Unity.Sentis.ONNX
         /// </summary>
         /// <param name="opType">Name of ONNX operator.</param>
         public OpImportAttribute(string opType) { this.opType = opType; }
-    }
-
-    /// <summary>
-    /// An interface that provides methods for importing custom layers.
-    /// </summary>
-    public interface IOpImporter
-    {
-        /// <summary>
-        /// Member method that implements adding the constants and layer of an ONNX operator node to a model.
-        /// </summary>
-        /// <param name="net">The current model to add the node to.</param>
-        /// <param name="node">The node to import.</param>
-        void Import(Model net, OperatorNode node);
     }
 
     /// <summary>
@@ -123,11 +109,8 @@ namespace Unity.Sentis.ONNX
     public class ONNXModelConverter
     {
         // Configuration
-        bool m_OptimizeModel;
         string m_DirectoryPath;
         string m_FilePath;
-
-        internal event Action<Dictionary<string, IOpImporter>> CollectOpImporters;
 
         /// <summary>
         /// Calls the methods in its invocation list when the model is imported.
@@ -156,18 +139,26 @@ namespace Unity.Sentis.ONNX
             model = ConvertOnnxModel(onnxModel);
             ModelImported?.Invoke(onnxModel, model);
 
+#if UNITY_EDITOR && UNITY_2023_2_OR_NEWER && ENABLE_CLOUD_SERVICES_ANALYTICS
+            var data = new SentisAnalytics.Data()
+            {
+                allOperators = model.layers.Select(l => l.profilerTag).Distinct().ToArray(),
+                importWarningSeverity = Warnings.Select(w => (int)w.MessageSeverity).ToArray(),
+                importWarningMessages = Warnings.Select(w => w.Message).ToArray(),
+                modelLayerCount = model.layers.Count,
+            };
+            SentisAnalytics.SendEvent(data);
+#endif
+
             return model;
         }
 
         /// <summary>
         /// Initializes and returns an instance of `ONNXModelConverter`.
         /// </summary>
-        /// <param name="optimizeModel">Whether to perform optimizations on the model during the import. The default value is `true`.</param>
         /// <param name="filePath">The path of the asset to convert.</param>
-        public ONNXModelConverter(bool optimizeModel, string filePath)
+        public ONNXModelConverter(string filePath)
         {
-            m_OptimizeModel = optimizeModel;
-
             m_FilePath = filePath;
             m_DirectoryPath = Path.GetDirectoryName(m_FilePath);
         }
@@ -180,7 +171,7 @@ namespace Unity.Sentis.ONNX
             {
                 node.UnsupportedAttribute("sparse_value");
                 var constant = ONNXConstantsLoader.LoadConstant(node.ValueAsTensor, m_DirectoryPath);
-                constant.name = node.Name;
+                constant.index = node.Name;
                 net.AddConstant(constant);
             });
 
@@ -365,9 +356,9 @@ namespace Unity.Sentis.ONNX
                 {
                     // TopK-1
                     var k = node.GetRequiredInt("k");
-                    var kConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_k"), new[] { k });
+                    var kConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_k"), new[] { k });
                     net.AddConstant(kConstant);
-                    net.AddLayer(new Layers.TopK(node.Name, node.Input0, kConstant.name, axis, largest, sorted, outputs));
+                    net.AddLayer(new Layers.TopK(node.Name, node.Input0, kConstant.index, axis, largest, sorted, outputs));
                 }
                 else
                 {
@@ -412,12 +403,12 @@ namespace Unity.Sentis.ONNX
                 {
                     // Clip-1, Clip-6 with at least one attribute from min/max
                     var min = node.GetOptionalFloat("min", float.MinValue);
-                    var minConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_min"), new[] { min });
+                    var minConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_min"), new[] { min });
                     net.AddConstant(minConstant);
                     var max = node.GetOptionalFloat("max", float.MaxValue);
-                    var maxConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_max"), new[] { max });
+                    var maxConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_max"), new[] { max });
                     net.AddConstant(maxConstant);
-                    net.AddLayer(new Layers.Clip(node.Name, node.Input0, minConstant.name, maxConstant.name));
+                    net.AddLayer(new Layers.Clip(node.Name, node.Input0, minConstant.index, maxConstant.index));
                 }
                 else
                 {
@@ -628,9 +619,9 @@ namespace Unity.Sentis.ONNX
                 if (node.HasAttribute("axes"))
                 {
                     var axes = node.GetRequiredIntArray("axes");
-                    var axesConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_axes"), axes);
+                    var axesConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_axes"), axes);
                     net.AddConstant(axesConstant);
-                    inputs = new[] { node.Input0, axesConstant.name };
+                    inputs = new[] { node.Input0, axesConstant.index };
                 }
 
                 var keepDims = node.GetOptionalInt("keepdims", 1) == 1;
@@ -643,9 +634,9 @@ namespace Unity.Sentis.ONNX
                 if (node.HasAttribute("axes"))
                 {
                     var axes = node.GetRequiredIntArray("axes");
-                    var axesConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_axes"), axes);
+                    var axesConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_axes"), axes);
                     net.AddConstant(axesConstant);
-                    inputs = new[] { node.Input0, axesConstant.name };
+                    inputs = new[] { node.Input0, axesConstant.index };
                 }
 
                 var keepDims = node.GetOptionalInt("keepdims", 1) == 1;
@@ -658,9 +649,9 @@ namespace Unity.Sentis.ONNX
                 if (node.HasAttribute("axes"))
                 {
                     var axes = node.GetRequiredIntArray("axes");
-                    var axesConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_axes"), axes);
+                    var axesConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_axes"), axes);
                     net.AddConstant(axesConstant);
-                    inputs = new[] { node.Input0, axesConstant.name };
+                    inputs = new[] { node.Input0, axesConstant.index };
                 }
 
                 var keepDims = node.GetOptionalInt("keepdims", 1) == 1;
@@ -673,9 +664,9 @@ namespace Unity.Sentis.ONNX
                 if (node.HasAttribute("axes"))
                 {
                     var axes = node.GetRequiredIntArray("axes");
-                    var axesConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_axes"), axes);
+                    var axesConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_axes"), axes);
                     net.AddConstant(axesConstant);
-                    inputs = new[] { node.Input0, axesConstant.name };
+                    inputs = new[] { node.Input0, axesConstant.index };
                 }
 
                 var keepDims = node.GetOptionalInt("keepdims", 1) == 1;
@@ -688,9 +679,9 @@ namespace Unity.Sentis.ONNX
                 if (node.HasAttribute("axes"))
                 {
                     var axes = node.GetRequiredIntArray("axes");
-                    var axesConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_axes"), axes);
+                    var axesConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_axes"), axes);
                     net.AddConstant(axesConstant);
-                    inputs = new[] { node.Input0, axesConstant.name };
+                    inputs = new[] { node.Input0, axesConstant.index };
                 }
 
                 var keepDims = node.GetOptionalInt("keepdims", 1) == 1;
@@ -703,9 +694,9 @@ namespace Unity.Sentis.ONNX
                 if (node.HasAttribute("axes"))
                 {
                     var axes = node.GetRequiredIntArray("axes");
-                    var axesConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_axes"), axes);
+                    var axesConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_axes"), axes);
                     net.AddConstant(axesConstant);
-                    inputs = new[] { node.Input0, axesConstant.name };
+                    inputs = new[] { node.Input0, axesConstant.index };
                 }
 
                 var keepDims = node.GetOptionalInt("keepdims", 1) == 1;
@@ -718,9 +709,9 @@ namespace Unity.Sentis.ONNX
                 if (node.HasAttribute("axes"))
                 {
                     var axes = node.GetRequiredIntArray("axes");
-                    var axesConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_axes"), axes);
+                    var axesConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_axes"), axes);
                     net.AddConstant(axesConstant);
-                    inputs = new[] { node.Input0, axesConstant.name };
+                    inputs = new[] { node.Input0, axesConstant.index };
                 }
 
                 var keepDims = node.GetOptionalInt("keepdims", 1) == 1;
@@ -733,9 +724,9 @@ namespace Unity.Sentis.ONNX
                 if (node.HasAttribute("axes"))
                 {
                     var axes = node.GetRequiredIntArray("axes");
-                    var axesConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_axes"), axes);
+                    var axesConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_axes"), axes);
                     net.AddConstant(axesConstant);
-                    inputs = new[] { node.Input0, axesConstant.name };
+                    inputs = new[] { node.Input0, axesConstant.index };
                 }
 
                 var keepDims = node.GetOptionalInt("keepdims", 1) == 1;
@@ -748,9 +739,9 @@ namespace Unity.Sentis.ONNX
                 if (node.HasAttribute("axes"))
                 {
                     var axes = node.GetRequiredIntArray("axes");
-                    var axesConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_axes"), axes);
+                    var axesConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_axes"), axes);
                     net.AddConstant(axesConstant);
-                    inputs = new[] { node.Input0, axesConstant.name };
+                    inputs = new[] { node.Input0, axesConstant.index };
                 }
 
                 var keepDims = node.GetOptionalInt("keepdims", 1) == 1;
@@ -763,9 +754,9 @@ namespace Unity.Sentis.ONNX
                 if (node.HasAttribute("axes"))
                 {
                     var axes = node.GetRequiredIntArray("axes");
-                    var axesConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_axes"), axes);
+                    var axesConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_axes"), axes);
                     net.AddConstant(axesConstant);
-                    inputs = new[] { node.Input0, axesConstant.name };
+                    inputs = new[] { node.Input0, axesConstant.index };
                 }
 
                 var keepDims = node.GetOptionalInt("keepdims", 1) == 1;
@@ -779,8 +770,8 @@ namespace Unity.Sentis.ONNX
                 var toOnnxType = (TensorProto.Types.DataType)node.GetRequiredInt("to");
                 var toDataType = ONNXNodeWrapper.DataTypeFromOnnxDataType(toOnnxType, OnUnsupported: () =>
                 {
-                    Warn(net, node, Model.WarningType.Error, $"Unsupported tensor dataType: {toOnnxType}.");
-                    Debug.LogError(net.Warnings.Last().Message);
+                    Warn(WarningType.Error, $"Unsupported tensor dataType: {toOnnxType}.");
+                    Debug.LogError(Warnings.Last().Message);
                 });
                 net.AddLayer(new Layers.Cast(node.Name, node.Input0, toDataType));
             });
@@ -812,29 +803,32 @@ namespace Unity.Sentis.ONNX
             Add("Identity", (net, node) => { net.AddLayer(new Layers.Identity(node.Name, node.Input0)); });
             Add("Pad", (net, node) =>
             {
-                if (node.InputCount > 3)
-                    node.Warn($"<b>Pad:</b> Unsupported input `<b>axes</b>`. Value will be ignored and defaulted to [0, 1, ..., input_rank-1].", Model.WarningType.Warning);
                 var mode = node.PadMode();
                 if (node.InputCount == 1)
                 {
                     // Pad-1 or Pad-2
                     var pads = node.GetRequiredIntArray(node.HasAttribute("pads") ? "pads" : "paddings");
-                    var padsConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_pads"), pads);
+                    var padsConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_pads"), pads);
                     net.AddConstant(padsConstant);
                     var value = node.GetOptionalFloat("value", 0f);
-                    var valueConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_value"), new[] { value });
+                    var valueConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_value"), new[] { value });
                     net.AddConstant(valueConstant);
-                    net.AddLayer(new Layers.Pad(node.Name, node.Input0, padsConstant.name, valueConstant.name, mode));
+                    net.AddLayer(new Layers.Pad(node.Name, node.Input0, padsConstant.index, valueConstant.index, mode));
                 }
-                else if (node.InputCount == 2 || string.IsNullOrEmpty(node.Inputs[2]))
+                else if (node.InputCount == 2 || (node.InputCount == 3 && string.IsNullOrEmpty(node.Inputs[2])))
                 {
                     // Pad-11, Pad-13, Pad-18 no constant value
                     net.AddLayer(new Layers.Pad(node.Name, node.Input0, node.Input1, mode));
                 }
+                else if (node.InputCount == 3 || (node.InputCount == 4 && string.IsNullOrEmpty(node.Inputs[3])))
+                {
+                    // Pad-11, Pad-13, Pad-18 with constant value and no axes
+                    net.AddLayer(new Layers.Pad(node.Name, node.Input0, node.Input1, node.Input2, mode));
+                }
                 else
                 {
-                    // Pad-11, Pad-13, Pad-18 with constant value
-                    net.AddLayer(new Layers.Pad(node.Name, node.Input0, node.Input1, node.Input2, mode));
+                    // Pad-18 with axes
+                    net.AddLayer(new Layers.Pad(node.Name, node.Input0, node.Input1, node.Inputs[2], node.Input3, mode));
                 }
             });
             Add("Reshape", (net, node) =>
@@ -843,9 +837,9 @@ namespace Unity.Sentis.ONNX
                 {
                     // Reshape-1, Reshape-5
                     var shape = node.GetRequiredIntArray("shape");
-                    var shapeConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_shape"), shape);
+                    var shapeConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_shape"), shape);
                     net.AddConstant(shapeConstant);
-                    net.AddLayer(new Layers.Reshape(node.Name, node.Input0, shapeConstant.name));
+                    net.AddLayer(new Layers.Reshape(node.Name, node.Input0, shapeConstant.index));
                 }
                 else
                 {
@@ -862,21 +856,22 @@ namespace Unity.Sentis.ONNX
                 var coordinateTransformMode = node.CoordinateTransformMode();
                 var mode = node.InterpolationMode();
                 var nearestMode = node.NearestMode();
+                var axes = node.GetOptionalIntArray("axes", null);
 
                 if (node.InputCount == 2)
                 {
                     // Resize-10
-                    net.AddLayer(new Layers.Resize(node.Name, node.Input0, node.Input1, Layers.ScaleMode.Scales, mode, Layers.CoordTransformMode.Asymmetric, Layers.NearestMode.Floor));
+                    net.AddLayer(new Layers.Resize(node.Name, node.Input0, node.Input1, Layers.ScaleMode.Scales, mode, Layers.CoordTransformMode.Asymmetric, Layers.NearestMode.Floor, axes));
                 }
                 else if (node.InputCount == 3)
                 {
                     // Resize-11, Resize-13 with scales
-                    net.AddLayer(new Layers.Resize(node.Name, node.Input0, node.Input2, Layers.ScaleMode.Scales, mode, coordinateTransformMode, nearestMode));
+                    net.AddLayer(new Layers.Resize(node.Name, node.Input0, node.Input2, Layers.ScaleMode.Scales, mode, coordinateTransformMode, nearestMode, axes));
                 }
                 else if (node.InputCount == 4)
                 {
                     // Resize-11, Resize-13 with sizes
-                    net.AddLayer(new Layers.Resize(node.Name, node.Input0, node.Input3, Layers.ScaleMode.Sizes, mode, coordinateTransformMode, nearestMode));
+                    net.AddLayer(new Layers.Resize(node.Name, node.Input0, node.Input3, Layers.ScaleMode.Sizes, mode, coordinateTransformMode, nearestMode, axes));
                 }
             });
             Add("Slice", (net, node) =>
@@ -885,21 +880,21 @@ namespace Unity.Sentis.ONNX
                 {
                     // Slice-1
                     var starts = node.GetRequiredIntArray("starts");
-                    var startsConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_starts"), starts);
+                    var startsConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_starts"), starts);
                     net.AddConstant(startsConstant);
                     var ends = node.GetRequiredIntArray("ends");
-                    var endsConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_ends"), ends);
+                    var endsConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_ends"), ends);
                     net.AddConstant(endsConstant);
                     if (node.HasAttribute("axes"))
                     {
                         var axes = node.GetRequiredIntArray("axes");
-                        var axesConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_axes"), axes);
+                        var axesConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_axes"), axes);
                         net.AddConstant(axesConstant);
-                        net.AddLayer(new Layers.Slice(node.Name, node.Input0, startsConstant.name, endsConstant.name, axesConstant.name));
+                        net.AddLayer(new Layers.Slice(node.Name, node.Input0, startsConstant.index, endsConstant.index, axesConstant.index));
                     }
                     else
                     {
-                        net.AddLayer(new Layers.Slice(node.Name, node.Input0, startsConstant.name, endsConstant.name));
+                        net.AddLayer(new Layers.Slice(node.Name, node.Input0, startsConstant.index, endsConstant.index));
                     }
                 }
                 else
@@ -929,9 +924,9 @@ namespace Unity.Sentis.ONNX
                 {
                     // Split-1, Split-2, Split-11 with "split" attribute
                     var split = node.GetRequiredIntArray("split");
-                    var splitConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_split"), split);
+                    var splitConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_split"), split);
                     net.AddConstant(splitConstant);
-                    net.AddLayer(new Layers.Split(node.Name, node.Input0, splitConstant.name, node.Outputs, axis));
+                    net.AddLayer(new Layers.Split(node.Name, node.Input0, splitConstant.index, node.Outputs, axis));
                 }
                 else if (node.InputCount == 2)
                 {
@@ -950,9 +945,9 @@ namespace Unity.Sentis.ONNX
                 {
                     // Squeeze-1, Squeeze-11 with given axes
                     var axes = node.GetRequiredIntArray("axes");
-                    var axesConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_axes"), axes);
+                    var axesConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_axes"), axes);
                     net.AddConstant(axesConstant);
-                    net.AddLayer(new Layers.Squeeze(node.Name, node.Input0, axesConstant.name));
+                    net.AddLayer(new Layers.Squeeze(node.Name, node.Input0, axesConstant.index));
                 }
                 else
                 {
@@ -990,14 +985,14 @@ namespace Unity.Sentis.ONNX
                 {
                     // Upsample-7
                     var scales = node.GetRequiredFloatArray("scales");
-                    var scalesConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_scales"), scales);
+                    var scalesConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_scales"), scales);
                     net.AddConstant(scalesConstant);
-                    net.AddLayer(new Layers.Resize(node.Name, node.Input0, scalesConstant.name, Layers.ScaleMode.Scales, mode, coordinateTransformMode, nearestMode));
+                    net.AddLayer(new Layers.Resize(node.Name, node.Input0, scalesConstant.index, Layers.ScaleMode.Scales, mode, coordinateTransformMode, nearestMode, null));
                 }
                 else
                 {
                     // Upsample-9
-                    net.AddLayer(new Layers.Resize(node.Name, node.Input0, node.Input1, Layers.ScaleMode.Scales, mode, coordinateTransformMode, nearestMode));
+                    net.AddLayer(new Layers.Resize(node.Name, node.Input0, node.Input1, Layers.ScaleMode.Scales, mode, coordinateTransformMode, nearestMode, null));
                 }
             });
             Add("Unsqueeze", (net, node) =>
@@ -1006,9 +1001,9 @@ namespace Unity.Sentis.ONNX
                 {
                     // Unsqueeze-1, Unsqueeze-11
                     var axes = node.GetRequiredIntArray("axes");
-                    var axesConstant = new Layers.Constant(net.GetUniqueName(node.Name + "_axes"), axes);
+                    var axesConstant = new Layers.Constant(net.GetUniqueIndex(node.Name + "_axes"), axes);
                     net.AddConstant(axesConstant);
-                    net.AddLayer(new Layers.Unsqueeze(node.Name, node.Input0, axesConstant.name));
+                    net.AddLayer(new Layers.Unsqueeze(node.Name, node.Input0, axesConstant.index));
                 }
                 else
                 {
@@ -1041,9 +1036,9 @@ namespace Unity.Sentis.ONNX
                 using var scale = new TensorFloat(new TensorShape(maxElements), attrScale);
                 using var bias = new TensorFloat(new TensorShape(maxElements), attrBias);
 
-                var scaleConstantName = net.GetUniqueName($"{node.Name}_Scale");
+                var scaleConstantName = net.GetUniqueIndex($"{node.Name}_Scale");
                 net.AddConstant(new Layers.Constant(scaleConstantName, scale));
-                var biasConstantName = net.GetUniqueName($"{node.Name}_Bias");
+                var biasConstantName = net.GetUniqueIndex($"{node.Name}_Bias");
                 net.AddConstant(new Layers.Constant(biasConstantName, bias));
                 net.AddLayer(new Layers.ScaleBias(node.Name, node.Input0, scaleConstantName, biasConstantName));
             });
@@ -1142,28 +1137,12 @@ namespace Unity.Sentis.ONNX
             // Parse producer meta data
             foreach (var opsetSetIdProto in onnxModel.OpsetImport)
             {
-                model.OpsetDescriptions.Add(new Model.OpsetDescription
-                {
-                    domain = opsetSetIdProto.Domain,
-                    version = opsetSetIdProto.Version
-                });
                 if (string.IsNullOrEmpty(opsetSetIdProto.Domain))
                     model.DefaultOpsetVersion = opsetSetIdProto.Version;
             }
             model.ProducerName = onnxModel.ProducerName;
             if (!String.IsNullOrEmpty(onnxModel.ProducerVersion))
                 model.ProducerName += $" v{onnxModel.ProducerVersion}";
-            model.IrSource = "ONNX";
-            model.IrVersion = onnxModel.IrVersion;
-
-            // Import any (optional) metadata properties
-            RepeatedField<StringStringEntryProto> metadataProps = onnxModel.MetadataProps;
-            Dictionary<string, string> metadata = model.Metadata;
-            for (int p = 0; p < metadataProps.Count; p++)
-            {
-                StringStringEntryProto prop = metadataProps[p];
-                metadata.Add(prop.Key, prop.Value);
-            }
 
             // Convert graph inputs & outputs
             var initializersByName = onnxModel.Graph.Initializer.ToDictionary(i => i.Name, i => true);
@@ -1193,13 +1172,13 @@ namespace Unity.Sentis.ONNX
                                 index = namedDims.Count;
                                 namedDims.Add(dim.DimParam);
                             }
-                            inputShape[i] = new SymbolicTensorDim((char)index);
+                            inputShape[i] = SymbolicTensorDim.Param((byte)index);
                             break;
                         case TensorShapeProto.Types.Dimension.ValueOneofCase.DimValue:
                             if (dim.DimValue < 0)
-                                Warn(model, "Input", Model.WarningType.Warning, "ONNX: Tensor shape has negative index, treating as unknown dimension");
+                                Warn(WarningType.Warning, "Tensor shape has negative index, treating as unknown dimension");
                             else
-                                inputShape[i] = new SymbolicTensorDim(dim.DimValue > int.MaxValue ? int.MaxValue : (int)dim.DimValue);
+                                inputShape[i] = SymbolicTensorDim.Int(dim.DimValue > int.MaxValue ? int.MaxValue : (int)dim.DimValue);
                             break;
                         default:
                             throw new ArgumentOutOfRangeException();
@@ -1209,17 +1188,6 @@ namespace Unity.Sentis.ONNX
                 var inputDataType = ONNXNodeWrapper.DataTypeFromOnnxDataType((TensorProto.Types.DataType)input.Type.TensorType.ElemType);
 
                 model.AddInput(input.Name, inputDataType, inputShape);
-            }
-
-            if (namedDims.Count > 0)
-            {
-                // set the named inputs mapping to the model
-                var remapNamedDims = new Dictionary<char, string>();
-                for (var i = 0; i < namedDims.Count; i++)
-                {
-                    remapNamedDims[(char)i] = namedDims[i];
-                }
-                model.SetRemapNamedDims(remapNamedDims);
             }
 
             foreach (ValueInfoProto o in onnxModel.Graph.Output)
@@ -1239,7 +1207,7 @@ namespace Unity.Sentis.ONNX
                             weightsStream.Add(name, File.OpenRead(Path.Combine(m_DirectoryPath, name)));
                         else
                         {
-                            Warn(model, name, Model.WarningType.Error, $"External Weights file not found! Expecting: {filePath}");
+                            Warn(WarningType.Error, $"External Weights file not found! Expecting: {filePath}");
                             return model;
                         }
                     }
@@ -1259,27 +1227,17 @@ namespace Unity.Sentis.ONNX
             // Nodes are supposed to be sorted, but this isn't always the case
             var sortedGraph = SortTopologically(onnxModel);
 
-            Dictionary<string, IOpImporter> customOps = new Dictionary<string, IOpImporter>();
-            CollectOpImporters?.Invoke(customOps);
-
             // Convert graph nodes
             foreach (NodeProto onnxNode in sortedGraph)
             {
-                var node = new ONNXNodeWrapper(onnxNode, model.Warnings);
+                var node = new ONNXNodeWrapper(onnxNode);
                 var nodeId = node.Name;
                 var opType = node.OperatorType;
 
-                if (customOps.ContainsKey(opType))
-                {
-                    OperatorNode opNode = new OperatorNode(node);
-                    customOps[opType].Import(model, opNode);
-                    continue;
-                }
-
                 if (!m_NodeImporters.ContainsKey(opType))
                 {
-                    Warn(model, nodeId, Model.WarningType.Error, $"{opType} not supported");
-                    Debug.LogError(model.Warnings.Last().Message);
+                    Warn(WarningType.Error, $"{opType} not supported");
+                    Debug.LogError(Warnings.Last().Message);
                     continue;
                 }
 
@@ -1289,23 +1247,32 @@ namespace Unity.Sentis.ONNX
                 }
                 catch (Exception e)
                 {
-                    Warn(model, nodeId, Model.WarningType.Error, e.Message);
-                    Debug.LogError(model.Warnings.Last().Message);
+                    Warn(WarningType.Error, e.Message);
+                    Debug.LogError(Warnings.Last().Message);
                 }
             }
+
+            // delete unused outputs
+            HashSet<string> outputsToRemove = model.outputs.Select(o => o.index).ToHashSet();
+            foreach (var layer in model.layers)
+            {
+                outputsToRemove.Remove(layer.index);
+                for (var i = 1; i < layer.outputs?.Length; i++)
+                    outputsToRemove.Remove(layer.outputs[i]);
+            }
+            model.outputs.RemoveAll(x => outputsToRemove.Contains(x.index));
 
             // strip :0 at the end of string name for TF import
             model = TrimTensorflowNames(model);
 
             // validate imported model
-            if (!model.Warnings.Any(w => w.MessageSeverity == Model.WarningType.Error))
+            if (!Warnings.Any(w => w.MessageSeverity == WarningType.Error))
             {
                 model = ModelValidator.ValidateModel(model);
             }
-            if (!model.Warnings.Any(w => w.MessageSeverity == Model.WarningType.Error))
+            if (!Warnings.Any(w => w.MessageSeverity == WarningType.Error))
             {
-                if (m_OptimizeModel)
-                    ModelOptimizer.OptimizeModel(ref model);
+                ModelOptimizer.OptimizeModel(ref model);
                 ModelOptimizer.RunCPUFallbackPass(ref model);
             }
 
@@ -1315,21 +1282,24 @@ namespace Unity.Sentis.ONNX
         static Model TrimTensorflowNames(Model model)
         {
             model.inputs   = model.inputs.Select(i   => {
+                i.index = TrimTensorflowName(i.index);
                 i.name = TrimTensorflowName(i.name);
                 return i;
             }).ToList();
 
-            model.outputs  = model.outputs.Select(o  => {
-                return TrimTensorflowName(o);
+            model.outputs   = model.outputs.Select(o   => {
+                o.index = TrimTensorflowName(o.index);
+                o.name = TrimTensorflowName(o.name);
+                return o;
             }).ToList();
 
             model.constants = model.constants.Select(c => {
-                c.name = TrimTensorflowName(c.name);
+                c.index = TrimTensorflowName(c.index);
                 return c;
             }).ToList();
 
             model.layers   = model.layers.Select(l   => {
-                l.name = TrimTensorflowName(l.name);
+                l.index = TrimTensorflowName(l.index);
                 for(int i = 0; i < l.inputs.Length; i++)
                     l.inputs[i] = TrimTensorflowName(l.inputs[i]);
                 if (l.outputs != null)
@@ -1351,14 +1321,67 @@ namespace Unity.Sentis.ONNX
         }
 
         // Logging helpers
-        static void Warn(Model model, ONNXNodeWrapper node, Model.WarningType severity, string message)
+        void Warn(WarningType severity, string message)
         {
-            Warn(model, node.Name, severity, message);
+            Warnings.Add(new ImporterWarning(message, severity));
         }
 
-        static void Warn(Model model, string layerName, Model.WarningType severity, string message)
+        /// <summary>
+        /// The warnings from the model importer.
+        /// </summary>
+        public List<ImporterWarning> Warnings { get; } = new List<ImporterWarning>();
+
+        /// <summary>
+        /// Represents types of warning from the model importer.
+        /// </summary>
+        public enum WarningType
         {
-            model.Warnings.Add(new Model.ImporterWarning(layerName, severity, message));
+            /// <summary>
+            /// No error.
+            /// </summary>
+            None = 0,
+
+            /// <summary>
+            /// Information. Execution should run without errors.
+            /// </summary>
+            Info = 1,
+
+            /// <summary>
+            /// Warning. Execution should run, but may have issues with precision or speed.
+            /// </summary>
+            Warning = 2,
+
+            /// <summary>
+            /// Error. Execution won't run.
+            /// </summary>
+            Error = 3
+        }
+
+        /// <summary>
+        /// Represents the data structure for a warning from the model importer.
+        /// </summary>
+        public class ImporterWarning
+        {
+            /// <summary>
+            /// A message.
+            /// </summary>
+            public string Message { get; }
+
+            /// <summary>
+            /// The severity of a warning.
+            /// </summary>
+            public WarningType MessageSeverity { get; }
+
+            /// <summary>
+            /// Initializes and returns an instance of `ImporterWarning`.
+            /// </summary>
+            /// <param name="severity">The severity of the warning as a `WarningType`</param>
+            /// <param name="msg">The message text of the warning</param>
+            public ImporterWarning(string msg, WarningType severity)
+            {
+                Message = msg;
+                MessageSeverity = severity;
+            }
         }
     }
 

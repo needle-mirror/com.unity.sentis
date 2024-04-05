@@ -32,7 +32,6 @@ namespace Unity.Sentis.Editor.Tests
             var outputTensor = (engine.PeekOutput() as TensorFloat);
 
             Assert.AreEqual(output.Length, outputTensor.shape.length);
-
             // Check if output matches expected output down to epsilon
             for (var i = 0; i < output.Length; i++)
             {

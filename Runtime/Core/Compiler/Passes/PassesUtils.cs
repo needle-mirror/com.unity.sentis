@@ -9,14 +9,14 @@ static class PassesUtils
     /// </summary>
     public static void RemoveAndRemap(ref Model model, HashSet<string> removeLayers, Dictionary<string, string> remap)
     {
-        model.layers.RemoveAll(l => removeLayers.Contains(l.name));
+        model.layers.RemoveAll(l => removeLayers.Contains(l.index));
         for (int l = 0; l < model.layers.Count; ++l)
         {
             Layers.Layer layer = model.layers[l];
             for (int i = 0; i < layer.inputs.Length; i++)
             {
                 var input = layer.inputs[i];
-                if (remap.ContainsKey(input) && layer.name != remap[input])
+                if (remap.ContainsKey(input) && layer.index != remap[input])
                     model.layers[l].inputs[i] = remap[input];
             }
         }

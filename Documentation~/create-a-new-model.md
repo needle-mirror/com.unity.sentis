@@ -2,46 +2,52 @@
 
 You can create a new runtime model without an ONNX file using Sentis. For example if you want to do a series of tensor operations without weights, or if you want to build your own model serialization from another model format.
 
-## Instantiate the model object
+## Using the functional API
 
-1. Create an instance of `Model` using the default constructor.
-2. Add inputs to the model.
-3. Add constants to the model.
-4. Add layers to the model. Sentis executes layers in the order you add them.
-5. Add outputs to the model.
+1. Define the forward method of the model which returns the outputs as `FunctionalTensor` from the inputs.
+2. Define an `InputDef` for each input to the model with the data type and shape.
+3. Compile the model using the `Compile` method.
 
 In this example a simple model is created to calculate the dot product of two vectors.
 
 ```
+using System;
 using Unity.Sentis;
-using Unity.Sentis.Layers;
+using UnityEngine;
 
 public class CreateNewModel : MonoBehaviour
 {
-    Model runtimeModel;
+    Model model;
 
     void Start()
     {
-        // Instantiate model
-        runtimeModel = new Model();
+        // Define the forward method of the model.
+        // In this example a single `FunctionalTensor` output is calculated from two `FunctionalTensor` inputs.
+        FunctionalTensor DotProduct(FunctionalTensor x, FunctionalTensor y)
+        {
+            // Calculate the elementwise product of the input `FunctionalTensor`s using an operator.
+            FunctionalTensor prod = x * y;
 
-        // Add two vector float inputs of the same length
-        runtimeModel.AddInput("a", DataType.Float, new SymbolicTensorShape(new SymbolicTensorDim('d')));
-        runtimeModel.AddInput("b", DataType.Float, new SymbolicTensorShape(new SymbolicTensorDim('d')));
+            // Sum the product along the first axis flattening the summed dimension.
+            return Functional.ReduceSum(prod, dim: 0, keepdim: false);
+        }
 
-        // Add constant int tensor for the axes of the reduction
-        runtimeModel.AddConstant(new Constant("reduce_axes", new TensorInt(new TensorShape(1), new[] { 0 })));
+        // Set up the input data types and shapes for the model as `InputDef`s.
+        // Our dot product operates on two vector tensors of the same size `d`.
+        (InputDef, InputDef) inputDefs =
+        (
+            new InputDef(DataType.Float, new TensorShape(1, 2, 3)),
+            new InputDef(DataType.Float, new TensorShape(1, 2, 3))
+        );
 
-        // Add the required layers in order for the dot product
-        runtimeModel.AddLayer(new Mul("mul", "a", "b"));
-        runtimeModel.AddLayer(new ReduceSum("output", new[] { "mul", "reduce_axes" }, keepdims: false));
-
-        // Add the output of the ReduceSum as an output of the model
-        runtimeModel.AddOutput("output");
+        // Build the model using the `Compile` method.
+        model = Functional.Compile(DotProduct, inputDefs);
     }
 }
 ```
 
 You can then [create an engine to run a model](create-an-engine.md).
 
-Sentis can't run [model optimization](models-concept.md#how-sentis-optimizes-a-model) on models you create using the `Model` API.
+## Additional resources
+
+- [Supported functional methods](supported-functional-methods.md)

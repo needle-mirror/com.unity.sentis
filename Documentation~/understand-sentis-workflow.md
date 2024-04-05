@@ -9,9 +9,12 @@ To use Sentis to run a neural network in Unity, follow these steps:
 5. Run the model with the input to infer a result.
 6. Get the result.
 
+> [!TIP] 
+> Use the [Workflow example](workflow-example.md) to understand the workflow applied to a simple example. 
+
 ## Use the Unity.Sentis namespace
 
-Add the following to the top of your script:
+To use the `Unity.Sentis` namespace, add the following to the top of your script:
 
 ```
 using Unity.Sentis;
@@ -21,11 +24,11 @@ using Unity.Sentis;
 
 Sentis can import model files in [Open Neural Network Exchange](https://onnx.ai/) (ONNX) format. To load a model, follow these steps:
 
-1. [Export a model to ONNX format from a machine learning framework](export-an-onnx-file.md), or download an ONNX model from the internet. 
+1. [Export a model to ONNX format from a machine learning framework](export-convert-onnx.md), or download an ONNX model from the internet. 
 
-2. Add the model file to the `Assets` folder of the Project window.
+2. Add the model file to the `Assets` folder of the **Project** window.
 
-3. Create a runtime model in your script.
+3. Create a runtime model in your script:
 
     ```
     ModelAsset modelAsset = Resources.Load("model-file-in-assets-folder") as ModelAsset;
@@ -60,7 +63,7 @@ Refer to [Create an engine](create-an-engine.md) for more information.
 
 ## Run the model
 
-To run the model, use the `Execute` method of the worker object with the input tensor. For example:
+To run the model, use the `Execute` method of the worker object with the input tensor.
 
 ```
 worker.Execute(inputTensor);
@@ -78,75 +81,10 @@ TensorFloat outputTensor = worker.PeekOutput() as TensorFloat;
 
 Refer to [Get output from a model](get-the-output.md) for more information.
 
-## Example
-
-The following example classifies a handwritten digit.
-
-Follow these steps:
-
-1. Attach the following script to a GameObject in your scene.
-
-```
-using UnityEngine;
-using Unity.Sentis;
-using Unity.Sentis.Layers;
-
-public class ClassifyHandwrittenDigit : MonoBehaviour
-{
-    public Texture2D inputTexture;
-    public ModelAsset modelAsset;
-    Model runtimeModel;
-    IWorker worker;
-    public float[] results;
-
-    void Start()
-    {
-        // Create the runtime model
-        runtimeModel = ModelLoader.Load(modelAsset);
-
-        // Add softmax layer to end of model instead of non-softmaxed output
-        string softmaxOutputName = "Softmax_Output";
-        runtimeModel.AddLayer(new Softmax(softmaxOutputName, runtimeModel.outputs[0]));
-        runtimeModel.outputs[0] = softmaxOutputName;
-
-        // Create input data as a tensor
-        using Tensor inputTensor = TextureConverter.ToTensor(inputTexture, width: 28, height: 28, channels: 1);
-
-        // Create an engine
-        worker = WorkerFactory.CreateWorker(BackendType.GPUCompute, runtimeModel);
-
-        // Run the model with the input data
-        worker.Execute(inputTensor);
-
-        // Get the result
-        using TensorFloat outputTensor = worker.PeekOutput() as TensorFloat;
-
-        // Move the tensor data to the CPU before reading it
-        outputTensor.MakeReadable();
-
-        results = outputTensor.ToReadOnlyArray();
-    }
-
-    void OnDisable()
-    {
-        // Tell the GPU we're finished with the memory the engine used
-        worker.Dispose();
-    }
-}
-```
-
-2. Download a handwriting recognition ONNX model file, for example the [MNIST Handwritten Digit Recognition model](https://github.com/onnx/models/tree/main/validated/vision/classification/mnist) mnist-8.onnx from the ONNX Model Zoo, and drag it into the `Assets` folder of the Project window.
-3. Drag the model asset into the **modelAsset** field in the Inspector window of the GameObject.
-4. Download the `digit.png` image below and drag it into the `Assets` folder of the Project window. Set `Non-Power of 2` to `None` in the import settings and click `Apply`.
-
-    ![A handwritten number 7](images/digit.png)
-
-5. Drag the **digit** asset into the **inputTexture** field in the Inspector window of the GameObject.
-6. Click `Play`. In the Inspector window of the GameObject, each item of the **results** array shows how highly the model predicts the image is a digit. For example, item 0 of the array is how highly the model predicts the image is a handwritten zero.
-
 ## Additional resources
 
-- [Sample scripts](package-samples.md)
+- [Workflow example](workflow-example.md)
+- [Samples](package-samples.md)
 - [Unity Discussions group for the Sentis beta](https://discussions.unity.com/c/10)
 - [Understand models in Sentis](models-concept.md)
 - [Tensor fundamentals in Sentis](tensor-fundamentals.md)

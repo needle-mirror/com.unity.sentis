@@ -8,15 +8,18 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
     {
         public void Run(ref Model model)
         {
-            var preserve =  new HashSet<string>(model.outputs);
+            var preserve = new HashSet<string>();
             var removeLayers = new HashSet<string>();
             var transposeReferences = new Dictionary<string, int>();
             var layerDownstreamCounts = new Dictionary<string, int>();
+            foreach (var o in model.outputs)
+                preserve.Add(o.index);
+
             for (int l = 0; l < model.layers.Count; ++l)
             {
                 Layers.Layer layer = model.layers[l];
 
-                layerDownstreamCounts[layer.name] = 0;
+                layerDownstreamCounts[layer.index] = 0;
 
                 foreach (var input in layer.inputs)
                 {
@@ -29,7 +32,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 if (!(layer is Layers.Transpose))
                     continue;
 
-                transposeReferences[layer.name] = l;
+                transposeReferences[layer.index] = l;
             }
 
             for (int l = 0; l < model.layers.Count; ++l)
@@ -51,7 +54,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 // previous layer is a transpose and current layer is the only downstream layer
                 var permutations = MergeTranspose(previousLayer.permutations, layer.permutations);
 
-                model.layers[l] = new Layers.Transpose(layer.name, previousLayer.inputs[0], permutations);
+                model.layers[l] = new Layers.Transpose(layer.index, previousLayer.inputs[0], permutations);
 
                 if (!preserve.Contains(input) && (layerDownstreamCounts[input] == 1))
                     removeLayers.Add(input);

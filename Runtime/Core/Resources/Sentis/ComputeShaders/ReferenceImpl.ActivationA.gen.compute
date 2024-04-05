@@ -7,6 +7,8 @@
 #pragma kernel Relu6 RELU6
 #pragma kernel Tanh TANH
 #pragma kernel Sigmoid SIGMOID
+#pragma kernel GeluFast GELUFAST
+#include "HLSLSupport.cginc"
 #include "Tensor.cginc"
 
 int shapeX[8];
@@ -23,7 +25,7 @@ StructuredBuffer<float> Xptr;
 StructuredBuffer<float> Bptr;
 RWStructuredBuffer<float> Optr;
 
-#if defined(SIGMOID) || defined(TANH) || defined(RELU6) || defined(RELU)
+#if defined(GELUFAST) || defined(SIGMOID) || defined(TANH) || defined(RELU6) || defined(RELU)
 inline float Apply(float v){
 #ifdef RELU
 { return 0.5f * (v + abs(v)); }
@@ -36,6 +38,9 @@ inline float Apply(float v){
 #endif
 #ifdef SIGMOID
 { return 1.0f / (1.0f + exp(-v)); }
+#endif
+#ifdef GELUFAST
+{ return (v * 0.5f) * (tanh(clamp((v + (pow(v, 3.0f) * 0.044714998453855515f)) * 0.7978845834732056f, -16.0f, 16.0f)) + 1); }
 #endif
 }
 #endif
@@ -158,6 +163,21 @@ void Tanh(uint3 dispatchThreadID : SV_DispatchThreadID)
 #ifdef SIGMOID
 [numthreads(64, 1, 1)]
 void Sigmoid(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+    {
+        float v = Xptr[threadIdx];
+        Optr[threadIdx] = Apply(v);
+    }
+}
+#endif
+
+
+#ifdef GELUFAST
+[numthreads(64, 1, 1)]
+void GeluFast(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
     if(threadIdx >= unrolledDispatchArgs.y)

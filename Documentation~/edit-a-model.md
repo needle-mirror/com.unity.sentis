@@ -1,12 +1,12 @@
 # Edit a model
 
-You can edit a model after you create or load it, using the Sentis `Model` API.
+You can edit a model after you create or load it, using the Sentis [`Functional`](xref:Unity.Sentis.Functional) API.
 
 ## Preprocess inputs or postprocess outputs
 
-Sometimes your model expects inputs or returns outputs in a format that doesn't match your tensor data. Using the model API you can add, remove and edit inputs, layers, constants and outputs to adjust the model.
+Sometimes your model expects inputs or returns outputs in a format that doesn't match your tensor data. Use the `Functional` API to prepend operations to inputs, append operations to outputs, or to easily add or remove inputs or outputs. 
 
-In the following example the [mnist-8](https://github.com/onnx/models/blob/main/validated/vision/classification/mnist/model/mnist-8.onnx) model is adjusted to return the softmax of the outputs.
+In the following example the [mnist-8](https://github.com/onnx/models/blob/main/validated/vision/classification/mnist/model/mnist-8.onnx) model is adjusted to return the softmax of the output.
 
 ```
 using UnityEngine;
@@ -18,23 +18,34 @@ public class AddOutput : MonoBehaviour
 
     void Start()
     {
-        // Load the runtime model from the model asset
-        Model runtimeModel = ModelLoader.Load(modelAsset);
+        // Load the source model from the model asset
+        Model model = ModelLoader.Load(modelAsset);
 
-        // Define a new output name for the softmax output
-        string softmaxOutputName = "Softmax_Output";
+        // Define the forward method of the model.
+        // In this example an array of `FunctionalTensor` outputs is calculated from an array of `FunctionalTensor` inputs.
+        FunctionalTensor[] ForwardWithSoftmax(FunctionalTensor[] inputs)
+        {
+            // Apply the model forward function to the inputs to get the source model functional outputs.
+            // Sentis will destructively change the loaded source model. To avoid this at the expense of
+            // higher memory usage and compile time, use the model.ForwardWithCopy method.
+            FunctionalTensor[] outputs = model.Forward(inputs);
 
-        // Append a Softmax layer to the end of the model layers using the previous model output as the layer input
-        runtimeModel.AddLayer(new Softmax(softmaxOutputName, runtimeModel.outputs[0]));
+            // Calculate the softmax of the first output with the functional API.
+            FunctionalTensor softmaxOutput = Functional.Softmax(outputs[0]);
 
-        // Replace the previous model output with the sofmax output
-        runtimeModel.outputs[0] = softmaxOutputName;
+            // Return an array containing the output.
+            return new[] { softmaxOutput };
+        }
+
+        // Build the model from the using the `Compile` method. The input defs are taken from the original model.
+        var modelWithSoftmax = Functional.Compile(ForwardWithSoftmax, InputDef.FromModel(model));
     }
 }
+
 ```
 
-Sentis executes the layers in the order they appear in `Model.layers`. If you preprocess a tensor, make sure you insert new layers before any dependent layers.
+Sentis runs [model optimization](models-concept.md#how-sentis-optimizes-a-model) on models you create using the `Functional` API. The Sentis operations used may, therefore, look different than expected.
 
-Sentis can't run [model optimization](models-concept.md#how-sentis-optimizes-a-model) on models you create using the `Model` API.
+## Additional resources
 
-Correcting the same link as above.
+- [Supported functional methods](supported-functional-methods.md)

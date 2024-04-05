@@ -18,8 +18,8 @@ public class ModelExecutionMultipleInputsOutputs : MonoBehaviour
         // since it has multiple inputs, we need to use a dictionary tensorName -> tensor
         m_Inputs = new Dictionary<string, Tensor>
         {
-            { "input0", TensorFloat.Zeros(new TensorShape(1024)) },
-            { "input1", TensorFloat.Zeros(new TensorShape(1)) },
+            { "input0", TensorFloat.AllocZeros(new TensorShape(1024)) },
+            { "input1", TensorFloat.AllocZeros(new TensorShape(1)) },
         };
     }
 
@@ -28,10 +28,10 @@ public class ModelExecutionMultipleInputsOutputs : MonoBehaviour
         m_Engine.Execute(m_Inputs);
 
         // model has multiple output, so to know which output to get we need to specify which one we are referring to
-        var outputTensor0 = m_Engine.PeekOutput("output0") as TensorFloat;
-        var outputTensor1 = m_Engine.PeekOutput("output1") as TensorFloat;
-        outputTensor0.MakeReadable();
-        outputTensor1.MakeReadable();
+        var outputTensor0 = m_Engine.PeekOutput("output0");
+        var outputTensor1 = m_Engine.PeekOutput("output1");
+        outputTensor0.CompleteOperationsAndDownload();
+        outputTensor1.CompleteOperationsAndDownload();
 
         // Data is now ready to read.
         // See async examples for non-blocking readback.

@@ -24,6 +24,17 @@ static class OpsUtils
         strides[0] = strides[1] * shape[1];
     }
 
+    public static unsafe void PinTensorStridesCompact(TensorShape shape, int* strides)
+    {
+        int* compactShape = shape.UnsafeGetPtr(TensorShape.maxRank - shape.rank);
+
+        strides[shape.rank - 1] = 1;
+        for (int i = shape.rank - 2; i >= 0; i--)
+        {
+            strides[i] = strides[i + 1] * shape[i + 1];
+        }
+    }
+
     public static unsafe void PinMatMulTensorShapeStrides(TensorShape X, TensorShape Y, TensorShape O, int* shapeA, int* stridesA, int* shapeB, int* stridesB, int* shapeO, int* stridesO)
     {
         shapeA[0] = Math.Max(1, X.UnsafeGet(0));

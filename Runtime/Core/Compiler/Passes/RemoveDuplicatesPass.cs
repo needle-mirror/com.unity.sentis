@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Unity.Sentis.Layers;
 using System.Reflection;
@@ -24,7 +25,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             foreach (var field in fields)
             {
                 var name = field.Name;
-                if (name == "name" || name == "flags" || name == "outputs")
+                if (name == "index" || name == "flags" || name == "outputs")
                     continue;
                 infos.Add(field.GetValue(layer));
             }
@@ -49,11 +50,11 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     for (int j = 0; j < a0.Count; j++)
                     {
                         var e0 = a0[j]; var e1 = a1[j];
-                        if (!e0.Equals(e1))
+                        if (!Equals(e0, e1))
                             return false;
                     }
                 }
-                else if (!f0.Equals(f1))
+                else if (!Equals(f0, f1))
                     return false;
             }
 
@@ -62,10 +63,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
         List<object> GetComparableFields(ref Dictionary<string, List<object>> comparableFieldsByLayer, Layer layer)
         {
-            if (!comparableFieldsByLayer.TryGetValue(layer.name, out var layerFields))
+            if (!comparableFieldsByLayer.TryGetValue(layer.index, out var layerFields))
             {
                 layerFields = GetComparableFields(layer);
-                comparableFieldsByLayer.Add(layer.name, layerFields);
+                comparableFieldsByLayer.Add(layer.index, layerFields);
             }
 
             return layerFields;
@@ -79,7 +80,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             //  compute soft hash on layer inputs + type
             //  foreach collision:
             //    remove layer if equal (full param check) to collision
-            var remapRemovedNames = new Dictionary<string, string>();
+            var remapRemovedIndexes = new Dictionary<string, string>();
             var layersToRemove = new HashSet<string>();
             var layerByInput = new Dictionary<long, List<Layer>>();
             var comparableFieldsByLayer = new Dictionary<string, List<object>>();
@@ -89,8 +90,8 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 for (int i = 0; i < layer.inputs.Length; i++)
                 {
                     var input = layer.inputs[i];
-                    if (remapRemovedNames.ContainsKey(input))
-                        layer.inputs[i] = remapRemovedNames[input];
+                    if (remapRemovedIndexes.ContainsKey(input))
+                        layer.inputs[i] = remapRemovedIndexes[input];
                 }
 
                 long hash = GetHashCode(layer);
@@ -109,18 +110,21 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     if (!AllEqual(layerFields, fields))
                         continue;
 
-                    remapRemovedNames.Add(layer.name, similarLayer.name);
+                    remapRemovedIndexes.Add(layer.index, similarLayer.index);
 
-                    layersToRemove.Add(layer.name);
+                    layersToRemove.Add(layer.index);
                     removed = true;
 
-                    if (layer.outputs == null)
+                    if (layer.outputs == null || similarLayer.outputs == null)
                         break;
 
-                    for (int i = 1; i < layer.outputs.Length; i++)
+                    if (layer.outputs.Length != similarLayer.outputs.Length)
+                        break;
+
+                    for (int i = 0; i < layer.outputs.Length; i++)
                     {
-                        if (!remapRemovedNames.ContainsKey(layer.outputs[i]))
-                            remapRemovedNames.Add(layer.outputs[i], similarLayer.outputs[i]);
+                        if (!remapRemovedIndexes.ContainsKey(layer.outputs[i]))
+                            remapRemovedIndexes.Add(layer.outputs[i], similarLayer.outputs[i]);
                     }
 
                     break;
@@ -130,16 +134,16 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     collisionLayers.Add(layer);
             }
 
-            model.layers.RemoveAll(l => layersToRemove.Contains(l.name));
+            model.layers.RemoveAll(l => layersToRemove.Contains(l.index));
 
             // all inputs have been remapped in place, no need to update layers
 
             // if output was removed, insert copy op
             foreach (var output in model.outputs)
             {
-                if (!layersToRemove.Contains(output))
+                if (!layersToRemove.Contains(output.index))
                     continue;
-                model.layers.Add(new Identity(output, remapRemovedNames[output]));
+                model.layers.Add(new Identity(output.index, remapRemovedIndexes[output.index]));
             }
         }
     }
@@ -154,8 +158,8 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             if (constant.shape.HasZeroDims())
                 return seed;
 
-            for (int i = 0; i < constant.weights.Length; i++)
-                HashHelper.HashCombine(ref seed, constant.weights.Get<int>((int)constant.offset + i));
+            for (int i = 0; i < constant.shape.length; i++)
+                HashHelper.HashCombine(ref seed, constant.weights.Get<int>(i));
 
             return seed;
         }
@@ -168,10 +172,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             if (c0.shape.HasZeroDims() && c1.shape.HasZeroDims())
                 return true;
 
-            for (int i = 0; i < c0.weights.Length; i++)
+            for (int i = 0; i < c0.shape.length; i++)
             {
-                int v0 = c0.weights.Get<int>((int)c0.offset + i);
-                int v1 = c1.weights.Get<int>((int)c1.offset + i);
+                int v0 = c0.weights.Get<int>(i);
+                int v1 = c1.weights.Get<int>(i);
                 if (v0 != v1)
                     return false;
             }
@@ -219,7 +223,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                         continue;
 
                     removed = true;
-                    constantsToRemove.Add(constant.name, similarConstant.name);
+                    constantsToRemove.Add(constant.index, similarConstant.index);
                     break;
                 }
 
@@ -227,7 +231,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     potentialSimilarConstants.Add(constant);
             }
 
-            model.constants.RemoveAll(c => constantsToRemove.ContainsKey(c.name));
+            model.constants.RemoveAll(c => constantsToRemove.ContainsKey(c.index));
             foreach (var layer in model.layers)
             {
                 for (int i = 0; i < layer.inputs.Length; i++)
@@ -239,8 +243,8 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             }
             foreach (var output in model.outputs)
             {
-                if (constantsToRemove.ContainsKey(output))
-                    model.AddLayer(new Identity(output, constantsToRemove[output]));
+                if (constantsToRemove.ContainsKey(output.index))
+                    model.AddLayer(new Identity(output.index, constantsToRemove[output.index]));
             }
         }
     }

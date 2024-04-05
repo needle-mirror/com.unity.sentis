@@ -37,9 +37,9 @@ class TestSet
 
     public static JSONTensor JSONTensorFromTensor(string name, Tensor tensor)
     {
-        var array = ArrayTensorData.Pin(tensor);
+        var tensorData = BurstTensorData.Pin(tensor);
         var data = new byte[tensor.shape.length * sizeof(float)];
-        NativeTensorArray.Copy(array.array, data);
+        NativeTensorArray.BlockCopy(tensorData.array, 0, data, 0, data.Length);
         var jsonTensor = new JSONTensor
         {
             name = name,
@@ -197,7 +197,7 @@ class TestSet
 
         DataType dataType = GetInputDataType(idx);
 
-        var data = new ArrayTensorData(shape);
+        var data = new BurstTensorData(shape.length);
         NativeTensorArray.Copy(array, data.array, shape.length);
 
         switch (dataType)
@@ -211,7 +211,7 @@ class TestSet
                 return new TensorInt(shape, data);
             }
             default:
-                throw new NotImplementedException($"DataType {dataType} not supported");
+                throw new NotImplementedException();
         }
     }
 
@@ -219,8 +219,6 @@ class TestSet
     /// Get output as `Tensor`
     /// </summary>
     /// <param name="idx">output index</param>
-    /// <param name="batchCount">max batch count</param>
-    /// <param name="fromBatch">start from batch</param>
     /// <returns>`Tensor`</returns>
     /// <exception cref="Exception">thrown if called on raw test set (only JSON test set is supported)</exception>
     Tensor GetOutputAsTensor(int idx = 0)
@@ -230,18 +228,18 @@ class TestSet
 
         DataType dataType = GetOutputDataType(idx);
 
-        var data = new ArrayTensorData(shape);
-        NativeTensorArray.Copy(array, data.array, shape.length);
+        var tensorData = new BurstTensorData(shape.length);
+        NativeTensorArray.Copy(array, tensorData.array, shape.length);
 
         switch (dataType)
         {
             case DataType.Float:
             {
-                return new TensorFloat(shape, data);
+                return new TensorFloat(shape, tensorData);
             }
             case DataType.Int:
             {
-                return new TensorInt(shape, data);
+                return new TensorInt(shape, tensorData);
             }
             default:
                 throw new NotImplementedException($"DataType {dataType} not supported");

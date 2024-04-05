@@ -1,7 +1,6 @@
 // This is auto-generated -- do not modify directly
 
 #pragma kernel HardSigmoid HARDSIGMOID
-#pragma kernel Square SQUARE
 #pragma kernel Gelu GELU
 #pragma kernel Erf ERF
 #pragma kernel Celu CELU
@@ -30,6 +29,7 @@
 #pragma kernel Tan TAN
 #pragma kernel Softsign SOFTSIGN
 #pragma kernel HardSwish HARDSWISH
+#include "HLSLSupport.cginc"
 #include "Tensor.cginc"
 
 uint2 unrolledDispatchArgs;
@@ -124,21 +124,6 @@ void HardSigmoid(uint3 dispatchThreadID : SV_DispatchThreadID)
     {
         float v = Xptr[threadIdx];
         Optr[threadIdx] = max(0.0f, min(1.0f, alpha * v + beta));
-    }
-}
-#endif
-
-
-#ifdef SQUARE
-[numthreads(64, 1, 1)]
-void Square(uint3 dispatchThreadID : SV_DispatchThreadID)
-{
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
-    {
-        float v = Xptr[threadIdx];
-        Optr[threadIdx] = v * v;
     }
 }
 #endif

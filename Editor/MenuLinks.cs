@@ -3,7 +3,7 @@ using UnityEditor;
 using System;
 using System.Reflection;
 
-public class MenuLinks : EditorWindow
+class MenuLinks : EditorWindow
 {
     [MenuItem("Sentis/Online Documentation", false, 2000)]
     static void OnlineDocs()

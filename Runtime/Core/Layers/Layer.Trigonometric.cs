@@ -6,7 +6,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Acos` trigonometric layer: f(x) = acos(x).
     /// </summary>
     [Serializable]
-    public class Acos : Activation
+    class Acos : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of Acos trigonometric layer.
@@ -17,13 +17,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Acos(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Acos(X, O);
         }
 
         internal override string profilerTag => "Acos";
@@ -33,7 +33,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Acosh` trigonometric layer: f(x) = acosh(x).
     /// </summary>
     [Serializable]
-    public class Acosh : Activation
+    class Acosh : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of Acosh trigonometric layer.
@@ -44,13 +44,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Acosh(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Acosh(X, O);
         }
 
         internal override string profilerTag => "Acosh";
@@ -60,7 +60,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Asin` trigonometric layer: f(x) = asin(x).
     /// </summary>
     [Serializable]
-    public class Asin : Activation
+    class Asin : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of Asin trigonometric layer.
@@ -71,13 +71,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Asin(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Asin(X, O);
         }
 
         internal override string profilerTag => "Asin";
@@ -87,7 +87,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Asinh` trigonometric layer: f(x) = asinh(x).
     /// </summary>
     [Serializable]
-    public class Asinh : Activation
+    class Asinh : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of Asinh trigonometric layer.
@@ -98,13 +98,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Asinh(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Asinh(X, O);
         }
 
         internal override string profilerTag => "Asinh";
@@ -114,7 +114,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Atan` trigonometric layer: f(x) = atan(x).
     /// </summary>
     [Serializable]
-    public class Atan : Activation
+    class Atan : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of Atan trigonometric layer.
@@ -125,13 +125,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Atan(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Atan(X, O);
         }
 
         internal override string profilerTag => "Atan";
@@ -141,7 +141,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Atanh` trigonometric layer: f(x) = atanh(x).
     /// </summary>
     [Serializable]
-    public class Atanh : Activation
+    class Atanh : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of Atanh trigonometric layer.
@@ -152,13 +152,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Atanh(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Atanh(X, O);
         }
 
         internal override string profilerTag => "Atanh";
@@ -168,7 +168,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Cos` trigonometric layer: f(x) = cos(x).
     /// </summary>
     [Serializable]
-    public class Cos : Activation
+    class Cos : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of Cos trigonometric layer.
@@ -179,13 +179,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Cos(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Cos(X, O);
         }
 
         internal override string profilerTag => "Cos";
@@ -195,7 +195,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Cosh` trigonometric layer: f(x) = cosh(x).
     /// </summary>
     [Serializable]
-    public class Cosh : Activation
+    class Cosh : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of Cosh trigonometric layer.
@@ -206,13 +206,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Cosh(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Cosh(X, O);
         }
 
         internal override string profilerTag => "Cosh";
@@ -222,7 +222,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Sin` trigonometric layer: f(x) = sin(x).
     /// </summary>
     [Serializable]
-    public class Sin : Activation
+    class Sin : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of Sin trigonometric layer.
@@ -233,13 +233,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Sin(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Sin(X, O);
         }
 
         internal override string profilerTag => "Sin";
@@ -249,7 +249,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Sinh` trigonometric layer: f(x) = sinh(x).
     /// </summary>
     [Serializable]
-    public class Sinh : Activation
+    class Sinh : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of Sinh trigonometric layer.
@@ -260,13 +260,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Sinh(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Sinh(X, O);
         }
 
         internal override string profilerTag => "Sinh";
@@ -276,7 +276,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Tan` trigonometric layer: f(x) = tan(x).
     /// </summary>
     [Serializable]
-    public class Tan : Activation
+    class Tan : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of Tan trigonometric layer.
@@ -287,13 +287,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Tan(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Tan(X, O);
         }
 
         internal override string profilerTag => "Tan";

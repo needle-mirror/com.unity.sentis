@@ -2,7 +2,7 @@
 
 ## Get model inputs
 
-Use the [`inputs` property of the runtime model](xref:Unity.Sentis.Model.inputs) to get the inputs of the model, and the name or tensor shape of each input.
+Use the [`inputs`](xref:Unity.Sentis.Model.inputs) property of the runtime model to get the inputs of the model, and the name or tensor shape of each input.
 
 For example:
 
@@ -34,32 +34,32 @@ public class GetModelInputs : MonoBehaviour
 }
 ```
 
-Input dimensions are fixed or dynamic. Refer to [Model inputs](models-concept.md#model-inputs) for more information.
+Input dimensions can be fixed or dynamic. Refer to [Model inputs](models-concept.md#model-inputs) for more information.
 
 ## Get model outputs
 
-Use the [`outputs` property of the runtime model](xref:Unity.Sentis.Model.outputs) to get the names of the output layers of the model.
+Use the [`outputs`](xref:Unity.Sentis.Model.outputs) property of the runtime model to get the names of the output layers of the model.
 
 For example:
 
 ```
-        List<string> outputs = runtimeModel.outputs;
+        List<Model.Output> outputs = runtimeModel.outputs;
         
         // Loop through each output
         foreach (var output in outputs)
         {
             // Log the name of the output
-            Debug.Log(output);
+            Debug.Log(output.name);
         }
 ```
 
 ## Get layers and layer properties
 
-Use the [`layers` property of the runtime model](xref:Unity.Sentis.Model.layers) to get the neural network layers in the model, and the name, inputs, outputs or flags of each layer.
+Use the [`layers`](xref:Unity.Sentis.Model.layers) property of the runtime model to get the neural network layers in the model, and the index, inputs, outputs or flags of each layer.
 
 ## Open a model as a graph
 
-To open a model as a graph, follow these steps:
+To open an ONNX model as a graph, follow these steps:
 
 1. Install [Netron](https://github.com/lutzroeder/netron), a third-party viewer for neural networks.
 2. Double-click a model asset in the Project window, or select the model asset then select **Open** in the **Model Asset Import Settings** window.

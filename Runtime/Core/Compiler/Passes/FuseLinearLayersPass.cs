@@ -14,9 +14,9 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             Dictionary<string, Layers.Constant> constTensors = new Dictionary<string, Layers.Constant>();
             Dictionary<string, bool> sharedConstants = new Dictionary<string, bool>();
             foreach (var constant in model.constants)
-                constTensors.Add(constant.name, constant);
+                constTensors.Add(constant.index, constant);
 
-            var layerNameToIndex = new Dictionary<string, int>();
+            var indexToLayerIndex = new Dictionary<string, int>();
             int idx = 0;
             foreach (var l in model.layers)
             {
@@ -31,20 +31,22 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                         sharedConstants.Add(i, false);
                 }
 
-                layerNameToIndex.Add(l.name, idx);
+                indexToLayerIndex.Add(l.index, idx);
                 idx++;
             }
 
-            var preserve = new HashSet<string>(model.outputs);
+            var preserve = new HashSet<string>();
             var remap = new Dictionary<string, string>();
             var mergedLayers = new HashSet<string>();
+            foreach (var o in model.outputs)
+                preserve.Add(o.index);
 
             for (int l = 0; l < model.layers.Count; ++l)
             {
                 var layer = model.layers[l];
 
                 bool isLayerLinear = LinearLayerFusing.IsLayerLinear(layer, constTensors);
-                bool isLayerPreserved = layer.flags.HasFlag(Layers.Flags.Preserve) || preserve.Contains(layer.name);
+                bool isLayerPreserved = layer.flags.HasFlag(Layers.Flags.Preserve) || preserve.Contains(layer.index);
                 bool layerHasActivation = IsLayerFusedActivation(layer);
 
                 if (!isLayerLinear)
@@ -53,7 +55,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 // if layer has an activation, we fuse it, but treat it as non linear for future children
                 if (!layerHasActivation)
                 {
-                    remap[layer.name] = layer.name;
+                    remap[layer.index] = layer.index;
                 }
 
                 // Multi input nodes can only fuse constants and same inputs
@@ -68,7 +70,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 var input = linearInputs[0];
 
                 // input is a linear layer, fuse it
-                int inputLayerIndex = model.layers.FindIndex(x => x.name == remap[input]);
+                int inputLayerIndex = model.layers.FindIndex(x => x.index == remap[input]);
                 Layers.Layer inputLayer = model.layers[inputLayerIndex];
 
                 if (!AreLayersFusable(inputLayer, layer, constTensors, sharedConstants, linearLayerFusing))
@@ -92,18 +94,18 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 {
                     // cannot merge layer into input:
                     // remove input, no need to remap as inputs == input.inputs
-                    fusedLayer.name = layer.name;
+                    fusedLayer.index = layer.index;
                     model.layers[l] = fusedLayer;
 
-                    if (!preserve.Contains(inputLayer.name))
-                        mergedLayers.Add(inputLayer.name);
+                    if (!preserve.Contains(inputLayer.index))
+                        mergedLayers.Add(inputLayer.index);
                 }
                 else
                 {
                     // merge layer into input
-                    // remove current and remap input names
-                    mergedLayers.Add(layer.name);
-                    remap[layer.name] = fusedLayer.name;
+                    // remove current and remap input indexes
+                    mergedLayers.Add(layer.index);
+                    remap[layer.index] = fusedLayer.index;
                     model.layers[inputLayerIndex] = fusedLayer;
                 }
             }

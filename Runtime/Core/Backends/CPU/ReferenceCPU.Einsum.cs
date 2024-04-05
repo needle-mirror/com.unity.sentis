@@ -9,10 +9,10 @@ namespace Unity.Sentis
         {
             for (var i = 0; i < inputTensors.Length; i++)
             {
-                ArrayTensorData.Pin(inputTensors[i]);
+                BurstTensorData.Pin(inputTensors[i]);
             }
 
-            ArrayTensorData.Pin(O);
+            BurstTensorData.Pin(O);
 
             var outSize = O.shape.length;
             var sumSize = sumShape.length;

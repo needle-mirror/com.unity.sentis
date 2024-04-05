@@ -9,105 +9,6 @@ namespace Unity.Sentis
     public interface IBackend : IDisposable
     {
         /// <summary>
-        /// Allocate a new `TensorFloat` of a given shape.
-        /// </summary>
-        /// <param name="shape">The shape of the tensor.</param>
-        /// <param name="scope">Whether the allocated tensor is internal to the layer or used as an output.</param>
-        /// <returns>The allocated tensor.</returns>
-        public TensorFloat NewTensorFloat(TensorShape shape, AllocScope scope)
-        {
-            return NewTensor(shape, DataType.Float, scope) as TensorFloat;
-        }
-
-        /// <summary>
-        /// Allocate a new `TensorInt` of a given shape.
-        /// </summary>
-        /// <param name="shape">The shape of the tensor.</param>
-        /// <param name="scope">Whether the allocated tensor is internal to the layer or used as an output.</param>
-        /// <returns>The allocated tensor.</returns>
-        public TensorInt NewTensorInt(TensorShape shape, AllocScope scope)
-        {
-            return NewTensor(shape, DataType.Int, scope) as TensorInt;
-        }
-
-        /// <summary>
-        /// Allocate a new `TensorFloat` of a given shape using the `AllocScope.LayerOutput` scope.
-        /// </summary>
-        /// <param name="shape">The shape of the tensor.</param>
-        /// <returns>The allocated tensor.</returns>
-        public TensorFloat NewOutputTensorFloat(TensorShape shape)
-        {
-            return NewTensorFloat(shape, AllocScope.LayerOutput);
-        }
-
-        /// <summary>
-        /// Allocate a new `TensorInt` of a given shape using the `AllocScope.LayerOutput` scope.
-        /// </summary>
-        /// <param name="shape">The shape of the tensor.</param>
-        /// <returns>The allocated tensor.</returns>
-        public TensorInt NewOutputTensorInt(TensorShape shape)
-        {
-            return NewTensorInt(shape, AllocScope.LayerOutput);
-        }
-
-        /// <summary>
-        /// Allocate a new `Tensor` of a given shape and data type using the `AllocScope.LayerOutput` scope.
-        /// </summary>
-        /// <param name="shape">The shape of the tensor.</param>
-        /// <param name="dataType">The data type of the tensor.</param>
-        /// <returns>The allocated tensor.</returns>
-        public Tensor NewOutputTensor(TensorShape shape, DataType dataType)
-        {
-            return NewTensor(shape, dataType, AllocScope.LayerOutput);
-        }
-
-        /// <summary>
-        /// Allocate a new `TensorFloat` of a given shape using the `AllocScope.InternalToLayer` scope.
-        /// </summary>
-        /// <param name="shape">The shape of the tensor.</param>
-        /// <returns>The allocated tensor.</returns>
-        public TensorFloat NewTempTensorFloat(TensorShape shape)
-        {
-            return NewTensorFloat(shape, AllocScope.InternalToLayer);
-        }
-
-        /// <summary>
-        /// Allocate a new `TensorInt` of a given shape using the `AllocScope.InternalToLayer` scope.
-        /// </summary>
-        /// <param name="shape">The shape of the tensor.</param>
-        /// <returns>The allocated tensor.</returns>
-        public TensorInt NewTempTensorInt(TensorShape shape)
-        {
-            return NewTensorInt(shape, AllocScope.InternalToLayer);
-        }
-
-        /// <summary>
-        /// Allocates a new tensor with the internal allocator.
-        /// </summary>
-        /// <param name="shape">The shape of the tensor.</param>
-        /// <param name="dataType">The data type of the tensor.</param>
-        /// <param name="scope">Whether the allocated tensor is internal to the layer or used as an output.</param>
-        /// <returns>The allocated tensor.</returns>
-        Tensor NewTensor(TensorShape shape, DataType dataType, AllocScope scope);
-
-        /// <summary>
-        /// Create a shallow copy of a tensor with the same tensor data.
-        /// </summary>
-        /// <param name="X">The tensor to copy.</param>
-        /// <param name="allocScope">Whether the allocated tensor is internal to the layer or used as an output.</param>
-        /// <returns>The allocated tensor.</returns>
-        public Tensor ShallowCopy(Tensor X, AllocScope allocScope);
-
-        /// <summary>
-        /// Create a shallow reshape of a tensor with the same tensor data.
-        /// </summary>
-        /// <param name="X">The tensor to copy.</param>
-        /// <param name="shape">The shape of the allocated tensor.</param>
-        /// <param name="allocScope">Whether the allocated tensor is internal to the layer or used as an output.</param>
-        /// <returns>The allocated tensor.</returns>
-        public Tensor ShallowReshape(Tensor X, TensorShape shape, AllocScope allocScope);
-
-        /// <summary>
         /// Performs a matrix multiplication operation with optional transposes: f(a, b) = a' x b'.
         /// </summary>
         /// <param name="X">The first input tensor.</param>
@@ -243,14 +144,24 @@ namespace Unity.Sentis
         void GlobalAveragePool(TensorFloat X, TensorFloat O);
 
         /// <summary>
-        /// Calculates the output tensor by adding padding to the input tensor according to the given padding values and mode.
+        /// Calculates the output tensor by adding padding to the input tensor according to the given padding values, mode and constant value.
         /// </summary>
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="pad">The lower and upper padding values for each dimension.</param>
         /// <param name="padMode">The `PadMode` to use when padding.</param>
-        /// <param name="constant">The constant value to fill with when using `PadMode.Constant`.</param>
+        /// <param name="constant">The constant value to fill with.</param>
         void Pad(TensorFloat X, TensorFloat O, ReadOnlySpan<int> pad, Layers.PadMode padMode, float constant);
+
+        /// <summary>
+        /// Calculates the output tensor by adding padding to the input tensor according to the given padding values, mode and constant value.
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="pad">The lower and upper padding values for each dimension.</param>
+        /// <param name="padMode">The `PadMode` to use when padding.</param>
+        /// <param name="constant">The constant value to fill with.</param>
+        void Pad(TensorInt X, TensorInt O, ReadOnlySpan<int> pad, Layers.PadMode padMode, int constant);
 
         /// <summary>
         /// Computes the output tensor with an element-wise `ScaleBias` function: f(x, s, b) = x * s + b.
@@ -294,15 +205,12 @@ namespace Unity.Sentis
         void BatchNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat mean, TensorFloat variance, TensorFloat O, float epsilon);
 
         /// <summary>
-        /// Normalizes the input tensor over local input regions.
+        /// Computes the index of the element which cumulative sum until said element is >= than a random value
         /// </summary>
         /// <param name="X">The input tensor.</param>
+        /// <param name="random">The probability values used for the exit criteria.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
-        /// <param name="alpha">The scaling parameter to use for the normalization.</param>
-        /// <param name="beta">The exponent to use for the normalization.</param>
-        /// <param name="bias">The bias value to use for the normalization.</param>
-        /// <param name="size">The number of channels to sum over.</param>
-        void LRN(TensorFloat X, TensorFloat O, float alpha, float beta, float bias, int size);
+        void TopP(TensorFloat X, TensorFloat random, TensorInt O);
 
         /// <summary>
         /// Generates an output tensor of a given shape with random values in a normal distribution with given `mean` and `scale`, and an optional `seed` value.
@@ -311,7 +219,7 @@ namespace Unity.Sentis
         /// <param name="mean">The mean of the normal distribution to use to generate the output.</param>
         /// <param name="scale">The standard deviation of the normal distribution to use to generate the output.</param>
         /// <param name="seed">The optional seed to use for the random number generation. If this is `null` the operation generates a seed using `System.Random()`.</param>
-        void RandomNormal(TensorFloat O, float mean, float scale, float? seed);
+        void RandomNormal(TensorFloat O, float mean, float scale, int? seed);
 
         /// <summary>
         /// Generates an output tensor of a given shape with random values in a uniform distribution between a given `low` and `high`, and an optional `seed` value.
@@ -320,7 +228,7 @@ namespace Unity.Sentis
         /// <param name="low">The lower end of the interval of the uniform distribution to use to generate the output.</param>
         /// <param name="high">The upper end of the interval of the uniform distribution to use to generate the output.</param>
         /// <param name="seed">The optional seed to use for the random number generation. If this is `null` the operation generates a seed using `System.Random()`.</param>
-        void RandomUniform(TensorFloat O, float low, float high, float? seed);
+        void RandomUniform(TensorFloat O, float low, float high, int? seed);
 
         /// <summary>
         /// Generates a one-hot tensor with a given `depth`, `indices` and on and off values.
@@ -380,7 +288,7 @@ namespace Unity.Sentis
         /// <param name="X">The probabilities input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="seed">The optional seed to use for the random number generation. If this is `null` the operation generates a seed using `System.Random()`.</param>
-        void Bernoulli(TensorFloat X, Tensor O, float? seed);
+        void Bernoulli(TensorFloat X, Tensor O, int? seed);
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Relu` activation function: f(x) = max(0, x).
@@ -479,6 +387,13 @@ namespace Unity.Sentis
         void Gelu(TensorFloat X, TensorFloat O);
 
         /// <summary>
+        /// Computes an output tensor by applying the element-wise `Gelu` aproximate but fast gelu function: f(x) = (x / 2) * (tanh(x + x^3 * 0.04472) * 0.7978) + 1.
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void GeluFast(TensorFloat X, TensorFloat O);
+
+        /// <summary>
         /// Computes an output tensor by applying the element-wise `Relu6` activation function: f(x) = clamp(x, 0, 6).
         /// </summary>
         /// <param name="X">The input tensor.</param>
@@ -510,6 +425,15 @@ namespace Unity.Sentis
         /// <param name="b">Input bias for addition.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         void ScalarMad(TensorFloat X, TensorFloat O, float s, float b);
+
+        /// <summary>
+        /// Performs an element-wise `Mad` math operation: multiplies and adds bias to a tensor: f(T, s, b) = s * T + b.
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="s">Input scalar for multiplication.</param>
+        /// <param name="b">Input bias for addition.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void ScalarMad(TensorInt X, TensorInt O, int s, int b);
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `PRelu` activation function: f(x) = x if x >= 0, otherwise f(x) = slope * x.
@@ -608,6 +532,13 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         void Square(TensorFloat X, TensorFloat O);
+
+        /// <summary>
+        /// Computes an output tensor by applying the element-wise `Square` math function: f(x) = x * x.
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void Square(TensorInt X, TensorInt O);
 
         /// <summary>
         /// Computes an output tensor by applying the element-wise `Exp` math function: f(x) = exp(x).
@@ -853,6 +784,18 @@ namespace Unity.Sentis
         /// <param name="B">The second input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         void Mod(TensorInt A, TensorInt B, TensorInt O);
+
+        /// <summary>
+        /// Performs an element-wise `Mod` math operation: f(a, b) = a % b.
+        ///
+        /// The sign of the remainder is the same as the sign of the divisor, as in Python.
+        ///
+        /// This supports numpy-style broadcasting of input tensors.
+        /// </summary>
+        /// <param name="A">The first input tensor.</param>
+        /// <param name="B">The second input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void Mod(TensorFloat A, TensorFloat B, TensorFloat O);
 
         /// <summary>
         /// Performs an element-wise `Mod` math operation: f(a, b) = a % b.
@@ -1328,7 +1271,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="permutations">The axes to sample the output tensor from in the input tensor.</param>
-        void Transpose(Tensor X, Tensor O, int[] permutations);
+        void Transpose(Tensor X, Tensor O, ReadOnlySpan<int> permutations);
 
         /// <summary>
         /// Calculates an output tensor by concatenating the input tensors along a given axis.
@@ -1356,6 +1299,17 @@ namespace Unity.Sentis
         /// <param name="axes">The axes along which to slice. If this is `null`, the layer slices all axes.</param>
         /// <param name="steps">The step values for slicing. If this is `null`, the layer uses step size 1 throughout.</param>
         void Slice(Tensor X, Tensor O, ReadOnlySpan<int> starts, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps);
+
+        /// <summary>
+        /// Copies the input tensor and updates values at indexes specified by the slices defined by axes, starts, ends, and steps.
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="values">The values tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="starts">The start index along each axis.</param>
+        /// <param name="axes">The axes along which to slice. If this is `null`, the layer slices all axes.</param>
+        /// <param name="steps">The step values for slicing. If this is `null`, the layer uses step size 1 throughout.</param>
+        void SliceSet(Tensor X, Tensor values, Tensor O, ReadOnlySpan<int> starts, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps);
 
         /// <summary>
         /// Calculates an output tensor by repeating the input layer a given number of times along each axis.
@@ -1464,6 +1418,17 @@ namespace Unity.Sentis
         void TopK(TensorFloat X, TensorFloat values, TensorInt indices, int k, int axis, bool largest);
 
         /// <summary>
+        /// Calculates `NonMaxSuppression` which selects indices of boxes from input `boxes` and `scores` tensors, and bases the indices on the scores and amount of intersection with previously selected boxes.
+        /// <param name="boxes">The boxes tensor.</param>
+        /// <param name="scores">The scores tensor.</param>
+        /// <param name="maxOutputBoxesPerClass">The maximum number of boxes to return for each class.</param>
+        /// <param name="iouThreshold">The threshold above which the intersect-over-union rejects a box.</param>
+        /// <param name="scoreThreshold">The threshold below which the box score filters a box from the output.</param>
+        /// <param name="centerPointBox">The format the `boxes` tensor uses to store the box data as a `CenterPointBox`. The default value is `CenterPointBox.Corners`.</param>
+        /// </summary>
+        void NonMaxSuppression(TensorFloat boxes, TensorFloat scores, TensorInt selectedBoxes, int maxOutputBoxesPerClass, float iouThreshold, float scoreThreshold, Layers.CenterPointBox centerPointBox);
+
+        /// <summary>
         /// Performs an `Einsum` math operation.
         /// </summary>
         /// <description>
@@ -1522,11 +1487,25 @@ namespace Unity.Sentis
         void MemCopyStride(Tensor X, Tensor O, int strideX, int strideO, int length, int count, int offsetX, int offsetO);
 
         /// <summary>
-        /// Computes the output tensor using an element-wise `Cast` function: f(x) = (float)x or f(x) = (int)x depending on the value of `toType`.
+        /// Computes the output tensor using an element-wise `Cast` function: f(x) = (float)x.
         /// </summary>
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
-        void Cast(Tensor X, Tensor O);
+        void Cast(TensorInt X, TensorFloat O);
+
+        /// <summary>
+        /// Computes the output tensor using an element-wise `Cast` function: f(x) = (int)x.
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void Cast(TensorFloat X, TensorInt O);
+
+        /// <summary>
+        /// Computes the output tensor using an element-wise `Cast` function: f(x) = (float)x.
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        void Cast(TensorShort X, TensorFloat O);
 
         /// <summary>
         /// Computes the output tensor by selecting slices from an input tensor according to the 'indices' tensor along an 'axis'.
@@ -1539,6 +1518,15 @@ namespace Unity.Sentis
         void CompressWithIndices(Tensor X, TensorInt indices, Tensor O, int numIndices, int axis);
 
         /// <summary>
+        /// Computes the output tensor by unpacking four uint8 values from each int value and scaling to floats.
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="scale">The scale value to use for dequantization.</param>
+        /// <param name="zeroPoint">The zero point value to use for dequantization.</param>
+        void DequantizeLinear(TensorByte X, TensorFloat O, float scale, byte zeroPoint);
+
+        /// <summary>
         /// Pins and returns a tensor using this backend.
         /// </summary>
         /// <param name="X">The input tensor.</param>
@@ -1547,186 +1535,107 @@ namespace Unity.Sentis
         Tensor PinToDevice(Tensor X, bool clearOnInit = false);
 
         /// <summary>
-        /// Resets the internal allocator.
+        /// Returns the `BackendType` for the ops.
         /// </summary>
-        /// <param name="keepCachedMemory">Whether to keep the cached memory on the allocator. If `false` all allocated memory is freed.</param>
-        void ResetAllocator(bool keepCachedMemory = true);
-
-        /// <summary>
-        /// Returns the `DeviceType` for the ops.
-        /// </summary>
-        DeviceType deviceType { get; }
-    }
-
-    /// <summary>
-    /// An interface that provides methods for compiling models.
-    /// </summary>
-    interface IModelCompiler
-    {
-        /// <summary>
-        /// Prepares a model for execution, allocating required intermediate tensors.
-        /// </summary>
-        void PrepareModel(Model model, IDictionary<string, TensorShape> inputShapes, IVars vars);
-
-        /// <summary>
-        /// Prepares a layer for execution.
-        /// </summary>
-        void PreExecuteLayer(Layers.Layer layer, Tensor[] inputs);
+        BackendType backendType { get; }
     }
 
     /// <summary>
     /// An interface that provides methods for storing variables.
     /// </summary>
-    public interface IVars : IDisposable
+    public interface IModelStorage : IDisposable
     {
         /// <summary>
         /// Sets a given input with a tensor.
         /// </summary>
-        /// <param name="name">The name of the input.</param>
+        /// <param name="index">The name of the input.</param>
         /// <param name="X">The tensor for the input.</param>
-        void SetInput(string name, Tensor X);
+        void SetInput(string index, Tensor X);
 
         /// <summary>
         /// Prepares storage for a given model.
         /// </summary>
-        /// <param name="model">The model to prepare storage of.</param>
-        /// <param name="optionalBackendToPrepareTensors">The optional backend to use.</param>
-        /// <param name="optionalInputShapes">The optional given input shapes for execution.</param>
+        /// <param name="model">The model to prepare the storage of.</param>
         /// <param name="takeoverWeights">Whether the execution can take ownership of the weights of the model.</param>
-        void PrepareStorage(Model model, IBackend optionalBackendToPrepareTensors = null, IDictionary<string, TensorShape> optionalInputShapes = null, bool takeoverWeights = false);
+        void PrepareStorage(Model model, bool takeoverWeights = false);
 
         /// <summary>
-        /// Gathers the input tensors for a given layer.
+        /// Retrieves Tensor for given index.
         /// </summary>
-        /// <param name="forLayer">The layer to gather inputs for.</param>
-        /// <returns>The tensor inputs for the layer as an array.</returns>
-        Tensor[] GatherInputs(Layers.Layer forLayer);
+        /// <param name="index">The index for which to retrieve its underlying Tensor.</param>
+        /// <returns>The retrieved tensor.</returns>
+        Tensor GetTensor(string index);
 
         /// <summary>
-        /// Prepares storage for a given layer.
+        /// Allocates a new Tensor and stores the result of execution for a given tensor index.
+        /// Reuses a tensor from a memory pool if possible or creates a new one.
         /// </summary>
-        /// <param name="forLayer">The layer to prepare storage of.</param>
-        void PrepareStorage(Layers.Layer forLayer);
+        /// <param name="index">The index of the output.</param>
+        /// <param name="shape">The desired TensorShape.</param>
+        /// <param name="dataType">The desired DataType.</param>
+        /// <param name="backendType">The desired BackendType.</param>
+        /// <returns>The allocated tensor.</returns>
+        Tensor AllocateTensorAndStore(string index, TensorShape shape, DataType dataType, BackendType backendType);
+
+        /// <summary>
+        /// Allocates a new Tensor.
+        /// First tries to get a old one from the memory pool, if not create a new one
+        /// </summary>
+        /// <param name="shape">The desired TensorShape.</param>
+        /// <param name="dataType">The desired DataType.</param>
+        /// <param name="backendType">The desired BackendType.</param>
+        /// <returns>The allocated tensor.</returns>
+        Tensor AllocateTensor(TensorShape shape, DataType dataType, BackendType backendType);
 
         /// <summary>
         /// Disposes storage that can be deleted after executing a given layer.
         /// </summary>
-        /// <param name="forLayer">The layer to dispose temporary storage of.</param>
+        /// <param name="forLayer">The layer to dispose the temporary storage of.</param>
         void DisposeAfterLayer(Layers.Layer forLayer);
 
         /// <summary>
-        /// Stores the result of execution for a given layer.
+        /// Disposes storage that can be deleted before executing the whole model.
         /// </summary>
-        /// <param name="fromLayer">The executed layer.</param>
+        void DisposeOnExecute();
+
+        /// <summary>
+        /// Release tensor to allocator to backend's internal pool.
+        /// </summary>
+        /// <param name="tensor">The tensor to dispose.</param>
+        void Dispose(Tensor tensor);
+
+        /// <summary>
+        /// Stores the result of execution for a given tensor index.
+        /// </summary>
+        /// <param name="index">The index of the tensor to store.</param>
         /// <param name="result">The tensor result of execution.</param>
-        void Store(Layers.Layer fromLayer, Tensor result);
+        void Store(string index, Tensor result);
 
         /// <summary>
-        /// Stores the result of execution for a given tensor name.
+        /// Returns a reference to default output tensor of a given index.
+        /// This is non-blocking.
+        ///
+        /// The reference is valid only until you call `Execute()` or `Dispose()` on the worker.
         /// </summary>
-        /// <param name="fromLayer">The name of the output from the layer.</param>
-        /// <param name="result">The tensor result of execution.</param>
-        void Store(string fromLayer, Tensor result);
+        /// <param name="index">The index of the tensor to peek.</param>
+        /// <returns>The output tensor.</returns>
+        Tensor PeekTensor(string index);
 
         /// <summary>
-        /// Peeks the output tensor of a given name.
+        /// Take ownership the output tensor of a given index.
+        /// This is non-blocking.
+        ///
+        /// Remove all reference to tensor in storage.
         /// </summary>
-        /// <param name="name">The name of the tensor to peek.</param>
-        /// <returns>The peeked tensor.</returns>
-        Tensor PeekOutput(string name);
-
-        /// <summary>
-        /// Returns the current allocator.
-        /// </summary>
-        /// <returns>The allocator.</returns>
-        ITensorAllocator GetAllocator();
-    }
-
-    /// <summary>
-    /// Options for the lifetime of an allocation.
-    /// </summary>
-    public enum AllocScope
-    {
-        /// <summary>
-        /// Use this tensor in other layers or as the output of a model.
-        /// </summary>
-        LayerOutput,
-
-        /// <summary>
-        /// Use this tensor only temporarily as an intermediate step when executing a layer.
-        /// </summary>
-        InternalToLayer
-    }
-
-    /// <summary>
-    /// An interface that provides methods for allocating tensors.
-    /// </summary>
-    public interface ITensorAllocator : IDisposable
-    {
-        /// <summary>
-        /// Allocates a tensor of a given shape, data type on a given device type, and given scope.
-        /// </summary>
-        /// <param name="shape">The shape of the tensor.</param>
-        /// <param name="dataType">The data type of the tensor.</param>
-        /// <param name="deviceType">The device type to allocate the tensor on.</param>
-        /// <param name="scope">Whether the tensor is an output from a layer or internal to the layer.</param>
-        /// <returns>The allocated tensor.</returns>
-        Tensor Alloc(TensorShape shape, DataType dataType, DeviceType deviceType, AllocScope scope = AllocScope.LayerOutput);
-
-        /// <summary>
-        /// Allocates a tensor of a given shape, data type, and a given scope from an existing `ITensorData` buffer.
-        /// </summary>
-        /// <param name="shape">The shape of the tensor.</param>
-        /// <param name="dataType">The data type of the tensor.</param>
-        /// <param name="buffer">The buffer to use for the tensor.</param>
-        /// <param name="scope">Whether the tensor is an output from a layer or internal to the layer.</param>
-        /// <returns>The allocated tensor.</returns>
-        Tensor Alloc(TensorShape shape, DataType dataType, ITensorData buffer, AllocScope scope = AllocScope.LayerOutput);
-
-        /// <summary>
-        /// Allows ITensorAllocator to run cleanup operations such as clearing
-        /// temporary buffers only used in the scope of the last layer executed.
-        /// </summary>
-        void PostLayerCleanup();
-
-        // MoveToDevice() callback is called from the following Tensor methods:
-        // UploadToDevice(), AttachToDevice() and DetachFromDevice()
-        /// <summary>
-        /// Moves a tensor to a device.
-        /// </summary>
-        /// <param name="X">The tensor to move.</param>
-        /// <param name="newBuffer">The new buffer for the tensor data.</param>
-        /// <param name="oldBuffer">The previous buffer for the tensor data.</param>
-        /// <param name="disposeDetachedBufferHint">Whether the old buffer can be freed up for disposal.</param>
-        void MoveToDevice(Tensor X, ITensorData newBuffer, ITensorData oldBuffer, bool disposeDetachedBufferHint);
-
-        // NOTE: Release() should be ready to handle edge-case situation when
-        //  externally created new Tensor instance is passed with
-        //  ITensorData (tensorOnDevice) that is already owned by the allocator
-        /// <summary>
-        /// Releases a tensor.
-        /// </summary>
-        /// <param name="tensor">The tensor to release.</param>
-        /// <param name="calledFromTensorDispose">Whether this method was called from inside a tensor disposal.</param>
-        void Release(Tensor tensor, bool calledFromTensorDispose);
-
-        /// <summary>
-        /// Waives ownership of a tensor.
-        /// </summary>
-        /// <param name="X">The tensor to waive ownership of.</param>
-        void WaiveOwnership(Tensor X);
-
-        /// <summary>
-        /// Resets the allocator.
-        /// </summary>
-        /// <param name="keepCachedMemory">Whether to keep ownership of the already allocated memory.</param>
-        void Reset(bool keepCachedMemory); // end-of-frame
+        /// <param name="index">The index of the tensor to gain ownership.</param>
+        /// <returns>The tensor.</returns>
+        Tensor TakeTensorOwnership(string index);
     }
 
     /// <summary>
     /// Represents a context object that holds the model operations and variables for layer execution.
     /// </summary>
-    public class ExecutionContext
+    public struct ExecutionContext
     {
         /// <summary>
         /// The `IBackend` used for execution.
@@ -1734,9 +1643,9 @@ namespace Unity.Sentis
         public IBackend backend;
 
         /// <summary>
-        /// The `IVars` used for execution
+        /// The `IModelStorage` used for execution
         /// </summary>
-        public IVars vars;
+        public IModelStorage vars;
     }
 }
 

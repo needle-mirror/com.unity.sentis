@@ -14,7 +14,7 @@ public class CallbackReadbackCompute : MonoBehaviour
     void ReadbackCallback(bool completed)
     {
         // Put the downloaded tensor data into a readable tensor before indexing.
-        m_OutputTensor.MakeReadable();
+        m_OutputTensor.CompleteOperationsAndDownload();
         Debug.Assert(m_OutputTensor[0] == 42);
         Debug.Log($"Output tensor value {m_OutputTensor[0]}");
     }

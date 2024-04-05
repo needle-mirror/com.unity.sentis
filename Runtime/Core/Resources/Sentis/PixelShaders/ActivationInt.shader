@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/ActivationInt"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile Sign Not Abs Neg Clip
+            #pragma multi_compile Sign Not Abs Neg Clip Square
 
             #pragma vertex vert
             #pragma fragment frag
@@ -44,6 +44,9 @@ Shader "Hidden/Sentis/ActivationInt"
                 #endif
                 #if defined(Clip)
                     v = min(Beta, max(v, Alpha));
+                #endif
+                #if defined(Square)
+                    v = v * v;
                 #endif
                 return v;
             }

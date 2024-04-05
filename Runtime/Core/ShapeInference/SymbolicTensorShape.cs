@@ -331,7 +331,7 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="d0">The `SymbolicTensorDim` of axis 0.</param>
         public SymbolicTensorShape(int d0)
-            : this(new SymbolicTensorDim(d0)) { }
+            : this(SymbolicTensorDim.Int(d0)) { }
 
         /// <summary>
         /// Initializes and returns an instance of `SymbolicTensorShape` with a rank of 2: (d1, d0).
@@ -341,7 +341,7 @@ namespace Unity.Sentis
         /// <param name="d1">The `SymbolicTensorDim` of axis 1.</param>
         /// <param name="d0">The `SymbolicTensorDim` of axis 0.</param>
         public SymbolicTensorShape(int d1, int d0)
-            : this(new SymbolicTensorDim(d1), new SymbolicTensorDim(d0)) { }
+            : this(SymbolicTensorDim.Int(d1), SymbolicTensorDim.Int(d0)) { }
 
         /// <summary>
         /// Initializes and returns an instance of `SymbolicTensorShape` with a rank of 3: (d2, d1, d0).
@@ -352,7 +352,7 @@ namespace Unity.Sentis
         /// <param name="d1">The `SymbolicTensorDim` of axis 1.</param>
         /// <param name="d0">The `SymbolicTensorDim` of axis 0.</param>
         public SymbolicTensorShape(int d2, int d1, int d0)
-            : this(new SymbolicTensorDim(d2), new SymbolicTensorDim(d1), new SymbolicTensorDim(d0)) { }
+            : this(SymbolicTensorDim.Int(d2), SymbolicTensorDim.Int(d1), SymbolicTensorDim.Int(d0)) { }
 
         /// <summary>
         /// Initializes and returns an instance of `SymbolicTensorShape` with a rank of 4: (d3, d2, d1, d0).
@@ -364,7 +364,7 @@ namespace Unity.Sentis
         /// <param name="d1">The `SymbolicTensorDim` of axis 1.</param>
         /// <param name="d0">The `SymbolicTensorDim` of axis 0.</param>
         public SymbolicTensorShape(int d3, int d2, int d1, int d0)
-            : this(new SymbolicTensorDim(d3), new SymbolicTensorDim(d2), new SymbolicTensorDim(d1), new SymbolicTensorDim(d0)) { }
+            : this(SymbolicTensorDim.Int(d3), SymbolicTensorDim.Int(d2), SymbolicTensorDim.Int(d1), SymbolicTensorDim.Int(d0)) { }
 
         /// <summary>
         /// Initializes and returns an instance of `SymbolicTensorShape` of unknown rank.
@@ -388,14 +388,14 @@ namespace Unity.Sentis
             m_Rank = other.rank;
             m_IsRankUnknown = false;
 
-            m_D7 = m_Rank > 7 ? new SymbolicTensorDim(other[m_Rank - 8]) : SymbolicTensorDim.Unknown;
-            m_D6 = m_Rank > 6 ? new SymbolicTensorDim(other[m_Rank - 7]) : SymbolicTensorDim.Unknown;
-            m_D5 = m_Rank > 5 ? new SymbolicTensorDim(other[m_Rank - 6]) : SymbolicTensorDim.Unknown;
-            m_D4 = m_Rank > 4 ? new SymbolicTensorDim(other[m_Rank - 5]) : SymbolicTensorDim.Unknown;
-            m_D3 = m_Rank > 3 ? new SymbolicTensorDim(other[m_Rank - 4]) : SymbolicTensorDim.Unknown;
-            m_D2 = m_Rank > 2 ? new SymbolicTensorDim(other[m_Rank - 3]) : SymbolicTensorDim.Unknown;
-            m_D1 = m_Rank > 1 ? new SymbolicTensorDim(other[m_Rank - 2]) : SymbolicTensorDim.Unknown;
-            m_D0 = m_Rank > 0 ? new SymbolicTensorDim(other[m_Rank - 1]) : SymbolicTensorDim.Unknown;
+            m_D7 = m_Rank > 7 ? SymbolicTensorDim.Int(other[m_Rank - 8]) : SymbolicTensorDim.Unknown;
+            m_D6 = m_Rank > 6 ? SymbolicTensorDim.Int(other[m_Rank - 7]) : SymbolicTensorDim.Unknown;
+            m_D5 = m_Rank > 5 ? SymbolicTensorDim.Int(other[m_Rank - 6]) : SymbolicTensorDim.Unknown;
+            m_D4 = m_Rank > 4 ? SymbolicTensorDim.Int(other[m_Rank - 5]) : SymbolicTensorDim.Unknown;
+            m_D3 = m_Rank > 3 ? SymbolicTensorDim.Int(other[m_Rank - 4]) : SymbolicTensorDim.Unknown;
+            m_D2 = m_Rank > 2 ? SymbolicTensorDim.Int(other[m_Rank - 3]) : SymbolicTensorDim.Unknown;
+            m_D1 = m_Rank > 1 ? SymbolicTensorDim.Int(other[m_Rank - 2]) : SymbolicTensorDim.Unknown;
+            m_D0 = m_Rank > 0 ? SymbolicTensorDim.Int(other[m_Rank - 1]) : SymbolicTensorDim.Unknown;
         }
 
         /// <summary>

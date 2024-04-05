@@ -1,6 +1,7 @@
 // This is auto-generated -- do not modify directly
 
 #pragma kernel Where WHERE
+#include "HLSLSupport.cginc"
 #include "Tensor.cginc"
 
 int shapeO[8];

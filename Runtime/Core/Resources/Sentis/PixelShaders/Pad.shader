@@ -11,7 +11,8 @@ Shader "Hidden/Sentis/Pad"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile CONSTANT REFLECT EDGE SYMMETRIC WRAP
+            #pragma multi_compile _ INT
+            #pragma multi_compile CONSTANT REFLECT EDGE WRAP
 
             #pragma vertex vert
             #pragma fragment frag
@@ -19,7 +20,13 @@ Shader "Hidden/Sentis/Pad"
             #include "CommonVertexShader.cginc"
             #include "CommonPixelShader.cginc"
 
+            #ifdef INT
+            #define DTYPE4 int4
+            DECLARE_TENSOR(X, int);
+            #else
+            #define DTYPE4 float4
             DECLARE_TENSOR(X, float);
+            #endif
 
             uint DimO[8];
             int Pad[8];
@@ -27,7 +34,13 @@ Shader "Hidden/Sentis/Pad"
             uint StridesX[8];
             uint MaxBlockIndexX;
 
-            float Beta;
+            #ifdef CONSTANT
+            #ifdef INT
+            int memValueInt;
+            #else
+            float memValueFloat;
+            #endif
+            #endif
 
             inline uint IndexX(int indexX, int dimX)
             {
@@ -35,21 +48,17 @@ Shader "Hidden/Sentis/Pad"
                 int underlap = max(0, -indexX);
                 int overlap = max(0, indexX - (dimX - 1));
                 indexX = indexX + 2 * underlap - 2 * overlap;
-                #elif defined(SYMMETRIC)
-                float underlap = max(0, -indexX - 0.5f);
-                float overlap = max(0, indexX - (dimX - 0.5f));
-                indexX = round(indexX + 2 * underlap - 2 * overlap);
                 #elif defined(WRAP)
                 indexX = (indexX % dimX + dimX) % dimX;
                 #endif
                 return clamp(indexX, 0, dimX - 1);
             }
 
-            float4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
+            DTYPE4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
                 uint blockIndexO = GetBlockIndexO(screenPos);
                 uint blockIndexX = 0;
-                float4 v = 0;
+                DTYPE4 v = 0;
                 bool isUseConstant = false;
                 uint n = blockIndexO;
                 [unroll]
@@ -67,7 +76,11 @@ Shader "Hidden/Sentis/Pad"
 
                 #ifdef CONSTANT
                 blockIndexX = clamp(blockIndexX, 0, MaxBlockIndexX);
-                v = isUseConstant ? Beta : SampleBlockX(blockIndexX);
+                #ifdef INT
+                v = isUseConstant ? memValueInt : SampleBlockX(blockIndexX);
+                #else
+                v = isUseConstant ? memValueFloat : SampleBlockX(blockIndexX);
+                #endif
                 #else
                 v = SampleBlockX(blockIndexX);
                 #endif

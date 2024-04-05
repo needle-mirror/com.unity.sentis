@@ -33,6 +33,11 @@ namespace Unity.Sentis
 
         HashSet<string> m_UsedKernels = new HashSet<string>();
 
+        // Generic GPU compute primitive, ressources are allocated by clients, not here
+        GPUPrefixSum m_GPUPrefixSum;
+        internal GPUPrefixSum prefixSumWorker { get => m_GPUPrefixSum; }
+
+
         ComputeShaderSingleton()
         {
             RegisterGeneratedKernels();
@@ -70,7 +75,10 @@ namespace Unity.Sentis
                 new[] { "LSTMEnd" });
 
             RegisterKernels("Sentis/ComputeShaders/Activations",
-                new[] { "AbsFloat", "NegFloat", "SignFloat", "ClipFloat", "AbsInt", "NegInt", "SignInt", "ClipInt", "IsInf", "IsNaN" });
+                new[] { "AbsFloat", "NegFloat", "SquareFloat", "SignFloat", "ClipFloat", "AbsInt", "NegInt", "SquareInt", "SignInt", "ClipInt", "IsInf", "IsNaN" });
+
+            RegisterKernels("Sentis/ComputeShaders/ScalarMad",
+                new[] { "ScalarMad" });
 
             RegisterKernels("Sentis/ComputeShaders/LogicalOps",
                 new[] { "Or", "And", "Xor", "Not" });
@@ -139,13 +147,13 @@ namespace Unity.Sentis
                 });
 
             RegisterKernels("Sentis/ComputeShaders/CopyOps",
-                new[] { "MemCopy", "MemCopyStride", "MemSet", "Split", "Tril", "Triu", "RangeFloat", "RangeInt", "CastToInt", "CastToFloat", "Transpose2D" });
+                new[] { "MemCopy", "MemCopyStride", "MemSet", "Split", "Tril", "Triu", "RangeFloat", "RangeInt", "CastFloatToInt", "CastIntToFloat", "CastHalfToFloat", "DequantizeUint8", "Transpose2D" });
 
             RegisterKernels("Sentis/ComputeShaders/Random",
-                new[] { "RandomUniform", "RandomNormal", "BernoulliFloat", "BernoulliInt" });
+                new[] { "RandomUniform", "RandomNormal", "BernoulliFloat", "BernoulliInt", "TopP" });
 
             RegisterKernels("Sentis/ComputeShaders/IndexingOps",
-                new[] { "OneHot", "GatherND" });
+                new[] { "OneHot", "GatherND", "SliceSet" });
 
             RegisterKernels("Sentis/ComputeShaders/SortingOps",
                 new[] { "TopKLargest", "TopKSmallest" });
@@ -153,16 +161,46 @@ namespace Unity.Sentis
             RegisterKernels("Sentis/ComputeShaders/ScatterOps",
                 new[] { "ScatterNDFloat", "ScatterNDInt" });
 
-            RegisterKernels("Sentis/ComputeShaders/Upsample",
+            RegisterKernels("Sentis/ComputeShaders/Resize",
                 new[]
                 {
                     "Upsample1D_Nearest_Floor", "Upsample1D_Nearest_Ceil", "Upsample1D_Linear_None",
                     "Upsample2D_Nearest_Floor", "Upsample2D_Nearest_Ceil", "Upsample2D_Linear_None",
                     "Upsample3D_Nearest_Floor", "Upsample3D_Nearest_Ceil", "Upsample3D_Linear_None",
+                    "Resize1D_Nearest_Floor", "Resize1D_Nearest_Ceil", "Resize1D_Linear_None",
                 });
 
             RegisterKernels("Sentis/ComputeShaders/ImageBased",
-                new[] { "DepthToSpaceDepthColumnRow", "DepthToSpaceColumnRowDepth", "SpaceToDepth", "RoiAlignAvg", "RoiAlignMax" });
+                new[] {
+                    "DepthToSpaceDepthColumnRow", "DepthToSpaceColumnRowDepth", "SpaceToDepth", "RoiAlignAvg", "RoiAlignMax",
+                    "NMSBitMask", "NMSDiscardBitMaskLinearRectBox", "NMSDiscardBitMaskLinearCenterBox", "NMSDiscardBitMaskPredicatedGatherCompaction",
+                    "NMSDiscardBitMaskLinearSMCenterBox", "NMSDiscardBitMaskLinearSMRectBox"});
+                                  
+            RegisterKernels("Sentis/ComputeShaders/GPUPrefixSum",
+                new[] {
+                        "MainCalculateLevelDispatchArgsFromConst",
+                        "MainCalculateLevelDispatchArgsFromBuffer",
+                        "MainPrefixSumNextInput",
+                        "MainPrefixSumOnGroup",
+                        "MainPrefixSumOnGroupExclusive",
+                        "MainPrefixSumOnGroupOrigInputAsBitCnt",
+                        "MainPrefixSumOnGroupExclusiveOrigInputAsBitCnt",
+                        "MainPrefixSumOnGroupFillNext",
+                        "MainPrefixSumOnGroupExclusiveFillNext",
+                        "MainPrefixSumOnGroupOrigInputAsBitCntFillNext",
+                        "MainPrefixSumOnGroupExclusiveOrigInputAsBitCntFillNext",
+                        "MainPrefixSumResolveParentOrigInputAsBitCnt",
+                        "MainPrefixSumResolveParentExclusiveOrigInputAsBitCnt",
+                        "MainPrefixSumResolveParent",
+                        "MainPrefixSumResolveParentExclusive",
+                        "MainGatherScaleBiasClampAbove",
+                });
+
+            m_GPUPrefixSum = new GPUPrefixSum(new GPUPrefixSum.SystemResources
+            {
+                computeAsset = FindComputeShader("MainPrefixSumOnGroup") // awkward, but any kernel will do, we want the compute here
+            });
+
         }
 
         void RegisterKernels(string shaderName, string[] kernelNames)
@@ -218,10 +256,10 @@ namespace Unity.Sentis
             var found = m_ShaderNameToComputeShader.TryGetValue(shaderName, out var cs);
             if (!found)
             {
-                Profiler.BeginSample(shaderName);
+                ProfilerMarkers.LoadComputeShader.Begin();
                 cs = Resources.Load<ComputeShader>(shaderName);
                 m_ShaderNameToComputeShader[shaderName] = cs;
-                Profiler.EndSample();
+                ProfilerMarkers.LoadComputeShader.End();
             }
             return cs;
         }

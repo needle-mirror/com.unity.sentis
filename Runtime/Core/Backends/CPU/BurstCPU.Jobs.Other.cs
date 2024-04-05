@@ -140,6 +140,35 @@ public partial class CPUBackend
     }
 
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    unsafe struct TopPJob : IJobParallelFor, IJobResourceDeclarationXBO
+    {
+        public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
+        public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+        public int count;
+        public int innerLength;
+        public int outerLength;
+
+        public void Execute(int i)
+        {
+            int n = i / count;
+            int sample = i % count;
+            float prob = Bptr[sample];
+            float accum = 0.0f;
+            int x = 0;
+            for (; x < innerLength; x++)
+            {
+                if (prob <= accum)
+                {
+                    break;
+                }
+                accum += Xptr[n * innerLength + x];
+            }
+            Optr[i] = x - 1;
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
     unsafe struct IsInfJob : IJobParallelFor, IJobResourceDeclarationXO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -301,6 +330,55 @@ public partial class CPUBackend
         }
     }
 
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    unsafe struct SliceSetJob : IParallelForBatch, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+        public SliceParameters sliceParams;
+
+        public void Execute(int i, int count)
+        {
+            float* Xp = Xptr + i;
+
+            while (count > 0)
+            {
+                // Compute the innermost offset and count of elements that can be handled sequentially.
+                int innerOffsetO = i % sliceParams.shapeO[0];
+                int remaining = i / sliceParams.shapeO[0];
+                int spanCount = math.min(count, sliceParams.shapeO[0] - innerOffsetO);
+
+                Unity.Burst.CompilerServices.Hint.Assume(spanCount > 0);
+
+                int innerOffsetX = sliceParams.stridedStarts[0] + innerOffsetO * sliceParams.stridedSteps[0];
+                float* Op = Optr + innerOffsetX;
+
+                // Compute the pointer to the innermost dimension by unraveling the remaining output index.
+                for (int j = 1; j < sliceParams.lastIndex; j++)
+                {
+                    int offsetO = remaining % sliceParams.shapeO[j];
+                    remaining = remaining / sliceParams.shapeO[j];
+                    Op += sliceParams.stridedStarts[j] + offsetO * sliceParams.stridedSteps[j];
+                }
+
+                if (sliceParams.stridedSteps[0] == 1)
+                    UnsafeUtility.MemCpy(Op, &Xp[0], spanCount * sizeof(float));
+                else
+                {
+                    for (int j = 0; j < spanCount; j++)
+                    {
+                        Op[0] = Xp[j];
+                        Op += sliceParams.stridedSteps[0];
+                    }
+                }
+
+                i += spanCount;
+                count -= spanCount;
+                Xp += spanCount;
+            }
+        }
+    }
+
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
     unsafe struct HardmaxJob : IParallelForBatch, IJobResourceDeclarationXO
     {
@@ -364,6 +442,52 @@ public partial class CPUBackend
             }
 
             *maxOpr = 1.0f;
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    internal unsafe struct ScalarMadFloatJob : IParallelForBatch, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+        public float s;
+        public float b;
+
+        public void Execute(int i, int count)
+        {
+            float* Xp = Xptr + i;
+            float* Op = Optr + i;
+
+            for (; count > 0; count--)
+            {
+                float x = Xp[0];
+                Op[0] = s * x + b;
+                Xp++;
+                Op++;
+            }
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    internal unsafe struct ScalarMadIntJob : IParallelForBatch, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
+        public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+        public int s;
+        public int b;
+
+        public void Execute(int i, int count)
+        {
+            int* Xp = Xptr + i;
+            int* Op = Optr + i;
+
+            for (; count > 0; count--)
+            {
+                int x = Xp[0];
+                Op[0] = s * x + b;
+                Xp++;
+                Op++;
+            }
         }
     }
 
@@ -1382,6 +1506,36 @@ public partial class CPUBackend
                 }
                 minOValue = math.min(direction * Vp[(k - 1) * innerLength], value);
             }
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    internal unsafe struct CastHalfToFloatJob : IJobParallelFor, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } ushort* Xptr => (ushort*)X.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+        public void Execute(int index)
+        {
+            float v = Mathf.HalfToFloat(Xptr[index]);
+            // round denormal
+            if (float.IsSubnormal(v))
+                v = 0;
+            Optr[index] = v;
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    internal unsafe struct DequantizeUint8Job : IJobParallelFor, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } byte* Xptr => (byte*)X.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+        public float scale;
+        public byte zeroPoint;
+
+        public void Execute(int index)
+        {
+            Optr[index] = (Xptr[index] - zeroPoint) * scale;
         }
     }
 }

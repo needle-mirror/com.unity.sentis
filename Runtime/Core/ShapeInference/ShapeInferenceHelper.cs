@@ -173,6 +173,70 @@ namespace Unity.Sentis
         }
 
         /// <summary>
+        /// Infer if ScatterElements or GatherElements tensors support fast path kernels or need the generic ones based on the two shapes
+        /// that could be different
+        /// (eg for Scatter these are output tensor shape and indices/updates, for Gather these are input and indices/output shapes).
+        /// This is done through a check on rules for the head subshape and tail subshape, see ScatterElementsFast kernel for details.
+        //
+        // eg of cases where fast path can and can't work:
+        //
+        //      Scatter with output shape of TensorShape(1, 3, 7, 3) and indices/updates shape of TensorShape(1, 2, 1, 3) and axis = 2,
+        //          -head before (outermore to the) axis are not equal (*)
+        //          -tail after (innermore to the) axis are equal
+        //
+        // * This will still work in fast path since the axis-1 dim are not equal but all the ones outermore are dimension 1 in indices/updates.
+        //
+        //      Scatter with output shape of TensorShape(1, 4, 7, 4) and indices/updates shape of TensorShape(1, 2, 1, 2) and axis = 1,
+        //          -head before (outermore to the) axis are equal
+        //          -tail after (innermore to the) axis are not equal (**)
+        //
+        // ** This will still work in fast path since even if now axis = 1 and also the trailing dimensions from dimension 3 to axis+1 = 2 (inclusive)
+        // don't match, this is still ok in fast path since the axis+1 = 2 dimension up (innermore to) to innermostNonMatchingDimension - 1 = 2 are
+        // not equal but are sized 1 in the indices tensor.
+        //
+        //      Scatter with output shape of TensorShape(1, 4, 7, 4) and indices/updates shape of TensorShape(1, 2, 3, 2) and axis = 1,
+        //          -head before (outermore to the) axis are equal
+        //          -tail after (innermore to the) axis are not equal (!)
+        //
+        // ! This is NOT ok in fast path since indices.shape[-1] != input.shape[-1] && indices.shape[-2] != 1 (axis is 1).
+        // Note that in the GPUPixel backend, exceptionally this will pass whether it uses the dimension 2 or 3 for the axis on which to "block" when
+        // transforming the tensor linear data into a texture,
+        // (the axis on which we re-index stashing 4 values in a single texture index because 4 values are then grouped into 4 channels of the same texel)
+        // even with an indices shape of eg TensorShape(1, 2, 3, 2) since eg for blocked axis = 2, it can actually squeeze the 3 values in 4 channels of
+        // a single texel and allow the fast path and if the blocked axis is = 3, then the innermost dimensions match, then we have one mismatch, and no other
+        // dimensions until we reach this axis, so again, fast path is possible.
+        //
+        //      Scatter with output shape of TensorShape(2, 2, 7, 3) and indices/updates shape of TensorShape(2, 1, 1, 3) and axis = 2,
+        //          -head before (outermore to the) axis are not equal (!!)
+        //          -tail after (innermore to the) axis are equal
+        //
+        // !! This is NOT ok in fast path since the axis-1 dims are not equal AND we straddle past it (in the linear representation) to jump to another
+        // element in axis-2 dim: So when we consider a tensor in our code as "all folded as slices with the outermost dimension == axis-1", the slice
+        // number in indices for multiidx_indices = eg (2, 1, ?, ?) will be taken as multiidx_output = (1, 2, ?, ?).
+        //
+        // See also ScatterElementsAdvanced tests.
+        /// </summary>
+        public static bool ScatterGatherElementsSupportsFastPath(TensorShape indicesShape, TensorShape inputShape, int scatterGatherAxis)
+        {
+            scatterGatherAxis = inputShape.Axis(scatterGatherAxis); // note: this is safe since the ranks of input and indices are assumed matching
+            bool allInnerMostAreEqual = TensorShape.InnermostEqual(indicesShape, inputShape, inputShape.rank - 1 - scatterGatherAxis, out int innermostNonMatchingDimension);
+
+            // First, all innermost dimensions should be equal, or, all the dimensions outermore than the first innermost non matching (counting backwards from inner to outer),
+            // up to dimension axis+1, should have size == 1: in that way, any trailing offset calculated from (linear ie flat indices index % indicesAxisElementStride)
+            // can't straddle or cross an element in an outermore non matching-size dimension (straddle mean be at element != 0 on that outermore dimension)
+            // before it actually cross an axis element (which is properly handled).
+            bool fastPathPossible = (allInnerMostAreEqual || indicesShape.Length(scatterGatherAxis + 1, /*exclusive end:*/ innermostNonMatchingDimension) == 1);
+
+            // The one-step outermore dimension to the axis (ie dimension "axis-1") can also be smaller for indices tensor,
+            // but in that case, for all the outermost dimensions from 0 to axis - 2, those dimensions in indices
+            // should all be 1. Otherwise, all dimensions from 0 to axis-1 should match:
+            fastPathPossible &= (TensorShape.OutermostEqual(indicesShape, inputShape, headLength: scatterGatherAxis, out _) || (scatterGatherAxis == 0) || indicesShape.Length(0, /*exclusive end:*/ scatterGatherAxis - 1) == 1);
+            // Note (axis == 0) is a safety for the shape.Length call, but will be optimized out since OutermostEqual is trivially true in that case.
+
+            return fastPathPossible;
+        }
+
+        /// <summary>
         /// updates pad values so that output_shape[i] = input_shape[i] * strides[i]
         /// N.B: pad int[] needs to be previously allocated with 2*#of spatial dimensions
         /// </summary>
@@ -497,6 +561,68 @@ namespace Unity.Sentis
                 return false;
 
             return true;
+        }
+
+        public static bool IsTranspose2D(TensorShape X, ReadOnlySpan<int> permutations, out int Height, out int Width)
+        {
+            Height = 1; Width = 1;
+            if (X.length == 1)
+                return true;
+
+            var O = X.Transpose(permutations);
+            var squeezedO = O.Squeeze();
+
+            unsafe
+            {
+                var remapDim = stackalloc int[X.rank];
+                int index = 0;
+                for (int i = 0; i < X.rank; i++)
+                {
+                    if (X[i] == 1)
+                        continue;
+                    remapDim[i] = index;
+                    index++;
+                }
+
+                var squeezedPermutations = stackalloc int[squeezedO.rank];
+                index = 0;
+                for (int i = 0; i < permutations.Length; i++)
+                {
+                    if (O[i] == 1)
+                        continue;
+                    squeezedPermutations[index] = remapDim[permutations[i]];
+                    index++;
+                }
+
+                int widthO = 1;
+                int heightO = squeezedO[0];
+                int prevDim = squeezedPermutations[0];
+                bool switchedDim = false;
+
+                for (int i = 1; i < squeezedO.rank; i++)
+                {
+                    var dim = squeezedPermutations[i];
+                    if (!switchedDim && ((prevDim + 1) == dim))
+                    {
+                        prevDim = dim;
+                        heightO *= squeezedO[i];
+                    }
+                    else if (switchedDim && ((prevDim + 1) != dim))
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        switchedDim = true;
+                        prevDim = dim;
+                        widthO *= squeezedO[i];
+                    }
+                }
+
+                Height = widthO; Width = heightO;
+
+                return true;
+            }
         }
     }
 }

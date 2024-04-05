@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/Activation"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile Relu Selu Abs Neg Ceil Floor Round Reciprocal Swish Tanh Softplus Sigmoid HardSigmoid Relu6 Elu LeakyRelu Exp Log Sqrt Acos Acosh Asin Asinh Atan Atanh Cos Cosh Sin Sinh Tan Pow Clip Erf Sign Square Celu HardSwish Softsign ThresholdedRelu Gelu Shrink
+            #pragma multi_compile Relu Selu Abs Neg Ceil Floor Round Reciprocal Swish Tanh Softplus Sigmoid HardSigmoid Relu6 Elu LeakyRelu Exp Log Sqrt Acos Acosh Asin Asinh Atan Atanh Cos Cosh Sin Sinh Tan Pow Clip Erf Sign Square Celu HardSwish Softsign ThresholdedRelu Gelu GeluFast Shrink
 
             #pragma vertex vert
             #pragma fragment frag
@@ -48,6 +48,11 @@ Shader "Hidden/Sentis/Activation"
             float4 gelu(float4 v)
             {
                 return (erf(v / 1.41421356237f) + 1) * v * 0.5f;
+            }
+
+            float4 gelufast(float4 v)
+            {
+                return (v * 0.5f) * (tanh(clamp((v + (pow(v, 3.0f) * 0.044714998453855515f)) * 0.7978845834732056f, -16.0f, 16.0f)) + 1);
             }
 
             float selu(float v, float alpha, float gamma)
@@ -207,6 +212,9 @@ Shader "Hidden/Sentis/Activation"
                 #endif
                 #ifdef Gelu
                     v = gelu(v);
+                #endif
+                #ifdef GeluFast
+                    v = gelufast(v);
                 #endif
                 #ifdef Shrink
                     float4 vOut = 0;

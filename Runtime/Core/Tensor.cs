@@ -3,15 +3,36 @@ using System;
 using Unity.Collections;
 using System.Threading.Tasks;
 
-namespace Unity.Sentis {
-
+namespace Unity.Sentis
+{
 /// <summary>
 /// Represents data in a multidimensional array-like structure.
+///
+/// Ownership and lifetime:
+/// * Disposed needs to be called on the main thread.
+/// * Ownership is always to the owner of the object.
+///
+/// Data Representation:
+/// * TensorShape represents the data layout of the tensor
+/// * Data is held by a tensorData (ITensorData) which can be on a given backend
+/// * Data is stored in a flattened row major format
+/// * Data can be pending (ie computation is being done in parallel)
+///      - call CompleteAllPendingOperations for a blocking call to finish computing the tensor's data
+///      - call CompleteOperationsAndDownloadAsync/ReadbackRequest for a non blocking call to finish computing the tensor's data
+///   Data can be in a non readable type (GPU/NPU)
+///      - Call CompleteOperationsAndDownload to make the tensor readable (this will fetch the data on the backend and convert it to a readable format)
+///      - CompleteOperationsAndDownload is a blocking call if called on its own.
+///        for a non blocking call, make sure that CompleteOperationsAndDownloadAsync/ReadbackRequest have been called previously
+///        you can check that with IsReadbackRequestDone
+///
+/// Data manipulation
+/// * ToReadOnlyArray returns a copy of the tensor's data
+/// * dataOnBackend can be manipulated directly to avoid a unnecessary copy
+///   see ComputeTensorData/BurstTensorData for info
 /// </summary>
 public abstract class Tensor : IDisposable
 {
-    private protected ITensorData m_TensorOnDevice;
-    private protected ITensorAllocator m_TensorAllocator;
+    private protected ITensorData m_DataOnBackend;
     private protected TensorShape m_Shape;
     private protected bool m_Disposed = false;
 
@@ -21,42 +42,37 @@ public abstract class Tensor : IDisposable
     public abstract DataType dataType { get; }
 
     /// <summary>
+    /// The length of the tensor.
+    /// </summary>
+    public abstract int count { get; }
+
+    /// <summary>
     /// The shape of the tensor, as a `TensorShape`.
     /// </summary>
     public TensorShape shape
     {
         get => m_Shape;
-        protected set => m_Shape = value;
+        internal set => m_Shape = value;
     }
 
     /// <summary>
     /// The device-specific internal representation of the tensor data.
     /// </summary>
-    public ITensorData tensorOnDevice
+    public ITensorData dataOnBackend
     {
-        get => m_TensorOnDevice;
-        protected set => m_TensorOnDevice = value;
+        get => m_DataOnBackend;
+        internal set => m_DataOnBackend = value;
     }
 
     /// <summary>
-    /// The allocator for the tensor. Refer to <see cref="ITensorAllocator"/>.
+    /// The backend type where the tensor data is currently stored.
     /// </summary>
-    public ITensorAllocator allocator => m_TensorAllocator;
+    public BackendType backendType
+    {
+        get => m_DataOnBackend.backendType;
+    }
 
     internal bool disposed => m_Disposed;
-
-    /// <summary>
-    /// Instantiates and returns a Tensor with the specified `shape`, an `ITensorData` `data` and an ITensorAllocator `allocator`.
-    /// </summary>
-    /// <param name="shape">The shape of the tensor.</param>
-    /// <param name="data">The optional tensor data.</param>
-    /// <param name="allocator">The allocator that was used to instantiate the tensor.</param>
-    protected internal Tensor(TensorShape shape, ITensorData data = null, ITensorAllocator allocator = null)
-    {
-        m_Shape = shape;
-        tensorOnDevice = data;
-        m_TensorAllocator = allocator;
-    }
 
     /// <summary>
     /// Dispose of the tensor and any associated memory.
@@ -66,16 +82,27 @@ public abstract class Tensor : IDisposable
         Dispose();
     }
 
+    /// <summary>
+    /// Change the shape of a tensor without changing the backing data.
+    ///
+    /// The new shape must be the same length as the current shape, and the data cannot be on the GPUPixel backend.
+    /// </summary>
+    /// <param name="shape">The new shape for the tensor.</param>
+    public void Reshape(TensorShape shape)
+    {
+        Logger.AssertIsTrue(dataOnBackend is not TextureTensorData, "Tensor.Reshape: Sentis can only reshape when the dataOnBackend is not a TextureTensorData");
+        Logger.AssertIsTrue(shape.length == m_Shape.length, "Tensor.Reshape: Sentis can only reshape when the new length is the same as the current length, got {0}, expected {1}", shape.length, m_Shape.length);
+        m_Shape = shape;
+    }
+
     private protected void PinToDevice(ITensorData onDevice, bool disposeUnpinned = true)
     {
-        Logger.AssertIsTrue(onDevice?.maxCapacity >= shape.length || onDevice == null, "Tensor.PinToDevice: not enough capacity on device to pin tensor or device null");
+        Logger.AssertIsTrue(onDevice?.maxCapacity >= count || onDevice == null, "Tensor.PinToDevice: not enough capacity on device to pin tensor or device null");
 
-        if (m_TensorAllocator != null)
-            m_TensorAllocator.MoveToDevice(this, onDevice, m_TensorOnDevice, disposeUnpinned);
-        else if (disposeUnpinned)
-            m_TensorOnDevice?.Dispose();
+        if (disposeUnpinned)
+            m_DataOnBackend?.Dispose();
 
-        tensorOnDevice = onDevice;
+        m_DataOnBackend = onDevice;
     }
 
     /// <summary>
@@ -86,7 +113,7 @@ public abstract class Tensor : IDisposable
     /// <param name="source">The data on device to associate to the tensor.</param>
     public void AttachToDevice(ITensorData source)
     {
-        if (m_TensorOnDevice == source)
+        if (m_DataOnBackend == source)
             return;
 
         PinToDevice(source, disposeUnpinned: true);
@@ -105,7 +132,7 @@ public abstract class Tensor : IDisposable
     /// <returns>The detached tensor data.</returns>
     public ITensorData DetachFromDevice(bool disposeDeviceData = true)
     {
-        ITensorData unpinned = (disposeDeviceData) ? null : m_TensorOnDevice;
+        ITensorData unpinned = (disposeDeviceData) ? null : m_DataOnBackend;
         PinToDevice(null, disposeDeviceData);
         return unpinned;
     }
@@ -113,25 +140,26 @@ public abstract class Tensor : IDisposable
     /// <summary>
     /// Blocking call to make tensor data read/write.
     ///
-    /// Issues a blocking download of the internal data. And converts tensorData to ArrayTensorData
+    /// Issues a blocking download of the internal data. And converts tensorData to BurstTensorData
     /// </summary>
-    public void MakeReadable()
+    public void CompleteOperationsAndDownload()
     {
-        m_TensorOnDevice?.CompleteAllPendingOperations();
-        if (tensorOnDevice is IReadableTensorData)
+        m_DataOnBackend?.CompleteAllPendingOperations();
+        if (m_DataOnBackend is IReadableTensorData)
             return;
-        ArrayTensorData.Pin(this);
+        BurstTensorData.Pin(this);
     }
 
     /// <summary>
     /// Non blocking call to make tensor data read/write.
     ///
-    /// Issues a non blocking download of the internal data. And converts tensorData to ArrayTensorData
+    /// Issues a non blocking download of the internal data. And converts tensorData to BurstTensorData
     /// </summary>
-    public async Task<bool> MakeReadableAsync()
+    /// <returns>The async task.</returns>
+    public async Task<bool> CompleteOperationsAndDownloadAsync()
     {
         await ReadbackRequestAsync();
-        MakeReadable();
+        CompleteOperationsAndDownload();
         return true;
     }
 
@@ -143,10 +171,10 @@ public abstract class Tensor : IDisposable
     /// <returns>Whether the async readback request is successful.</returns>
     public bool IsReadbackRequestDone()
     {
-        if (m_TensorOnDevice == null)
+        if (m_DataOnBackend == null)
             return false;
 
-        return m_TensorOnDevice.IsReadbackRequestDone();
+        return m_DataOnBackend.IsReadbackRequestDone();
     }
 
     /// <summary>
@@ -155,13 +183,13 @@ public abstract class Tensor : IDisposable
     /// <param name="callback">Callback invoked when async readback is finished. Return value indicates if async readback is successful.</param>
     public void ReadbackRequest(Action<bool> callback = null)
     {
-        if (m_TensorOnDevice == null)
+        if (m_DataOnBackend == null)
         {
             callback?.Invoke(false);
             return;
         }
 
-        m_TensorOnDevice.ReadbackRequest(callback);
+        m_DataOnBackend.ReadbackRequest(callback);
     }
 
     /// <summary>
@@ -172,7 +200,7 @@ public abstract class Tensor : IDisposable
     /// <returns>awaitable task for when the readback request is successful.</returns>
     public async Task<bool> ReadbackRequestAsync()
     {
-        return await m_TensorOnDevice.ReadbackRequestAsync();
+        return await m_DataOnBackend.ReadbackRequestAsync();
     }
 
     /// <summary>
@@ -180,77 +208,30 @@ public abstract class Tensor : IDisposable
     /// </summary>
     public void CompleteAllPendingOperations()
     {
-        m_TensorOnDevice.CompleteAllPendingOperations();
+        m_DataOnBackend.CompleteAllPendingOperations();
     }
 
-    /// <summary>
-    /// Returns a shallow copy of the `Tensor` with a new shape. The copy shares data storage with the original tensor.
-    ///
-    /// `newShape.length` must be equal to `this.shape.length`.
-    /// </summary>
-    /// <param name="newShape">The shape of the returned tensor.</param>
-    /// <returns>The tensor with the new shape sharing the same data storage as the original tensor.</returns>
-    public abstract Tensor ShallowReshape(TensorShape newShape);
-
-    /// <summary>
-    /// Returns a shallow copy of the current `Tensor`. The copy shares data storage with original tensor.
-    /// </summary>
-    /// <returns>The copied tensor sharing the same data storage as the original tensor.</returns>
-    public Tensor ShallowCopy()
-    {
-        return ShallowReshape(shape);
-    }
-
-    /// <summary>
-    /// Returns a deep copy of the current Tensor.
-    /// </summary>
-    /// <returns>The copied tensor.</returns>
-    public abstract Tensor DeepCopy();
-
-    /// <summary>
-    /// Removes system references to the tensor. The caller assumes ownership.
-    /// </summary>
-    public void TakeOwnership()
-    {
-        m_TensorAllocator?.WaiveOwnership(this);
-        m_TensorAllocator = null;
-    }
-
-    /// Called from ITensorAllocator, puts Tensor in the ready for reuse state.
+    /// puts Tensor in the ready for reuse state.
     internal ITensorData Invalidate()
     {
-        ITensorData unpinned = m_TensorOnDevice;
+        ITensorData unpinned = m_DataOnBackend;
         PinToDevice(null, false);
-        Assert.AreEqual(m_TensorOnDevice, null, "Tensor.Invalidate: tensorOnDevice not null");
-        tensorOnDevice = null;
-        m_TensorAllocator = null;
+        Assert.AreEqual(m_DataOnBackend, null, "Tensor.Invalidate: tensorOnDevice not null");
+        m_DataOnBackend = null;
         return unpinned;
-    }
-
-    internal void Init(TensorShape shape, ITensorData buffer, ITensorAllocator allocator)
-    {
-        this.shape = shape;
-        tensorOnDevice = buffer;
-        m_TensorAllocator = allocator;
-        m_Disposed = false;
     }
 
     /// <summary>
     /// Disposes of the tensor and any associated memory.
     /// </summary>
-    public virtual void Dispose()
+    public void Dispose()
     {
-        if (m_TensorAllocator != null)
+        if (m_DataOnBackend != null)
         {
-            m_TensorAllocator.Release(this, true);
-        }
-        else if (m_TensorOnDevice != null)
-        {
-            m_TensorOnDevice.Dispose();
+            m_DataOnBackend.Dispose();
         }
 
-        tensorOnDevice = null;
-        m_TensorAllocator = null;
+        m_DataOnBackend = null;
         m_Disposed = true;
     }
 
@@ -265,43 +246,44 @@ public abstract class Tensor : IDisposable
 
     internal T[] ToReadOnlyArray<T>() where T : unmanaged
     {
-        if (m_TensorOnDevice is IReadableTensorData rwData)
-            return rwData.ToArray<T>(shape.length);
+        if (shape.length == 0)
+            return Array.Empty<T>();
+        if (m_DataOnBackend is IReadableTensorData rwData)
+            return rwData.ToArray<T>(count);
         else
-            throw new InvalidOperationException("Tensor data cannot be read from, use .MakeReadable() to allow reading from tensor.");
+            throw new InvalidOperationException("Tensor data cannot be read from, use .CompleteOperationsAndDownload() to allow reading from tensor.");
     }
-
     internal NativeArray<T>.ReadOnly ToReadOnlyNativeArray<T>() where T : unmanaged
     {
-        if (m_TensorOnDevice is IReadableTensorData rwData)
-            return rwData.GetReadOnlyNativeArrayHandle<T>(shape.length);
+        if (shape.length == 0)
+            return new NativeArray<T>.ReadOnly();
+        if (m_DataOnBackend is IReadableTensorData rwData)
+            return rwData.GetReadOnlyNativeArrayHandle<T>(count);
         else
-            throw new InvalidOperationException("Tensor data cannot be read from, use .MakeReadable() to allow reading from tensor.");
+            throw new InvalidOperationException("Tensor data cannot be read from, use .CompleteOperationsAndDownload() to allow reading from tensor.");
     }
-
     internal ReadOnlySpan<T> ToReadOnlySpan<T>() where T : unmanaged
     {
-        if (m_TensorOnDevice is IReadableTensorData rwData)
-            return rwData.ToReadOnlySpan<T>(shape.length);
+        if (shape.length == 0)
+            return ReadOnlySpan<T>.Empty;
+        if (m_DataOnBackend is IReadableTensorData rwData)
+            return rwData.ToReadOnlySpan<T>(count);
         else
-            throw new InvalidOperationException("Tensor data cannot be read from, use .MakeReadable() to allow reading from tensor.");
+            throw new InvalidOperationException("Tensor data cannot be read from, use .CompleteOperationsAndDownload() to allow reading from tensor.");
     }
-
-    internal T Get<T>(int d0) where T : unmanaged
+    internal T GetItem<T>(int d0) where T : unmanaged
     {
-        if (m_TensorOnDevice is IReadableTensorData rwData)
+        if (m_DataOnBackend is IReadableTensorData rwData)
             return rwData.Get<T>(d0);
         else
-            throw new InvalidOperationException("Tensor data cannot be read from, use .MakeReadable() to allow reading from tensor.");
+            throw new InvalidOperationException("Tensor data cannot be read from, use .CompleteOperationsAndDownload() to allow reading from tensor.");
     }
-
-    internal void Set<T>(int d0, T value) where T : unmanaged
+    internal void SetItem<T>(int d0, T value) where T : unmanaged
     {
-        if (m_TensorOnDevice is IReadableTensorData rwData)
+        if (m_DataOnBackend is IReadableTensorData rwData)
             rwData.Set<T>(d0, value);
         else
-            throw new InvalidOperationException("Tensor data cannot be written to, use .MakeReadable() to allow writing to tensor.");
+            throw new InvalidOperationException("Tensor data cannot be written to, use .CompleteOperationsAndDownload() to allow writing to tensor.");
     }
 }
-
 } // namespace Unity.Sentis

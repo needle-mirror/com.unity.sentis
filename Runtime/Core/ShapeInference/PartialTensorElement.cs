@@ -13,41 +13,49 @@ namespace Unity.Sentis
     }
 
     /// <summary>
-    /// Represents a single element of a SymbolicTensorShape, can be an int value, float value, char param or unknown
+    /// Represents a single element of a SymbolicTensorShape, can be an int value, float value, byte param or unknown
     /// </summary>
     [Serializable]
     struct PartialTensorElement
     {
         ElementType m_ElementType;
-        char m_Param;
+        byte m_Param;
         int m_IntValue;
         float m_FloatValue;
 
         public static PartialTensorElement Unknown => new PartialTensorElement();
 
-        public PartialTensorElement(int intValue)
+        public static PartialTensorElement IntValue(int value)
         {
-            m_ElementType = ElementType.IntValue;
-            m_Param = default;
-            m_IntValue = intValue;
-            m_FloatValue = default;
+            return new PartialTensorElement
+            {
+                m_ElementType = ElementType.IntValue,
+                m_Param = default,
+                m_IntValue = value,
+                m_FloatValue = default,
+            };
         }
 
-        public PartialTensorElement(char param)
+        public static PartialTensorElement FloatValue(float value)
         {
-            Logger.AssertIsTrue(param >= 0, "Element param cannot be negative");
-            m_ElementType = ElementType.Param;
-            m_Param = param;
-            m_IntValue = default;
-            m_FloatValue = default;
+            return new PartialTensorElement
+            {
+                m_ElementType = ElementType.FloatValue,
+                m_Param = default,
+                m_IntValue = default,
+                m_FloatValue = value
+            };
         }
 
-        public PartialTensorElement(float value)
+        public static PartialTensorElement Param(byte param)
         {
-            m_ElementType = ElementType.FloatValue;
-            m_Param = default;
-            m_IntValue = default;
-            m_FloatValue = value;
+            return new PartialTensorElement
+            {
+                m_ElementType = ElementType.Param,
+                m_Param = param,
+                m_IntValue = default,
+                m_FloatValue = default
+            };
         }
 
         public bool isUnknown => m_ElementType == ElementType.Unknown;
@@ -55,8 +63,7 @@ namespace Unity.Sentis
         public bool isParam => m_ElementType == ElementType.Param;
         public bool isFloatValue => m_ElementType == ElementType.FloatValue;
 
-        public static PartialTensorElement Zero => new PartialTensorElement(0);
-        public static PartialTensorElement One => new PartialTensorElement(1);
+        public static PartialTensorElement Zero => IntValue(0);
 
         public int intValue
         {
@@ -76,7 +83,7 @@ namespace Unity.Sentis
             }
         }
 
-        public char param
+        public byte param
         {
             get
             {
@@ -114,8 +121,8 @@ namespace Unity.Sentis
             return v.m_ElementType switch
             {
                 ElementType.Unknown => SymbolicTensorDim.Unknown,
-                ElementType.IntValue => v.m_IntValue < 0 ? SymbolicTensorDim.Unknown : new SymbolicTensorDim(v.m_IntValue),
-                ElementType.Param => new SymbolicTensorDim(v.m_Param),
+                ElementType.IntValue => v.m_IntValue < 0 ? SymbolicTensorDim.Unknown : SymbolicTensorDim.Int(v.m_IntValue),
+                ElementType.Param => SymbolicTensorDim.Param(v.m_Param),
                 ElementType.FloatValue => SymbolicTensorDim.Unknown,
                 _ => throw new ArgumentOutOfRangeException()
             };
@@ -124,9 +131,9 @@ namespace Unity.Sentis
         public static explicit operator PartialTensorElement(SymbolicTensorDim d)
         {
             if (d.isValue)
-                return new PartialTensorElement(d.value);
+                return IntValue(d.value);
             if (d.isParam)
-                return new PartialTensorElement(d.param);
+                return Param(d.param);
             return Unknown;
         }
 
@@ -471,9 +478,9 @@ namespace Unity.Sentis
         public static PartialTensorElement operator -(PartialTensorElement a)
         {
             if (a.isIntValue)
-                return new PartialTensorElement(-a.intValue);
+                return IntValue(-a.intValue);
             if (a.isFloatValue)
-                return new PartialTensorElement(-a.floatValue);
+                return FloatValue(-a.floatValue);
             return Unknown;
         }
 
@@ -511,7 +518,7 @@ namespace Unity.Sentis
         public static PartialTensorElement operator +(int a, PartialTensorElement b)
         {
             if (b.isIntValue)
-                return new PartialTensorElement(a + b.intValue);
+                return IntValue(a + b.intValue);
             if (a == 0)
                 return b;
             return Unknown;
@@ -567,7 +574,7 @@ namespace Unity.Sentis
         public static PartialTensorElement operator -(int a, PartialTensorElement b)
         {
             if (b.isIntValue)
-                return new PartialTensorElement(a - b.intValue);
+                return IntValue(a - b.intValue);
             return Unknown;
         }
 
@@ -585,7 +592,7 @@ namespace Unity.Sentis
         public static PartialTensorElement operator -(PartialTensorElement a, int b)
         {
             if (a.isIntValue)
-                return new PartialTensorElement(a.intValue - b);
+                return IntValue(a.intValue - b);
             if (b == 0)
                 return a;
             return Unknown;
@@ -623,7 +630,7 @@ namespace Unity.Sentis
         public static PartialTensorElement operator *(int a, PartialTensorElement b)
         {
             if (b.isIntValue)
-                return new PartialTensorElement(a * b.intValue);
+                return IntValue(a * b.intValue);
             if (a == 1)
                 return b;
             if (a == 0)

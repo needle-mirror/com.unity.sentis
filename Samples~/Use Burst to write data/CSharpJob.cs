@@ -16,7 +16,7 @@ public class CSharpJob : MonoBehaviour
     {
         // Everything that can be statically assigned is setup during Start to avoid memory churn.
         var model = ModelLoader.Load(modelAsset);
-        m_Input = TensorFloat.Zeros(new TensorShape(1024));
+        m_Input = TensorFloat.AllocZeros(new TensorShape(1024));
         m_Engine = WorkerFactory.CreateWorker(BackendType.CPU, model);
     }
 
@@ -43,7 +43,7 @@ public class CSharpJob : MonoBehaviour
         SimpleJob job = new SimpleJob() { data = burstTensorDataX.array.GetNativeArrayHandle<float>() };
 
         // Set the fence on the input so Sentis doesn't execute until the job is complete.
-        burstTensorDataX.fence = job.Schedule(burstTensorDataX.array.Length, 64);
+        burstTensorDataX.fence = job.Schedule(m_Input.shape.length, 64);
 
         m_Engine.Execute(m_Input);
 

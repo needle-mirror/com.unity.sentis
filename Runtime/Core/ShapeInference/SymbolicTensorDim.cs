@@ -32,8 +32,11 @@ namespace Unity.Sentis
     [Serializable]
     public struct SymbolicTensorDim
     {
+        const string k_UnknownName = "?";
+        const string k_ParamName = "?";
+
         DimType m_DimType;
-        char m_Param;
+        byte m_Param;
         int m_Value;
 
         internal static SymbolicTensorDim Unknown => new SymbolicTensorDim();
@@ -42,24 +45,31 @@ namespace Unity.Sentis
         /// Initializes and returns an instance of `SymbolicTensorDim` of fixed type, with an integer value.
         /// </summary>
         /// <param name="value">The size of the dim.</param>
-        public SymbolicTensorDim(int value)
+        /// <returns>The symbolic tensor dim.</returns>
+        public static SymbolicTensorDim Int(int value)
         {
             Logger.AssertIsTrue(value >= 0, "Dim value cannot be negative");
-            m_DimType = DimType.Value;
-            m_Param = default;
-            m_Value = value;
+            return new SymbolicTensorDim()
+            {
+                m_DimType = DimType.Value,
+                m_Param = default,
+                m_Value = value
+            };
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `SymbolicTensorDim` of dynamic type, with a character value. The character value maps to a string in the `Model` class.
+        /// Initializes and returns an instance of `SymbolicTensorDim` of dynamic type, with a byte value.
         /// </summary>
-        /// <param name="param">The character name of the dynamic parameter.</param>
-        public SymbolicTensorDim(char param)
+        /// <param name="param">The byte value dynamic parameter.</param>
+        /// <returns>The symbolic tensor dim.</returns>
+        public static SymbolicTensorDim Param(byte param)
         {
-            Logger.AssertIsTrue(param >= 0, "Dim param cannot be negative");
-            m_DimType = DimType.Param;
-            m_Param = param;
-            m_Value = default;
+            return new SymbolicTensorDim()
+            {
+                m_DimType = DimType.Param,
+                m_Param = param,
+                m_Value = default
+            };
         }
 
         internal bool isUnknown => m_DimType == DimType.Unknown;
@@ -70,12 +80,12 @@ namespace Unity.Sentis
         public bool isValue => m_DimType == DimType.Value;
 
         /// <summary>
-        /// Whether the dimension is dynamic. If the value is `true`, you can use `.param` to return the value as a character.
+        /// Whether the dimension is dynamic. If the value is `true`, you can use `.param` to return the value as a byte.
         /// </summary>
         public bool isParam => m_DimType == DimType.Param;
 
-        internal static SymbolicTensorDim Zero => new SymbolicTensorDim(0);
-        internal static SymbolicTensorDim One => new SymbolicTensorDim(1);
+        internal static SymbolicTensorDim Zero => Int(0);
+        internal static SymbolicTensorDim One => Int(1);
 
         /// <summary>
         /// The value of the dimension. You can only call this method if `.isValue` is true.
@@ -92,11 +102,11 @@ namespace Unity.Sentis
         /// <summary>
         /// The value of the dimension. You can only call this method if `.isParam` is true.
         /// </summary>
-        public char param
+        public byte param
         {
             get
             {
-                Logger.AssertIsTrue(m_DimType == DimType.Param, "Cannot get param of dim with type != DimType.Param");
+                //Logger.AssertIsTrue(m_DimType == DimType.Param, "Cannot get param of dim with type != DimType.Param");
                 return m_Param;
             }
         }
@@ -110,9 +120,9 @@ namespace Unity.Sentis
         {
             return m_DimType switch
             {
-                DimType.Unknown => "?",
+                DimType.Unknown => k_UnknownName,
                 DimType.Value => value.ToString(),
-                DimType.Param => param.ToString(),
+                DimType.Param => "d" + (int)param,
                 _ => throw new ArgumentOutOfRangeException()
             };
         }
@@ -252,7 +262,7 @@ namespace Unity.Sentis
         public static SymbolicTensorDim operator +(int a, SymbolicTensorDim b)
         {
             if (b.isValue)
-                return new SymbolicTensorDim(a + b.value);
+                return Int(a + b.value);
             if (a == 0)
                 return b;
             return Unknown;
@@ -309,7 +319,7 @@ namespace Unity.Sentis
         public static SymbolicTensorDim operator -(int a, SymbolicTensorDim b)
         {
             if (b.isValue)
-                return new SymbolicTensorDim(a - b.value);
+                return Int(a - b.value);
             return Unknown;
         }
 
@@ -327,7 +337,7 @@ namespace Unity.Sentis
         public static SymbolicTensorDim operator -(SymbolicTensorDim a, int b)
         {
             if (a.isValue)
-                return new SymbolicTensorDim(a.value - b);
+                return Int(a.value - b);
             if (b == 0)
                 return a;
             return Unknown;
@@ -367,7 +377,7 @@ namespace Unity.Sentis
         public static SymbolicTensorDim operator *(int a, SymbolicTensorDim b)
         {
             if (b.isValue)
-                return new SymbolicTensorDim(a * b.value);
+                return Int(a * b.value);
             if (a == 1)
                 return b;
             if (a == 0)
@@ -432,7 +442,7 @@ namespace Unity.Sentis
             {
                 Logger.AssertIsTrue(b.value != 0, "ValueError: cannot divide by dim of size 0");
                 Logger.AssertIsTrue(a % b.value == 0, "ValueError: cannot divide SymbolicTensorDims exactly");
-                return new SymbolicTensorDim(a / b.value);
+                return Int(a / b.value);
             }
 
             return Unknown;
@@ -455,7 +465,7 @@ namespace Unity.Sentis
             {
                 Logger.AssertIsTrue(b != 0, "ValueError: cannot divide by dim of size 0");
                 Logger.AssertIsTrue(a.value % b == 0, "ValueError: cannot divide SymbolicTensorDims exactly");
-                return new SymbolicTensorDim(a.value / b);
+                return Int(a.value / b);
             }
             if (b == 1)
                 return a;
@@ -488,10 +498,10 @@ namespace Unity.Sentis
 
             var v = value / (float)b;
             if (roundingDirection > 0)
-                return new SymbolicTensorDim(Mathf.CeilToInt(v));
+                return Int(Mathf.CeilToInt(v));
             if (roundingDirection < 0)
-                return new SymbolicTensorDim(Mathf.FloorToInt(v));
-            return new SymbolicTensorDim(Mathf.RoundToInt(v));
+                return Int(Mathf.FloorToInt(v));
+            return Int(Mathf.RoundToInt(v));
         }
 
         /// <summary>
@@ -625,7 +635,7 @@ namespace Unity.Sentis
             Logger.AssertIsTrue(!(step == 0), "Slice.InputError: Step cannot be 0");
 
             if (isValue && start.isIntValue && end.isIntValue && step.isIntValue)
-                return new SymbolicTensorDim(ShapeInference.SliceDim(value, start.intValue, end.intValue, step.intValue));
+                return Int(ShapeInference.SliceDim(value, start.intValue, end.intValue, step.intValue));
 
             if (start.isUnknown || end.isUnknown)
                 return Unknown;
@@ -685,7 +695,24 @@ namespace Unity.Sentis
                 else
                     y %= x;
             }
-            return new SymbolicTensorDim(x | y);
+            return Int(x | y);
+        }
+
+        internal SymbolicTensorDim Resize(PartialTensorElement e)
+        {
+            return !e.isFloatValue ? Unknown : Resize(e.floatValue);
+        }
+
+        internal SymbolicTensorDim Resize(float f)
+        {
+            if (f == 0)
+                return Zero;
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
+            if (f == 1)
+                return this;
+            if (!isValue)
+                return Unknown;
+            return Int(Mathf.RoundToInt(value * f));
         }
 
         /// <summary>

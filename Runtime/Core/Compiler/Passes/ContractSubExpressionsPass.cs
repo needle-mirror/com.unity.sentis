@@ -11,8 +11,8 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
     class ContractSubExpressionPass : IModelPass
     {
         Dictionary<string, Constant> modelConstants = new Dictionary<string, Constant>();
-        Dictionary<string, Layer> nameToLayer = new Dictionary<string, Layer>();
-        Dictionary<string, int> nameToIndex = new Dictionary<string, int>();
+        Dictionary<string, Layer> indexToLayer = new Dictionary<string, Layer>();
+        Dictionary<string, int> indexToLayerIndex = new Dictionary<string, int>();
         Dictionary<string, List<Layer>> downstreamLayers = new Dictionary<string, List<Layer>>();
         List<Layer> layersInPattern = new List<Layer>();
         List<string> inputLayers = new List<string>();
@@ -39,6 +39,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             {
                 return new LayerNode<Mul>(a, b);
             }
+            public static INode operator *(float a, INode b)
+            {
+                return new LayerNode<Mul>(a, b);
+            }
             public static INode operator +(INode a, INode b)
             {
                 return new LayerNode<Add>(a, b);
@@ -62,6 +66,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             public static INode Erf(INode a)
             {
                 return new LayerNode<Erf>(a);
+            }
+            public static INode Tanh(INode a)
+            {
+                return new LayerNode<Tanh>(a);
             }
             public static INode Sigmoid(INode a)
             {
@@ -134,7 +142,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 if (constant.dataType != DataType.Int)
                     return false;
 
-                return constant.length == 1 && constant.shape.rank <= 1 && constant.weights.Get<int>(0) == m_Value;
+                return constant.shape.length == 1 && constant.shape.rank <= 1 && constant.weights.Get<int>(0) == m_Value;
             }
         }
 
@@ -151,7 +159,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 if (constant.dataType != DataType.Float)
                     return false;
 
-                return constant.length == 1 && constant.shape.rank <= 1 && constant.weights.Get<float>(0) == m_Value;
+                return constant.shape.length == 1 && constant.shape.rank <= 1 && constant.weights.Get<float>(0) == m_Value;
             }
         }
 
@@ -162,7 +170,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 if (constant.dataType != DataType.Float)
                     return false;
 
-                return constant.length == 1 && constant.shape.rank <= 1;
+                return constant.shape.length == 1 && constant.shape.rank <= 1;
             }
         }
 
@@ -179,7 +187,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 if (constant.dataType != DataType.Int)
                     return false;
 
-                if (constant.length != m_Value.Length)
+                if (constant.shape.length != m_Value.Length)
                     return false;
 
                 for (int i = 0; i < m_Value.Length; i++)
@@ -212,6 +220,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             {
                 inputs = new[] { i0, new ScalarFloat(i1) };
             }
+            public LayerNode(float i0, INode i1)
+            {
+                inputs = new[] { new ScalarFloat(i0), i1 };
+            }
             public LayerNode(INode i0, int i1)
             {
                 inputs = new[] { i0, new ScalarInt(i1) };
@@ -232,12 +244,13 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
         // value: layer to spawn, layersInPattern is all the layers that match the expression
         Dictionary<Func<InputNode, INode>, Func<Layer, List<string>, List<Constant>, Layer>> remappingRules = new Dictionary<Func<InputNode, INode>, Func<Layer, List<string>, List<Constant>, Layer>>()
         {
-            { x => INode.Pow(x, -1.0f),                                      (y, iLayers, iConstants) => new Reciprocal(y.name, iLayers[0]) },
-            { x => INode.Pow(x, 0.5f),                                       (y, iLayers, iConstants) => new Sqrt(y.name, iLayers[0]) },
-            { x => INode.Pow(x, 1.0f),                                       (y, iLayers, iConstants) => new Identity(y.name, iLayers[0]) },
-            { x => INode.Pow(x, 2.0f),                                       (y, iLayers, iConstants) => new Square(y.name, iLayers[0]) },
-            { x => (x * INode.Sigmoid(x)),                                   (y, iLayers, iConstants) => new Swish(y.name, iLayers[0]) },
-            { x => (x * (INode.Erf((x / Mathf.Sqrt(2.0f))) + 1.0f)) * 0.5f,  (y, iLayers, iConstants) => new Gelu(y.name, iLayers[0]) },
+            { x => INode.Pow(x, -1.0f),                                      (y, iLayers, iConstants) => new Reciprocal(y.index, iLayers[0]) },
+            { x => INode.Pow(x, 0.5f),                                       (y, iLayers, iConstants) => new Sqrt(y.index, iLayers[0]) },
+            { x => INode.Pow(x, 1.0f),                                       (y, iLayers, iConstants) => new Identity(y.index, iLayers[0]) },
+            { x => INode.Pow(x, 2.0f),                                       (y, iLayers, iConstants) => new Square(y.index, iLayers[0]) },
+            { x => (x * INode.Sigmoid(x)),                                   (y, iLayers, iConstants) => new Swish(y.index, iLayers[0]) },
+            { x => (x * (INode.Erf((x / Mathf.Sqrt(2.0f))) + 1.0f)) * 0.5f,  (y, iLayers, iConstants) => new Gelu(y.index, iLayers[0]) },
+            { x => (x * 0.5f) * (INode.Tanh((x + (INode.Pow(x, 3.0f) * 0.044714998453855515f)) * 0.7978845834732056f) + 1),  (y, iLayers, iConstants) => new GeluFast(y.index, iLayers[0]) },
             { x => {
                 var mean = INode.ReduceMean(x, -1);
                 var y = x - mean;
@@ -249,62 +262,16 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 return v * scale + bias; },
                     (y, iLayers, iConstants) => {
                     float epsilon = iConstants[0].weights.Get<float>(0);
-                    return new LayerNormalization(y.name, iLayers[iLayers.Count - 1], iLayers[1], iLayers[0], epsilon);
+                    return new LayerNormalization(y.index, iLayers[iLayers.Count - 1], iLayers[1], iLayers[0], epsilon);
                 }
             },
-            { x => {
-                var q_weights = new InputNode();
-                var q_bias = new InputNode();
-
-                var k_weights = new InputNode();
-                var k_bias = new InputNode();
-
-                var v_weights = new InputNode();
-                var v_bias = new InputNode();
-
-                var dim = new InputNode();
-                var attn_output_dim = new InputNode();
-            
-                var scaling_factor = new VariableScalarFloat();
-
-                var o_weights = new InputNode();
-                var o_bias = new InputNode();
-
-                var q = INode.MatMul(x, q_weights);
-                var q_add =  q_bias + q;
-                var q_reshape = INode.Reshape(q_add, dim);
-                var q_transpose = INode.Transpose(q_reshape, new[] {0, 2, 1, 3});
-           
-                var k = INode.MatMul(x, k_weights);
-                var k_add = k_bias + k;
-                var k_reshape = INode.Reshape(k_add, dim);
-                var k_transpose = INode.Transpose(k_reshape, new[] {0, 2, 3, 1});
-           
-                var v = INode.MatMul(x, v_weights);
-                var v_add = v_bias + v;
-                var v_reshape = INode.Reshape(v_add, dim);
-                var v_transpose = INode.Transpose(v_reshape, new[] {0, 2, 3, 1});
-           
-                var qk = INode.MatMul(q_transpose, k_transpose);
-                var qk_scale = qk * scaling_factor;
-                var attn_output_weights = INode.Softmax(qk_scale, -1);
-                var attn_output = INode.MatMul(attn_output_weights, v_transpose);
-                var attn_output_transpose = INode.Transpose(attn_output, new[] {0, 2, 3, 1});
-                var attn_output_reshape = INode.Reshape(attn_output_transpose, attn_output_dim);
-                var atten_output_gemm = INode.MatMul(attn_output_reshape, o_weights);
-                var atten_output_final = o_bias + atten_output_gemm;
-                return atten_output_final;
-            }, (y, iLayers, iConstants) => {
-                float scaling_factor = iConstants[0].weights.Get<float>(0);
-                return new SingleHeadAttention(y.name, iLayers[12], iLayers[11], iLayers[13], iLayers[7], iLayers[9], iLayers[3], iLayers[5], iLayers[0], iLayers[14], scaling_factor); }
-            }, // "x", "q_weights", "y", "k_weights", "z", "v_weights", "out_proj_weight", "out_proj_bias", "num_heads"
-            { x => x + new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], 1.0f, iConstants[0].weights.Get<float>(0)) },
-            { x => new VariableScalarFloat() + x, (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], 1.0f, iConstants[0].weights.Get<float>(0)) },
-            { x => x - new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], 1.0f, -iConstants[0].weights.Get<float>(0)) },
-            { x => new VariableScalarFloat() - x, (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], -1.0f, iConstants[0].weights.Get<float>(0)) },
-            { x => x * new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], iConstants[0].weights.Get<float>(0), 0) },
-            { x => new VariableScalarFloat() * x, (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], iConstants[0].weights.Get<float>(0), 0) },
-            { x => x / new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.name, iLayers[0], 1.0f / iConstants[0].weights.Get<float>(0), 0) },
+            { x => x + new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.index, iLayers[0], 1.0f, iConstants[0].weights.Get<float>(0)) },
+            { x => new VariableScalarFloat() + x, (y, iLayers, iConstants) => new ScalarMad(y.index, iLayers[0], 1.0f, iConstants[0].weights.Get<float>(0)) },
+            { x => x - new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.index, iLayers[0], 1.0f, -iConstants[0].weights.Get<float>(0)) },
+            { x => new VariableScalarFloat() - x, (y, iLayers, iConstants) => new ScalarMad(y.index, iLayers[0], -1.0f, iConstants[0].weights.Get<float>(0)) },
+            { x => x * new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.index, iLayers[0], iConstants[0].weights.Get<float>(0), 0) },
+            { x => new VariableScalarFloat() * x, (y, iLayers, iConstants) => new ScalarMad(y.index, iLayers[0], iConstants[0].weights.Get<float>(0), 0) },
+            { x => x / new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.index, iLayers[0], 1.0f / iConstants[0].weights.Get<float>(0), 0) },
         };
 
         bool Validate(INode root, Layer input)
@@ -313,15 +280,15 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             Stack<INode> nodeStack = new Stack<INode>();
 
             nodeStack.Push(root);
-            layerStack.Push(input.name);
+            layerStack.Push(input.index);
             while (nodeStack.Count != 0)
             {
                 INode node = nodeStack.Pop();
-                string name = layerStack.Pop();
+                string index = layerStack.Pop();
 
                 if (node is IConstantNode cNode)
                 {
-                    if (!modelConstants.TryGetValue(name, out Constant constant))
+                    if (!modelConstants.TryGetValue(index, out Constant constant))
                         return false;
 
                     if (!cNode.Validate(constant))
@@ -331,7 +298,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 }
                 else if (node is ILayerNode lNode)
                 {
-                    if (!nameToLayer.TryGetValue(name, out Layer layer))
+                    if (!indexToLayer.TryGetValue(index, out Layer layer))
                         return false;
 
                     if (!lNode.Validate(layer))
@@ -346,7 +313,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 }
                 else if (node is InputNode)
                 {
-                    inputLayers.Add(name);
+                    inputLayers.Add(index);
                 }
             }
 
@@ -363,21 +330,21 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             HashSet<string> layersInSubGraph = new HashSet<string>();
             foreach (var layer in subGraph)
             {
-                layersInSubGraph.Add(layer.name);
+                layersInSubGraph.Add(layer.index);
                 foreach (var input in layer.inputs)
                 {
                     layersInSubGraph.Add(input);
                 }
-                foreach (var downStream in downstreamLayers[layer.name])
+                foreach (var downStream in downstreamLayers[layer.index])
                 {
                     if (downStream != null)
-                        layersInSubGraph.Add(downStream.name);
+                        layersInSubGraph.Add(downStream.index);
                 }
             }
 
             foreach (var layer in layersInPattern)
             {
-                layersInSubGraph.Remove(layer.name);
+                layersInSubGraph.Remove(layer.index);
                 foreach (var input in layer.inputs)
                 {
                     if (modelConstants.ContainsKey(input))
@@ -385,13 +352,13 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 }
             }
 
-            foreach (var downStream in downstreamLayers[root.name])
+            foreach (var downStream in downstreamLayers[root.index])
             {
                 if (downStream == null)
                     continue;
-                if (!layersInSubGraph.Contains(downStream.name))
+                if (!layersInSubGraph.Contains(downStream.index))
                     return false;
-                layersInSubGraph.Remove(downStream.name);
+                layersInSubGraph.Remove(downStream.index);
             }
 
             if (layersInSubGraph.Count != 1)
@@ -407,23 +374,23 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             HashSet<string> layersToRemove = new HashSet<string>();
 
             // build static helpers:
-            // - name -> constant
-            // - name -> layer index
+            // - index -> constant
+            // - index -> layer index int
             modelConstants = new Dictionary<string, Constant>();
             foreach (var c in model.constants)
-                modelConstants.Add(c.name, c);
+                modelConstants.Add(c.index, c);
 
-            nameToLayer = new Dictionary<string, Layer>();
-            nameToIndex = new Dictionary<string, int>();
+            indexToLayer = new Dictionary<string, Layer>();
+            indexToLayerIndex = new Dictionary<string, int>();
             downstreamLayers = new Dictionary<string, List<Layer>>();
             var outputs = new HashSet<string>();
             foreach (var o in model.outputs)
-                outputs.Add(o);
+                outputs.Add(o.index);
             for (int l = 0; l < model.layers.Count; ++l)
             {
                 Layer layer = model.layers[l];
-                nameToLayer.Add(layer.name, layer);
-                nameToIndex.Add(layer.name, l);
+                indexToLayer.Add(layer.index, layer);
+                indexToLayerIndex.Add(layer.index, l);
 
                 foreach (var input in layer.inputs)
                 {
@@ -433,9 +400,9 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                         downstreamLayers[input] = new List<Layer> { layer };
                 }
 
-                if (outputs.Contains(layer.name))
+                if (outputs.Contains(layer.index))
                 {
-                    downstreamLayers[layer.name] = new List<Layer> { null };
+                    downstreamLayers[layer.index] = new List<Layer> { null };
                 }
             }
 
@@ -473,25 +440,25 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     bool unconnectedOutputs = false;
                     foreach (var layerToDelete in layersInPattern)
                     {
-                        unconnectedOutputs |= (remapLayer.name != layerToDelete.name) && outputs.Contains(layerToDelete.name);
+                        unconnectedOutputs |= (remapLayer.index != layerToDelete.index) && outputs.Contains(layerToDelete.index);
                     }
                     if (unconnectedOutputs)
                         break;
 
 
-                    model.layers[nameToIndex[remapLayer.name]] = remapLayer;
+                    model.layers[indexToLayerIndex[remapLayer.index]] = remapLayer;
 
                     foreach (var layerToDelete in layersInPattern)
                     {
-                        if (remapLayer.name != layerToDelete.name)
-                            layersToRemove.Add(layerToDelete.name);
+                        if (remapLayer.index != layerToDelete.index)
+                            layersToRemove.Add(layerToDelete.index);
                     }
 
                     break;
                 }
             }
 
-            model.layers.RemoveAll(l => layersToRemove.Contains(l.name));
+            model.layers.RemoveAll(l => layersToRemove.Contains(l.index));
         }
     }
 }

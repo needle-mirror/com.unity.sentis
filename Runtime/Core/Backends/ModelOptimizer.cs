@@ -17,15 +17,7 @@ static class ModelOptimizer
     {
         foreach (var pass in passes)
         {
-            try
-            {
-                pass.Run(ref model);
-            }
-            catch (Exception e)
-            {
-                model.Warnings.Add(new Model.ImporterWarning($"Optimization Error: {pass.GetType().Name}", Model.WarningType.Error, e.Message));
-                Debug.LogError(model.Warnings.Last().Message);
-            }
+            pass.Run(ref model);
         }
     }
 
@@ -48,6 +40,7 @@ static class ModelOptimizer
             new RemoveNoOpsPass(),
             // // Good to do those passes at the very end
             new RemoveUnusedPass(),
+            new StopgapFixConstantOutputPass(),
             new RoundDenormalWeightsPass(),
         };
 

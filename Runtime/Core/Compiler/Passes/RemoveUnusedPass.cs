@@ -7,7 +7,7 @@ namespace Unity.Sentis.Compiler.Passes.Cleanup
     {
         bool IsOutputUsed(Layers.Layer layer, HashSet<string> outputsUsed)
         {
-            if (outputsUsed.Contains(layer.name))
+            if (outputsUsed.Contains(layer.index))
                 return true;
 
             if (layer.outputs == null)
@@ -31,7 +31,9 @@ namespace Unity.Sentis.Compiler.Passes.Cleanup
             //  if keep and add l.inputs as used outputs
             //  else remove
             var layersToRemove = new HashSet<string>();
-            var outputsUsed = new HashSet<string>(model.outputs);
+            var outputsUsed = new HashSet<string>();
+            foreach (var o in model.outputs)
+                outputsUsed.Add(o.index);
             for (var i = model.layers.Count - 1; i >= 0; i--)
             {
                 var layer = model.layers[i];
@@ -49,12 +51,12 @@ namespace Unity.Sentis.Compiler.Passes.Cleanup
                 }
                 else
                 {
-                    layersToRemove.Add(layer.name);
+                    layersToRemove.Add(layer.index);
                 }
             }
 
-            model.layers = model.layers.Where(l => !layersToRemove.Contains(l.name)).ToList();
-            model.constants = model.constants.Where(c => outputsUsed.Contains(c.name)).ToList();
+            model.layers = model.layers.Where(l => !layersToRemove.Contains(l.index)).ToList();
+            model.constants = model.constants.Where(c => outputsUsed.Contains(c.index)).ToList();
         }
     }
 }

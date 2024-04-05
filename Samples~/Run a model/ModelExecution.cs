@@ -14,7 +14,7 @@ public class ModelExecution : MonoBehaviour
         m_Engine = WorkerFactory.CreateWorker(BackendType.GPUCompute, model);
 
         // The SingleInputSingleOutput model takes one input and runs a Relu activation
-        m_Input = TensorFloat.Zeros(new TensorShape(1024));
+        m_Input = TensorFloat.AllocZeros(new TensorShape(1024));
     }
 
     void Update()
@@ -23,8 +23,8 @@ public class ModelExecution : MonoBehaviour
         m_Engine.Execute(m_Input);
 
         // model has a single output, so no ambiguity due to its name
-        var outputTensor = m_Engine.PeekOutput() as TensorFloat;
-        outputTensor.MakeReadable();
+        var outputTensor = m_Engine.PeekOutput();
+        outputTensor.CompleteOperationsAndDownload();
 
         // Data is now ready to read.
         // See async examples for non-blocking readback.

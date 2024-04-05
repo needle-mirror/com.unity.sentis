@@ -21,7 +21,7 @@ public class AsyncReadbackCompute : MonoBehaviour
         await outputTensor.ReadbackRequestAsync();
 
         // Put the downloaded tensor data into a readable tensor before indexing.
-        outputTensor.MakeReadable();
+        outputTensor.CompleteOperationsAndDownload();
         Debug.Assert(outputTensor[0] == 42);
         Debug.Log($"Output tensor value {outputTensor[0]}");
     }

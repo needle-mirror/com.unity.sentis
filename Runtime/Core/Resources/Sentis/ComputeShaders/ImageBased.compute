@@ -3,6 +3,13 @@
 #pragma kernel DepthToSpaceDepthColumnRow DEPTHTOSPACE DEPTHCOLUMNROW MODE_D=DepthColumnRow
 #pragma kernel DepthToSpaceColumnRowDepth DEPTHTOSPACE COLUMNDEPTHROW MODE_D=ColumnRowDepth
 #pragma kernel SpaceToDepth
+#pragma kernel NMSBitMask
+#pragma kernel NMSDiscardBitMaskLinearRectBox                                                  NMSDiscardBitMaskLinearFuncName=NMSDiscardBitMaskLinearRectBox
+#pragma kernel NMSDiscardBitMaskLinearCenterBox                               BOX_IS_CENTER_WH NMSDiscardBitMaskLinearFuncName=NMSDiscardBitMaskLinearCenterBox
+#pragma kernel NMSDiscardBitMaskLinearSMRectBox             USE_SHARED_MEM                     NMSDiscardBitMaskLinearSMFuncName=NMSDiscardBitMaskLinearSMRectBox
+#pragma kernel NMSDiscardBitMaskLinearSMCenterBox           USE_SHARED_MEM    BOX_IS_CENTER_WH NMSDiscardBitMaskLinearSMFuncName=NMSDiscardBitMaskLinearSMCenterBox
+#pragma kernel NMSDiscardBitMaskPredicatedGatherCompaction
+
 #include "Tensor.cginc"
 
 uint2 unrolledDispatchArgs;
@@ -23,6 +30,10 @@ StructuredBuffer<float> Xptr;
 StructuredBuffer<float> Sptr;
 StructuredBuffer<int> Bptr;
 RWStructuredBuffer<float> Optr;
+
+RWStructuredBuffer<int> OIntptr;
+StructuredBuffer<int> DiscardPrefixes;
+StructuredBuffer<int> ClassAbsoluteOffsets;
 
 #define FUNC_NAME_R(MODE_R) RoiAlign##MODE_R
 
@@ -193,4 +204,521 @@ void SpaceToDepth(uint3 dispatchThreadID : SV_DispatchThreadID)
     uint iy = y * blocksize + by;
 
     Optr[dispatchThreadID.x * outputSpatialSize + dispatchThreadID.y] = Xptr[n *inputBatchOffset + ic * inputSpatialSize + iy * inputWidth + ix];
+}
+
+uint boxCount;
+RWStructuredBuffer<int> BMptr; // bool matrix result
+float iouThreshold;
+float scoreThreshold;
+
+[numthreads(8, 8, 1)]
+void NMSBitMask(uint3 dispatchThreadID : SV_DispatchThreadID, uint threadIndex : SV_GroupIndex)
+{
+    uint j = dispatchThreadID.x;
+    uint i = dispatchThreadID.y;
+    uint n = dispatchThreadID.z;
+
+    if (i >= boxCount || j >= boxCount)
+        return;
+
+    uint writeIndex = n * boxCount * boxCount + i * boxCount + j;
+    BMptr[writeIndex] = 1;
+
+    float score_i = Sptr[n * boxCount + i];
+    float score_j = Sptr[n * boxCount + j];
+
+    if (score_i <= scoreThreshold)
+    {
+        BMptr[writeIndex] = 0;
+        return;
+    }
+
+    if (score_i < score_j)
+    {
+        float xi_min = Xptr[n * boxCount * 4 + i * 4 + 0], yi_min = Xptr[n * boxCount * 4 + i * 4 + 1], xi_max = Xptr[n * boxCount * 4 + i * 4 + 2], yi_max = Xptr[n * boxCount * 4 + i * 4 + 3];
+        float xj_min = Xptr[n * boxCount * 4 + j * 4 + 0], yj_min = Xptr[n * boxCount * 4 + j * 4 + 1], xj_max = Xptr[n * boxCount * 4 + j * 4 + 2], yj_max = Xptr[n * boxCount * 4 + j * 4 + 3];
+
+        float areai = (xi_max - xi_min + 1) * (yi_max - yi_min + 1);
+        float areaj = (xj_max - xj_min + 1) * (yj_max - yj_min + 1);
+        float overlap_xmin = max(xi_min, xj_min);
+        float overlap_ymin = max(yi_min, yj_min);
+        float overlap_xmax = min(xi_max, xj_max);
+        float overlap_ymax = min(yi_max, yj_max);
+        float overlap_width = max(0, (overlap_xmax - overlap_xmin + 1));
+        float overlap_height = max(0, (overlap_ymax - overlap_ymin + 1));
+
+        float overlap_area = overlap_width * overlap_height;
+        float iou = overlap_area / (areai + areaj - overlap_area);
+        BMptr[writeIndex] = iou <= iouThreshold;
+    }
+}
+
+
+
+void GetMinMax(float a, float b, out float oMin, out float oMax)
+{
+    if (a >= b)
+    {
+        oMin = b;
+        oMax = a;
+    } 
+    else 
+    {
+        oMin = a;
+        oMax = b;
+    }
+}
+
+bool IOUExceedsThresholdBox(float4 boxi, float4 boxj, float iouThreshold, bool isCenterBoxFormat = false)
+{
+    float boxi_xmin = 0.0f;
+    float boxi_ymin = 0.0f;
+    float boxi_xmax = 0.0f;
+    float boxi_ymax = 0.0f;
+    float boxj_xmin = 0.0f;
+    float boxj_ymin = 0.0f;
+    float boxj_xmax = 0.0f;
+    float boxj_ymax = 0.0f;
+    float intersection_xmin = 0.0;
+    float intersection_xmax = 0.0;
+    float intersection_ymin = 0.0;
+    float intersection_ymax = 0.0;
+    bool ret = true;
+
+
+    if (isCenterBoxFormat == false) 
+    {
+        // format is TF style rectangle [y1, x1, y2, x2],
+        // but no order wrt to min max is garanteed.
+        GetMinMax(boxi[1], boxi[3], boxi_xmin, boxi_xmax);
+        GetMinMax(boxj[1], boxj[3], boxj_xmin, boxj_xmax);
+
+        intersection_xmin = max(boxi_xmin, boxj_xmin);
+        intersection_xmax = min(boxi_xmax, boxj_xmax);
+        if (intersection_xmax <= intersection_xmin)
+        {
+            ret = false;
+        }
+        else
+        {
+            GetMinMax(boxi[0], boxi[2], boxi_ymin, boxi_ymax);
+            GetMinMax(boxj[0], boxj[2], boxj_ymin, boxj_ymax);
+
+            intersection_ymin = max(boxi_ymin, boxj_ymin);
+            intersection_ymax = min(boxi_ymax, boxj_ymax);
+            if (intersection_ymax <= intersection_ymin)
+                ret = false;
+        }
+    }
+    else
+    {
+        // format is PyTorch style, [x_center, y_center, width, height]
+        float boxi_width_h = boxi[2] * 0.5;
+        float boxi_height_h = boxi[3] * 0.5;
+        float boxj_width_h = boxj[2] * 0.5;
+        float boxj_height_h = boxj[3] * 0.5;
+
+        boxi_xmin = boxi[0] - boxi_width_h;
+        boxi_xmax = boxi[0] + boxi_width_h;
+        boxj_xmin = boxj[0] - boxj_width_h;
+        boxj_xmax = boxj[0] + boxj_width_h;
+
+        intersection_xmin = max(boxi_xmin, boxj_xmin);
+        intersection_xmax = min(boxi_xmax, boxj_xmax);
+        if (intersection_xmax <= intersection_xmin)
+        {
+            ret = false;
+        }
+        else
+        {
+            boxi_ymin = boxi[1] - boxi_height_h;
+            boxi_ymax = boxi[1] + boxi_height_h;
+            boxj_ymin = boxj[1] - boxj_height_h;
+            boxj_ymax = boxj[1] + boxj_height_h;
+
+            intersection_ymin = max(boxi_ymin, boxj_ymin);
+            intersection_ymax = min(boxi_ymax, boxj_ymax);
+            if (intersection_ymax <= intersection_ymin)
+                ret = false;
+        }
+    }
+
+    if (ret == true)
+    {
+        float intersection_area = (intersection_xmax - intersection_xmin) *
+                                (intersection_ymax - intersection_ymin);
+
+        if (intersection_area <= 0.0)
+        {
+            ret = false;
+        }
+        else
+        {
+
+            float area1 = (boxi_xmax - boxi_xmin) * (boxi_ymax - boxi_ymin);
+            float area2 = (boxj_xmax - boxj_xmin) * (boxj_ymax - boxj_ymin);
+            float union_area = area1 + area2 - intersection_area;
+
+            if (area1 <= 0.0 || area2 <= 0.0 || union_area <= 0.0)
+            {
+                ret = false;
+            }
+            else
+            {
+                float intersection_over_union = intersection_area / union_area;
+                ret = intersection_over_union > iouThreshold;
+            }
+        }
+    }
+
+    return ret;
+}
+
+
+
+uint classCount;
+
+[numthreads(8, 8, 1)]
+void NMSDiscardBitMaskLinearFuncName(uint3 dispatchThreadID : SV_DispatchThreadID, uint threadIndex : SV_GroupIndex)
+{
+    bool isCenterBoxFormat = false;
+#if defined(BOX_IS_CENTER_WH)
+    isCenterBoxFormat = true;
+#endif
+
+    // x - y dispatch is boxCount x boxCount, but .z is batchCount * classCount
+    //
+    // Sptr is the scores tensor batchCount X classCount X boxCount
+    // Xptr is the boxes geometric data tensor (center w h or rect corners) batchCount X boxCount X 4
+    // OIntptr 
+    //      is the batchCount * classCount bitmasks ie for each classes and batches.
+    //      Each bitmask should have length boxCount.
+    //
+    //      The kernel is reducing boxCount^2 comparisons to boxCount discarded boxes
+    //      on-the-fly so this tensor should be initialized to 0 (if using a discard mask, or 1 if using
+    //      a keep mask).
+    //
+    //      We combine box rejection due to simple score thresholding along with the on-the-fly reduction
+    //      of a boxCount^2 comparison matrix to a linear boxCount output.
+    //
+    //      Note we can use either a discard mask initialized to 0 or a keep mask initialized to 1.
+    //      Let discard_result = 1 when a box needs to be discarded,
+    //      let keep_result = 0 when a box needs to be discarded.
+    //
+    //      In the first case, the reduction looks like 0 OR (discard_result1 OR discard_result2 OR ...)
+    //      in the second case, the reduction looks like 1 AND    (keep_result1 AND keep_result2 AND ...)
+    //      which is equal to                            1 AND NOT(!keep_result1 OR !keep_result2 OR ...)
+    //
+    //      In the first case, we see that if a single 1 is written to a 0-initialized buffer, we get a discard,
+    //      in the second case we see that if a single 0 is written to a 1-initialized buffer, we get a discard.
+    //
+    //      Whatever type of mask we choose, we can thus transform a compare + reduction to a simple compare and
+    //      simultaneous out of order parallel writes to a linear buffer if we take care of the comparison order
+    //      vs the discard/keep semantics of the mask and the conceptual axis of reduction used (see below).
+    
+    uint j = dispatchThreadID.x;
+    uint i = dispatchThreadID.y;
+    uint n = dispatchThreadID.z; // == batchIdx * classCount + classIdx =  boxesScoresSliceIndex for a particular batch and class, and same for bitmask
+    uint boxesSliceIdx = n;
+
+    // since of course all classes of a batch use the same box data geometry, we need to recover the batch index:
+    uint batchIdx = n / classCount;
+
+    if (!(i >= boxCount || j >= boxCount))
+    // else return and do nothing, defensive code for shader compiler bugs with early returns.
+    {
+        // Note these are directly usable in the output bitmasks too:
+        uint scoreIidx = n * boxCount + i;
+        uint scoreJidx = n * boxCount + j;
+
+        float score_i = Sptr[scoreIidx];
+        float score_j = Sptr[scoreJidx];
+
+        // The conceptual "on the fly" reduction axis can be anything as the comparison matrix compares the same boxes
+        // but whatever we choose we need to have the proper corresponding i or j score rejection and < or > comparison
+        // between score_i and score_j to gate (before entering/considering) the IOU comparison.
+        // These comparison orders also depends on if we use a discard mask or a keep mask!
+        //
+        // We conceptually choose discard masks (1 = box is discarded) and the reduction axis 0, ie i or rows as the reduction,
+        // so that a box j is considered for ejection:
+        //
+        if (score_j <= scoreThreshold)
+        {
+            OIntptr[scoreJidx] = 1;
+            //return;
+        }
+        else
+        {
+            // The following is to be the cleanest possible, but chances are, no boxes will ever have exactly the same score unless
+            // exactly the same box: but using < allowed us to skip implicitly the "box with itself test".
+            if (i != j && score_j <= score_i)
+            //if (score_j < score_i)
+            {
+                // box J is considered for discard due to box I: note if we don't reach here,
+                // the opposing symetric threadID.xy = (curThreadID.y, curThreadID.x) will enter instead.
+
+                // Note float4 const is float4(x,y,z,w), so boxi[0] etc will match properly:
+                float4 boxi = float4(Xptr[batchIdx * boxCount * 4 + i * 4 + 0],
+                                     Xptr[batchIdx * boxCount * 4 + i * 4 + 1],
+                                     Xptr[batchIdx * boxCount * 4 + i * 4 + 2],
+                                     Xptr[batchIdx * boxCount * 4 + i * 4 + 3]);
+                float4 boxj = float4(Xptr[batchIdx * boxCount * 4 + j * 4 + 0],
+                                     Xptr[batchIdx * boxCount * 4 + j * 4 + 1],
+                                     Xptr[batchIdx * boxCount * 4 + j * 4 + 2],
+                                     Xptr[batchIdx * boxCount * 4 + j * 4 + 3]);
+
+                bool iouTooSimilar = IOUExceedsThresholdBox(boxi, boxj, iouThreshold, isCenterBoxFormat);
+
+                if (iouTooSimilar) // discard box J ?
+                    OIntptr[scoreJidx] = 1;
+            }
+        }
+    }
+}
+
+
+#define NUM_SMEM_BANKS (32)                               // bank addresses 1 DWORD
+//#define LOG_SMEM_BANKS firstbithigh(NUM_SMEM_BANKS)
+#define LOG_SMEM_BANKS (5)
+
+#define BOXES_NUM_DWORD (16 * 4)                          // 8x8 comparisons is divided into 2 ranges non overlapping when not on the diagonal 8x8 region,
+                                                          // this gives 16 boxes. Each box has 4 data elements.
+#define BOXES_PADDING (BOXES_NUM_DWORD >> LOG_SMEM_BANKS) // ie BOXES_NUM_DWORD / NUM_SMEM_BANKS
+
+#define GET_PADDING_FOR_BOX_DWORD_OFFSET(dwoffset) (dwoffset >> LOG_SMEM_BANKS)
+#define XLATE_BOXCACHE_ADDRESS(dwoffset) (dwoffset + GET_PADDING_FOR_BOX_DWORD_OFFSET(dwoffset))
+
+groupshared float gs_BoxCache[BOXES_NUM_DWORD + BOXES_PADDING];
+groupshared float gs_BoxScoresCache[16];
+groupshared uint gs_DiscardFlagsCache[8];
+
+[numthreads(8, 8, 1)] // need 8x8 here, there's a formula to get everything else from this but much too messy and not useful so everything is hardcoded based on 8x8
+void NMSDiscardBitMaskLinearSMFuncName(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID, uint threadInGroupLinearIdx : SV_GroupIndex)
+{
+    bool isCenterBoxFormat = false;
+#if defined(BOX_IS_CENTER_WH)
+    isCenterBoxFormat = true;
+#endif
+
+    // x - y dispatch is boxCount x boxCount, but .z is batchCount * classCount
+    //
+    // Sptr is the scores tensor batchCount X classCount X boxCount
+    // Xptr is the boxes geometric data tensor (center w h or rect corners) batchCount X boxCount X 4
+    // OIntptr 
+    //      is the batchCount * classCount bitmasks ie for each classes and batches.
+    //      Each bitmask should have length boxCount.
+    //
+    //      The kernel is reducing boxCount^2 comparisons to boxCount discarded boxes
+    //      on-the-fly so this tensor should be initialized to 0 (if using a discard mask, or 1 if using
+    //      a keep mask).
+    //
+    //      We combine box rejection due to simple score thresholding along with the on-the-fly reduction
+    //      of a boxCount^2 comparison matrix to a linear boxCount output.
+    //
+    //      Note we can use either a discard mask initialized to 0 or a keep mask initialized to 1.
+    //
+    // See NMSDiscardBitMaskLinearFuncName for more comments, this is a version that uses shared memory,
+    // since a column range of comparisons uses the same boxes as the row dispatchThreadID.y
+    // and a row range of comparisons uses the same boxes as the colum dispatchThreadID.x.
+    // 
+    uint columnBoxNumRangeStart = (groupID.x * 8); // compiler will do << 3; for 8x8 threadgroup, so * 8, and *4 for 4 dword per box
+    uint rowBoxNumRangeStart = (groupID.y * 8);
+
+    uint oneIfThreadFromLast32Threads = (threadInGroupLinearIdx & (~(32-1))) >> 5;
+
+    uint j = dispatchThreadID.x;
+    uint i = dispatchThreadID.y;
+    uint n = dispatchThreadID.z; // == batchIdx * classCount + classIdx = boxesScoresSliceIndex for a particular batch and class, and same for bitmask
+    uint boxesScoresSliceIndex = n;
+
+    // since of course all classes of a batch use the same box data geometry, we need to recover the batch index:
+    uint batchIdx = n / classCount;
+
+    // Collective load of shared mem box cache:
+    // 16 boxes x 4 dwords each = 64 elements, conveniently 1 per thread
+    // 32 threads will load the 8 x 4 dword column range box data, the other 32 threads the row range
+
+    //uint boxDataOffset = ((1 - oneIfThreadFromLast32Threads) * columnBoxNumRangeStart + oneIfThreadFromLast32Threads * rowBoxNumRangeStart) * 4 + (threadInGroupLinearIdx & (32-1));
+
+    uint boxNumRangeStart = (threadInGroupLinearIdx < 32) ? columnBoxNumRangeStart : rowBoxNumRangeStart;
+    uint boxDataOffset = boxNumRangeStart * 4 + (threadInGroupLinearIdx & (32-1)); 
+    // ...remember 1 dword per thread so NO * 4 there, but for the start offset, to land at the start of the range in boxes we need * 4
+    // (compiler will fold 4*8 = * 32, ie << 5 with the * 8 above for group to range start.)
+
+    uint loadingThreadBoxNum = boxNumRangeStart + ((threadInGroupLinearIdx & (32-1)) / 4);
+    bool inBound = (loadingThreadBoxNum < boxCount); // need this as otherwise we might get not 0 but box data from next class 
+
+    // Remember Xptr is the boxes geometric data, 4 int32 per box one after the other.
+    // Also note here we could cheat, we know padding = 0 or 1 depending if (threadInGroupLinearIdx < 32), but just to be clean use XLATE_BOXCACHE_ADDRESS
+#if NUM_SMEM_BANKS == 32
+    // cheat and use the already computed predicate which is all we need to know padding value:
+    uint padding = (threadInGroupLinearIdx < 32) ? 0 : 1;
+    gs_BoxCache[padding + threadInGroupLinearIdx] = inBound ? Xptr[batchIdx * boxCount * 4 + boxDataOffset] : 0;
+#else
+    gs_BoxCache[XLATE_BOXCACHE_ADDRESS(threadInGroupLinearIdx)] = inBound ? Xptr[batchIdx * boxCount * 4 + boxDataOffset] : 0;
+#endif
+
+    // Now load the scores using the first 16 threads
+    if (threadInGroupLinearIdx < 16)
+    {
+        // use first 8 threads for column range, last 8 for row
+        uint boxNumRangeStart = (threadInGroupLinearIdx < 8) ? columnBoxNumRangeStart : rowBoxNumRangeStart;
+        uint boxDataOffset = boxNumRangeStart + (threadInGroupLinearIdx & (8-1)); // again 2 groups of 8 threads index at their start range but otherwise use their % 8, here scores are just 1 float 32bits, 1 dword.
+        uint loadingThreadBoxNum = boxDataOffset; // because 1 dword per box score
+        bool inBound = (loadingThreadBoxNum < boxCount);  // need this as otherwise we might get not 0 but box data from next class 
+        gs_BoxScoresCache[threadInGroupLinearIdx] = inBound ? Sptr[n * boxCount + boxDataOffset] : 0.0;
+    }
+    // ...while the last 8 threads clear the discard cache
+    // (ie clear the discard cache in another warp if 32 threads per warp this can run in parallel)
+    if (threadInGroupLinearIdx >= 56)
+    {
+        gs_DiscardFlagsCache[threadInGroupLinearIdx & (8-1)] = 0.0;
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+    if (!(i >= boxCount || j >= boxCount))
+    {
+        uint gs_BoxScoresRowRangeOffset = 8;
+        uint gs_BoxGeomRowRangeOffset = XLATE_BOXCACHE_ADDRESS(8*4); 
+        // ...ie skip 8 boxes, 4 dwords each corresponding to the column range boxes, will give 33 = 32, + 1 due to padding
+
+        float score_j = gs_BoxScoresCache[groupThreadID.x];
+        float score_i = gs_BoxScoresCache[gs_BoxScoresRowRangeOffset + groupThreadID.y];
+
+        // The conceptual "on the fly" reduction axis can be anything as the comparison matrix compares the same boxes
+        // but whatever we choose we need to have the proper corresponding i or j score rejection and < or > comparison
+        // between score_i and score_j to gate (before entering/considering) the IOU comparison.
+        // These comparison orders also depends on if we use a discard mask or a keep mask!
+        //
+        // We conceptually choose discard masks (1 = box is discarded) and the reduction axis 0, ie i or rows as the reduction,
+        // so that a box j is considered for ejection:
+        //
+        if (score_j <= scoreThreshold)
+        {
+            // box J is discarded, and the box in its 8-ranged section is # groupThreadID.x
+            gs_DiscardFlagsCache[groupThreadID.x] = 1;
+        }
+        else
+        {
+            // The following is to be the cleanest possible, but chances are, no boxes will ever have exactly the same score unless
+            // exactly the same box: but using < allowed us to skip implicitly the "box with itself test".
+            if (i != j && score_j <= score_i)
+            //if (score_j < score_i)
+            {
+                // box J is considered for discard due to box I: note if we don't reach here,
+                // the opposing symetric threadID.xy = (curThreadID.y, curThreadID.x) will enter instead.
+
+                // Note float4 const is float4(x,y,z,w), so boxi[0] etc will match properly:
+#if NUM_SMEM_BANKS == 32
+                // Outside of start offset, we know no padding will be involved if we stay inside the column or row range
+                // since we have 8 boxes in each, each with 4 dword of info, 4*8 = 32.
+                uint cachedRowBoxGeomOffset = gs_BoxGeomRowRangeOffset + groupThreadID.y * 4;
+                uint cachedColBoxGeomOffset = groupThreadID.x * 4;
+                float4 boxi = float4(gs_BoxCache[cachedRowBoxGeomOffset + 0],
+                                     gs_BoxCache[cachedRowBoxGeomOffset + 1],
+                                     gs_BoxCache[cachedRowBoxGeomOffset + 2],
+                                     gs_BoxCache[cachedRowBoxGeomOffset + 3]);
+                float4 boxj = float4(gs_BoxCache[cachedColBoxGeomOffset + 0],
+                                     gs_BoxCache[cachedColBoxGeomOffset + 1],
+                                     gs_BoxCache[cachedColBoxGeomOffset + 2],
+                                     gs_BoxCache[cachedColBoxGeomOffset + 3]);
+#else
+                float4 boxi = float4(gs_BoxCache[XLATE_BOXCACHE_ADDRESS(cachedRowBoxGeomOffset + 0)],
+                                     gs_BoxCache[XLATE_BOXCACHE_ADDRESS(cachedRowBoxGeomOffset + 1)],
+                                     gs_BoxCache[XLATE_BOXCACHE_ADDRESS(cachedRowBoxGeomOffset + 2)],
+                                     gs_BoxCache[XLATE_BOXCACHE_ADDRESS(cachedRowBoxGeomOffset + 3)]);
+                float4 boxj = float4(gs_BoxCache[XLATE_BOXCACHE_ADDRESS(cachedColBoxGeomOffset + 0)],
+                                     gs_BoxCache[XLATE_BOXCACHE_ADDRESS(cachedColBoxGeomOffset + 1)],
+                                     gs_BoxCache[XLATE_BOXCACHE_ADDRESS(cachedColBoxGeomOffset + 2)],
+                                     gs_BoxCache[XLATE_BOXCACHE_ADDRESS(cachedColBoxGeomOffset + 3)]);
+#endif
+
+                bool iouTooSimilar = IOUExceedsThresholdBox(boxi, boxj, iouThreshold, isCenterBoxFormat);
+
+                if (iouTooSimilar) // discard box J ?
+                    gs_DiscardFlagsCache[groupThreadID.x] = 1;
+            }
+        }
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+    // Write back the discard flags *only if raised!* (important!)
+    // Also, remember in our box^2 comparison scheme, we can discard COLUMNS only.
+    if (threadInGroupLinearIdx < 8)
+    {
+        if (gs_DiscardFlagsCache[threadInGroupLinearIdx] > 0)
+            // bitmask flags are one dword, same for scores, so boxesScoresSliceIndex * boxCount
+            // is like perBoxBitmaskFlagSliceNum * numBoxPerSlice
+            // (ie like scores, we also have batchCount * classCount bitmasks, each with boxCount flags)
+            OIntptr[boxesScoresSliceIndex * boxCount + columnBoxNumRangeStart + threadInGroupLinearIdx] = 1;
+    }
+
+}
+
+uint discardFlagsBatchStride;    // == classCount * boxCount
+
+uint discardPrefixesBatchStride; // == classCount * discardPrefixesClassStride, as DiscardPrefixes comes from the pyramid buffer of prefix resources:
+uint discardPrefixesClassStride; // our DiscardPrefixes buffer comes from a previous kernel threadgroup-aligned prefix sum pyramid level 0 resource,
+                                 // so this is NOT exactly boxCount (moreover concurrent "batchCount * classCount" prefix sums are packed by level or not,
+                                 // so when not packed by level, a constant fullPyramidSize stride is used).
+uint maxOutputBoxesPerClass;
+[numthreads(64, 1, 1)]
+void NMSDiscardBitMaskPredicatedGatherCompaction(uint3 dispatchThreadID : SV_DispatchThreadID, uint threadIndex : SV_GroupIndex)
+{
+    // This is by nature (predicated compaction) a potentially quite divergent kernel but not sure if it's worth it
+    // trading execution divergence and scattered IOs for an extra "prepare a scatter-as-gather" kernel
+    // that exploit the monotonous nature of the prefix sums and does converged work but with scattered reads
+    // to do a dichotomic search for each gather position for the proper offset of the element to seek.
+    // The subsequent kernel will then have coalesced writes but again (unavoidable) scattered reads,
+    // and all work will be converged.
+
+    // Here we have diverged warps, scattered reads and non coalesced writes
+    // (though potentially coalesced for all active lanes in a warp as active writes are active-thread sequential).
+
+    // Inputs:
+    //
+    // uint boxCount
+    // uint classCount
+    // uint discardFlagsBatchStride == classCount * boxCount
+    // uint discardPrefixesBatchStride == classCount * discardPrefixesClassStride
+    //
+    // x dispatch = box number
+    // y dispatch = class
+    // z dispatch = batch
+    //
+    // Bptr                            Discard predicate bitmasks: batchCount * classCount * boxCount 
+    // DiscardPrefixes                 batchCount * classCount inclusive prefix sums of discards (each effectively boxCount sized)
+    // AllBatchClassAbsoluteOffsets    Exclusive prefix sums of discards capped to eg 200 (max num selected boxes per class),
+    //                                 sized at (batchCount * classCount)
+    //
+    // OIntptr                         At least [batchCount * classCount * (per_class_variable_num_selected_boxes)] X [3]
+    //                                 tensor of indices = (batchId, classId, boxId)
+
+    uint boxIdx = dispatchThreadID.x;
+    uint classIdx = dispatchThreadID.y;
+    uint batchIdx = dispatchThreadID.z;
+
+    if (boxIdx < boxCount)
+    {
+        uint predicateIdx = batchIdx * discardFlagsBatchStride + classIdx * boxCount + boxIdx;
+        uint predicatePrefixIdx = batchIdx * discardPrefixesBatchStride + classIdx * discardPrefixesClassStride + boxIdx;
+
+        bool boxSelected = Bptr[predicateIdx] == 0; // 1 indicates discard
+        if (boxSelected)
+        {
+            // The final output index is the per batch and class aggregate offset for each class, 
+            // plus the box index minus the relative in-class offset because some boxes before this selected one were discarded.
+            uint classRelativeOffset = boxIdx - DiscardPrefixes[predicatePrefixIdx];
+            // Even if selected, we can only output maxOutputBoxesPerClass:
+            if (classRelativeOffset < maxOutputBoxesPerClass)
+            {
+                uint outIdx = ClassAbsoluteOffsets[batchIdx * classCount + classIdx] + classRelativeOffset;
+                OIntptr[outIdx * 3 + 0] = batchIdx;
+                OIntptr[outIdx * 3 + 1] = classIdx;
+                OIntptr[outIdx * 3 + 2] = boxIdx;
+            }
+        }
+    }
 }

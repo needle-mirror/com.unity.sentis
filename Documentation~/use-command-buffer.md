@@ -1,6 +1,6 @@
 ## Use a command buffer
 
-You can use a command buffer to create a queue of Sentis commands, then run the commands on the GPU later.
+You can use a [command buffer](https://docs.unity3d.com/ScriptReference/Rendering.CommandBuffer.html) to create a queue of Sentis commands, which can then be executed on the GPU at a later time.
 
 Follow these steps:
 

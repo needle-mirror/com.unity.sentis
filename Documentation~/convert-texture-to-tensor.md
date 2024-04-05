@@ -1,6 +1,6 @@
 # Convert a texture to a tensor
 
-Use [`TextureConverter.ToTensor`](xref:Unity.Sentis.TextureConverter.ToTensor(Texture,Unity.Sentis.TextureTransform)) to convert a [Texture2D](https://docs.unity3d.com/ScriptReference/Texture2D.html) or a [render texture](https://docs.unity3d.com/ScriptReference/RenderTexture.html) to a tensor.
+Use [`TextureConverter.ToTensor`](xref:Unity.Sentis.TextureConverter.ToTensor(Texture,Unity.Sentis.TextureTransform)) to convert a [Texture2D](https://docs.unity3d.com/ScriptReference/Texture2D.html) or a [RenderTexture](https://docs.unity3d.com/ScriptReference/RenderTexture.html) to a tensor.
 
 ```
 using UnityEngine;
@@ -21,12 +21,12 @@ By default, the tensor has the following properties:
 
 - The same height, width and number of channels as the texture.
 - A tensor layout of batch, channels, height, width (NCHW), for example 1 × 3 × 24 × 32 for a single RGB texture with a height of 24 and a width of 32.
-- A data type of float, with values from 0 to 1.
+- A data type of float.
 - Uses mipmap level 0 if there's a mipmap. Refer to [Mipmaps introduction](https://docs.unity3d.com/Documentation/Manual/texture-mipmaps-introduction.html) for more information.
 
 Make sure the format of the texture matches what your model needs. If you need to change the format of the texture, for example to change the number of channels, you can use the settings in [Texture Import Settings window](https://docs.unity3d.com/Documentation/Manual/class-TextureImporter.html).
 
-Depending on the input tensor your model needs, you might also need to scale the values in the tensor before you run the model. For example, if your model needs values from 0 to 255 instead of from 0 to 1. You can use the `WorkerFactory.CreateOps` API to scale a tensor. Refer to [Do operations on a tensor](do-operations-on-tensors.md) for more information.
+Depending on the input tensor your model needs, you might also need to scale the values in the tensor before you run the model. For example, if your model needs values from 0 to 255 instead of from 0 to 1. You can edit the model using the functional API to scale a tensor input. Refer to [Edit a model](edit-a-model.md) for more information.
 
 Refer to the `Convert textures to tensors` example in the [sample scripts](package-samples.md) for an example.
 
@@ -39,7 +39,7 @@ You can use parameters in `TextureConverter.ToTensor` to override the width, hei
 TensorFloat inputTensor = TextureConverter.ToTensor(inputTexture, width: 4, height: 12, channels: -1);
 ```
 
-You can also use a `TextureTransform` object to override the properties of a texture. For example, the following code changes or "swizzles" the order of the texture channels to blue, green, red, alpha:
+You can also use a [`TextureTransform`](xref:Unity.Sentis.TextureTransform) object to override the properties of a texture. For example, the following code changes or "swizzles" the order of the texture channels to blue, green, red, alpha:
 
 ```
 // Create a TextureTransform that swizzles the order of the channels of the texture
@@ -74,5 +74,5 @@ Refer to [Tensor fundamentals in Sentis](tensor-fundamentals.md) for more inform
 ## Additional resources
 
 - [Tensor fundamentals in Sentis](tensor-fundamentals.md)
-- [Do operations on a tensor](do-operations-on-tensors.md)
+- [Edit a model](edit-a-model.md)
 - [Use output data](use-model-output.md)

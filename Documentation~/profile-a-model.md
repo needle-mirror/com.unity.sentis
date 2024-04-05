@@ -3,7 +3,7 @@
 The performance of a model depends on the following:
 
 - The complexity of the model.
-- Whether the model uses performance-heavy operators such as Conv or MatMul.
+- Whether the model uses performance-heavy operators such as `Conv` or `MatMul`.
 - The features of the platform you run the model on, for example CPU memory, GPU memory, and number of cores.
 - Whether Sentis downloads data to CPU memory when you access a tensor. Refer to [Get output from a model](get-the-output.md) for more information.
 
@@ -14,7 +14,7 @@ To get performance information when you run a model, you can use the following:
 - [The Profiler window](https://docs.unity3d.com/Documentation/Manual/Profiler.html).
 - [RenderDoc](https://docs.unity3d.com/Documentation/Manual/RenderDocIntegration.html), a third-party graphics debugger.
 
-The Profiler window displays each Sentis layer as a dropdown item in the **Module Details** panel. Open a layer to get a detailed timeline of the execution of the layer. 
+The **Profiler** window displays each Sentis layer as a dropdown item in the **Module Details** panel. Open a layer to get a detailed timeline of the execution of the layer. 
 
 When a layer executes methods that include **Download** or **Upload**, Sentis transfers data to or from the CPU or the GPU. This might slow down the model. 
 
@@ -27,9 +27,10 @@ If your model runs slower than you expect, refer to:
 
 To help you profile a model, you can get the output from any layer in a model. Follow these steps: 
 
-1. Use `Model.AddOutput("layer-name")` to add the layer to the model outputs, before you create the worker.
-2. Run the model.
-3. Use `IWorker.PeekOutput("layer-name")` to get the output from the layer.
+1. Get the index of the layer want to output from the model inspector.
+2. Use [`Model.AddOutput("layer-name", index)`](xref:Unity.Sentis.Model.AddOutput(System.String)) to add the layer to the model outputs, before you create the worker.
+3. Run the model.
+4. Use [`IWorker.PeekOutput("layer-name")`](xref:Unity.Sentis.IWorker.PeekOutput) to get the output from the layer.
 
 Only use layer outputs to debug your model. The more layers you add as outputs, the more memory the model uses.
 
@@ -53,8 +54,8 @@ public class GetOutputFromALayer : MonoBehaviour
         // Create the runtime model
         runtimeModel = ModelLoader.Load(modelAsset);
 
-        // Add the layer to the model outputs
-        runtimeModel.AddOutput("ConvolutionLayer");
+        // Add the layer to the model outputs, the layer index is found in the model inspector
+        runtimeModel.AddOutput("ConvolutionLayer", "52");
 
         // Create a worker
         worker = WorkerFactory.CreateWorker(BackendType.GPUCompute, runtimeModel);

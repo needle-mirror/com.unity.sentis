@@ -26,32 +26,21 @@ namespace Unity.Sentis
             ModelAsset asset = ScriptableObject.CreateInstance<ModelAsset>();
 
             ModelAssetData modelAssetData = ScriptableObject.CreateInstance<ModelAssetData>();
-            var descStream = new MemoryStream();
-            ModelWriter.SaveModelDesc(descStream, model);
-            modelAssetData.value = descStream.ToArray();
+            modelAssetData.value = ModelWriter.SaveModelDescription(model);
             modelAssetData.name = "Data";
             modelAssetData.hideFlags = HideFlags.HideInHierarchy;
-            descStream.Close();
-            descStream.Dispose();
-
             asset.modelAssetData = modelAssetData;
 
-            var weightStreams = new List<MemoryStream>();
-            ModelWriter.SaveModelWeights(weightStreams, model);
-
-            asset.modelWeightsChunks = new ModelAssetWeightsData[weightStreams.Count];
-            for (int i = 0; i < weightStreams.Count; i++)
+            var serializedWeights = ModelWriter.SaveModelWeights(model);
+            asset.modelWeightsChunks = new ModelAssetWeightsData[serializedWeights.Length];
+            for (int i = 0; i < serializedWeights.Length; i++)
             {
-                var stream = weightStreams[i];
                 asset.modelWeightsChunks[i] = ScriptableObject.CreateInstance<ModelAssetWeightsData>();
-                asset.modelWeightsChunks[i].value = stream.ToArray();
+                asset.modelWeightsChunks[i].value = serializedWeights[i];
                 asset.modelWeightsChunks[i].name = "Data";
                 asset.modelWeightsChunks[i].hideFlags = HideFlags.HideInHierarchy;
 
                 ctx.AddObjectToAsset($"model data weights {i}", asset.modelWeightsChunks[i]);
-
-                stream.Close();
-                stream.Dispose();
             }
 
             ctx.AddObjectToAsset("main obj", asset);

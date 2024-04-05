@@ -38,7 +38,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             }
         }
 
-        static bool InsertPermuteReshapeLayers(Model model, Einsum einsumLayer, int inputIndex, TensorIndex originalDims, TensorIndex[] transformedDims, SymbolicTensorShape originalShape)
+        static bool InsertPermuteReshapeLayers(Model model, Einsum einsumLayer, int inputLayerIndex, TensorIndex originalDims, TensorIndex[] transformedDims, SymbolicTensorShape originalShape)
         {
             CalculatePermutations(originalDims, transformedDims, out _, out var inversePermutation, out var isPermuted);
 
@@ -62,29 +62,29 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             if (isReshaped && !shape.IsFullyKnown())
                 return false;
 
-            var inputName = einsumLayer.inputs[inputIndex];
-            var insertIndex = model.layers.IndexOf(einsumLayer);
+            var inputIndex = einsumLayer.inputs[inputLayerIndex];
+            var insertLayerIndex = model.layers.IndexOf(einsumLayer);
 
             if (isPermuted)
             {
-                var inputTransposeName = model.GetUniqueName(inputName + "_Transpose");
-                var transposeLayer = new Transpose(inputTransposeName, inputName, inversePermutation);
-                inputName = inputTransposeName;
-                model.layers.Insert(insertIndex, transposeLayer);
-                insertIndex++;
+                var inputTransposeIndex = model.GetUniqueIndex(inputIndex + "_Transpose");
+                var transposeLayer = new Transpose(inputTransposeIndex, inputIndex, inversePermutation);
+                inputIndex = inputTransposeIndex;
+                model.layers.Insert(insertLayerIndex, transposeLayer);
+                insertLayerIndex++;
             }
 
             if (isReshaped)
             {
-                var inputReshapeName = model.GetUniqueName(inputName + "_Reshape");
-                var shapeConstant = new Constant(model.GetUniqueName(inputName + "_Reshape_Shape"), new TensorInt(new TensorShape(shape.rank), shape.ToTensorShape().ToArray()));
+                var inputReshapeIndex = model.GetUniqueIndex(inputIndex + "_Reshape");
+                var shapeConstant = new Constant(model.GetUniqueIndex(inputIndex + "_Reshape_Shape"), new TensorInt(new TensorShape(shape.rank), shape.ToTensorShape().ToArray()));
                 model.AddConstant(shapeConstant);
-                var reshapeLayer = new Reshape(inputReshapeName, inputName, shapeConstant.name);
-                inputName = inputReshapeName;
-                model.layers.Insert(insertIndex, reshapeLayer);
+                var reshapeLayer = new Reshape(inputReshapeIndex, inputIndex, shapeConstant.index);
+                inputIndex = inputReshapeIndex;
+                model.layers.Insert(insertLayerIndex, reshapeLayer);
             }
 
-            einsumLayer.inputs[inputIndex] = inputName;
+            einsumLayer.inputs[inputLayerIndex] = inputIndex;
             return true;
         }
 
@@ -108,28 +108,28 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             if (isReshaped && !shape.IsFullyKnown())
                 return false;
 
-            var insertIndex = model.layers.IndexOf(einsumLayer) + 1;
-            var outputName = einsumLayer.name;
+            var insertLayerIndex = model.layers.IndexOf(einsumLayer) + 1;
+            var outputIndex = einsumLayer.index;
 
             if (isPermuted)
             {
-                var outputTransposeName = model.GetUniqueName(outputName + "_Transpose");
-                var transposeLayer = new Transpose(outputName, outputTransposeName, inversePermutation);
-                outputName = outputTransposeName;
-                model.layers.Insert(insertIndex, transposeLayer);
+                var outputTransposeIndex = model.GetUniqueIndex(outputIndex + "_Transpose");
+                var transposeLayer = new Transpose(outputIndex, outputTransposeIndex, inversePermutation);
+                outputIndex = outputTransposeIndex;
+                model.layers.Insert(insertLayerIndex, transposeLayer);
             }
 
             if (isReshaped)
             {
-                var outputReshapeName = model.GetUniqueName(outputName + "_Reshape");
-                var shapeConstant = new Constant(model.GetUniqueName(outputName + "_Reshape_Shape"), new TensorInt(new TensorShape(shape.rank), shape.ToTensorShape().ToArray()));
+                var outputReshapeIndex = model.GetUniqueIndex(outputIndex + "_Reshape");
+                var shapeConstant = new Constant(model.GetUniqueIndex(outputIndex + "_Reshape_Shape"), new TensorInt(new TensorShape(shape.rank), shape.ToTensorShape().ToArray()));
                 model.AddConstant(shapeConstant);
-                var reshapeLayer = new Reshape(outputName, outputReshapeName, shapeConstant.name);
-                outputName = outputReshapeName;
-                model.layers.Insert(insertIndex, reshapeLayer);
+                var reshapeLayer = new Reshape(outputIndex, outputReshapeIndex, shapeConstant.index);
+                outputIndex = outputReshapeIndex;
+                model.layers.Insert(insertLayerIndex, reshapeLayer);
             }
 
-            einsumLayer.name = outputName;
+            einsumLayer.index = outputIndex;
             return true;
         }
 
@@ -247,24 +247,21 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 var outputOperandDimsAIndex = new TensorIndex(outputOperandDimsA.ToArray());
                 var outputOperandDimsBIndex = new TensorIndex(outputOperandDimsB.ToArray());
 
-                var newModel = model.ShallowCopy();
-
                 var transformedDims0 = broadcastDimsIndex.rank > 0 ? new[] { broadcastDimsIndex, outputOperandDimsAIndex, sumDimsIndex } : new[] { outputOperandDimsAIndex, sumDimsIndex };
                 var transformedDims1 = broadcastDimsIndex.rank > 0 ? new[] { broadcastDimsIndex, sumDimsIndex, outputOperandDimsBIndex } : new[] { sumDimsIndex, outputOperandDimsBIndex };
                 var transformedDimsOut = broadcastDimsIndex.rank > 0 ? new[] { broadcastDimsIndex, outputOperandDimsAIndex, outputOperandDimsBIndex } : new[] { outputOperandDimsAIndex, outputOperandDimsBIndex };
 
                 // insert permute and reshape layers to take inputs to desired matmul inputs
-                if (!InsertPermuteReshapeLayers(newModel, einsumLayer, 0, operandIndices[0], transformedDims0, ctx.GetPartialTensor(einsumLayer.inputs[0]).shape))
+                if (!InsertPermuteReshapeLayers(model, einsumLayer, 0, operandIndices[0], transformedDims0, ctx.GetPartialTensor(einsumLayer.inputs[0]).shape))
                     return;
-                if (!InsertPermuteReshapeLayers(newModel, einsumLayer, 1, operandIndices[1], transformedDims1, ctx.GetPartialTensor(einsumLayer.inputs[1]).shape))
+                if (!InsertPermuteReshapeLayers(model, einsumLayer, 1, operandIndices[1], transformedDims1, ctx.GetPartialTensor(einsumLayer.inputs[1]).shape))
                     return;
 
                 // insert reshape and permute layers to get desired output from matmul output
-                if (!InsertInversePermuteReshapeLayers(newModel, einsumLayer, outputIndices, transformedDimsOut, ctx.GetPartialTensor(einsumLayer.name).shape))
+                if (!InsertInversePermuteReshapeLayers(model, einsumLayer, outputIndices, transformedDimsOut, ctx.GetPartialTensor(einsumLayer.index).shape))
                     return;
 
-                model = newModel;
-                model.layers[model.layers.IndexOf(einsumLayer)] = new MatMul(einsumLayer.name, einsumLayer.inputs[0], einsumLayer.inputs[1]);
+                model.layers[model.layers.IndexOf(einsumLayer)] = new MatMul(einsumLayer.index, einsumLayer.inputs[0], einsumLayer.inputs[1]);
             }
         }
     }

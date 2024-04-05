@@ -38,23 +38,6 @@ internal unsafe struct HardSigmoidJob : IJobParallelFor, IJobResourceDeclaration
 
 
 [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
-internal unsafe struct SquareJob : IJobParallelFor, IJobResourceDeclarationXO
-{
-    
-    public float alpha;
-    public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
-    public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
-
-    public void Execute(int threadIdx)
-    {
-        float v = Xptr[threadIdx];
-        Optr[threadIdx] = v * v;
-    }
-}
-
-
-
-[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
 internal unsafe struct GeluJob : IJobParallelFor, IJobResourceDeclarationXO
 {
     

@@ -1,0 +1,218 @@
+namespace SentisFlatBuffer;
+
+// Identifier of a valid sentis schema.
+file_identifier "STU1";
+// Extension of written files.
+file_extension "sentis";
+
+// The scalar data type.
+enum ScalarType : byte 
+{
+  FLOAT = 0,
+  INT = 1,
+  BYTE = 2,
+  SHORT = 3,
+}
+
+table Null {}
+
+table Byte {
+  byte_val:ubyte;
+}
+
+table Short {
+  short_val:short;
+}
+
+table Int {
+  int_val:int;
+}
+
+table Float {
+  float_val:float;
+}
+
+table Bool {
+  bool_val:bool;
+}
+
+table String {
+  string_val:string;
+}
+
+table IntList {
+  items:[int];
+}
+
+table FloatList {
+  items:[float];
+}
+
+table BoolList {
+  items:[bool];
+}
+
+// Indicates the types of shape a Tensor may have, from the point
+// of view of their dynamism.
+enum TensorShapeDynamism : byte {
+  // Static shape. Memory is allocated by the compiler.
+  STATIC = 0,
+  // Dynamic shape.
+  // Memory allocation is handled by the runtime.
+  DYNAMIC_UNBOUND = 1,
+}
+
+union SymbolicDim {
+  Int,
+  Byte,
+}
+// Abstraction for symbolic dims
+table EDim {
+  val:SymbolicDim;
+}
+
+
+table Tensor {
+  scalar_type:ScalarType;
+  length_byte:int;
+  fixed_sizes:[int];
+  // Index to the program's constant buffer table, value 0 is reserved to indicate non constant
+  constant_buffer_idx:uint;
+  storage_offset:int;
+  shape_dynamism: TensorShapeDynamism;
+  dynamic_sizes:[EDim];
+}
+
+
+// Supported values in Sentis kernels, Enums are serialized as ints.
+union KernelTypes {
+  Null,
+  Int,
+  Float,
+  Bool,
+  Byte,
+  Tensor,
+  String,
+  IntList,
+  FloatList,
+  BoolList,
+}
+
+// Abstraction for program values. A subset of types supported in core kernels.
+table EValue {
+  val:KernelTypes;
+}
+
+table Operator {
+  name:string;
+}
+
+table KernelCall {
+  // Index to the operators table in the program.
+  op_index:int;
+
+  // Indexes to the (values) required by the operation (in and out).
+  args:[int];
+}
+
+
+union InstructionArguments {
+  KernelCall,
+}
+
+// Basic unit of execution
+table Instruction {
+  instr_args:InstructionArguments;
+}
+
+
+// A sequence of blocking instructions to be executed in order.
+table Chain {
+  // Indices of the values that are (non-static) inputs into this Chain.
+  inputs:[int];
+
+  // Indices of the values that are outputs out of this Chain.
+  outputs:[int];
+
+  // List of instructions to be executed in order.
+  instructions:[Instruction];
+}
+
+// The scalar backend partition.
+enum BackendType : byte 
+{
+  CPU = 0,
+}
+
+table BackendPartitioning {
+  // instruction index
+  chains:[int];
+  // corresponding backend partition
+  backend:BackendType;
+}
+
+table ExecutionPlan {
+
+  // Name of a method on the nn.Module that was traced to create this program.
+  name: string;
+  
+  // A list of all values used in this execution plan.
+  values:[EValue];
+
+  // Indices to the 'Evalues' that are inputs to this execution plan.
+  // This list contains only the non-constant tensors (i.e. not part of
+  // the saved program).
+  inputs:[int];
+  inputs_name:[string];
+
+  // Indices to the 'Evalues' that are outputs of this execution plan.
+  // This signals a lifespan that goes beyond the execution.
+  outputs:[int];
+  outputs_name:[string];
+
+
+  // List of Chains of kernels.
+  chains:[Chain];
+
+  // Operators used in this execution plan
+  operators:[Operator];
+  
+  // backend partitioning scheme
+  backend_partitioning:BackendPartitioning;
+}
+
+// Constant tensor data stored directly in the flatbuffer.
+table Buffer {
+  // During serialization, this alignment may be rewritten to a larger value.
+  storage:[ubyte] (force_align: 16);
+}
+
+// Describes a contiguous piece of data that lives outside of the flatbuffer data,
+// typically appended afterwards in the file. The "extended header" in the file,
+// when present, points to the segment base offset.
+table DataSegment {
+  // Segment offsets are relative to the segment base offset provided in
+  // the extended file header.
+  offset:uint64;
+
+  // The size in bytes of valid data starting at the offset. The segment
+  // data may be followed by padding before the segment that follows it
+  size:uint64;
+}
+
+table Program {
+  // Schema version.
+  version:uint;
+
+  // ExecutionPlans that make up the program.
+  execution_plan:ExecutionPlan;
+
+  // Tables of constant data, used for constant Values (e.g.data field of weight tensors).
+  // Each constant is assigned an index into the table which are each individually aligned.
+  // 0 index is reserved to be pointed to by non-constant Tensors.
+  // If this field is non-empty, constant_segment.offsets must be empty.
+  segments_offset: uint;
+  segments:[DataSegment];
+}
+
+root_type Program;

@@ -99,6 +99,28 @@ static class CommandBufferHelper
         cb.SetInt8(fn, strideNameID, pStrides);
     }
 
+    public static unsafe void SetTensorStrides(this CommandBuffer cb, ComputeFunc fn, int strideNameID, TensorShape shape)
+    {
+        int* pShape = stackalloc int[TensorShape.maxRank];
+        int* pStrides = stackalloc int[TensorShape.maxRank];
+        OpsUtils.PinTensorShapeStrides(shape, pShape, pStrides);
+
+        cb.SetInt8(fn, strideNameID, pStrides);
+    }
+
+    // SetTensorShape and/or Strides above always sets 8-sized arrays on the GPU, and these arrays are valid
+    // for rank elements starting from the end of the array - ie from the highest address - ie Shape[maxRank-1],
+    // up to (inclusively) Shape[maxRank - 1 - rank + 1] and all other heading elements are invalid (garbage).
+    // With the *CompactedAtHead versions, dimension numbers from 0 to rank-1 can directly be used to index
+    // these shape and strides arrays.
+    public static unsafe void SetTensorStridesCompactedAtHead(this CommandBuffer cb, ComputeFunc fn, int strideNameID, TensorShape shape)
+    {
+        int* pStrides = stackalloc int[shape.rank];
+        OpsUtils.PinTensorStridesCompact(shape, pStrides);
+
+        cb.SetInt8(fn, strideNameID, pStrides, numElements: shape.rank);
+    }
+
     //See https://docs.unity3d.com/2020.2/Documentation/ScriptReference/ComputeShader.SetInts.html
     //SetInts API need CPU side to be padded
     static readonly int[] s_scratchPadInt16 = new int[16*4];
@@ -114,16 +136,7 @@ static class CommandBufferHelper
         cb.SetComputeIntParams(fn.shader, nameID, s_scratchPadInt16);
     }
 
-    public static void SetInt16(this CommandBuffer cb, ComputeFunc fn, int nameID, Span<int> ptr)
-    {
-        Logger.AssertIsTrue(ptr.Length <= 16, "cannot pin array > 16, got {0}", ptr.Length);
-        for (int i = 0; i < ptr.Length; i++)
-            s_scratchPadInt16[4 * i] = ptr[i];
-
-        cb.SetComputeIntParams(fn.shader, nameID, s_scratchPadInt16);
-    }
-
-    public static void SetInt8(this CommandBuffer cb, ComputeFunc fn, int nameID, Span<int> ptr)
+    public static void SetInt8(this CommandBuffer cb, ComputeFunc fn, int nameID, ReadOnlySpan<int> ptr)
     {
         Logger.AssertIsTrue(ptr.Length <= 8, "cannot pin array > 8, got {0}", ptr.Length);
         for (int i = 0; i < ptr.Length; i++)
@@ -132,21 +145,12 @@ static class CommandBufferHelper
         cb.SetComputeIntParams(fn.shader, nameID, s_scratchPadInt8);
     }
 
-    public static unsafe void SetInt8(this CommandBuffer cb, ComputeFunc fn, int nameID, int* ptr)
+    public static unsafe void SetInt8(this CommandBuffer cb, ComputeFunc fn, int nameID, int* ptr, int numElements = 8)
     {
         fixed (int* dst = &s_scratchPadInt8[0])
         {
-            UnsafeUtility.MemCpyStride(dst, 4 * sizeof(int), ptr, 1 * sizeof(int), sizeof(int), 8);
+            UnsafeUtility.MemCpyStride(dst, 4 * sizeof(int), ptr, 1 * sizeof(int), sizeof(int), numElements);
         }
-        cb.SetComputeIntParams(fn.shader, nameID, s_scratchPadInt8);
-    }
-
-    public static unsafe void SetInt8(this CommandBuffer cb, ComputeFunc fn, int nameID, int[] ptr)
-    {
-        Logger.AssertIsTrue(ptr.Length <= 8, "cannot pin array > 8, got {0}", ptr.Length);
-        for (int i = 0; i < ptr.Length; i++)
-            s_scratchPadInt8[4 * i] = ptr[i];
-
         cb.SetComputeIntParams(fn.shader, nameID, s_scratchPadInt8);
     }
 
@@ -166,7 +170,9 @@ static class CommandBufferHelper
 
     public static void Dispatch(this CommandBuffer cb, ComputeFunc fn, int workItemsX, int workItemsY, int workItemsZ)
     {
+#if SENTIS_DEBUG
         Profiler.BeginSample(fn.kernelName);
+#endif
         var x = ComputeHelper.IDivC(workItemsX, (int)fn.threadGroupSizeX);
         var y = ComputeHelper.IDivC(workItemsY, (int)fn.threadGroupSizeY);
         var z = ComputeHelper.IDivC(workItemsZ, (int)fn.threadGroupSizeZ);
@@ -176,8 +182,9 @@ static class CommandBufferHelper
             D.LogWarning($"Exceeded safe compute dispatch group count limit per dimension [{x}, {y}, {z}] for {fn.kernelName}");
 
         cb.DispatchCompute(fn.shader, fn.kernelIndex, x, y, z);
-
+#if SENTIS_DEBUG
         Profiler.EndSample();
+#endif
     }
 
     public static void ScheduleXSBWO(this CommandBuffer cb, ComputeFunc fn, ComputeTensorData X, ComputeTensorData S, ComputeTensorData B, ComputeTensorData W, ComputeTensorData O, int numThread)

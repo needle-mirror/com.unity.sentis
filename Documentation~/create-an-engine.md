@@ -1,6 +1,6 @@
 # Create an engine to run a model
 
-To run a model, create a worker. A worker is the engine that breaks the model down into executable tasks and schedules the tasks to run on the GPU or CPU.
+To run a model, create a worker. A worker is the engine that breaks the model down into executable tasks and schedules the tasks to run on a backend (typically the GPU or CPU).
 
 A worker is an instance of an [`IWorker`](xref:Unity.Sentis.IWorker) object.
 
@@ -32,7 +32,7 @@ public class CreateWorker : MonoBehaviour
 
 Sentis provides CPU and GPU back end types. To understand how Sentis executes operations using the different back ends, refer to [How Sentis runs a model](how-sentis-runs-a-model.md).
 
-If a back end type doesn't support a Sentis layer in a model, the worker falls back to running on the CPU for that layer. Refer to [Supported ONNX operators](supported-operators.md) for more information.
+If a back end type doesn't support a Sentis layer in a model, the worker will assert. Refer to [Supported ONNX operators](supported-operators.md) for more information.
 
 `BackendType.GPUCompute`, `BackendType.GPUCommandBuffer` and `BackendType.CPU` are the fastest back end types, so use `BackendType.GPUPixel` only if a platform doesn't support compute shaders. To check if your runtime platform supports compute shaders use [SystemInfo.supportsComputeShaders](https://docs.unity3d.com/2023.2/Documentation/ScriptReference/SystemInfo-supportsComputeShaders.html)
 

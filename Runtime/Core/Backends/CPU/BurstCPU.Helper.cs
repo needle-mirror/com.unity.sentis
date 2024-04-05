@@ -705,7 +705,7 @@ public partial class CPUBackend
             return strides[0];
         }
 
-        internal void Prepare(TensorShape shapeX, int[] permutations = null)
+        internal void Prepare(TensorShape shapeX, ReadOnlySpan<int> permutations)
         {
             // Compute the strides of the input tensor.
             int* stridesX = stackalloc int[TensorShape.maxRank];
@@ -717,7 +717,7 @@ public partial class CPUBackend
 
             for (int i = shapeX.rank - 1, lastPermutation = 0; i >= 0; i--)
             {
-                int permutation = permutations?[i] ?? (shapeX.rank - i - 1);
+                int permutation = permutations.Length > 0 ? permutations[i] : (shapeX.rank - i - 1);
                 int dim = shapeX[permutation];
 
                 // If the last permutation index is contiguous with this permutation index, then
@@ -762,7 +762,7 @@ public partial class CPUBackend
         public fixed int pad[TensorShape.maxRank];
         public int lastIndex;
 
-        internal void Prepare(TensorShape shapeX, ReadOnlySpan<int> pad)
+        internal void Prepare(TensorShape shapeX, ReadOnlySpan<int> pad, Layers.PadMode padMode)
         {
             int rank = shapeX.rank;
             int lastIndex = 0;
@@ -777,9 +777,9 @@ public partial class CPUBackend
                 int dimO = dimX + padLeft + padRight;
                 bool isZeroPadding = (padLeft == 0) && (padRight == 0);
 
-                // Flatten the shapes if the last dimension did not have any padding. This dimension
-                // can have padding and the padding is scaled by the size of the last dimension.
-                if (isLastZeroPadding)
+                // Flatten the shapes if this and the last dimension do not have any padding. This dimension
+                // can have padding and the padding is scaled by the size of the last dimension if it's constant.
+                if ((isZeroPadding || padMode == Layers.PadMode.Constant) && isLastZeroPadding)
                 {
                     int lastDimX = this.shapeX[lastIndex - 1];
                     this.shapeX[lastIndex - 1] = dimX * lastDimX;

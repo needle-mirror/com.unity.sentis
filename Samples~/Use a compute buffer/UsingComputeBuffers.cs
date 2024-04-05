@@ -26,7 +26,7 @@ public class UsingComputeBuffers : MonoBehaviour
         var model = ModelLoader.Load(modelAsset);
 
         // The first input to the Adder, using 32*32*3 because that's how many values are in the texture.
-        m_TensorA = TensorFloat.Zeros(new TensorShape(1, 3, textureInput.height, textureInput.width));
+        m_TensorA = TensorFloat.AllocZeros(new TensorShape(1, 3, textureInput.height, textureInput.width));
 
         // The values of B will be added to all values of A.
         m_TensorB = TextureConverter.ToTensor(textureInput);
@@ -77,7 +77,7 @@ public class UsingComputeBuffers : MonoBehaviour
 
         // Calling MakeReadable will trigger a blocking download of the data to the CPU cache.
         // See the AsyncReadback sample for how to access the data in a non-blocking way.
-        outputTensor.MakeReadable();
+        outputTensor.CompleteOperationsAndDownload();
         // Use -1 index to read the last value in the tensor.
         Debug.Assert(outputTensor[0, 2, textureInput.height - 1, textureInput.width - 1] == 42f);
         Debug.Log(outputTensor[outputTensor.shape.length - 1]);

@@ -1,16 +1,13 @@
 using System;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace Unity.Sentis.Layers
 {
     /// <summary>
-    /// Infer the output partial tensor from the input partial tensors.
-    ///
-    /// If the layer has more than one output, output partial tensors are saved to 'ctx'.
+    /// Represents a local pooling layer.
     /// </summary>
     [Serializable]
-    public abstract class LocalPool : Layer
+    abstract class LocalPool : Layer
     {
         /// <summary>
         /// The size of the kernel along each spatial axis.
@@ -44,7 +41,7 @@ namespace Unity.Sentis.Layers
         /// <param name="autopad">The auto padding mode of the pool as an `AutoPad`. The default value is `AutoPad.NotSet`.</param>
         public LocalPool(string name, string input, int[] kernelShape, int[] strides, int[] pads, AutoPad autopad = AutoPad.NotSet)
         {
-            this.name = name;
+            this.index = name;
             inputs = new[] { input };
             this.kernelShape = kernelShape;
             this.strides = strides;
@@ -62,10 +59,11 @@ namespace Unity.Sentis.Layers
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            var dataType = inputTensors[0].dataType;
-            var shapeX = inputTensors[0].shape;
+            var X = ctx.GetPartialTensor(inputs[0]);
+            var dataType = X.dataType;
+            var shapeX = X.shape;
             shapeX.DeclareRank(2 + kernelShape.Length);
 
             Logger.AssertIsTrue(strides == null || shapeX.rank - 2 == strides.Length, "Pool.InputError: strides must have same number of values as spatial dimensions or be null");
@@ -80,7 +78,7 @@ namespace Unity.Sentis.Layers
                 shapeOut[i] = shapeX[i].Pool(kernelShape[i - 2], s, p, 1, false, autopad);
             }
 
-            return new PartialTensor(dataType, shapeOut);
+            ctx.AddPartialTensor(index, new PartialTensor(dataType, shapeOut));
         }
 
         /// <inheritdoc/>
@@ -94,15 +92,19 @@ namespace Unity.Sentis.Layers
     /// Represents a global pooling layer.
     /// </summary>
     [Serializable]
-    public abstract class GlobalPool : Layer
+    abstract class GlobalPool : Layer
     {
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            var dataType = inputTensors[0].dataType;
-            var shapeX = inputTensors[0].shape;
+            var X = ctx.GetPartialTensor(inputs[0]);
+            var dataType = X.dataType;
+            var shapeX = X.shape;
             if (!shapeX.hasRank)
-                return new PartialTensor(dataType);
+            {
+                ctx.AddPartialTensor(index, new PartialTensor(dataType));
+                return;
+            }
 
             Logger.AssertIsTrue(shapeX.hasRank ? shapeX.rank >= 3 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", 3, shapeX.rank);
 
@@ -113,7 +115,7 @@ namespace Unity.Sentis.Layers
                 shapeOut[i] = SymbolicTensorDim.One;
             }
 
-            return new PartialTensor(dataType, shapeOut);
+            ctx.AddPartialTensor(index, new PartialTensor(dataType, shapeOut));
         }
     }
 
@@ -121,7 +123,7 @@ namespace Unity.Sentis.Layers
     /// Represents an `AveragePool` pooling layer. This calculates an output tensor by pooling the mean values of the input tensor across its spatial dimensions according to the given pool and stride values.
     /// </summary>
     [Serializable]
-    public class AveragePool : LocalPool
+    class AveragePool : LocalPool
     {
         /// <summary>
         /// Initializes and returns an instance of `AveragePool` pooling layer.
@@ -136,14 +138,14 @@ namespace Unity.Sentis.Layers
             : base(name, input, kernelShape, strides, pads, autopad) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            ShapeInference.UpdatePadForPoolAutoPadding(inputTensors[0].shape, kernelShape, strides, pads, false, autopad);
-            var O = ctx.backend.NewOutputTensorFloat(ShapeInference.ApplyPool(inputTensors[0].shape, kernelShape, strides, pads));
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            ShapeInference.UpdatePadForPoolAutoPadding(X.shape, kernelShape, strides, pads, false, autopad);
+            var O = ctx.vars.AllocateTensorAndStore(index, ShapeInference.ApplyPool(X.shape, kernelShape, strides, pads), DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.AveragePool(inputTensors[0] as TensorFloat, O, kernelShape, strides, pads);
-            return O;
+                return;
+            ctx.backend.AveragePool(X, O, kernelShape, strides, pads);
         }
 
         internal override string profilerTag => "AveragePool";
@@ -153,7 +155,7 @@ namespace Unity.Sentis.Layers
     /// Represents a `GlobalAveragePool` pooling layer. This calculates an output tensor by pooling the mean values of the input tensor across all of its spatial dimensions. The spatial dimensions of the output are size 1.
     /// </summary>
     [Serializable]
-    public class GlobalAveragePool : GlobalPool
+    class GlobalAveragePool : GlobalPool
     {
         /// <summary>
         /// Initializes and returns an instance of `GlobalAveragePool` pooling layer.
@@ -162,18 +164,18 @@ namespace Unity.Sentis.Layers
         /// <param name="input">The name to use for the input tensor of the layer.</param>
         public GlobalAveragePool(string name, string input)
         {
-            this.name = name;
+            this.index = name;
             inputs = new[] { input };
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(ShapeInference.GlobalPool(inputTensors[0].shape));
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, ShapeInference.GlobalPool(X.shape), DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.GlobalAveragePool(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.GlobalAveragePool(X, O);
         }
 
         internal override string profilerTag => "GlobalAveragePool";
@@ -183,7 +185,7 @@ namespace Unity.Sentis.Layers
     /// Represents a `GlobalMaxPool` pooling layer. This calculates an output tensor by pooling the maximum values of the input tensor across all of its spatial dimensions. The spatial dimensions of the output are size 1.
     /// </summary>
     [Serializable]
-    public class GlobalMaxPool : GlobalPool
+    class GlobalMaxPool : GlobalPool
     {
         /// <summary>
         /// Initializes and returns an instance of `GlobalMaxPool` pooling layer.
@@ -192,18 +194,18 @@ namespace Unity.Sentis.Layers
         /// <param name="input">The name to use for the input tensor of the layer.</param>
         public GlobalMaxPool(string name, string input)
         {
-            this.name = name;
+            this.index = name;
             inputs = new[] { input };
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(ShapeInference.GlobalPool(inputTensors[0].shape));
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, ShapeInference.GlobalPool(X.shape), DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.GlobalMaxPool(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.GlobalMaxPool(X, O);
         }
 
         internal override string profilerTag => "GlobalMaxPool";
@@ -213,7 +215,7 @@ namespace Unity.Sentis.Layers
     /// Represents a `MaxPool` pooling layer. This calculates an output tensor by pooling the maximum values of the input tensor across its spatial dimensions according to the given pool and stride values.
     /// </summary>
     [Serializable]
-    public class MaxPool : LocalPool
+    class MaxPool : LocalPool
     {
         /// <summary>
         /// Initializes and returns an instance of `MaxPool` pooling layer.
@@ -228,14 +230,14 @@ namespace Unity.Sentis.Layers
             : base(name, input, kernelShape, strides, pads, autopad) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            ShapeInference.UpdatePadForPoolAutoPadding(inputTensors[0].shape, kernelShape, strides, pads, false, autopad);
-            var O = ctx.backend.NewOutputTensorFloat(ShapeInference.ApplyPool(inputTensors[0].shape, kernelShape, strides, pads));
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            ShapeInference.UpdatePadForPoolAutoPadding(X.shape, kernelShape, strides, pads, false, autopad);
+            var O = ctx.vars.AllocateTensorAndStore(index, ShapeInference.ApplyPool(X.shape, kernelShape, strides, pads), DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.MaxPool(inputTensors[0] as TensorFloat, O, kernelShape, strides, pads);
-            return O;
+                return;
+            ctx.backend.MaxPool(X, O, kernelShape, strides, pads);
         }
 
         internal override string profilerTag => "MaxPool";

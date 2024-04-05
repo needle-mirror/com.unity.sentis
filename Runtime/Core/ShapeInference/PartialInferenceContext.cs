@@ -19,15 +19,12 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Dictionary of partial tensors indexed by name.
-        /// </summary>
-        public Dictionary<string, PartialTensor> PartialTensors => m_PartialTensors;
-
-        /// <summary>
         /// Add partial tensor with a given name to context.
         /// </summary>
         public void AddPartialTensor(string name, PartialTensor partialTensor)
         {
+            if (string.IsNullOrEmpty(name))
+                return;
             if (m_PartialTensors.TryGetValue(name, out var prevTensor))
                 partialTensor = PartialTensor.MaxDefinedPartialTensor(partialTensor, prevTensor);
             m_PartialTensors[name] = partialTensor;
@@ -40,8 +37,10 @@ namespace Unity.Sentis
         {
             var partialTensors = new PartialTensor[names.Length];
 
-            for (var i = 0; i < partialTensors.Length; i++)
+            for (var i = 0; i < names.Length; i++)
             {
+                if (string.IsNullOrEmpty(names[i]))
+                    continue;
                 partialTensors[i] = GetPartialTensor(names[i]);
             }
 

@@ -2,6 +2,7 @@
 
 #pragma kernel Transpose TRANSPOSE
 #pragma kernel InstanceNormalizationTail INSTANCENORMALIZATIONTAIL
+#include "HLSLSupport.cginc"
 #include "Tensor.cginc"
 
 int shapeX[8];

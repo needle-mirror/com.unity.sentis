@@ -58,12 +58,12 @@ namespace Unity.Sentis
             if (tensor is TensorInt tensorInt)
             {
                 for (var i = 0; i < partialTensor.length; i++)
-                    partialTensor[i] = new PartialTensorElement(tensorInt[i]);
+                    partialTensor[i] = PartialTensorElement.IntValue(tensorInt[i]);
             }
             else if (tensor is TensorFloat tensorFloat)
             {
                 for (var i = 0; i < partialTensor.length; i++)
-                    partialTensor[i] = new PartialTensorElement(tensorFloat[i]);
+                    partialTensor[i] = PartialTensorElement.FloatValue(tensorFloat[i]);
             }
 
             return partialTensor;
@@ -245,7 +245,7 @@ namespace Unity.Sentis
                 return partialTensor;
             for (var i = 0; i < partialTensor.length; i++)
             {
-                partialTensor[i] = new PartialTensorElement(1);
+                partialTensor[i] = PartialTensorElement.IntValue(1);
             }
 
             return partialTensor;
@@ -256,12 +256,12 @@ namespace Unity.Sentis
         /// </summary>
         public static PartialTensor Range(int start, int end)
         {
-            var partialTensor = new PartialTensor(DataType.Int, new SymbolicTensorShape(new SymbolicTensorDim(end - start)));
+            var partialTensor = new PartialTensor(DataType.Int, new SymbolicTensorShape(SymbolicTensorDim.Int(end - start)));
             if (!partialTensor.isPartiallyKnown)
                 return partialTensor;
             for (var i = 0; i < partialTensor.length; i++)
             {
-                partialTensor[i] = new PartialTensorElement(start + i);
+                partialTensor[i] = PartialTensorElement.IntValue(start + i);
             }
 
             return partialTensor;

@@ -7,7 +7,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(0)]
-    public class ConstantOfShape : Layer
+    class ConstantOfShape : Layer
     {
         /// <summary>
         /// The data type of the layer as a `DataType`.
@@ -30,7 +30,7 @@ namespace Unity.Sentis.Layers
         /// <param name="value">The float value to use to fill the output tensor.</param>
         public ConstantOfShape(string name, string input, float value)
         {
-            this.name = name;
+            this.index = name;
             this.inputs = new[] { input };
             this.floatValue = value;
             this.dataType = DataType.Float;
@@ -44,45 +44,49 @@ namespace Unity.Sentis.Layers
         /// <param name="value">The int value to use to fill the output tensor.</param>
         public ConstantOfShape(string name, string input, int value)
         {
-            this.name = name;
+            this.index = name;
             this.inputs = new[] { input };
             this.intValue = value;
             this.dataType = DataType.Int;
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            var shape = inputTensors[0].ToSymbolicTensorShape();
+            var shape = ctx.GetPartialTensor(inputs[0]).ToSymbolicTensorShape();
             var tensorOut = new PartialTensor(dataType, shape);
             if (!tensorOut.isPartiallyKnown)
-                return tensorOut;
-            for (var i = 0; i < tensorOut.length; i++)
             {
-                tensorOut[i] = dataType == DataType.Float ? new PartialTensorElement(floatValue) : new PartialTensorElement(intValue);
+                ctx.AddPartialTensor(index, tensorOut);
+                return;
             }
 
-            return tensorOut;
+            for (var i = 0; i < tensorOut.length; i++)
+            {
+                tensorOut[i] = dataType == DataType.Float ? PartialTensorElement.FloatValue(floatValue) : PartialTensorElement.IntValue(intValue);
+            }
+
+            ctx.AddPartialTensor(index, tensorOut);
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            TensorShape shape = new TensorShape(inputTensors[0].ToReadOnlySpan<int>());
-            var O = ctx.backend.NewOutputTensor(shape, dataType);
+            TensorShape shape = new TensorShape(ctx.vars.GetTensor(inputs[0]).ToReadOnlySpan<int>());
+            var O = ctx.vars.AllocateTensorAndStore(index, shape, dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
-                return O;
+                return;
             if (dataType == DataType.Int)
                 ctx.backend.MemSet(O as TensorInt, intValue);
             else
                 ctx.backend.MemSet(O as TensorFloat, floatValue);
-            return O;
+            return;
         }
 
         /// <inheritdoc/>
         public override string ToString()
         {
-            return $"ConstantOfShape{dataType.ToString()} - name: {name}, value: {floatValue}";
+            return $"ConstantOfShape{dataType.ToString()} - name: {index}, value: {floatValue}";
         }
 
         internal override string profilerTag => "ConstantOfShape";
@@ -93,7 +97,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(1, 2)]
-    public class OneHot : Layer
+    class OneHot : Layer
     {
         /// <summary>
         /// The axis along which the layer adds the one-hot representation.
@@ -110,43 +114,49 @@ namespace Unity.Sentis.Layers
         /// <param name="axis">The axis along which the layer adds the one-hot representation.</param>
         public OneHot(string name, string indices, string depth, string values, int axis)
         {
-            this.name = name;
+            this.index = name;
             inputs = new[] { indices, depth, values };
             this.axis = axis;
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            var dataType = inputTensors[2].dataType;
-            var shapeX = inputTensors[0].shape;
+            var X = ctx.GetPartialTensor(inputs[0]);
+            var values = ctx.GetPartialTensor(inputs[2]);
+            var shapeX = X.shape;
+            var dataType = values.dataType;
             if (!shapeX.hasRank)
-                return new PartialTensor(dataType);
+            {
+                ctx.AddPartialTensor(index, new PartialTensor(dataType));
+                return;
+            }
 
             var shapeOut = shapeX.Unsqueeze(axis);
-            shapeOut[axis] = (SymbolicTensorDim)inputTensors[1][0];
+            shapeOut[axis] = (SymbolicTensorDim)ctx.GetPartialTensor(inputs[1])[0];
 
-            return new PartialTensor(dataType, shapeOut);
+            ctx.AddPartialTensor(index, new PartialTensor(dataType, shapeOut));
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var depth = inputTensors[1].ToReadOnlySpan<int>()[0];
-            var O = ctx.backend.NewOutputTensor(ShapeInference.OneHot(inputTensors[0].shape, axis, depth), inputTensors[2].dataType);
+            var indices = ctx.vars.GetTensor(inputs[0]) as TensorInt;
+            var depth = ctx.vars.GetTensor(inputs[1]).ToReadOnlySpan<int>()[0];
+            var values = ctx.vars.GetTensor(inputs[2]);
+            var O = ctx.vars.AllocateTensorAndStore(index, ShapeInference.OneHot(indices.shape, axis, depth), values.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
-                return O;
-            if (inputTensors[2].dataType == DataType.Int)
+                return;
+            if (values.dataType == DataType.Int)
             {
-                var values = inputTensors[2].ToReadOnlySpan<int>();
-                ctx.backend.OneHot(inputTensors[0] as TensorInt, O as TensorInt, axis, depth, values[0], values[1]);
+                var valuesi = values.ToReadOnlySpan<int>();
+                ctx.backend.OneHot(indices, O as TensorInt, axis, depth, valuesi[0], valuesi[1]);
             }
             else
             {
-                var values = inputTensors[2].ToReadOnlySpan<float>();
-                ctx.backend.OneHot(inputTensors[0] as TensorInt, O as TensorFloat, axis, depth, values[0], values[1]);
+                var valuesf = values.ToReadOnlySpan<float>();
+                ctx.backend.OneHot(indices, O as TensorFloat, axis, depth, valuesf[0], valuesf[1]);
             }
-            return O;
         }
 
         /// <inheritdoc/>
@@ -163,7 +173,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(0, 1, 2)]
-    public class Range : Layer
+    class Range : Layer
     {
         /// <summary>
         /// Initializes and returns an instance of `Range` layer.
@@ -174,53 +184,55 @@ namespace Unity.Sentis.Layers
         /// <param name="delta">The name to use for the scalar delta value tensor of the layer.</param>
         public Range(string name, string start, string limit, string delta)
         {
-            this.name = name;
+            this.index = name;
             this.inputs = new[] { start, limit, delta };
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            var start = inputTensors[0];
-            var limit = inputTensors[1];
-            var delta = inputTensors[2];
+            var start = ctx.GetPartialTensor(inputs[0]);
+            var limit = ctx.GetPartialTensor(inputs[1]);
+            var delta = ctx.GetPartialTensor(inputs[2]);
 
-            inputTensors[0].shape.DeclareRank(0);
-            inputTensors[1].shape.DeclareRank(0);
-            inputTensors[2].shape.DeclareRank(0);
+            start.shape.DeclareRank(0);
+            limit.shape.DeclareRank(0);
+            delta.shape.DeclareRank(0);
 
             var shape = SymbolicTensorShape.UnknownOfRank(1);
 
             if (start[0] == 0 && delta[0] == 1)
                 shape[0] = (SymbolicTensorDim)limit[0];
 
-            return new PartialTensor(inputTensors[0].dataType, shape);
+            ctx.AddPartialTensor(index, new PartialTensor(start.dataType, shape));
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            if (inputTensors[0] is TensorInt)
+            var start = ctx.vars.GetTensor(inputs[0]);
+            var limit = ctx.vars.GetTensor(inputs[1]);
+            var delta = ctx.vars.GetTensor(inputs[2]);
+
+            if (start is TensorInt)
             {
-                int start = inputTensors[0].ToReadOnlySpan<int>()[0];
-                int limit = inputTensors[1].ToReadOnlySpan<int>()[0];
-                int delta = inputTensors[2].ToReadOnlySpan<int>()[0];
-                var O = ctx.backend.NewOutputTensorInt(ShapeInference.Range(start, limit, delta));
+                int starti = start.ToReadOnlySpan<int>()[0];
+                int limiti = limit.ToReadOnlySpan<int>()[0];
+                int deltai = delta.ToReadOnlySpan<int>()[0];
+                var O = ctx.vars.AllocateTensorAndStore(index, ShapeInference.Range(starti, limiti, deltai), DataType.Int, ctx.backend.backendType) as TensorInt;
                 if (O.shape.HasZeroDims())
-                    return O;
-                ctx.backend.Range(O, start, delta);
-                return O;
+                    return;
+                ctx.backend.Range(O, starti, deltai);
             }
             else
             {
-                float start = inputTensors[0].ToReadOnlySpan<float>()[0];
-                float limit = inputTensors[1].ToReadOnlySpan<float>()[0];
-                float delta = inputTensors[2].ToReadOnlySpan<float>()[0];
-                var O = ctx.backend.NewOutputTensorFloat(ShapeInference.Range(start, limit, delta));
+                float startf = start.ToReadOnlySpan<float>()[0];
+                float limitf = limit.ToReadOnlySpan<float>()[0];
+                float deltaf = delta.ToReadOnlySpan<float>()[0];
+                var O = ctx.vars.AllocateTensorAndStore(index, ShapeInference.Range(startf, limitf, deltaf), DataType.Float, ctx.backend.backendType) as TensorFloat;
                 if (O.shape.HasZeroDims())
-                    return O;
-                ctx.backend.Range(O, start, delta);
-                return O;
+                    return;
+                ctx.backend.Range(O, startf, deltaf);
             }
         }
 

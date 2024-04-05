@@ -1,0 +1,694 @@
+//
+// Note on the indirect dispatch arguments builder: the dispatches scheduled in GPUPrefixSum.cs are for the maximum number of levels
+// supported by the pre-allocated ressources and pass data common to those pre-allocations
+// (nothing in those must depend on the precise input and meta data on it that _InputCountsBuffer will carry for the builder to read).
+// 
+// The indirect builder takes true input characteristics of the input buffer we want to process (via _InputCountsBuffer)
+// (number of concurrent independent sums, number of elements for each), calculates the required inputs for the generically scheduled
+// kernels (data-specific, they will all be in StructuredBuffer<LevelOffsets> except the true total number of levels to run,
+// in _TotalLevelsBuffer) and the data-specific grid configuration to launch for each.
+// 
+// The indirect dispatch buffer has enough dispatch arguments for a maximal number of dispatches of course (to match what GPUPrefixSum.cs
+// generically schedules) but past the maximum number of levels we need, we zero out all other dispatches which will avoid running them.
+//
+#pragma kernel MainCalculateLevelDispatchArgsFromConst
+#pragma kernel MainCalculateLevelDispatchArgsFromBuffer
+
+#pragma kernel MainPrefixSumOnGroup                                SumOnGroupFuncName=MainPrefixSumOnGroup
+#pragma kernel MainPrefixSumOnGroupExclusive  EXCLUSIVE_PREFIX     SumOnGroupFuncName=MainPrefixSumOnGroupExclusive
+
+#pragma kernel MainPrefixSumNextInput
+
+
+// Having permutations like this (vs multi-compile + keywords) avoids some useless compilations with multi-compiles,
+// as the pre-processor doesn't track which kernel uses which keyword, so all kernels are permuted.
+
+// ORIG_INPUT_AS_BITCNT: Interpret the prefix sum as being done on bitcnt(element_uint_val) instead of element_uint_val directly 
+//                       ie the primary inputs are cast as the bit population count of each word (ie bitcnt) and we do a prefix sum on that.
+
+// PREFIX_SUM_FILLS_NEXT_INPUT: Assumes dispatches are done with ping-pong buffers prefixBuffer1 and prefixBuffer2 so each group
+//                  in the MainPrefixSumOnGroup kernel can write their own partial reduction sum (group aggregate)
+//                  directly in an output buffer that will be used for the next pass.
+//                  This also assumes MainPrefixSumNextInput is NEVER called.
+
+#pragma kernel MainPrefixSumOnGroupOrigInputAsBitCnt                                     ORIG_INPUT_AS_BITCNT                         SumOnGroupFuncName=MainPrefixSumOnGroupOrigInputAsBitCnt
+#pragma kernel MainPrefixSumOnGroupExclusiveOrigInputAsBitCnt          EXCLUSIVE_PREFIX  ORIG_INPUT_AS_BITCNT                         SumOnGroupFuncName=MainPrefixSumOnGroupExclusiveOrigInputAsBitCnt
+
+#pragma kernel MainPrefixSumOnGroupFillNext                                                                    PREFIX_SUM_FILLS_NEXT_INPUT        SumOnGroupFuncName=MainPrefixSumOnGroupFillNext
+#pragma kernel MainPrefixSumOnGroupExclusiveFillNext                   EXCLUSIVE_PREFIX                        PREFIX_SUM_FILLS_NEXT_INPUT        SumOnGroupFuncName=MainPrefixSumOnGroupExclusiveFillNext
+
+#pragma kernel MainPrefixSumOnGroupOrigInputAsBitCntFillNext                             ORIG_INPUT_AS_BITCNT  PREFIX_SUM_FILLS_NEXT_INPUT        SumOnGroupFuncName=MainPrefixSumOnGroupOrigInputAsBitCntFillNext
+#pragma kernel MainPrefixSumOnGroupExclusiveOrigInputAsBitCntFillNext  EXCLUSIVE_PREFIX  ORIG_INPUT_AS_BITCNT  PREFIX_SUM_FILLS_NEXT_INPUT        SumOnGroupFuncName=MainPrefixSumOnGroupExclusiveOrigInputAsBitCntFillNext
+
+#pragma kernel MainPrefixSumResolveParent                                                                                             PrefixSumResolveParentFuncName=MainPrefixSumResolveParent
+#pragma kernel MainPrefixSumResolveParentExclusive                     EXCLUSIVE_PREFIX                                               PrefixSumResolveParentFuncName=MainPrefixSumResolveParentExclusive
+
+#pragma kernel MainPrefixSumResolveParentOrigInputAsBitCnt                               ORIG_INPUT_AS_BITCNT                         PrefixSumResolveParentFuncName=MainPrefixSumResolveParentOrigInputAsBitCnt
+#pragma kernel MainPrefixSumResolveParentExclusiveOrigInputAsBitCnt    EXCLUSIVE_PREFIX  ORIG_INPUT_AS_BITCNT                         PrefixSumResolveParentFuncName=MainPrefixSumResolveParentExclusiveOrigInputAsBitCnt
+
+#pragma kernel MainGatherScaleBiasClampAbove
+
+
+//#pragma multi_compile _ PREFIX_SUM_USES_RAW_IO
+
+// Those are for testing, can force them fixed later to lower total compilation times
+#pragma multi_compile _ PACK_CONCURRENT_SUM_SINGLE_LEVELS
+#pragma multi_compile _ PACK_CONCURRENT_SUM_PYRAMID_LEVELS
+
+//#define PACK_CONCURRENT_SUM_SINGLE_LEVELS
+//#define PACK_CONCURRENT_SUM_PYRAMID_LEVELS
+//#define PREFIX_SUM_FILLS_NEXT_INPUT
+
+
+#include "Packages/com.unity.sentis/Runtime/Core/Backends/GPUCompute/PrefixSum/GPUPrefixSum.Data.cs.hlsl"
+
+//#pragma only_renderers d3d11 playstation xboxone xboxseries vulkan metal switch
+//
+// #pragma enable_d3d11_debug_symbols
+
+
+//#define PREFIX_SUM_USES_RAW_IO
+
+//#ifdef PREFIX_SUM_USES_RAW_IO
+//#define BUFFER_TYPE ByteAddressBuffer
+//#define RWBUFFER_TYPE RWByteAddressBuffer
+//convert to offset if needed (opt) IFRAW_IDX2OFF
+//#define IFRAW_IDX2OFF(idx) ((idx) << 2)
+//#else
+#define BUFFER_TYPE StructuredBuffer<int>
+#define RWBUFFER_TYPE RWStructuredBuffer<int>
+#define IFRAW_IDX2OFF(idx) (idx)
+//#endif
+
+// always convert
+#define IDX2OFF(idx) ((idx) << 2)
+
+
+BUFFER_TYPE   _InputBuffer;
+RWBUFFER_TYPE _OutputBuffer;
+RWBUFFER_TYPE _NextInputBuffer; // TODO only when PREFIX_SUM_FILLS_NEXT_INPUT
+
+ByteAddressBuffer   _InputCountsBuffer; // for indirect reading of _PerListElementCount and _ConcurrentSumsCount via offsets of those values in this buffer instead
+
+ByteAddressBuffer _TotalLevelsBuffer;
+RWByteAddressBuffer _OutputTotalLevelsBuffer;
+
+RWBuffer<uint> _OutputDispatchLevelArgsBuffer;
+
+StructuredBuffer<LevelOffsets>   _LevelsOffsetsBuffer;
+RWStructuredBuffer<LevelOffsets> _OutputLevelsOffsetsBuffer;
+
+uint4 _PrefixSumIntArgs;
+uint4 _PrefixSumIntArgs2;
+
+#define _PerListElementCount   asuint(_PrefixSumIntArgs.x)        // for direct dispatch arg (cf _InputCountsBuffer)
+#define _MaxLevelCount  asuint(_PrefixSumIntArgs.y)
+#define _PerListElementCountOffset  asint(_PrefixSumIntArgs.z)    // for reading dispatch arg from _InputCountsBuffer
+#define _CurrentLevel  asuint(_PrefixSumIntArgs.w)
+
+#define _ConcurrentSumsCount  asuint(_PrefixSumIntArgs2.x)        // Number of parallel prefix sums we are going to do in parallel; for direct dispatch arg (cf _InputCountsBuffer)
+
+#define _FullPyramidElementCount  asuint(_PrefixSumIntArgs2.y)   // size of the full pyramid buffer (ie output of each hierarchical prefix sum level into which LevelOffsets are relative)
+                                                                 // Note that this is for each parallel prefix sums if many independent are done in parallel.
+
+#define _ConcurrentSumsCountOffset  asint(_PrefixSumIntArgs2.z)  // for reading dispatch arg from _InputCountsBuffer
+
+
+#define _MaxLevel1PrefixInputCount  asuint(_PrefixSumIntArgs2.w)  // Size of level 1 input buffer for one concurrent prefix sum (prefixBuffer1 and prefixBuffer2 can contain 
+                                                                  // SupportResources.maxConcurrentSums * SupportResources.maxLevel1PrefixInputCount)
+
+// For the gather with scale, bias and clamp above:
+#define _Stride asint(_PrefixSumIntArgs.x)
+#define _Scale  asint(_PrefixSumIntArgs.y)
+#define _Bias   asint(_PrefixSumIntArgs.z)
+#define _MaxVal asint(_PrefixSumIntArgs.w)
+
+#define _IOElementCount asuint(_PrefixSumIntArgs2.x) // in gather unfortunately our accesses are strided and also because of that, not realistic to oversubscribe storage to avoid testing a limit
+#define _ThreadDispatchSize asuint(_PrefixSumIntArgs2.y)
+
+
+void IOBuffersStoreInt(RWBUFFER_TYPE rwBuffer, uint index, int value)
+{
+//#ifdef PREFIX_SUM_USES_RAW_IO
+//    rwBuffer.Store(IDX2OFF(index), value);
+//#else
+    rwBuffer[index] = value;
+//#endif
+}
+
+
+uint DivUpGroup(uint v)
+{
+    //return (v + GROUP_SIZE - 1) / GROUP_SIZE; // TODO use >> ((uint)log2(GROUP_SIZE)) or >> firstbithigh(GROUP_SIZE) but compiler will probably optimize it correctly anyway
+    return ((v + GROUP_SIZE - 1) >> LOG2_GROUP_SIZE);
+}
+
+uint AlignUpGroup(uint v)
+{
+    //return DivUpGroup(v) * GROUP_SIZE;
+    // Assuming GROUP_SIZE is POW2 of course:
+    return ((v + GROUP_SIZE - 1) & (~(GROUP_SIZE - 1)));
+}
+
+// Current count is the number of input elements in the prefix sum input (for ONE sum),
+// parallelSumsCount is the number of sums we want to do in parallel (otherwise must be 1)
+void MainCalculateLevelOffsetsCommon(uint currentCount, uint parallelSumsCount)
+{
+    uint numSumsGroupedPerLevel = 1;
+#if defined(PACK_CONCURRENT_SUM_PYRAMID_LEVELS)
+    numSumsGroupedPerLevel = parallelSumsCount;
+
+    // Important: the LevelOffsets.offset is considered the offset for the start of a pyramid level in a pyramid buffer.
+    //
+    // When not packing the same levels of all concurrent prefix sums together, we build each pyramid independently 
+    // one after the other at fixed regular intervals, based on the *max capacity* of the resources buffers and
+    // NOT on the particular input parameters here (currentCount and parallelSumsCount) so the sum-to-sum stride
+    // is always sum2sumStride := _FullPyramidElementCount.
+    // Access for a single concurrentPrefixSumIndex ie groupID.y thus typically becomes:
+    //
+    //      pyramidBufferIndex = pyramid start for that sum  + pyramid level offset           + element index
+    //                         = sum2sumStride * groupID.y   + LevelOffsets[curLevel].offset  + element index
+    //
+    // typically seen in code as (with threadID as element index):
+    //
+    //     concurrentPrefixSumResultsOffset = _FullPyramidElementCount * concurrentPrefixSumIndex;
+    //     index = (concurrentPrefixSumResultsOffset + threadID + gs_CurrentLevelOffsets.offset);
+    //
+    // When packing the same levels of all concurrent sums first than the next levels, etc. we have one big pyramid
+    // for all sums and can no longer rely on a fixed stride based on resources parameters only.
+    //
+    // Access then becomes:
+    //
+    //      pyramidBufferIndex =   pyramid level offset (for all concurrent sums) 
+    //                           + level offset start for that sum inside all same numbered levels in the pyramid  + element index
+    //
+    //                         =   (LevelOffsets[curLevel]. NON PACKED offset as calculated before) * parallelSumsCount 
+    //                           + sum2sumStride * groupID.y + element index,
+    //
+    // but with now:
+    //
+    //          sum2sumStride := AlignUpGroup(LevelOffsets.count), the aligned up number of elements for one sum in one level.
+    //
+    // Also we can obviously now calculate the level offsets not as a level offset (from start of pyramid) for a pyramid for a single sum
+    // but as an "all levels start offset", ie for all sums for this level, ie with now:
+    //
+    //          LevelOffsets[curLevel].offset = (LevelOffsets[curLevel]. NON PACKED offset as calculated before) * parallelSumsCount;
+    // 
+    // So in code this becomes typically (for levels > 0):
+    //
+    //     concurrentPrefixSumResultsOffset = gs_CurrentLevelOffsets.count * concurrentPrefixSumIndex;
+    //     index = (concurrentPrefixSumResultsOffset + threadID + gs_CurrentLevelOffsets.offset);
+
+#endif
+
+    uint alignedSupportMaxCount = AlignUpGroup(currentCount);
+    uint prevSize = 0;
+    uint prevAlignedUpCount = alignedSupportMaxCount;
+    uint totalSize = 0;
+    uint curLevel = 0;
+
+    LevelOffsets offsets;
+
+    bool canReduce = alignedSupportMaxCount > 0;
+
+    [loop]
+    while (canReduce)
+    {
+        LevelOffsets offsets;
+        // Note: count is used for level 0 when we load directly from the input instead of our pyramid buffer,
+        // and in that case a thread beyond available data ("count" here) acts as if loading 0.
+        offsets.count = curLevel == 0 ? currentCount : alignedSupportMaxCount;
+        offsets.offset = totalSize * numSumsGroupedPerLevel;
+        offsets.parentOffset = prevSize;
+        offsets.parentAlignedUpCount = prevAlignedUpCount;
+
+        prevAlignedUpCount = alignedSupportMaxCount;
+
+        uint groupCount = DivUpGroup(alignedSupportMaxCount);
+
+        _OutputLevelsOffsetsBuffer[curLevel] = offsets;
+
+        //upper dispatch arguments
+        _OutputDispatchLevelArgsBuffer[(ARGS_BUFFER_STRIDE * curLevel) + ARGS_BUFFER_UPPER +0] = groupCount;
+        _OutputDispatchLevelArgsBuffer[(ARGS_BUFFER_STRIDE * curLevel) + ARGS_BUFFER_UPPER +1] = parallelSumsCount;
+        _OutputDispatchLevelArgsBuffer[(ARGS_BUFFER_STRIDE * curLevel) + ARGS_BUFFER_UPPER +2] = 1;
+
+        //lower dispatch arguments, cancel it if we're only going to run a single group, no need for multi-levels
+        _OutputDispatchLevelArgsBuffer[(ARGS_BUFFER_STRIDE * curLevel) + ARGS_BUFFER_LOWER +0] = groupCount == 1 && curLevel == 0 ? 0 : groupCount;
+        _OutputDispatchLevelArgsBuffer[(ARGS_BUFFER_STRIDE * curLevel) + ARGS_BUFFER_LOWER +1] = parallelSumsCount;
+        _OutputDispatchLevelArgsBuffer[(ARGS_BUFFER_STRIDE * curLevel) + ARGS_BUFFER_LOWER +2] = 1;
+
+        prevSize = totalSize;
+
+        totalSize += alignedSupportMaxCount; // !Note! that even if for level 0 count is non aligned / original input count,
+                                             // we still leave alignedSupportMaxCount of space at the first level of the pyramid!
+        ++curLevel;
+
+        if (alignedSupportMaxCount <= GROUP_SIZE)
+            canReduce = false;
+
+        alignedSupportMaxCount = AlignUpGroup(groupCount);
+    }
+
+    //zero out all the rest of the dispatch levels supported so they don't execute
+    [loop]
+    for (uint i = curLevel; i < _MaxLevelCount; ++i)
+    {
+        _OutputDispatchLevelArgsBuffer[(ARGS_BUFFER_STRIDE * i) + ARGS_BUFFER_UPPER +0] = 0;
+        _OutputDispatchLevelArgsBuffer[(ARGS_BUFFER_STRIDE * i) + ARGS_BUFFER_UPPER +1] = 0;
+        _OutputDispatchLevelArgsBuffer[(ARGS_BUFFER_STRIDE * i) + ARGS_BUFFER_UPPER +2] = 0;
+
+        _OutputDispatchLevelArgsBuffer[(ARGS_BUFFER_STRIDE * i) + ARGS_BUFFER_LOWER +0] = 0;
+        _OutputDispatchLevelArgsBuffer[(ARGS_BUFFER_STRIDE * i) + ARGS_BUFFER_LOWER +1] = 0;
+        _OutputDispatchLevelArgsBuffer[(ARGS_BUFFER_STRIDE * i) + ARGS_BUFFER_LOWER +2] = 0;
+    }
+
+    _OutputTotalLevelsBuffer.Store(0, curLevel);
+}
+
+[numthreads(1,1,1)]
+void MainCalculateLevelDispatchArgsFromConst()
+{
+    MainCalculateLevelOffsetsCommon(_PerListElementCount, _ConcurrentSumsCount);
+}
+
+[numthreads(1,1,1)]
+void MainCalculateLevelDispatchArgsFromBuffer()
+{
+    MainCalculateLevelOffsetsCommon(_InputCountsBuffer.Load(IDX2OFF(_PerListElementCountOffset)), _InputCountsBuffer.Load(IDX2OFF(_ConcurrentSumsCountOffset)));
+}
+
+
+groupshared uint gs_LastLevelIndex;
+groupshared LevelOffsets gs_CurrentLevelOffsets;
+
+// #if guards not really needed, would be pruned if not used:
+//#if defined(PREFIX_SUM_FILLS_NEXT_INPUT) || defined(PACK_CONCURRENT_SUM_SINGLE_LEVELS) || defined(PrefixSumResolveParentFuncName)
+groupshared LevelOffsets gs_PrevOrNextLevelOffsets;
+//#endif
+
+groupshared uint gs_prefixCache[GROUP_SIZE];
+
+
+void MainPrefixSumOnGroupCommon(uint3 dispatchThreadID, uint groupThreadIndex, uint3 groupID, bool isExclusive, bool castInputAsBitCnt = false, bool fillNextInputs = false)
+{
+    bool isLevel0 = (_CurrentLevel == 0);
+    bool castAsBitCnt = castInputAsBitCnt && isLevel0;
+
+    // NOTE: here
+    // _InputBuffer == supportResources.prefixBuffer1 for levels > 0, or original user inputsBuffer for level 0
+    // _OutputBuffer == always the full pyramid buffer (prefixbuffer0)
+    uint concurrentPrefixSumIndex = groupID.y;
+
+#ifndef PACK_CONCURRENT_SUM_PYRAMID_LEVELS // note: when NOT defined
+    uint concurrentPrefixSumResultsOffset = _FullPyramidElementCount * concurrentPrefixSumIndex;
+#endif
+
+#ifndef PACK_CONCURRENT_SUM_SINGLE_LEVELS // note: when NOT defined
+    uint concurrentPrefixSumInputsBufferOffset = _MaxLevel1PrefixInputCount * concurrentPrefixSumIndex;
+#endif
+
+    if (groupThreadIndex == 0)
+    {
+        gs_LastLevelIndex = _TotalLevelsBuffer.Load(0) - 1u;
+        gs_CurrentLevelOffsets = _LevelsOffsetsBuffer[_CurrentLevel];
+
+#if (defined(PREFIX_SUM_FILLS_NEXT_INPUT) && defined(PACK_CONCURRENT_SUM_SINGLE_LEVELS))
+        // || PACK_CONCURRENT_SUM_PYRAMID_LEVELS
+        // For output PACK_CONCURRENT_SUM_PYRAMID_LEVELS need alignedUpCount for current level, which means if level0,
+        // - since .count for level0 is not aligned up - could use .parentAlignedUpCount field of next
+        // but .count is always aligned except for first level, so might as well recalculate it for level0 (see AlignUpGroup below)
+        gs_PrevOrNextLevelOffsets = _LevelsOffsetsBuffer[min(_CurrentLevel + 1, _MaxLevelCount - 1)];
+        // Technically, no need to bound check _CurrentLevel + 1, will get 0 if invalid on D3D11 like platforms
+        // but later APIs (eg D3D12) dont have that garantee on at least some ressources like descriptor tables, so just to be safe...
+#endif
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+    // Deal with concurrent sum-to-sum stride for _InputBuffer first:
+    //
+#if defined(PACK_CONCURRENT_SUM_SINGLE_LEVELS)
+    // If we're at level 0, _InputBuffer has the original user inputsBuffer bound, but the .count field recorded for level 0
+    // is actually not the "upper aligned to group_size" count but precisely the user input buffer per concurrent prefix-sum count
+    // (see MainCalculateLevelOffsetsCommon).
+    // At other levels, we have prefixBuffer1 - and/or 2 if using fillNextInputs - and this buffer has at least "level 1 count" * maxNumConcurrentPrefixSums
+    // as capacity. We're going to pack (and read them as packed) the inputs of each concurrentPrefixSums together without a gap at each level.
+    // This means we can also use .count for the other levels as the number of elements per concurrent sums.
+    //
+    // (Instead of special casing level 0 vs others, and always seperating "concurrentPrefixSums" inputs by eg the max "level 1 count" stride.
+    // This would be like doing for the pyramid buffer
+    //      int concurrentPrefixSumResultsOffset = _FullPyramidElementCount * concurrentPrefixSumIndex;
+    // which thus considers each pyramid of each sum at the same stride between them, whatever level is processed.)
+    // 
+    uint concurrentPrefixSumInputsBufferOffset = gs_CurrentLevelOffsets.count * concurrentPrefixSumIndex;
+#else
+    // Unpacked case: still for level0 _InputBuffer is the user input, will always be packed,
+    // stride is not _MaxLevel1PrefixInputCount, but user buffer count (NON aligned up, which again is the case for LevelOffsets[0].count ONLY,
+    // all other counts are aligned up to group_size).
+    if (isLevel0)
+    {
+        // See comment for the packed case above, otherwise if we're not at level 0, stride * curSumIdx was already calculated.
+        concurrentPrefixSumInputsBufferOffset = gs_CurrentLevelOffsets.count * concurrentPrefixSumIndex;
+    }
+#endif
+
+    // Deal with concurrent sum-to-sum stride for _OutputBuffer: ie in pyramids buffer
+    //
+#if defined(PACK_CONCURRENT_SUM_PYRAMID_LEVELS)
+    uint concurrentPrefixSumResultsOffset;
+    if (isLevel0)
+    {
+        // If isLevel0, we need to reconstruct it unless available in shared mem: 
+        // could use #if (defined(PREFIX_SUM_FILLS_NEXT_INPUT) && defined(PACK_CONCURRENT_SUM_SINGLE_LEVELS))
+        // and use gs_PrevOrNextLevelOffsets.parentAlignedUpCount
+        // but might as well always reconstruct it: one add and one mask:
+        //
+        // That way, don't even need to test isLevel0, since is count is already aligned up, it is indempotent.
+        // OTH, the isLevel0 predicate is already available and uniform (kernel wide) so we still use it:
+        concurrentPrefixSumResultsOffset = AlignUpGroup(gs_CurrentLevelOffsets.count) * concurrentPrefixSumIndex;
+    }
+    else
+    {
+        concurrentPrefixSumResultsOffset = gs_CurrentLevelOffsets.count * concurrentPrefixSumIndex;
+    }
+#endif
+
+    uint threadID = dispatchThreadID.x;
+    uint inputVal = ((uint)threadID >= gs_CurrentLevelOffsets.count) ? 0u : _InputBuffer.Load(IFRAW_IDX2OFF(concurrentPrefixSumInputsBufferOffset + threadID));
+    if (castAsBitCnt)
+        inputVal = countbits(inputVal);
+    gs_prefixCache[groupThreadIndex] = inputVal;
+
+    GroupMemoryBarrierWithGroupSync();
+
+    //Hillis Steele Scan
+    for (uint i = 1; i < GROUP_SIZE; i <<= 1)
+    {
+        uint val = groupThreadIndex >= i ? gs_prefixCache[groupThreadIndex - i] : 0u;
+        GroupMemoryBarrierWithGroupSync();
+
+        gs_prefixCache[groupThreadIndex] += val;
+
+        GroupMemoryBarrierWithGroupSync();
+    }
+
+    uint outputVal = gs_prefixCache[groupThreadIndex];
+
+    if (isExclusive && gs_LastLevelIndex == 0)
+        outputVal -= inputVal;
+
+    //_OutputBuffer.Store(IFRAW_IDX2OFF(concurrentPrefixSumResultsOffset + threadID + gs_CurrentLevelOffsets.offset), outputVal);
+    IOBuffersStoreInt(_OutputBuffer, (concurrentPrefixSumResultsOffset + threadID + gs_CurrentLevelOffsets.offset), outputVal);
+
+#if defined(PREFIX_SUM_FILLS_NEXT_INPUT)
+    if (fillNextInputs && (groupThreadIndex == (GROUP_SIZE - 1)))
+    {
+        // Last thread in the group has the partial reduction of the group in its output value,
+        // also store it as a next input at the proper position (corresponding to this group number).
+        // We avoid this store if we're running the last level.
+        
+        //comment the next line for testdebug:
+        if (_CurrentLevel < gs_LastLevelIndex)
+        {
+#if defined(PACK_CONCURRENT_SUM_SINGLE_LEVELS)
+            // Note: gs_PrevOrNextLevelOffsets here is nextLevelOffsets
+            uint concurrentPrefixSumNextInputBufferOffset = gs_PrevOrNextLevelOffsets.count * concurrentPrefixSumIndex;
+#else
+            uint concurrentPrefixSumNextInputBufferOffset = _MaxLevel1PrefixInputCount * concurrentPrefixSumIndex;
+#endif
+            //_NextInputBuffer.Store(IFRAW_IDX2OFF(concurrentPrefixSumNextInputBufferOffset  + groupID.x), outputVal);
+            IOBuffersStoreInt(_NextInputBuffer, (concurrentPrefixSumNextInputBufferOffset  + groupID.x), outputVal);
+
+            //testdebug: use a test case with 2 levels and pingpong, so that prefixbuffer2 is never use and we dump values in it:
+            // if (_CurrentLevel >= gs_LastLevelIndex)
+            // {
+                // IOBuffersStoreInt(_NextInputBuffer, (concurrentPrefixSumNextInputBufferOffset + groupID.x + 0), _MaxLevel1PrefixInputCount);
+                // IOBuffersStoreInt(_NextInputBuffer, (concurrentPrefixSumNextInputBufferOffset + groupID.x + 1), _FullPyramidElementCount);
+                // IOBuffersStoreInt(_NextInputBuffer, (concurrentPrefixSumNextInputBufferOffset + groupID.x + 2), _LevelsOffsetsBuffer[0].count);
+                // IOBuffersStoreInt(_NextInputBuffer, (concurrentPrefixSumNextInputBufferOffset + groupID.x + 3), _LevelsOffsetsBuffer[1].count);
+                // IOBuffersStoreInt(_NextInputBuffer, (concurrentPrefixSumNextInputBufferOffset + groupID.x + 4), _LevelsOffsetsBuffer[1].parentAlignedUpCount);
+                // IOBuffersStoreInt(_NextInputBuffer, (concurrentPrefixSumNextInputBufferOffset + groupID.x + 5), _LevelsOffsetsBuffer[2].count);
+            // }
+        }
+    }
+#endif
+}
+
+[numthreads(GROUP_SIZE, 1, 1)]
+void SumOnGroupFuncName(uint3 dispatchThreadID : SV_DispatchThreadID, uint groupThreadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
+{
+    bool isExclusive = false;
+    bool castInputAsBitCnt = false;
+    bool fillNextInputs = false;
+#ifdef EXCLUSIVE_PREFIX
+    isExclusive = true;
+#endif
+#ifdef ORIG_INPUT_AS_BITCNT
+    castInputAsBitCnt = true;
+#endif
+#ifdef PREFIX_SUM_FILLS_NEXT_INPUT
+    fillNextInputs = true;
+#endif
+
+    MainPrefixSumOnGroupCommon(dispatchThreadID, groupThreadIndex, groupID, isExclusive, castInputAsBitCnt, fillNextInputs);
+}
+
+[numthreads(GROUP_SIZE, 1, 1)]
+void MainPrefixSumNextInput(uint3 dispatchThreadID : SV_DispatchThreadID, uint groupThreadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
+{
+    // In this context, we're called with /GROUP_SIZE times less threads than what we would have in the main prefix sum
+    // with _CurrentLevel: this is because we use the number of threads for the next level (thus /GROUP_SIZE less) to fill
+    // the next input buffer for the next prefix by picking just the partial prefixes of each group that just ran main prefix sum
+    // for the current level.
+
+    // NOTE: here
+    // _InputBuffer == supportResources.prefixBuffer0, ie the full pyramid buffer
+    // _OutputBuffer == supportResources.prefixBuffer1, 
+    uint concurrentPrefixSumIndex = groupID.y;
+#ifndef PACK_CONCURRENT_SUM_PYRAMID_LEVELS // note: when NOT defined
+    uint concurrentPrefixSumResultsOffset = _FullPyramidElementCount * concurrentPrefixSumIndex;
+#endif
+
+#ifndef PACK_CONCURRENT_SUM_SINGLE_LEVELS // note: when NOT defined
+    uint concurrentPrefixSumOutputBufferOffset = _MaxLevel1PrefixInputCount * concurrentPrefixSumIndex;
+#endif
+
+    if (groupThreadIndex == 0)
+    {
+        gs_CurrentLevelOffsets = _LevelsOffsetsBuffer[_CurrentLevel];
+
+#if defined(PACK_CONCURRENT_SUM_SINGLE_LEVELS) // TODO || PACK_CONCURRENT_SUM_PYRAMID_LEVELS since we need alignedUpCount for current level, use .parentAlignedUpCount field of next instead of _FullPyramidElementCount
+        // Note: gs_PrevOrNextLevelOffsets here is nextLevelOffsets
+        gs_PrevOrNextLevelOffsets = _LevelsOffsetsBuffer[_CurrentLevel + 1]; // no need to bound check, if we call NextInput, we have a next level
+#else
+        gs_PrevOrNextLevelOffsets.parentAlignedUpCount = 0;
+#endif
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+    // Deal with concurrent sum-to-sum stride for _OutputBuffer first (single level next input to main prefix pass):
+#if defined(PACK_CONCURRENT_SUM_SINGLE_LEVELS)
+    uint concurrentPrefixSumOutputBufferOffset = /*next*/gs_PrevOrNextLevelOffsets.count * concurrentPrefixSumIndex;
+#endif
+    // Deal with concurrent sum-to-sum stride for _InputBuffer: ie pyramids buffer
+#if defined(PACK_CONCURRENT_SUM_PYRAMID_LEVELS)
+    uint concurrentPrefixSumResultsOffset = /*next*/gs_PrevOrNextLevelOffsets.parentAlignedUpCount * concurrentPrefixSumIndex;
+#endif
+
+    //_OutputBuffer.Store(IFRAW_IDX2OFF(concurrentPrefixSumOutputBufferOffset + dispatchThreadID.x),
+    //                    _InputBuffer.Load(IFRAW_IDX2OFF(concurrentPrefixSumResultsOffset + gs_CurrentLevelOffsets.offset + dispatchThreadID.x * GROUP_SIZE + GROUP_SIZE - 1)));
+    IOBuffersStoreInt(_OutputBuffer, (concurrentPrefixSumOutputBufferOffset + dispatchThreadID.x),
+                      _InputBuffer.Load(IFRAW_IDX2OFF(concurrentPrefixSumResultsOffset + gs_CurrentLevelOffsets.offset + dispatchThreadID.x * GROUP_SIZE + GROUP_SIZE - 1)));
+}
+
+
+
+groupshared uint gs_ParentPartialSum;
+
+
+//#if defined(PrefixSumResolveParentFuncName)
+void MainPrefixSumResolveParentCommon(uint3 dispatchThreadID, uint groupThreadIndex, uint3 groupID, bool isExclusive, bool castAsBitCnt)
+{
+    // _InputBuffer here is always the original user inputs buffer
+    // _OutputBuffer is the pyramids
+
+    bool isExclusiveAndIsLevel1 =  (isExclusive && _CurrentLevel == 1);
+
+    uint concurrentPrefixSumIndex = groupID.y;
+#ifndef PACK_CONCURRENT_SUM_PYRAMID_LEVELS // note: when NOT defined
+    uint concurrentPrefixSumResultsOffset = _FullPyramidElementCount * concurrentPrefixSumIndex;
+#endif
+
+
+    if (groupThreadIndex == 0)
+    {
+        gs_CurrentLevelOffsets = _LevelsOffsetsBuffer[_CurrentLevel];
+
+#if defined(PACK_CONCURRENT_SUM_PYRAMID_LEVELS)
+        // Note: current level can't be 0 because we're in resolve parent, so count is always the aligned up to group one,
+        // so "cur level.count" is the correct sum-to-sum stride in the same pyramid levels chunk (all sums grouped together for the same level)
+        uint concurrentPrefixSumResultsOffset = gs_CurrentLevelOffsets.count * concurrentPrefixSumIndex;
+#endif
+
+        // Note that the per group partial sum of the previous (parent) level gs_ParentPartialSum 
+        // is also a single element at the current level to be prefixed, so we get it from current level:
+        gs_ParentPartialSum = groupID.x == 0 ? 0 : _OutputBuffer.Load(IFRAW_IDX2OFF(concurrentPrefixSumResultsOffset + gs_CurrentLevelOffsets.offset + groupID.x - 1));
+
+        // Note our _CurrentLevel here is the one we would do in the main partial (per group) prefix pass
+        // with /GROUP_SIZE (divide by) times *less* threads than we're running at currently (hence why we use groupID.x above).
+        // This is because in the down or resolve pass, we launch the same number of threads than we would launch for
+        // (_CurrentLevel - 1), the parent level (see (levelId - 1) ExecuteCommonIndirect in GPUPrefixSum.cs).
+        // This is obviously because we need to add to each GROUP_SIZE elements of the parent level,
+        // the prefix sum of the per group total sums (partial reductions) of the parent level that the current level prefix pass has done.
+        //
+        // (Remember before switching levels, next input kernel (MainPrefixSumNextInput - if we use it)
+        // selects/copies - using a number of threads needed for main partial prefix kernel at level = (current level + 1) 
+        // the ending prefix element of each group into the input buffer for the
+        // next prefix pass, so we end up with with /GROUP_SIZE times less elements).
+        //
+        // We use groupID.x - 1 because we need to add, to a chunk of GROUP_SIZE elements (a thread group, call it X) of the parent level
+        // in the pyramid buffer (which constitute a partial prefix, ie a thread group-local prefix which is missing the results of
+        // previous thread group-processed elements), the prefix of the inclusive prefix ending (tail of) each thread-group (at the parent level again)
+        // which precede it (that "X"). This prefix has been calculated at the _CurrentLevel in the main prefix pass, and is thus simply
+        // a single element in the pyramid buffer at the "_CurrentLevel" level.
+        //
+        // When doing multiple concurrent prefix sums, we must also select which one of those our group is currently
+        // processing: this is done via the dispatch grid Y dimension.
+
+#if defined(SHADER_API_VULKAN) || defined(SHADER_API_GLCORE) || defined(SHADER_API_GLES3)
+        if (isExclusiveAndIsLevel1 && _CurrentLevel == 1) // TODO nonsense compiler chain bug, need to investigate further
+#else
+        if (isExclusiveAndIsLevel1) // in that case we need the true NON aligned up count of level0 later:
+#endif
+        {
+            gs_PrevOrNextLevelOffsets = _LevelsOffsetsBuffer[_CurrentLevel - 1];
+        }
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+#ifndef PACK_CONCURRENT_SUM_PYRAMID_LEVELS // note: when NOT defined
+    uint indexOut = concurrentPrefixSumResultsOffset + gs_CurrentLevelOffsets.parentOffset + dispatchThreadID.x;
+#else
+    // Calculate sum-to-sum *parent* level stride in pyramid buffer 
+    // (Important: this is different than sum-to-sum stride for the current level as used for concurrentPrefixSumResultsOffset.
+    // When not packing, pyramids for max capacity are built one beside the other so stride from concurrent sum to the next stay the same
+    // regardless of level (it is equal to _FullPyramidElementCount).
+    // In that case, gs_CurrentLevelOffsets.offset is relative from the start of any concurrent sum pyramid.
+    // When packing, gs_CurrentLevelOffsets.offset is absolute from the beginning of the complete pyramid buffer,
+    // and points to the start of all same number levels of each concurrent sum, which have the same number of elements and are packed together.)
+    uint concurrentPrefixSumParentResultsOffset = gs_CurrentLevelOffsets.parentAlignedUpCount * concurrentPrefixSumIndex;
+    uint indexOut = concurrentPrefixSumParentResultsOffset + gs_CurrentLevelOffsets.parentOffset + dispatchThreadID.x;
+#endif
+
+    // TODO: use gs_CurrentLevelOffsets.prevAlignedUpCount for PACK_CONCURRENT_SUM_PYRAMID_LEVELS instead of _FullPyramidElementCount
+#if defined(SHADER_API_VULKAN) || defined(SHADER_API_GLCORE) || defined(SHADER_API_GLES3)
+    if (isExclusiveAndIsLevel1 && _CurrentLevel == 1) // TODO nonsense compiler chain bug, need to investigate further
+#else
+    if (isExclusiveAndIsLevel1)
+#endif
+    {
+        // In that case, we need access to the original input (which is the parent data also)
+        // to calculate the final exclusive prefix by subtracting, from the inclusive prefix sum we did,
+        // the element value (from the original input) at the same index.
+
+        // Here gs_PrevOrNextLevelOffsets is previous, we need the count of elements at level 0 (non aligned up to group size,
+        // ie the true one in the original input buffer) which we will use as a stride between each concurrently done prefix 
+        // sum data:
+
+        uint concurrentPrefixSumInputsBufferOffset = /*prev*/gs_PrevOrNextLevelOffsets.count * concurrentPrefixSumIndex;
+        //int indexIn = concurrentPrefixSumInputsBufferOffset + gs_CurrentLevelOffsets.parentOffset + dispatchThreadID.x;
+        //but parentOffset should be 0 here if _CurrentLevel == 1! So we have:
+        uint indexIn = concurrentPrefixSumInputsBufferOffset + dispatchThreadID.x;
+
+        uint origVal = _InputBuffer.Load(IFRAW_IDX2OFF(indexIn));
+        if (castAsBitCnt)
+            origVal = countbits(origVal);
+        uint val = _OutputBuffer.Load(IFRAW_IDX2OFF(indexOut)) - origVal;
+        //_OutputBuffer.Store(IFRAW_IDX2OFF(indexOut), val + gs_ParentPartialSum);
+        IOBuffersStoreInt(_OutputBuffer, (indexOut), val + gs_ParentPartialSum);
+    }
+    else
+    {
+        //_OutputBuffer.Store(IFRAW_IDX2OFF(indexOut), _OutputBuffer.Load(IFRAW_IDX2OFF(indexOut)) + gs_ParentPartialSum);
+        IOBuffersStoreInt(_OutputBuffer, (indexOut), _OutputBuffer.Load(IFRAW_IDX2OFF(indexOut)) + gs_ParentPartialSum);
+    }
+}
+//#endif //#if defined(PrefixSumResolveParentFuncName)
+
+
+//#if defined(PrefixSumResolveParentFuncName)
+[numthreads(GROUP_SIZE, 1, 1)]
+void PrefixSumResolveParentFuncName(uint3 dispatchThreadID : SV_DispatchThreadID, uint groupThreadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
+{
+    bool isExclusive = false;
+    bool castInputAsBitCnt = false;
+#ifdef EXCLUSIVE_PREFIX
+    isExclusive = true;
+#endif
+#ifdef ORIG_INPUT_AS_BITCNT
+    castInputAsBitCnt = true;
+#endif
+
+    MainPrefixSumResolveParentCommon(dispatchThreadID, groupThreadIndex, groupID, isExclusive, castInputAsBitCnt);
+}
+//#endif
+
+
+// Reads _IOElementCount in strided fashion from the _InputBuffer, scale, bias and bound (above) the value,
+// them write back packed in _OutputBuffer
+[numthreads(GROUP_SIZE, 1, 1)]
+void MainGatherScaleBiasClampAbove(uint3 dispatchThreadID : SV_DispatchThreadID, uint groupThreadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
+{
+    // NOTE: here
+    // _InputBuffer         gather source
+    // _OutputBuffer        gather destination
+
+    // _Stride              input buffer gather stride
+    // _Scale
+    // _Bias
+    // _MaxVal              upper clamp value
+    // _IOElementCount      to limit work IO
+    // _ThreadDispatchSize  for coalesced processing of multiple elements per threads
+
+    uint idx = dispatchThreadID.x;
+
+    int val[GATHER_SCALE_BIAS_CLAMPA_ITEMS_PER_THREAD];
+    //following init is for iOS Metal:
+    for (uint ii = 0; ii < GATHER_SCALE_BIAS_CLAMPA_ITEMS_PER_THREAD; ii++)
+    {
+        val[ii] = 0;
+    }
+    uint i = 0;
+
+    if (idx < _IOElementCount)
+    {
+        val[i] = _InputBuffer[idx * _Stride];
+        i++;
+        idx += _ThreadDispatchSize;
+
+        [unroll]
+        while (i < GATHER_SCALE_BIAS_CLAMPA_ITEMS_PER_THREAD && idx < _IOElementCount)
+        {
+            val[i] = _InputBuffer[idx * _Stride];
+            i++;
+            idx += _ThreadDispatchSize;
+        }
+
+        uint j = 0;
+        idx = dispatchThreadID.x;
+        IOBuffersStoreInt(_OutputBuffer, idx, min(_MaxVal, (_Scale * val[0]) + _Bias));
+        idx += _ThreadDispatchSize;
+        j++;
+
+        [unroll]
+        while (j < i)// for write, no need to test _IOElementCount, already tested it on read
+        {
+            IOBuffersStoreInt(_OutputBuffer, idx, min(_MaxVal, (_Scale * val[j]) + _Bias));
+            j++;
+            idx += _ThreadDispatchSize;
+        }
+    }
+}

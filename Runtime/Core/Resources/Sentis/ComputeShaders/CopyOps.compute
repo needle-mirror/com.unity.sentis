@@ -6,9 +6,11 @@
 #pragma kernel MemSet
 #pragma kernel RangeFloat
 #pragma kernel RangeInt
-#pragma kernel CastToFloat
-#pragma kernel CastToInt
+#pragma kernel CastIntToFloat
+#pragma kernel CastFloatToInt
 #pragma kernel Transpose2D
+#pragma kernel CastHalfToFloat
+#pragma kernel DequantizeUint8
 
 #define TILE_DIM 32
 #define BLOCK_ROWS 8
@@ -21,11 +23,12 @@ RWStructuredBuffer<float> Optr;
 uint count;
 uint offsetO;
 uint offsetX;
+uint O_width;
 
 [numthreads(TILE_DIM * BLOCK_ROWS, 1, 1)]
 void MemCopy(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint threadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
 {
-    uint z = groupID.x * TILE_DIM * TILE_DIM + groupThreadID.x;
+    uint z = groupID.x * TILE_DIM * TILE_DIM + groupID.y * O_width + groupThreadID.x;
     uint4 z4 = uint4(0, 1, 2, 3) * BLOCK_ROWS * TILE_DIM + z;
     uint4 o4 = offsetO + z4;
     uint4 x4 = offsetX + z4;
@@ -64,7 +67,6 @@ void MemCopyStride(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThre
 }
 
 float memValueFloat;
-uint O_width;
 
 [numthreads(TILE_DIM * BLOCK_ROWS, 1, 1)]
 void MemSet(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint threadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
@@ -149,7 +151,7 @@ StructuredBuffer<int> XIntptr;
 RWStructuredBuffer<int> OIntptr;
 
 [numthreads(TILE_DIM * BLOCK_ROWS, 1, 1)]
-void CastToFloat(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint threadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
+void CastIntToFloat(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint threadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
 {
     uint x = groupID.x * TILE_DIM * TILE_DIM + groupThreadID.x;
     uint4 x4 = uint4(0, 1, 2, 3) * BLOCK_ROWS * TILE_DIM + x;
@@ -165,7 +167,7 @@ void CastToFloat(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThread
 }
 
 [numthreads(TILE_DIM * BLOCK_ROWS, 1, 1)]
-void CastToInt(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint threadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
+void CastFloatToInt(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint threadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
 {
     uint x = groupID.x * TILE_DIM * TILE_DIM + groupThreadID.x;
     uint4 x4 = uint4(0, 1, 2, 3) * BLOCK_ROWS * TILE_DIM + x;
@@ -244,4 +246,53 @@ void Transpose2D(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThread
     {
         Optr[y * X_height + x] = LDS_BLOCK[groupThreadID.x][groupThreadID.y];
     }
+}
+
+uint2 unrolledDispatchArgs;
+
+[numthreads(64, 1, 1)]
+void CastHalfToFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if (threadIdx >= unrolledDispatchArgs.y)
+        return;
+    
+    uint v = XIntptr[threadIdx];
+    float v0 = f16tof32(v & 0x0000FFFF);
+    float v1 = f16tof32((v & 0xFFFF0000) >> 16);
+
+    // TODO LDS swizzle
+
+    if (2 * threadIdx + 0 < lengthO)
+        Optr[2 * threadIdx + 0] = v0;
+    if (2 * threadIdx + 1 < lengthO)
+        Optr[2 * threadIdx + 1] = v1;
+}
+
+float scale;
+int zeroPoint;
+
+[numthreads(64, 1, 1)]
+void DequantizeUint8(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if (threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    uint v = XIntptr[threadIdx];
+    float v0 = scale * (float)((int)(v & 0x000000FF) - zeroPoint);
+    float v1 = scale * (float)((int)((v & 0x0000FF00) >> 8) - zeroPoint);
+    float v2 = scale * (float)((int)((v & 0x00FF0000) >> 16) - zeroPoint);
+    float v3 = scale * (float)((int)((v & 0xFF000000) >> 24) - zeroPoint);
+
+    // TODO LDS swizzle
+
+    if (4 * threadIdx + 0 < lengthO)
+        Optr[4 * threadIdx + 0] = v0;
+    if (4 * threadIdx + 1 < lengthO)
+        Optr[4 * threadIdx + 1] = v1;
+    if (4 * threadIdx + 2 < lengthO)
+        Optr[4 * threadIdx + 2] = v2;
+    if (4 * threadIdx + 3 < lengthO)
+        Optr[4 * threadIdx + 3] = v3;
 }

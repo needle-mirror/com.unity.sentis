@@ -8,53 +8,31 @@ namespace Unity.Sentis {
 /// </summary>
 public partial class CPUBackend : IBackend
 {
-    bool m_OwnAllocator;
-    internal ITensorAllocator m_Allocator;
-
     /// <inheritdoc/>
-    public virtual DeviceType deviceType => DeviceType.CPU;
+    public BackendType backendType => BackendType.CPU;
 
     /// <summary>
     /// Initializes and returns an instance of `CPUBackend`.
     /// </summary>
-    /// <param name="allocator">The allocator to use when allocating tensors.</param>
-    public CPUBackend(ITensorAllocator allocator = null)
-    {
-        if (allocator == null)
-        {
-            m_OwnAllocator = true;
-            m_Allocator = new TensorCachingAllocator();
-        }
-        else
-        {
-            m_OwnAllocator = false;
-            m_Allocator = allocator;
-        }
-    }
-
-    /// <inheritdoc/>
-    public virtual void ResetAllocator(bool keepCachedMemory = true)
-    {
-        m_Allocator.Reset(keepCachedMemory);
-    }
+    public CPUBackend() {}
 
     /// <summary>
     /// Disposes of the ops and any associated memory.
     /// </summary>
-    public virtual void Dispose()
+    public void Dispose()
     {
-        if (m_OwnAllocator)
-            ResetAllocator(keepCachedMemory: false);
+        m_MemoryPool?.Dispose();
+        m_MemoryPool = null;
     }
 
     void ConvND(TensorFloat X, TensorFloat K, TensorFloat B, TensorFloat O, int groups, Span<int> stride, Span<int> pad, Span<int> dilation, Layers.FusableActivation fusedActivation)
     {
-        var Otmp = (fusedActivation != Layers.FusableActivation.None) ? NewTempTensorFloat(O.shape) : O;
+        var Otmp = (fusedActivation != Layers.FusableActivation.None) ? AllocTensorFloat(O.shape) : O;
 
-        ArrayTensorData.Pin(X);
-        ArrayTensorData.Pin(K);
-        ArrayTensorData.Pin(B);
-        ArrayTensorData.Pin(Otmp);
+        BurstTensorData.Pin(X);
+        BurstTensorData.Pin(K);
+        BurstTensorData.Pin(B);
+        BurstTensorData.Pin(Otmp);
 
         int inputGroupedChannels = X.shape[1] / groups;
         int outputGroupedChannels = Otmp.shape[1] / groups;
@@ -107,17 +85,21 @@ public partial class CPUBackend : IBackend
         }
 
         if (fusedActivation != Layers.FusableActivation.None)
+        {
             ApplyFusedActivation(Otmp, O, fusedActivation);
+            ReleaseTensorFloat(Otmp);
+        }
     }
 
     void ConvTransposeND(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Span<int> strides, Span<int> pads, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
     {
-        var Otmp = (fusedActivation != Layers.FusableActivation.None) ? NewTempTensorFloat(O.shape) : O;
+        var Otmp = (fusedActivation != Layers.FusableActivation.None) ? AllocTensorFloat(O.shape) : O;
 
-        ArrayTensorData.Pin(X);
-        ArrayTensorData.Pin(W);
-        ArrayTensorData.Pin(B);
-        ArrayTensorData.Pin(O);
+        BurstTensorData.Pin(X);
+        BurstTensorData.Pin(W);
+        if (B != null)
+            BurstTensorData.Pin(B);
+        BurstTensorData.Pin(O);
 
         var inputChannels = X.shape[1];
 
@@ -130,7 +112,7 @@ public partial class CPUBackend : IBackend
         {
             var n = itO[0];
             var k = itO[1];
-            var v = B[k];
+            var v = B == null ? 0 : B[k];
             itK[1] = k;
 
             for (var c = 0; c < inputChannels; ++c)
@@ -169,23 +151,30 @@ public partial class CPUBackend : IBackend
         }
 
         if (fusedActivation != Layers.FusableActivation.None)
+        {
             ApplyFusedActivation(Otmp, O, fusedActivation);
+            ReleaseTensorFloat(Otmp);
+        }
     }
 
     void ResizeND(TensorFloat X, TensorFloat O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode = Layers.NearestMode.RoundPreferFloor, Layers.CoordTransformMode coordTransformMode = Layers.CoordTransformMode.HalfPixel)
     {
+        bool firstAlloc = false;
         for (var i = 0; i < scale.Length; i++)
         {
-            var Otmp = i == scale.Length - 1 ? O : NewTempTensorFloat(ShapeInference.Resize(X.shape, i, scale[i]));
+            var Otmp = i == scale.Length - 1 ? O : AllocTensorFloat(ShapeInference.Resize(X.shape, i, scale[i]));
             Resize1D(X, Otmp, i, scale[i], interpolationMode, nearestMode, coordTransformMode);
+            if (firstAlloc)
+                ReleaseTensorFloat(X);
             X = Otmp;
+            firstAlloc = true;
         }
     }
 
     void Resize1D(TensorFloat X, TensorFloat O, int axis, float scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
     {
-        ArrayTensorData.Pin(X);
-        ArrayTensorData.Pin(O);
+        BurstTensorData.Pin(X);
+        BurstTensorData.Pin(O);
 
         var itX = new TensorNDIterator(X.shape);
 
@@ -233,8 +222,8 @@ public partial class CPUBackend : IBackend
 
     void ApplyLocalPoolingOperator(TensorFloat X, TensorFloat O, int[] pool, int[] stride, int[] pad, Func<float> initOp, Func<float, float, float> accumulateOp, Func<float, int, float> normalizeOp)
     {
-        ArrayTensorData.Pin(X);
-        ArrayTensorData.Pin(O);
+        BurstTensorData.Pin(X);
+        BurstTensorData.Pin(O);
 
         var itX = new TensorNDIterator(X.shape);
         var itP = new TensorNDIterator(new TensorShape(pool));
@@ -290,50 +279,16 @@ public partial class CPUBackend : IBackend
         ApplyLocalPoolingOperator(X, O, pool, stride, pad, initOp, accumulateOp, normalizeOp);
     }
 
-    /// <inheritdoc/>
-    public virtual void LRN(TensorFloat X, TensorFloat O, float alpha, float beta, float bias, int size)
-    {
-        // https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf
-        // However divide the sum by size to follow onnx and pytorch implementation
-        // ONNX https://github.com/onnx/onnx/blob/master/docs/Operators.md#LRN
-        // PYTORCH https://github.com/pytorch/pytorch/blob/1465970a343e61f2f2b104859ca7f5d7e03f5d02/torch/nn/functional.py#L2069
-        // Tensorflow don't and follow the paper to the letter https://github.com/tensorflow/tensorflow/blob/e6faa845c51bb69465146d93646947fd2ba53efa/tensorflow/python/kernel_tests/lrn_op_test.py#L53
-        // However they bake the division to alpha when exporting to ONNX https://github.com/onnx/tensorflow-onnx/blob/7c37ccb97e0fd478ce093910c4a1411b18e44fd7/tf2onnx/onnx_opset/math.py
-
-        ArrayTensorData.Pin(X);
-        ArrayTensorData.Pin(O);
-
-        float sizef = size;
-
-        var itRemap = new TensorNDIterator(O.shape);
-        for (var it = new TensorNDIterator(O.shape); it.HasNext(); it.MoveNext())
-        {
-            int c = it[1];
-            float regionCenter = (sizef - 1.0f) / 2.0f;
-            int regionStart = Math.Max(0, c - (int)Mathf.Floor(regionCenter));
-            int regionEnd = Math.Min(X.shape[1], c + (int)Mathf.Ceil(regionCenter)+1);
-            float sumOfSquared = 0.0f;
-            for (int ci = regionStart; ci < regionEnd; ++ci)
-            {
-                itRemap.CopyNDIndex(it);
-                itRemap[1] = ci;
-                float regionValue = X[itRemap.index];
-                sumOfSquared += regionValue * regionValue;
-            }
-
-            O[it.index] = X[it.index] / Mathf.Pow(bias + alpha * sumOfSquared / sizef, beta);
-        }
-    }
-
     void ScatterElementsReduce(TensorInt X, TensorInt indices, TensorInt updates, TensorInt O, int axis, Layers.ScatterReductionMode reduction)
     {
         MemCopy(X, O);
 
-        ArrayTensorData.Pin(X);
-        ArrayTensorData.Pin(indices);
-        ArrayTensorData.Pin(updates);
-        ArrayTensorData.Pin(O);
+        BurstTensorData.Pin(X);
+        BurstTensorData.Pin(indices);
+        BurstTensorData.Pin(updates);
+        BurstTensorData.Pin(O);
 
+        //TODO: verify this.
         var itO = new TensorNDIterator(O.shape);
         for (var itIndices = new TensorNDIterator(indices.shape); itIndices.HasNext(); itIndices.MoveNext())
         {
@@ -351,34 +306,6 @@ public partial class CPUBackend : IBackend
             else if (reduction == Layers.ScatterReductionMode.Mul)
                 O[itO.index] *= updates[itIndices.index];
         }
-    }
-
-    /// <inheritdoc/>
-    public virtual Tensor ShallowCopy(Tensor X, AllocScope allocScope)
-    {
-        if (X.allocator != null)
-            return X.ShallowCopy();
-
-        var O = NewTensor(X.shape, X.dataType, allocScope);
-        if (O.shape.HasZeroDims())
-            return O;
-        MemCopy(X, O);
-        return O;
-    }
-
-    /// <inheritdoc/>
-    public virtual Tensor ShallowReshape(Tensor X, TensorShape shape, AllocScope allocScope)
-    {
-        Logger.AssertAreEqual(X.shape.length, shape.length, "Reshape.LengthError: in/out tensorshape must have the same # of elements : ({0}, {1})", X.shape.length, shape.length);
-        // if already managed by allocator, can do a shallow copy
-        if (X.allocator != null)
-            return X.ShallowReshape(shape);
-
-        var O = NewTensor(shape, X.dataType, allocScope);
-        if (O.shape.HasZeroDims())
-            return O;
-        Reshape(X, O);
-        return O;
     }
 }
 } // namespace Unity.Sentis

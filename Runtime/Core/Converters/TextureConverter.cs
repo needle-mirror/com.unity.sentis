@@ -42,7 +42,7 @@ namespace Unity.Sentis
 
             var shape = transform.GetTensorShape();
 
-            var O = new TensorFloat(shape);
+            var O = TensorFloat.AllocNoData(shape);
             ToTensor(texture, O, transform);
             return O;
         }
@@ -149,7 +149,7 @@ namespace Unity.Sentis
 
             var shape = transform.GetTensorShape();
 
-            var O = new TensorFloat(shape);
+            var O = TensorFloat.AllocNoData(shape);
             cb.ToTensor(texture, O, transform);
             return O;
         }
@@ -210,7 +210,7 @@ namespace Unity.Sentis
 
             var shape = transform.GetTensorShape();
 
-            var O = new TensorFloat(shape);
+            var O = TensorFloat.AllocNoData(shape);
             cb.ToTensor(rte, O, transform);
             return O;
         }

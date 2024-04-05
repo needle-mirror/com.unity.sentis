@@ -2,6 +2,7 @@
 #pragma kernel RandomNormal RANDOM_NORMAL
 #pragma kernel BernoulliFloat BERNOULLI_FLOAT
 #pragma kernel BernoulliInt BERNOULLI_INT
+#pragma kernel TopP TOPP
 
 #include "Tensor.cginc"
 #include "Random.cginc"
@@ -86,3 +87,38 @@ void BernoulliInt(uint3 dispatchThreadID : SV_DispatchThreadID)
     Optr[threadIdx] = Xptr[threadIdx] > ToFloat(randomState) ? 1 : 0;
 }
 #endif
+
+#ifdef TOPP
+StructuredBuffer<float> Xptr;
+StructuredBuffer<float> Bptr;
+RWStructuredBuffer<int> Optr;
+
+uint innerLength;
+uint outerLength;
+uint count;
+
+[numthreads(64, 1, 1)]
+void TopP(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = dispatchThreadID.x;
+    if (threadIdx >= outerLength)
+        return;
+
+    int n = threadIdx / count;
+    int samplei = threadIdx % count;
+
+    float prob = Bptr[samplei];
+    float accum = 0.0f;
+    uint x = 0;
+    for (; x < innerLength; x++)
+    {
+        if (prob < accum)
+        {
+            break;
+        }
+        accum += Xptr[n * innerLength + x];
+    }
+    Optr[threadIdx] = x - 1;
+}
+#endif
+

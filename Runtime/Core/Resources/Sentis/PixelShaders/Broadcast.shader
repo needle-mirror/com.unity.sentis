@@ -12,7 +12,7 @@ Shader "Hidden/Sentis/Broadcast"
         {
             CGPROGRAM
             // TODO: use Scriban to generate variants
-            #pragma multi_compile Add Sub Mul Div Pow Min Max FMod Mean AddInt SubInt MulInt DivInt PowInt MinInt MaxInt ModInt FModInt And Equal Greater GreaterOrEqual Less LessOrEqual EqualInt GreaterInt GreaterOrEqualInt LessInt LessOrEqualInt Or Xor PRelu
+            #pragma multi_compile Add Sub Mul Div Pow Min Max Mod FMod Mean AddInt SubInt MulInt DivInt PowInt MinInt MaxInt ModInt FModInt And Equal Greater GreaterOrEqual Less LessOrEqual EqualInt GreaterInt GreaterOrEqualInt LessInt LessOrEqualInt Or Xor PRelu
 
             #pragma vertex vert
             #pragma fragment frag
@@ -57,7 +57,7 @@ Shader "Hidden/Sentis/Broadcast"
             #endif
 
             bool IsInfOrNaN(float x) {
-                return !(x < 0. || x > 0. || x == 0.) || (x != 0. && x * 2. == x);
+                return isnan(x) || !(x < 0. || x > 0. || x == 0.) || (x != 0. && x * 2. == x);
             }
 
             O_DTYPE4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
@@ -127,6 +127,13 @@ Shader "Hidden/Sentis/Broadcast"
                 #endif
                 #ifdef FModInt
                     v = va % vb;
+                #endif
+                #ifdef Mod
+                    float4 u = ((va % vb) + vb) % vb;
+                    v.x = IsInfOrNaN(u.x) ? 0.0f : u.x;
+                    v.y = IsInfOrNaN(u.y) ? 0.0f : u.y;
+                    v.z = IsInfOrNaN(u.z) ? 0.0f : u.z;
+                    v.w = IsInfOrNaN(u.w) ? 0.0f : u.w;
                 #endif
                 #ifdef ModInt
                     v = ((va % vb) + vb) % vb;

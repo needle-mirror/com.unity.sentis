@@ -6,7 +6,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise activation layer.
     /// </summary>
     [Serializable]
-    public abstract class Activation : Layer
+    abstract class Activation : Layer
     {
         /// <summary>
         /// Initializes and returns an instance of activation layer.
@@ -15,14 +15,15 @@ namespace Unity.Sentis.Layers
         /// <param name="input">The name to use for the input tensor of the layer.</param>
         protected Activation(string name, string input)
         {
-            this.name = name;
+            this.index = name;
             this.inputs = new[] { input };
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            return new PartialTensor(inputTensors[0].dataType, inputTensors[0].shape);
+            var X = ctx.GetPartialTensor(inputs[0]);
+            ctx.AddPartialTensor(index, new PartialTensor(X.dataType, X.shape));
         }
     }
 
@@ -30,7 +31,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Celu` activation layer: f(x) = max(0, x) + min(0, alpha * (exp(x / alpha) - 1)).
     /// </summary>
     [Serializable]
-    public class Celu : Activation
+    class Celu : Activation
     {
         /// <summary>
         /// The alpha value to use for the `Celu` activation function.
@@ -50,13 +51,13 @@ namespace Unity.Sentis.Layers
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Celu(inputTensors[0] as TensorFloat, O, alpha);
-            return O;
+                return;
+            ctx.backend.Celu(X, O, alpha);
         }
 
         /// <inheritdoc/>
@@ -72,7 +73,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Elu` activation layer: f(x) = x if x >= 0, otherwise f(x) = alpha * (e^x - 1).
     /// </summary>
     [Serializable]
-    public class Elu : Activation
+    class Elu : Activation
     {
         /// <summary>
         /// The alpha value to use for the `Elu` activation function.
@@ -92,13 +93,13 @@ namespace Unity.Sentis.Layers
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Elu(inputTensors[0] as TensorFloat, O, alpha);
-            return O;
+                return;
+            ctx.backend.Elu(X as TensorFloat, O, alpha);
         }
 
         /// <inheritdoc/>
@@ -114,7 +115,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Gelu` activation layer: f(x) = x / 2 * (1 + erf(x / sqrt(2))).
     /// </summary>
     [Serializable]
-    public class Gelu : Activation
+    class Gelu : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Gelu` activation layer.
@@ -125,23 +126,47 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Gelu(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Gelu(X, O);
         }
 
         internal override string profilerTag => "Gelu";
+    }
+
+    [Serializable]
+    class GeluFast : Activation
+    {
+        /// <summary>
+        /// Initializes and returns an instance of `Gelu` activation layer.
+        /// </summary>
+        /// <param name="name">The name to use for the output tensor of the layer.</param>
+        /// <param name="input">The name to use for the input tensor of the layer.</param>
+        public GeluFast(string name, string input)
+            : base(name, input) { }
+
+        /// <inheritdoc/>
+        public override void Execute(ExecutionContext ctx)
+        {
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            if (O.shape.HasZeroDims())
+                return;
+            ctx.backend.GeluFast(X, O);
+        }
+
+        internal override string profilerTag => "GeluFast";
     }
 
     /// <summary>
     /// Represents an element-wise `Erf` activation layer: f(x) = erf(x).
     /// </summary>
     [Serializable]
-    public class Erf : Activation
+    class Erf : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Erf` activation layer.
@@ -152,13 +177,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Erf(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Erf(X as TensorFloat, O);
         }
 
         internal override string profilerTag => "Erf";
@@ -168,7 +193,7 @@ namespace Unity.Sentis.Layers
     /// Represents a `Hardmax` activation layer along an axis: f(x, axis) = 1 if x is the first maximum value along the specified axis, otherwise f(x) = 0.
     /// </summary>
     [Serializable]
-    public class Hardmax : Activation
+    class Hardmax : Activation
     {
         /// <summary>
         /// The axis along which to apply the `Hardmax` activation function.
@@ -188,13 +213,13 @@ namespace Unity.Sentis.Layers
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Hardmax(inputTensors[0] as TensorFloat, O, axis);
-            return O;
+                return;
+            ctx.backend.Hardmax(X as TensorFloat, O, axis);
         }
 
         /// <inheritdoc/>
@@ -210,7 +235,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `HardSigmoid` activation layer: f(x) = clamp(alpha * x + beta, 0, 1).
     /// </summary>
     [Serializable]
-    public class HardSigmoid : Activation
+    class HardSigmoid : Activation
     {
         /// <summary>
         /// The alpha value to use for the `HardSigmoid` activation function.
@@ -236,13 +261,13 @@ namespace Unity.Sentis.Layers
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.HardSigmoid(inputTensors[0] as TensorFloat, O, alpha, beta);
-            return O;
+                return;
+            ctx.backend.HardSigmoid(X, O, alpha, beta);
         }
 
         /// <inheritdoc/>
@@ -258,7 +283,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `HardSwish` activation layer: f(x) = x * max(0, min(1, alpha * x + beta)) = x * HardSigmoid(x, alpha, beta), where alpha = 1/6 and beta = 0.5.
     /// </summary>
     [Serializable]
-    public class HardSwish : Activation
+    class HardSwish : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `HardSwish` activation layer.
@@ -269,13 +294,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.HardSwish(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.HardSwish(X, O);
         }
 
         internal override string profilerTag => "HardSwish";
@@ -285,7 +310,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `LeakyRelu` activation layer: f(x) = x if x >= 0, otherwise f(x) = alpha * x.
     /// </summary>
     [Serializable]
-    public class LeakyRelu : Activation
+    class LeakyRelu : Activation
     {
         /// <summary>
         /// The alpha value to use for the `LeakyRelu` activation function.
@@ -305,13 +330,13 @@ namespace Unity.Sentis.Layers
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.LeakyRelu(inputTensors[0] as TensorFloat, O, alpha);
-            return O;
+                return;
+            ctx.backend.LeakyRelu(X, O, alpha);
         }
 
         /// <inheritdoc/>
@@ -329,7 +354,7 @@ namespace Unity.Sentis.Layers
     /// The slope tensor must be unidirectional broadcastable to x.
     /// </summary>
     [Serializable]
-    public class PRelu : Activation
+    class PRelu : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `PRelu` activation layer.
@@ -340,20 +365,28 @@ namespace Unity.Sentis.Layers
         public PRelu(string name, string input, string slope)
             : base(name, input)
         {
-            this.name = name;
+            this.index = name;
             this.inputs = new[] { input, slope };
         }
 
         /// <inheritdoc/>
-        internal override PartialTensor InferPartialTensor(PartialTensor[] inputTensors, PartialInferenceContext ctx)
+        internal override void InferPartial(PartialInferenceContext ctx)
         {
-            var shapeX = inputTensors[0].shape;
-            var shapeSlope = inputTensors[1].shape;
+            var X = ctx.GetPartialTensor(inputs[0]);
+            var slope = ctx.GetPartialTensor(inputs[1]);
+            var shapeX = X.shape;
+            var shapeSlope = slope.shape;
             if (!shapeX.hasRank)
-                return new PartialTensor(DataType.Float);
+            {
+                ctx.AddPartialTensor(index, new PartialTensor(DataType.Float));
+                return;
+            }
 
             if (!shapeSlope.hasRank)
-                return new PartialTensor(DataType.Float, shapeX);
+            {
+                ctx.AddPartialTensor(index, new PartialTensor(DataType.Float, shapeX));
+                return;
+            }
 
             Logger.AssertIsTrue(shapeSlope.rank <= shapeX.rank, "PRelu.InputError: slope shape must be unidirectional broadcastable to input");
             var numInitialDims = shapeX.rank - shapeSlope.rank;
@@ -366,17 +399,18 @@ namespace Unity.Sentis.Layers
                 shapeOut[numInitialDims + i] = SymbolicTensorDim.MaxDefinedDim(shapeOut[numInitialDims + i], shapeSlope[i]);
             }
 
-            return new PartialTensor(DataType.Float, shapeOut);
+            ctx.AddPartialTensor(index, new PartialTensor(DataType.Float, shapeOut));
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var slope = ctx.vars.GetTensor(inputs[1]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.PRelu(inputTensors[0] as TensorFloat, inputTensors[1] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.PRelu(X as TensorFloat, slope as TensorFloat, O);
         }
 
         internal override string profilerTag => "PRelu";
@@ -386,7 +420,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Relu` activation layer: f(x) = max(0, x).
     /// </summary>
     [Serializable]
-    public class Relu : Activation
+    class Relu : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Relu` activation layer.
@@ -397,13 +431,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Relu(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Relu(X as TensorFloat, O);
         }
 
         internal override string profilerTag => "Relu";
@@ -413,7 +447,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Relu6` activation layer: f(x) = clamp(x, 0, 6).
     /// </summary>
     [Serializable]
-    public class Relu6 : Activation
+    class Relu6 : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Relu6` activation layer.
@@ -424,13 +458,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Relu6(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Relu6(X, O);
         }
 
         internal override string profilerTag => "Relu6";
@@ -440,7 +474,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Selu` activation layer: f(x) = gamma * x if x >= 0, otherwise f(x) = (alpha * e^x - alpha).
     /// </summary>
     [Serializable]
-    public class Selu : Activation
+    class Selu : Activation
     {
         /// <summary>
         /// The alpha value to use for the `Selu` activation function.
@@ -466,13 +500,13 @@ namespace Unity.Sentis.Layers
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Selu(inputTensors[0] as TensorFloat, O, alpha, gamma);
-            return O;
+                return;
+            ctx.backend.Selu(X, O, alpha, gamma);
         }
 
         /// <inheritdoc/>
@@ -488,7 +522,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Sigmoid` activation layer: f(x) = 1/(1 + e^(-x)).
     /// </summary>
     [Serializable]
-    public class Sigmoid : Activation
+    class Sigmoid : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Sigmoid` activation layer.
@@ -499,13 +533,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Sigmoid(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Sigmoid(X as TensorFloat, O);
         }
 
         internal override string profilerTag => "Sigmoid";
@@ -515,7 +549,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Softplus` activation layer: f(x) = ln(e^x + 1).
     /// </summary>
     [Serializable]
-    public class Softplus : Activation
+    class Softplus : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Softplus` activation layer.
@@ -526,13 +560,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Softplus(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Softplus(X as TensorFloat, O);
         }
 
         internal override string profilerTag => "Softplus";
@@ -542,7 +576,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Softsign` activation layer: f(x) = x/(|x| + 1).
     /// </summary>
     [Serializable]
-    public class Softsign : Activation
+    class Softsign : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Softsign` activation layer.
@@ -553,13 +587,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Softsign(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Softsign(X as TensorFloat, O);
         }
 
         internal override string profilerTag => "Softsign";
@@ -569,7 +603,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Swish` activation layer. f(x) = sigmoid(x) * x = x / (1 + e^{-x}).
     /// </summary>
     [Serializable]
-    public class Swish : Activation
+    class Swish : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Swish` activation layer.
@@ -580,13 +614,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Swish(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Swish(X as TensorFloat, O);
         }
 
         internal override string profilerTag => "Swish";
@@ -596,7 +630,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `Tanh` activation layer: f(x) = tanh(x).
     /// </summary>
     [Serializable]
-    public class Tanh : Activation
+    class Tanh : Activation
     {
         /// <summary>
         /// Initializes and returns an instance of `Tanh` activation layer.
@@ -607,13 +641,13 @@ namespace Unity.Sentis.Layers
             : base(name, input) { }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.Tanh(inputTensors[0] as TensorFloat, O);
-            return O;
+                return;
+            ctx.backend.Tanh(X as TensorFloat, O);
         }
 
         internal override string profilerTag => "Tanh";
@@ -623,7 +657,7 @@ namespace Unity.Sentis.Layers
     /// Represents an element-wise `ThresholdedRelu` activation layer: f(x) = x if x > alpha, otherwise f(x) = 0.
     /// </summary>
     [Serializable]
-    public class ThresholdedRelu : Activation
+    class ThresholdedRelu : Activation
     {
         /// <summary>
         /// The alpha value to use for the `ThresholdedRelu` activation function.
@@ -643,13 +677,13 @@ namespace Unity.Sentis.Layers
         }
 
         /// <inheritdoc/>
-        public override Tensor Execute(Tensor[] inputTensors, ExecutionContext ctx)
+        public override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.backend.NewOutputTensorFloat(inputTensors[0].shape);
+            var X = ctx.vars.GetTensor(inputs[0]);
+            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
-                return O;
-            ctx.backend.ThresholdedRelu(inputTensors[0] as TensorFloat, O, alpha);
-            return O;
+                return;
+            ctx.backend.ThresholdedRelu(X as TensorFloat, O, alpha);
         }
 
         /// <inheritdoc/>

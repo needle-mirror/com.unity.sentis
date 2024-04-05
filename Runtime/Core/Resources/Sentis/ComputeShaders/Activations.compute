@@ -1,9 +1,11 @@
 #pragma kernel AbsFloat ABS XFLOAT OFLOAT SUFFIX=AbsFloat
 #pragma kernel NegFloat NEG XFLOAT OFLOAT SUFFIX=NegFloat
+#pragma kernel SquareFloat SQUARE XFLOAT OFLOAT SUFFIX=SquareFloat
 #pragma kernel SignFloat SIGN XFLOAT OFLOAT SUFFIX=SignFloat
 #pragma kernel ClipFloat CLIP XFLOAT OFLOAT SUFFIX=ClipFloat
 #pragma kernel AbsInt ABS XINT OINT SUFFIX=AbsInt
 #pragma kernel NegInt NEG XINT OINT SUFFIX=NegInt
+#pragma kernel SquareInt SQUARE XINT OINT SUFFIX=SquareInt
 #pragma kernel SignInt SIGN XINT OINT SUFFIX=SignInt
 #pragma kernel ClipInt CLIP XINT OINT SUFFIX=ClipInt
 #pragma kernel IsNaN ISNAN XFLOAT OINT SUFFIX=IsNaN
@@ -55,6 +57,9 @@ void SUFFIX(uint3 dispatchThreadID : SV_DispatchThreadID)
     #endif
     #ifdef NEG
     Optr[threadIdx] = -v;
+    #endif
+    #ifdef SQUARE
+    Optr[threadIdx] = v * v;
     #endif
     #ifdef SIGN
     Optr[threadIdx] = sign(v);

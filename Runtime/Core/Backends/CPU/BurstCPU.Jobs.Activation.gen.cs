@@ -71,6 +71,32 @@ public partial class CPUBackend
     }
 
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    internal unsafe struct SquareIntJob : IJobParallelFor, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
+        public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+
+        public void Execute(int threadIdx)
+        {
+            int v = Xptr[threadIdx];
+            Optr[threadIdx] = (v * v);
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    internal unsafe struct SquareFloatJob : IJobParallelFor, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+        public void Execute(int threadIdx)
+        {
+            float v = Xptr[threadIdx];
+            Optr[threadIdx] = (v * v);
+        }
+    }
+
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
     internal unsafe struct IsNaNJob : IJobParallelFor, IJobResourceDeclarationXO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -84,7 +110,7 @@ public partial class CPUBackend
     }
 
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
-    internal unsafe struct CastToFloatJob : IJobParallelFor, IJobResourceDeclarationXO
+    internal unsafe struct CastIntToFloatJob : IJobParallelFor, IJobResourceDeclarationXO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
         public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
@@ -97,7 +123,7 @@ public partial class CPUBackend
     }
 
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
-    internal unsafe struct CastToIntJob : IJobParallelFor, IJobResourceDeclarationXO
+    internal unsafe struct CastFloatToIntJob : IJobParallelFor, IJobResourceDeclarationXO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
         public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;

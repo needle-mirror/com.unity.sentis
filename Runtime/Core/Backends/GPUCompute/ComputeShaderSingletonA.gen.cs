@@ -17,6 +17,7 @@ namespace Unity.Sentis
                 "ScalarBroadcastMinFloat", "BroadcastMinFloat", "ElementwiseMinFloat",
                 "ScalarBroadcastMaxFloat", "BroadcastMaxFloat", "ElementwiseMaxFloat",
                 "ScalarBroadcastMeanFloat", "BroadcastMeanFloat", "ElementwiseMeanFloat",
+                "ScalarBroadcastModFloat", "BroadcastModFloat", "ElementwiseModFloat",
                 "ScalarBroadcastFModFloat", "BroadcastFModFloat", "ElementwiseFModFloat",
                 "ScalarBroadcastAddInt", "BroadcastAddInt", "ElementwiseAddInt",
                 "ScalarBroadcastSubInt", "BroadcastSubInt", "ElementwiseSubInt",
@@ -26,7 +27,6 @@ namespace Unity.Sentis
                 "ScalarBroadcastMaxInt", "BroadcastMaxInt", "ElementwiseMaxInt",
                 "ScalarBroadcastModInt", "BroadcastModInt", "ElementwiseModInt",
                 "ScalarBroadcastFModInt", "BroadcastFModInt", "ElementwiseFModInt",
-"ScalarMad",
             });
 
             RegisterKernels("Sentis/ComputeShaders/Compute.Shaders.Conv.gen", new[]

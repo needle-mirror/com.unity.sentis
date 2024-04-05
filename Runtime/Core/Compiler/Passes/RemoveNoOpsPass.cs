@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.Assertions;
 
@@ -14,7 +13,9 @@ namespace Unity.Sentis.Compiler.Passes.Cleanup
         {
             var noopLayers = new HashSet<string>();
             var remap = new Dictionary<string, string>();
-            var preserve = new HashSet<string>(model.outputs);
+            var preserve = new HashSet<string>();
+            foreach (var o in model.outputs)
+                preserve.Add(o.index);
 
             // algorithm:
             // - if input is pointing to a noop, we need to remap it to upstream layer
@@ -49,12 +50,12 @@ namespace Unity.Sentis.Compiler.Passes.Cleanup
                 // if layer is noop = nop, identity or flatten
                 if (layer is Layers.Identity)
                 {
-                    remap[layer.name] = layer.inputs[0];
-                    noopLayers.Add(layer.name);
+                    remap[layer.index] = layer.inputs[0];
+                    noopLayers.Add(layer.index);
                 }
             }
 
-            model.layers.RemoveAll(x => noopLayers.Contains(x.name) && !preserve.Contains(x.name));
+            model.layers.RemoveAll(x => noopLayers.Contains(x.index) && !preserve.Contains(x.index));
         }
 
         static bool IsLayerNoop(Model model, Layers.Layer layer)

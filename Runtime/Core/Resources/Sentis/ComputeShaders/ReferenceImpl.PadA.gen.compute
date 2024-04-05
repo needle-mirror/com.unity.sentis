@@ -4,6 +4,8 @@
 #pragma kernel PadReflectND PADREFLECTND
 #pragma kernel PadSymmetricND PADSYMMETRICND
 #pragma kernel PadEdgeND PADEDGEND
+#pragma kernel PadWrapND PADWRAPND
+#include "HLSLSupport.cginc"
 #include "Tensor.cginc"
 
 int pad[16];
@@ -158,6 +160,43 @@ void PadEdgeND(uint3 dispatchThreadID : SV_DispatchThreadID)
             Optr[threadIdx] = Xptr[indexX];
         else
             Optr[threadIdx] = Xptr[indexXEdge];
+    }
+}
+#endif
+
+
+#ifdef PADWRAPND
+[numthreads(64, 1, 1)]
+void PadWrapND(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if(threadIdx >= unrolledDispatchArgs.y)
+        return;
+    {
+        int indexX = 0;
+        int indexXWrap = 0;
+
+        bool allInsideRegion = true;
+        for (int j = 0; j < rank; j++)
+        {
+            int readIdx = ((threadIdx / stridesO[(SHAPE_MAXRANK-1) - j]) % shapeO[(SHAPE_MAXRANK-1) - j]) - pad[(rank - 1) - j];
+            int croppedDim = shapeX[(SHAPE_MAXRANK-1) - j] - max(0, -pad[(2 * rank - 1) - j]);
+
+            indexX += stridesX[(SHAPE_MAXRANK-1) - j] * readIdx;
+
+            allInsideRegion = allInsideRegion && (readIdx >= 0) && (readIdx < croppedDim);
+
+            int lastIdx = shapeX[(SHAPE_MAXRANK-1) - j];
+
+            readIdx = ((readIdx % lastIdx) + lastIdx) % lastIdx;
+
+            indexXWrap += stridesX[(SHAPE_MAXRANK-1) - j] * min(max(readIdx, 0), lastIdx);
+        }
+
+        if (allInsideRegion)
+            Optr[threadIdx] = Xptr[indexX];
+        else
+            Optr[threadIdx] = Xptr[indexXWrap];
     }
 }
 #endif

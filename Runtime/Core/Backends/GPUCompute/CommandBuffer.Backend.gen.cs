@@ -13,7 +13,7 @@ namespace Unity.Sentis
         // Binary Broadcast
 
         /// <inheritdoc/>
-        public override void Pow(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Pow(TensorFloat A, TensorFloat B, TensorFloat O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
@@ -54,7 +54,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Add(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Add(TensorFloat A, TensorFloat B, TensorFloat O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
@@ -95,7 +95,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Sub(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Sub(TensorFloat A, TensorFloat B, TensorFloat O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
@@ -136,7 +136,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Mul(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Mul(TensorFloat A, TensorFloat B, TensorFloat O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
@@ -177,7 +177,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Div(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Div(TensorFloat A, TensorFloat B, TensorFloat O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
@@ -218,7 +218,48 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void FMod(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Mod(TensorFloat A, TensorFloat B, TensorFloat O)
+        {
+            if (A.shape == O.shape && B.shape.length == 1)
+            {
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastModFloat");
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
+                var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
+                var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
+                var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
+                cb.SetInt(fn, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
+            }
+            else if (A.shape == O.shape && B.shape == O.shape)
+            {
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastModFloat");
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
+                var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
+                var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
+                var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
+                cb.SetInt(fn, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
+            }
+            else
+            {
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwiseModFloat");
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetInt(fn, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+
+                cb.ScheduleXBO(fn, Pin(A), Pin(B), Pin(O), O.shape.length);
+            }
+        }
+
+        /// <inheritdoc/>
+        public void FMod(TensorFloat A, TensorFloat B, TensorFloat O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
@@ -259,7 +300,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Pow(TensorFloat A, TensorInt B, TensorFloat O)
+        public void Pow(TensorFloat A, TensorInt B, TensorFloat O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
@@ -300,7 +341,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Add(TensorInt A, TensorInt B, TensorInt O)
+        public void Add(TensorInt A, TensorInt B, TensorInt O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
@@ -341,7 +382,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Sub(TensorInt A, TensorInt B, TensorInt O)
+        public void Sub(TensorInt A, TensorInt B, TensorInt O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
@@ -382,7 +423,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Mul(TensorInt A, TensorInt B, TensorInt O)
+        public void Mul(TensorInt A, TensorInt B, TensorInt O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
@@ -423,7 +464,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Div(TensorInt A, TensorInt B, TensorInt O)
+        public void Div(TensorInt A, TensorInt B, TensorInt O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
@@ -464,7 +505,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Mod(TensorInt A, TensorInt B, TensorInt O)
+        public void Mod(TensorInt A, TensorInt B, TensorInt O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
@@ -505,7 +546,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void FMod(TensorInt A, TensorInt B, TensorInt O)
+        public void FMod(TensorInt A, TensorInt B, TensorInt O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
@@ -588,9 +629,9 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Min(TensorFloat[] tensors, TensorFloat O)
+        public void Min(TensorFloat[] tensors, TensorFloat O)
         {
-            var Otmp = (tensors.Length > 2) ? NewTempTensorFloat(O.shape) : null;
+            var Otmp = (tensors.Length > 2) ? AllocTensorFloat(O.shape) : null;
 
             var curX = tensors[0];
             var curO = tensors.Length % 2 == 0 ? O : Otmp;
@@ -601,6 +642,7 @@ namespace Unity.Sentis
                 curO = curO == O ? Otmp : O;
             }
 
+            ReleaseTensorFloat(Otmp);
             Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
         }
 
@@ -645,9 +687,9 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Max(TensorFloat[] tensors, TensorFloat O)
+        public void Max(TensorFloat[] tensors, TensorFloat O)
         {
-            var Otmp = (tensors.Length > 2) ? NewTempTensorFloat(O.shape) : null;
+            var Otmp = (tensors.Length > 2) ? AllocTensorFloat(O.shape) : null;
 
             var curX = tensors[0];
             var curO = tensors.Length % 2 == 0 ? O : Otmp;
@@ -658,6 +700,7 @@ namespace Unity.Sentis
                 curO = curO == O ? Otmp : O;
             }
 
+            ReleaseTensorFloat(Otmp);
             Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
         }
 
@@ -708,9 +751,9 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Mean(TensorFloat[] tensors, TensorFloat O)
+        public void Mean(TensorFloat[] tensors, TensorFloat O)
         {
-            var Otmp = (tensors.Length > 2) ? NewTempTensorFloat(O.shape) : null;
+            var Otmp = (tensors.Length > 2) ? AllocTensorFloat(O.shape) : null;
 
             var curX = tensors[0];
             var curO = tensors.Length % 2 == 0 ? O : Otmp;
@@ -721,6 +764,7 @@ namespace Unity.Sentis
                 curO = curO == O ? Otmp : O;
             }
 
+            ReleaseTensorFloat(Otmp);
             Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
         }
 
@@ -765,9 +809,9 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Sum(TensorFloat[] tensors, TensorFloat O)
+        public void Sum(TensorFloat[] tensors, TensorFloat O)
         {
-            var Otmp = (tensors.Length > 2) ? NewTempTensorFloat(O.shape) : null;
+            var Otmp = (tensors.Length > 2) ? AllocTensorFloat(O.shape) : null;
 
             var curX = tensors[0];
             var curO = tensors.Length % 2 == 0 ? O : Otmp;
@@ -778,6 +822,7 @@ namespace Unity.Sentis
                 curO = curO == O ? Otmp : O;
             }
 
+            ReleaseTensorFloat(Otmp);
             Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
         }
 
@@ -822,9 +867,9 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Min(TensorInt[] tensors, TensorInt O)
+        public void Min(TensorInt[] tensors, TensorInt O)
         {
-            var Otmp = (tensors.Length > 2) ? NewTempTensorInt(O.shape) : null;
+            var Otmp = (tensors.Length > 2) ? AllocTensorInt(O.shape) : null;
 
             var curX = tensors[0];
             var curO = tensors.Length % 2 == 0 ? O : Otmp;
@@ -835,6 +880,7 @@ namespace Unity.Sentis
                 curO = curO == O ? Otmp : O;
             }
 
+            ReleaseTensorInt(Otmp);
             Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
         }
 
@@ -879,9 +925,9 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public override void Max(TensorInt[] tensors, TensorInt O)
+        public void Max(TensorInt[] tensors, TensorInt O)
         {
-            var Otmp = (tensors.Length > 2) ? NewTempTensorInt(O.shape) : null;
+            var Otmp = (tensors.Length > 2) ? AllocTensorInt(O.shape) : null;
 
             var curX = tensors[0];
             var curO = tensors.Length % 2 == 0 ? O : Otmp;
@@ -892,13 +938,14 @@ namespace Unity.Sentis
                 curO = curO == O ? Otmp : O;
             }
 
+            ReleaseTensorInt(Otmp);
             Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
         }
 
         // Reduction
 
         /// <inheritdoc/>
-        public override void ReduceMin(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceMin(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -919,6 +966,7 @@ namespace Unity.Sentis
             TensorShape shapeXReduced = X.shape;
             shapeXReduced[axis] = 1;
             int prevAxis = axis;
+            bool isXTempAlloc = false;
 
             for (int i = 1; i < axes.Length; i++)
             {
@@ -933,14 +981,17 @@ namespace Unity.Sentis
                 }
                 else
                 {
-                    var Otmp = NewTempTensorFloat(shapeXReduced);
+                    var Otmp = AllocTensorFloat(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceMinFloat", "GlobalReduceMinFloat", "UnrolledReduceMinFloat");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorFloat(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
+                    isXTempAlloc = true;
                 }
 
                 shapeXReduced[axis] = 1;
@@ -950,10 +1001,12 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceMinFloat", "GlobalReduceMinFloat", "UnrolledReduceMinFloat");
             }
+            if (isXTempAlloc)
+                ReleaseTensorFloat(X);
         }
 
         /// <inheritdoc/>
-        public override void ReduceMax(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceMax(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -974,6 +1027,7 @@ namespace Unity.Sentis
             TensorShape shapeXReduced = X.shape;
             shapeXReduced[axis] = 1;
             int prevAxis = axis;
+            bool isXTempAlloc = false;
 
             for (int i = 1; i < axes.Length; i++)
             {
@@ -988,14 +1042,17 @@ namespace Unity.Sentis
                 }
                 else
                 {
-                    var Otmp = NewTempTensorFloat(shapeXReduced);
+                    var Otmp = AllocTensorFloat(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceMaxFloat", "GlobalReduceMaxFloat", "UnrolledReduceMaxFloat");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorFloat(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
+                    isXTempAlloc = true;
                 }
 
                 shapeXReduced[axis] = 1;
@@ -1005,10 +1062,12 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceMaxFloat", "GlobalReduceMaxFloat", "UnrolledReduceMaxFloat");
             }
+            if (isXTempAlloc)
+                ReleaseTensorFloat(X);
         }
 
         /// <inheritdoc/>
-        public override void ReduceSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -1029,6 +1088,7 @@ namespace Unity.Sentis
             TensorShape shapeXReduced = X.shape;
             shapeXReduced[axis] = 1;
             int prevAxis = axis;
+            bool isXTempAlloc = false;
 
             for (int i = 1; i < axes.Length; i++)
             {
@@ -1043,14 +1103,17 @@ namespace Unity.Sentis
                 }
                 else
                 {
-                    var Otmp = NewTempTensorFloat(shapeXReduced);
+                    var Otmp = AllocTensorFloat(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceSumFloat", "GlobalReduceSumFloat", "UnrolledReduceSumFloat");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorFloat(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
+                    isXTempAlloc = true;
                 }
 
                 shapeXReduced[axis] = 1;
@@ -1060,10 +1123,12 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceSumFloat", "GlobalReduceSumFloat", "UnrolledReduceSumFloat");
             }
+            if (isXTempAlloc)
+                ReleaseTensorFloat(X);
         }
 
         /// <inheritdoc/>
-        public override void ReduceSumSquare(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceSumSquare(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -1085,6 +1150,7 @@ namespace Unity.Sentis
             shapeXReduced[axis] = 1;
             int prevAxis = axis;
             bool isInitial = true;
+            bool isXTempAlloc = false;
 
             for (int i = 1; i < axes.Length; i++)
             {
@@ -1099,26 +1165,32 @@ namespace Unity.Sentis
                 }
                 else if (isInitial)
                 {
-                    var Otmp = NewTempTensorFloat(shapeXReduced);
+                    var Otmp = AllocTensorFloat(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceSumSquareFloat", "GlobalReduceSumSquareFloat", "UnrolledReduceSumSquareFloat");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorFloat(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
                     isInitial = false;
+                    isXTempAlloc = true;
                 }
                 else
                 {
-                    var Otmp = NewTempTensorFloat(shapeXReduced);
+                    var Otmp = AllocTensorFloat(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceSumFloat", "GlobalReduceSumFloat", "UnrolledReduceSumFloat");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorFloat(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
+                    isXTempAlloc = true;
                 }
 
                 shapeXReduced[axis] = 1;
@@ -1133,10 +1205,12 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceSumFloat", "GlobalReduceSumFloat", "UnrolledReduceSumFloat");
             }
+            if (isXTempAlloc)
+                ReleaseTensorFloat(X);
         }
 
         /// <inheritdoc/>
-        public override void ReduceMean(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceMean(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -1157,6 +1231,7 @@ namespace Unity.Sentis
             TensorShape shapeXReduced = X.shape;
             shapeXReduced[axis] = 1;
             int prevAxis = axis;
+            bool isXTempAlloc = false;
 
             for (int i = 1; i < axes.Length; i++)
             {
@@ -1171,14 +1246,17 @@ namespace Unity.Sentis
                 }
                 else
                 {
-                    var Otmp = NewTempTensorFloat(shapeXReduced);
+                    var Otmp = AllocTensorFloat(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceMeanFloat", "GlobalReduceMeanFloat", "UnrolledReduceMeanFloat");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorFloat(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
+                    isXTempAlloc = true;
                 }
 
                 shapeXReduced[axis] = 1;
@@ -1188,10 +1266,12 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceMeanFloat", "GlobalReduceMeanFloat", "UnrolledReduceMeanFloat");
             }
+            if (isXTempAlloc)
+                ReleaseTensorFloat(X);
         }
 
         /// <inheritdoc/>
-        public override void ReduceProd(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceProd(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -1212,6 +1292,7 @@ namespace Unity.Sentis
             TensorShape shapeXReduced = X.shape;
             shapeXReduced[axis] = 1;
             int prevAxis = axis;
+            bool isXTempAlloc = false;
 
             for (int i = 1; i < axes.Length; i++)
             {
@@ -1226,14 +1307,17 @@ namespace Unity.Sentis
                 }
                 else
                 {
-                    var Otmp = NewTempTensorFloat(shapeXReduced);
+                    var Otmp = AllocTensorFloat(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceProdFloat", "GlobalReduceProdFloat", "UnrolledReduceProdFloat");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorFloat(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
+                    isXTempAlloc = true;
                 }
 
                 shapeXReduced[axis] = 1;
@@ -1243,10 +1327,12 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceProdFloat", "GlobalReduceProdFloat", "UnrolledReduceProdFloat");
             }
+            if (isXTempAlloc)
+                ReleaseTensorFloat(X);
         }
 
         /// <inheritdoc/>
-        public override void ReduceL1(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceL1(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -1268,6 +1354,7 @@ namespace Unity.Sentis
             shapeXReduced[axis] = 1;
             int prevAxis = axis;
             bool isInitial = true;
+            bool isXTempAlloc = false;
 
             for (int i = 1; i < axes.Length; i++)
             {
@@ -1282,26 +1369,32 @@ namespace Unity.Sentis
                 }
                 else if (isInitial)
                 {
-                    var Otmp = NewTempTensorFloat(shapeXReduced);
+                    var Otmp = AllocTensorFloat(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceL1Float", "GlobalReduceL1Float", "UnrolledReduceL1Float");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorFloat(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
                     isInitial = false;
+                    isXTempAlloc = true;
                 }
                 else
                 {
-                    var Otmp = NewTempTensorFloat(shapeXReduced);
+                    var Otmp = AllocTensorFloat(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceSumFloat", "GlobalReduceSumFloat", "UnrolledReduceSumFloat");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorFloat(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
+                    isXTempAlloc = true;
                 }
 
                 shapeXReduced[axis] = 1;
@@ -1316,10 +1409,12 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceSumFloat", "GlobalReduceSumFloat", "UnrolledReduceSumFloat");
             }
+            if (isXTempAlloc)
+                ReleaseTensorFloat(X);
         }
 
         /// <inheritdoc/>
-        public override void ReduceL2(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceL2(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -1341,6 +1436,7 @@ namespace Unity.Sentis
             shapeXReduced[axis] = 1;
             int prevAxis = axis;
             bool isInitial = true;
+            bool isXTempAlloc = false;
 
             for (int i = 1; i < axes.Length; i++)
             {
@@ -1355,26 +1451,32 @@ namespace Unity.Sentis
                 }
                 else if (isInitial)
                 {
-                    var Otmp = NewTempTensorFloat(shapeXReduced);
+                    var Otmp = AllocTensorFloat(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceSumSquareFloat", "GlobalReduceSumSquareFloat", "UnrolledReduceSumSquareFloat");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorFloat(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
                     isInitial = false;
+                    isXTempAlloc = true;
                 }
                 else
                 {
-                    var Otmp = NewTempTensorFloat(shapeXReduced);
+                    var Otmp = AllocTensorFloat(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceSumFloat", "GlobalReduceSumFloat", "UnrolledReduceSumFloat");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorFloat(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
+                    isXTempAlloc = true;
                 }
 
                 shapeXReduced[axis] = 1;
@@ -1389,10 +1491,12 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceSqrtFloat", "GlobalReduceSqrtFloat", "UnrolledReduceSqrtFloat");
             }
+            if (isXTempAlloc)
+                ReleaseTensorFloat(X);
         }
 
         /// <inheritdoc/>
-        public override void ReduceLogSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceLogSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -1413,6 +1517,7 @@ namespace Unity.Sentis
             TensorShape shapeXReduced = X.shape;
             shapeXReduced[axis] = 1;
             int prevAxis = axis;
+            bool isXTempAlloc = false;
 
             for (int i = 1; i < axes.Length; i++)
             {
@@ -1427,14 +1532,17 @@ namespace Unity.Sentis
                 }
                 else
                 {
-                    var Otmp = NewTempTensorFloat(shapeXReduced);
+                    var Otmp = AllocTensorFloat(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceSumFloat", "GlobalReduceSumFloat", "UnrolledReduceSumFloat");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorFloat(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
+                    isXTempAlloc = true;
                 }
 
                 shapeXReduced[axis] = 1;
@@ -1444,16 +1552,19 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceLogSumFloat", "GlobalReduceLogSumFloat", "UnrolledReduceLogSumFloat");
             }
+            if (isXTempAlloc)
+                ReleaseTensorFloat(X);
         }
 
         /// <inheritdoc/>
-        public override void ReduceLogSumExp(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceLogSumExp(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
         {
             if (axes == null || axes.Length == 0)
             {
-                var Xmax = NewTempTensorFloat(O.shape);
+                var Xmax = AllocTensorFloat(O.shape);
                 Reduce(X, Xmax, 1, X.shape.length, 1, "ReduceMaxFloat", "GlobalReduceMaxFloat", "UnrolledReduceMaxFloat");
                 Reduce(X, Xmax, O, 1, X.shape.length, 1, "ReduceLogSumExpFloat", "GlobalReduceLogSumExpFloat", "UnrolledReduceLogSumExpFloat");
+                ReleaseTensorFloat(Xmax);
                 return;
             }
 
@@ -1470,6 +1581,7 @@ namespace Unity.Sentis
             TensorShape shapeXReduced = X.shape;
             shapeXReduced[axis] = 1;
             int prevAxis = axis;
+            bool isXTempAlloc = false;
 
             for (int i = 1; i < axes.Length; i++)
             {
@@ -1484,16 +1596,20 @@ namespace Unity.Sentis
                 }
                 else
                 {
-                    var Otmp = NewTempTensorFloat(shapeXReduced);
+                    var Otmp = AllocTensorFloat(shapeXReduced);
 
-                    var Xmax = NewTempTensorFloat(shapeXReduced);
+                    var Xmax = AllocTensorFloat(shapeXReduced);
                     Reduce(X, Xmax, outerLength, reduceLength, innerLength, "ReduceMaxFloat", "GlobalReduceMaxFloat", "UnrolledReduceMaxFloat");
                     Reduce(X, Xmax, Otmp, outerLength, reduceLength, innerLength, "ReduceLogSumExpFloat", "GlobalReduceLogSumExpFloat", "UnrolledReduceLogSumExpFloat");
+                    ReleaseTensorFloat(Xmax);
 
+                    if (isXTempAlloc)
+                        ReleaseTensorFloat(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
+                    isXTempAlloc = true;
                 }
 
                 shapeXReduced[axis] = 1;
@@ -1501,10 +1617,13 @@ namespace Unity.Sentis
             }
 
             {
-                var Xmax = NewTempTensorFloat(shapeXReduced);
+                var Xmax = AllocTensorFloat(shapeXReduced);
                 Reduce(X, Xmax, outerLength, reduceLength, innerLength, "ReduceMaxFloat", "GlobalReduceMaxFloat", "UnrolledReduceMaxFloat");
                 Reduce(X, Xmax, O, outerLength, reduceLength, innerLength, "ReduceLogSumExpFloat", "GlobalReduceLogSumExpFloat", "UnrolledReduceLogSumExpFloat");
+                ReleaseTensorFloat(Xmax);
             }
+            if (isXTempAlloc)
+                ReleaseTensorFloat(X);
         }
 
         /// <inheritdoc/>
@@ -1529,6 +1648,7 @@ namespace Unity.Sentis
             TensorShape shapeXReduced = X.shape;
             shapeXReduced[axis] = 1;
             int prevAxis = axis;
+            bool isXTempAlloc = false;
 
             for (int i = 1; i < axes.Length; i++)
             {
@@ -1543,14 +1663,17 @@ namespace Unity.Sentis
                 }
                 else
                 {
-                    var Otmp = NewTempTensorFloat(shapeXReduced);
+                    var Otmp = AllocTensorFloat(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceSumExpFloat", "GlobalReduceSumExpFloat", "UnrolledReduceSumExpFloat");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorFloat(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
+                    isXTempAlloc = true;
                 }
 
                 shapeXReduced[axis] = 1;
@@ -1560,10 +1683,12 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceSumExpFloat", "GlobalReduceSumExpFloat", "UnrolledReduceSumExpFloat");
             }
+            if (isXTempAlloc)
+                ReleaseTensorFloat(X);
         }
 
         /// <inheritdoc/>
-        public override void ReduceMin(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceMin(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -1584,6 +1709,7 @@ namespace Unity.Sentis
             TensorShape shapeXReduced = X.shape;
             shapeXReduced[axis] = 1;
             int prevAxis = axis;
+            bool isXTempAlloc = false;
 
             for (int i = 1; i < axes.Length; i++)
             {
@@ -1598,14 +1724,17 @@ namespace Unity.Sentis
                 }
                 else
                 {
-                    var Otmp = NewTempTensorInt(shapeXReduced);
+                    var Otmp = AllocTensorInt(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceMinInt", "GlobalReduceMinInt", "UnrolledReduceMinInt");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorInt(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
+                    isXTempAlloc = true;
                 }
 
                 shapeXReduced[axis] = 1;
@@ -1615,10 +1744,12 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceMinInt", "GlobalReduceMinInt", "UnrolledReduceMinInt");
             }
+            if (isXTempAlloc)
+                ReleaseTensorInt(X);
         }
 
         /// <inheritdoc/>
-        public override void ReduceMax(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceMax(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -1639,6 +1770,7 @@ namespace Unity.Sentis
             TensorShape shapeXReduced = X.shape;
             shapeXReduced[axis] = 1;
             int prevAxis = axis;
+            bool isXTempAlloc = false;
 
             for (int i = 1; i < axes.Length; i++)
             {
@@ -1653,14 +1785,17 @@ namespace Unity.Sentis
                 }
                 else
                 {
-                    var Otmp = NewTempTensorInt(shapeXReduced);
+                    var Otmp = AllocTensorInt(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceMaxInt", "GlobalReduceMaxInt", "UnrolledReduceMaxInt");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorInt(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
+                    isXTempAlloc = true;
                 }
 
                 shapeXReduced[axis] = 1;
@@ -1670,10 +1805,12 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceMaxInt", "GlobalReduceMaxInt", "UnrolledReduceMaxInt");
             }
+            if (isXTempAlloc)
+                ReleaseTensorInt(X);
         }
 
         /// <inheritdoc/>
-        public override void ReduceSum(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceSum(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -1694,6 +1831,7 @@ namespace Unity.Sentis
             TensorShape shapeXReduced = X.shape;
             shapeXReduced[axis] = 1;
             int prevAxis = axis;
+            bool isXTempAlloc = false;
 
             for (int i = 1; i < axes.Length; i++)
             {
@@ -1708,14 +1846,17 @@ namespace Unity.Sentis
                 }
                 else
                 {
-                    var Otmp = NewTempTensorInt(shapeXReduced);
+                    var Otmp = AllocTensorInt(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceSumInt", "GlobalReduceSumInt", "UnrolledReduceSumInt");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorInt(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
+                    isXTempAlloc = true;
                 }
 
                 shapeXReduced[axis] = 1;
@@ -1725,10 +1866,12 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceSumInt", "GlobalReduceSumInt", "UnrolledReduceSumInt");
             }
+            if (isXTempAlloc)
+                ReleaseTensorInt(X);
         }
 
         /// <inheritdoc/>
-        public override void ReduceSumSquare(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceSumSquare(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -1750,6 +1893,7 @@ namespace Unity.Sentis
             shapeXReduced[axis] = 1;
             int prevAxis = axis;
             bool isInitial = true;
+            bool isXTempAlloc = false;
 
             for (int i = 1; i < axes.Length; i++)
             {
@@ -1764,26 +1908,32 @@ namespace Unity.Sentis
                 }
                 else if (isInitial)
                 {
-                    var Otmp = NewTempTensorInt(shapeXReduced);
+                    var Otmp = AllocTensorInt(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceSumSquareInt", "GlobalReduceSumSquareInt", "UnrolledReduceSumSquareInt");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorInt(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
                     isInitial = false;
+                    isXTempAlloc = true;
                 }
                 else
                 {
-                    var Otmp = NewTempTensorInt(shapeXReduced);
+                    var Otmp = AllocTensorInt(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceSumInt", "GlobalReduceSumInt", "UnrolledReduceSumInt");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorInt(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
+                    isXTempAlloc = true;
                 }
 
                 shapeXReduced[axis] = 1;
@@ -1798,10 +1948,12 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceSumInt", "GlobalReduceSumInt", "UnrolledReduceSumInt");
             }
+            if (isXTempAlloc)
+                ReleaseTensorInt(X);
         }
 
         /// <inheritdoc/>
-        public override void ReduceProd(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceProd(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -1822,6 +1974,7 @@ namespace Unity.Sentis
             TensorShape shapeXReduced = X.shape;
             shapeXReduced[axis] = 1;
             int prevAxis = axis;
+            bool isXTempAlloc = false;
 
             for (int i = 1; i < axes.Length; i++)
             {
@@ -1836,14 +1989,17 @@ namespace Unity.Sentis
                 }
                 else
                 {
-                    var Otmp = NewTempTensorInt(shapeXReduced);
+                    var Otmp = AllocTensorInt(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceProdInt", "GlobalReduceProdInt", "UnrolledReduceProdInt");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorInt(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
+                    isXTempAlloc = true;
                 }
 
                 shapeXReduced[axis] = 1;
@@ -1853,10 +2009,12 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceProdInt", "GlobalReduceProdInt", "UnrolledReduceProdInt");
             }
+            if (isXTempAlloc)
+                ReleaseTensorInt(X);
         }
 
         /// <inheritdoc/>
-        public override void ReduceL1(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+        public void ReduceL1(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -1878,6 +2036,7 @@ namespace Unity.Sentis
             shapeXReduced[axis] = 1;
             int prevAxis = axis;
             bool isInitial = true;
+            bool isXTempAlloc = false;
 
             for (int i = 1; i < axes.Length; i++)
             {
@@ -1892,26 +2051,32 @@ namespace Unity.Sentis
                 }
                 else if (isInitial)
                 {
-                    var Otmp = NewTempTensorInt(shapeXReduced);
+                    var Otmp = AllocTensorInt(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceL1Int", "GlobalReduceL1Int", "UnrolledReduceL1Int");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorInt(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
                     isInitial = false;
+                    isXTempAlloc = true;
                 }
                 else
                 {
-                    var Otmp = NewTempTensorInt(shapeXReduced);
+                    var Otmp = AllocTensorInt(shapeXReduced);
 
                     Reduce(X, Otmp, outerLength, reduceLength, innerLength, "ReduceSumInt", "GlobalReduceSumInt", "UnrolledReduceSumInt");
 
+                    if (isXTempAlloc)
+                        ReleaseTensorInt(X);
                     X = Otmp;
                     innerLength = X.shape.Strides(axis);
                     outerLength = X.shape.Length(0, axis);
                     reduceLength = dimX;
+                    isXTempAlloc = true;
                 }
 
                 shapeXReduced[axis] = 1;
@@ -1926,22 +2091,8 @@ namespace Unity.Sentis
             {
                 Reduce(X, O, outerLength, reduceLength, innerLength, "ReduceSumInt", "GlobalReduceSumInt", "UnrolledReduceSumInt");
             }
-        }
-
-        /// <inheritdoc/>
-        public override void ScalarMad(TensorFloat X, TensorFloat O, float s, float b)
-        {
-            var fn = new ComputeFunc("ScalarMad");
-            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
-            cb.SetFloat(fn, k_ID_s, s);
-            cb.SetFloat(fn, k_ID_b, b);
-            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
-            cb.SetInt(fn, k_ID_LengthO, O.shape.length - 1);
-            var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
-            var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
-            var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-            cb.SetInt(fn, k_ID_MaxBlockIndexX, numBlocksX * 4);
-            cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
+            if (isXTempAlloc)
+                ReleaseTensorInt(X);
         }
     }
 }

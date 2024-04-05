@@ -15,15 +15,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
             public void Execute(int index)
             {
-                // Perform the equivalent of Single.IsSubnormal which is not available in the
-                // .NET profile used by the Unity 2020.3 editor. Treat the float buffer as
-                // unsigned integers and use bit checks to detect denormal numbers. Denormals
-                // have a zero exponent field and a non-zero fraction field. The sign bit is
-                // ignored. Replace denormals with a zero (same bit pattern for integer versus
-                // float).
-                //
-                // IEEE-754 float: SEEE'EEEE'EFFF'FFFF'FFFF'FFFF'FFFF'FFFF (sign/exponent/fraction)
-                if (((ptr[index] & 0x7f800000) == 0) && ((ptr[index] & 0x007fffff) != 0))
+                if (float.IsSubnormal(ptr[index]))
                     ptr[index] = 0;
             }
         }
@@ -41,7 +33,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     {
                         ptr = (uint*)constant.weights.RawPtr
                     };
-                    var jobHandle = job.Schedule(constant.weights.Length, 1024);
+                    var jobHandle = job.Schedule(constant.shape.length, 1024);
                     jobHandle.Complete();
                 }
             }

@@ -17,15 +17,7 @@ static class ModelValidator
 
         foreach (var pass in validationPasses)
         {
-            try
-            {
-                pass.Run(model);
-            }
-            catch (Exception e)
-            {
-                model.Warnings.Add(new Model.ImporterWarning(pass.GetType().Name, Model.WarningType.Error, e.Message));
-                Debug.LogError(model.Warnings.Last().Message);
-            }
+            pass.Run(model);
         }
 
         return model;

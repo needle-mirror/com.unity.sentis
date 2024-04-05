@@ -14,7 +14,6 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             if (reshapeLayers.Count == 0)
                 return;
 
-            var allocator = new TensorCachingAllocator();
             var ctx = PartialInferenceAnalysis.InferModelPartialTensors(model, true);
 
             foreach (var layer in reshapeLayers)
@@ -28,7 +27,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     newShape[i] = shapePartialTensor[i];
 
                 var input = ctx.GetPartialTensor(reshapeLayer.inputs[0]);
-                var output = ctx.GetPartialTensor(reshapeLayer.name);
+                var output = ctx.GetPartialTensor(reshapeLayer.index);
 
                 // try and replace params and unknowns with values
                 for (var i = 0; i < output.shape.rank; i++)
@@ -69,18 +68,17 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 }
 
                 if (numMinusOne == 0 && numUnknown == 1 && (!reshapeLayer.allowZero || numZero == 0))
-                    newShape[unknownIndex] = new PartialTensorElement(-1);
+                    newShape[unknownIndex] = PartialTensorElement.IntValue(-1);
 
                 if (!newShape.IsFullyKnown())
                     continue;
 
-                var shapeName = model.GetUniqueName(reshapeLayer.name + "_Shape");
+                var shapeIndex = model.GetUniqueIndex(reshapeLayer.index + "_Shape");
                 using var shapeTensor = newShape.ToTensor();
-                var shapeConstant = new Constant(model.GetUniqueName(shapeName), shapeTensor);
-                reshapeLayer.inputs[1] = shapeName;
+                var shapeConstant = new Constant(model.GetUniqueIndex(shapeIndex), shapeTensor);
+                reshapeLayer.inputs[1] = shapeIndex;
                 model.AddConstant(shapeConstant);
             }
-            allocator.Dispose();
         }
     }
 }

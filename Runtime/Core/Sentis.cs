@@ -66,18 +66,6 @@ public enum BackendType
 public interface IWorker : IDisposable
 {
     /// <summary>
-    /// Prepares the worker to execute the model using inputs of given shapes.
-    /// </summary>
-    /// <param name="inputShapes">A dictionary mapping input names to tensor shapes.</param>
-    void PrepareForInput(IDictionary<string, TensorShape> inputShapes);
-
-    /// <summary>
-    /// Sets a tensor as the default input of the model. For models with more than one input this sets the first input.
-    /// </summary>
-    /// <param name="inputTensor">The tensor to set to the default input of the model.</param>
-    void SetInput(Tensor inputTensor);
-
-    /// <summary>
     /// Sets a tensor as a named input of the model.
     /// </summary>
     /// <param name="name">The name of the input to set.</param>
@@ -110,7 +98,7 @@ public interface IWorker : IDisposable
     /// To schedule the execution of the next layer of the model, call `MoveNext` on the `IEnumerator` object this method returns.
     /// </summary>
     /// <returns>The `IEnumerator` for scheduling manual execution.</returns>
-    IEnumerator StartManualSchedule();
+    IEnumerator ExecuteLayerByLayer();
 
     /// <summary>
     /// Sets a tensor as the default input of the model and schedules execution of the model one layer at a time. This is non-blocking. For models with more than one input this sets the first input.
@@ -119,7 +107,7 @@ public interface IWorker : IDisposable
     /// </summary>
     /// <param name="inputTensor">The tensor to set to the default input of the model.</param>
     /// <returns>The `IEnumerator` for scheduling manual execution.</returns>
-    IEnumerator StartManualSchedule(Tensor inputTensor);
+    IEnumerator ExecuteLayerByLayer(Tensor inputTensor);
 
     /// <summary>
     /// Sets multiple tensors as the inputs of the model and schedules execution of the model one layer at a time. This is non-blocking.
@@ -128,20 +116,14 @@ public interface IWorker : IDisposable
     /// </summary>
     /// <param name="inputTensors">The tensors to use as the inputs of the model as a dictionary mapping input names to tensors.</param>
     /// <returns>The `IEnumerator` for scheduling manual execution.</returns>
-    IEnumerator StartManualSchedule(IDictionary<string, Tensor> inputTensors);
+    IEnumerator ExecuteLayerByLayer(IDictionary<string, Tensor> inputTensors);
 
     /// <summary>
-    /// Schedules the execution of the part of the model that hasn't been scheduled yet. This is non-blocking.
-    /// </summary>
-    /// <param name="blocking">When the value is `true`, the method blocks further code until the model finishes executing.</param>
-    void FlushSchedule(bool blocking = false);
-
-    /// <summary>
-    /// Returns the proportion of the model scheduled for execution since the last call to `StartManualSchedule`.
+    /// Returns the proportion of the model scheduled for execution since the last call to `ExecuteLayerByLayer`.
     ///
-    /// Returns 0.0 after you call `StartManualSchedule`. Returns 1.0 when the model is fully scheduled.
+    /// Returns 0.0 after you call `ExecuteLayerByLayer`. Returns 1.0 when the model is fully scheduled.
     ///
-    /// The value increases each time you iterate on the `IEnumerator` that `StartManualSchedule` returns.
+    /// The value increases each time you iterate on the `IEnumerator` that `ExecuteLayerByLayer` returns.
     /// </summary>
     float scheduleProgress { get; }
 
@@ -152,27 +134,35 @@ public interface IWorker : IDisposable
     ///
     /// The reference is valid only until you call `Execute()` or `Dispose()` on the worker.
     ///
-    /// If you want to dispose of the worker but keep the tensor, use `FinishExecutionAndDownloadOutput()` instead, or use `TakeOwnership()` on the output tensor.
     /// </summary>
-    /// <returns>The output tensor.</returns>
+    /// <returns>The output tensor reference.</returns>
     Tensor PeekOutput();
 
     /// <summary>
-    /// Returns a reference to an output tensor with a given `name`. This is non-blocking.
+    /// Returns a reference to the default output tensor. This is non-blocking.
+    ///
+    /// For models with more than one output this returns a reference to the first output tensor.
     ///
     /// The reference is valid only until you call `Execute()` or `Dispose()` on the worker.
-    ///
-    /// If you want to dispose of the worker but keep the tensor, use `FinishExecutionAndDownloadOutput()` instead, or use `TakeOwnership()` on the output tensor.
     /// </summary>
     /// <param name="name">The name of the output tensor to peek.</param>
-    /// <returns>The output tensor.</returns>
+    /// <returns>The output tensor reference.</returns>
     Tensor PeekOutput(string name);
 
     /// <summary>
-    /// Returns a summary of the execution of the model.
+    /// Takes ownership of the default output tensor. This is non-blocking.
+    ///
+    /// For models with more than one output this returns a reference to the first output tensor.
     /// </summary>
-    /// <returns>The summary of the execution.</returns>
-    string Summary();
+    /// <returns>The output tensor.</returns>
+    Tensor TakeOutputOwnership();
+
+    /// <summary>
+    /// Takes ownership of an output tensor with a given `name`. This is non-blocking.
+    /// </summary>
+    /// <param name="name">The name of the output tensor to take ownership of.</param>
+    /// <returns>The output tensor.</returns>
+    Tensor TakeOutputOwnership(string name);
 
     /// <summary>
     /// Returns the backend used for execution.
@@ -189,13 +179,17 @@ public static class WorkerExtensions
     /// <summary>
     /// Execute model and returns a CPU copy of all outputs. This is a non blocking call.
     /// </summary>
+    /// <param name="worker">The worker to execute.</param>
+    /// <param name="inputs">The input tensors as a dictionary.</param>
+    /// <param name="outputs">The output names as a list.</param>
+    /// <returns>The async task.</returns>
     public static async Task<bool[]> ExecuteAndDownloadOutputsAsync(this IWorker worker, Dictionary<string, Tensor> inputs, List<string> outputs)
     {
         worker.Execute(inputs);
         Task<bool>[] tasks = new Task<bool>[outputs.Count];
         for (int i = 0; i < outputs.Count; i++)
         {
-            tasks[i] = worker.PeekOutput(outputs[i]).MakeReadableAsync();
+            tasks[i] = worker.PeekOutput(outputs[i]).CompleteOperationsAndDownloadAsync();
         }
         return await Task.WhenAll(tasks);
     }
@@ -240,11 +234,6 @@ public class WorkerFactory
     public struct WorkerConfiguration
     {
         /// <summary>
-        /// Whether to log debug information about model execution to the Console window. The default is `false`.
-        /// </summary>
-        public bool verbose;
-
-        /// <summary>
         /// If true the worker is allowed to take ownership of the weights memory from the model
         /// this is useful so worker to limit memory pressure when the worker need to copy those
         /// weight to a different device.
@@ -254,24 +243,21 @@ public class WorkerFactory
         /// <summary>
         /// Initializes and returns an instance of `WorkerConfiguration`.
         /// </summary>
-        /// <param name="verbose">Whether to use verbose logging.</param>
         /// <param name="takeoverWeights">Whether to allow the worker to take ownership of the model weights memory.</param>
-        public WorkerConfiguration(bool verbose = false, bool takeoverWeights = false)
+        public WorkerConfiguration(bool takeoverWeights = false)
         {
-            this.verbose = verbose;
             this.takeoverWeights = takeoverWeights;
         }
     }
 
     /// <summary>
-    /// Initializes and returns an instance of `Ops` on a given back end.
+    /// Initializes and returns an instance of `IBackend` for a backend type..
     /// </summary>
     /// <param name="backendType">The type of backend to use.</param>
-    /// <param name="allocator">The tensor allocator to use when allocating new tensors.</param>
-    /// <returns>The created `Ops` instance.</returns>
-    public static Ops CreateOps(BackendType backendType, ITensorAllocator allocator)
+    /// <returns>The created `IBackend` instance.</returns>
+    public static IBackend CreateBackend(BackendType backendType)
     {
-        return BackendFactory.CreateOps(backendType, allocator, false);
+        return BackendFactory.CreateBackend(backendType);
     }
 
     /// <summary>
@@ -291,11 +277,10 @@ public class WorkerFactory
     /// </summary>
     /// <param name="backendType">The type of backend to use.</param>
     /// <param name="model">The model to execute with this `IWorker`.</param>
-    /// <param name="verbose">Whether to use verbose logging.</param>
     /// <returns>The created `IWorker` instance.</returns>
-    public static IWorker CreateWorker(BackendType backendType, Model model, bool verbose = false)
+    public static IWorker CreateWorker(BackendType backendType, Model model)
     {
-        var workerConfiguration = new WorkerConfiguration(verbose);
+        var workerConfiguration = new WorkerConfiguration();
         return CreateWorker(backendType, model, workerConfiguration);
     }
 
@@ -304,12 +289,11 @@ public class WorkerFactory
     /// </summary>
     /// <param name="deviceType">The type of device to use. Sentis selects the best backend type available for `deviceType`.</param>
     /// <param name="model">The model to execute with this `IWorker`.</param>
-    /// <param name="verbose">Whether to use verbose logging.</param>
     /// <returns>The created `IWorker` instance.</returns>
-    public static IWorker CreateWorker(Model model, DeviceType deviceType, bool verbose = false)
+    public static IWorker CreateWorker(Model model, DeviceType deviceType)
     {
         var type = GetBestTypeForDevice(deviceType);
-        var workerConfiguration = new WorkerConfiguration(verbose);
+        var workerConfiguration = new WorkerConfiguration();
         return CreateWorker(type, model, workerConfiguration);
     }
 
@@ -345,47 +329,6 @@ public class WorkerFactory
             default:
                 return BackendType.CPU;
         }
-    }
-}
-
-/// <summary>
-/// Represents extensions for the `Model` class.
-/// </summary>
-public static class ModelExtensions
-{
-    /// <summary>
-    /// Initializes and returns an instance of `IWorker` with a `model` to execute. Sentis selects the best backend type available for `deviceType`.
-    ///
-    /// This is a convenience method that internally calls `WorkerFactory.CreateWorker`.
-    /// </summary>
-    /// <param name="model">The model to execute.</param>
-    /// <param name="deviceType">The preferred device for execution. For example `DeviceType.GPU` specifies the fast GPU path.</param>
-    /// <param name="verbose">Whether to log scheduling of layers execution to the console.</param>
-    /// <returns>The instantiated `IWorker`.</returns>
-    public static IWorker CreateWorker(this Model model, DeviceType deviceType, bool verbose = false)
-    {
-        return WorkerFactory.CreateWorker(model, deviceType, verbose);
-    }
-}
-
-/// <summary>
-/// Represents extensions for the `ModelAsset` class.
-/// </summary>
-public static class ModelAssetExtensions
-{
-    /// <summary>
-    /// Initializes and returns an instance of `IWorker` with a `modelAsset` to execute. Sentis selects the best backend type available for `device`.
-    ///
-    /// This is a convenience method that internally calls `ModelLoader.Load` followed by `WorkerFactory.CreateWorker`.
-    /// </summary>
-    /// <param name="modelAsset">The model asset to execute.</param>
-    /// <param name="deviceType">The preferred device for execution. For example `DeviceType.GPU` specifies the fast GPU path</param>
-    /// <param name="verbose">Whether to log scheduling of layers execution to the console.</param>
-    /// <returns>The instantiated `IWorker`.</returns>
-    public static IWorker CreateWorker(this ModelAsset modelAsset, DeviceType deviceType, bool verbose = false)
-    {
-        var model = ModelLoader.Load(modelAsset);
-        return model.CreateWorker(deviceType, verbose);
     }
 }
 

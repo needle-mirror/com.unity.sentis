@@ -4,6 +4,7 @@
 #pragma kernel AveragePool2D AVERAGEPOOL2D
 #pragma kernel MaxPool1D MAXPOOL1D
 #pragma kernel AveragePool1D AVERAGEPOOL1D
+#include "HLSLSupport.cginc"
 #include "Tensor.cginc"
 
 uint2 unrolledDispatchArgs;
