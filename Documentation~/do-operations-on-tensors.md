@@ -54,7 +54,7 @@ Refer to [Create an engine to run a model](create-an-engine.md) for more informa
 
 ## Supported operations
 
-Almost all of the [supported ONNX operators](supported-operators.md) have corresponding `Ops` methods. Sentis also provides convenience methods such as tensor arithmetic with scalar values.
+Almost all of the [supported ONNX operators](supported-operators.md) have corresponding `IBackend` methods. Sentis also provides convenience methods such as tensor arithmetic with scalar values.
 
 In the following example a series of tensors are calculated by applying `IBackend` methods.
 
@@ -63,11 +63,11 @@ using UnityEngine;
 using Unity.Sentis;
 using Unity.Sentis.Layers;
 
-public class OpsMethods : MonoBehaviour
+public class BackendMethods : MonoBehaviour
 {
     void Start()
     {
-        using IBackend ops = new GPUComputeBackend();
+        using IBackend backend = new GPUComputeBackend();
 
         // Create a random uniform tensor of shape [1, 3, 32, 32]
         using var randomTensor = TensorFloat.AllocNoData(new TensorShape(1, 3, 32, 32));

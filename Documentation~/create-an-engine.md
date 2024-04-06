@@ -1,6 +1,6 @@
 # Create an engine to run a model
 
-To run a model, create a worker. A worker is the engine that breaks the model down into executable tasks and schedules the tasks to run on a backend (typically the GPU or CPU).
+To run a model, create a worker. A worker is the engine that breaks the model down into executable tasks and schedules the tasks to run on a back end (typically the GPU or CPU).
 
 A worker is an instance of an [`IWorker`](xref:Unity.Sentis.IWorker) object.
 

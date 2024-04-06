@@ -34,7 +34,7 @@ A `.sentis` file is serialized using `FlatBuffers` as follows
              | model desription                  │
              │                                   │
           ┌─ ├───────────────────────────────────┤
-          │  │Weight chunk data                  |
+          │  │ Weight chunk data                 |
           │  │                                   │
           │  │                                   │
 Weights  ─┤  ├───────────────────────────────────┤
@@ -45,4 +45,4 @@ Weights  ─┤  ├────────────────────
           │  │...                                │
           └─ └───────────────────────────────────┘
 ```
-Referer to `Sentis/Runtime/Core/Serialization/program.fbs` for more info
+Refer to `Sentis/Runtime/Core/Serialization/program.fbs` for more info

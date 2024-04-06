@@ -1,26 +1,25 @@
 {
   "name": "com.unity.sentis",
   "displayName": "Sentis",
-  "version": "1.4.0-pre.1",
+  "version": "1.4.0-pre.2",
   "unity": "2023.2",
   "description": "Sentis is a neural network inference library. It enables you to import trained neural network models, connect the network inputs and outputs to your game code, and then run them locally in your end-user app. Use cases include capabilities like natural language processing, object recognition, automated game opponents, sensor data classification, and many more.\n\nSentis automatically optimizes your network for real-time use to speed up inference. It also allows you to tune your implementation further with tools like frame slicing, quantization, and custom backend (i.e. compute type) dispatching.\n\nVisit https://unity.com/sentis for more resources.",
   "dependencies": {
     "com.unity.burst": "1.8.12",
     "com.unity.collections": "1.2.4",
-    "com.unity.modules.jsonserialize": "1.0.0",
     "com.unity.modules.imageconversion": "1.0.0"
   },
   "_upm": {
-    "changelog": "### Added\n- Fast path for Scatter and Gather ops.\n- Quantization API for quantizing model weights to Float16 or Uint8.\n- TensorByte and TensorShort tensor types for quantization.\n- Pad operator to support 'axes' input, 'TensorInt' input and 'wrap' mode.\n- GeluFast op for tiny stories optimization.\n- Tensor 'Reshape' method for changing shape without backend.\n- Functional API for compiling models with torch-like syntax.\n- Analytics reporting on model import.\n\n### Changed\n- Reworked async API with awaitable methods on tensor readback.\n- Reworked tensor allocation scheme.\n- Renamed tensor fields and methods.\n- Reworked model serialization to use flatbuffers.\n- Random layers accept integer seed rather than float.\n- Improved NonMaxSuppression inference drastically and added GPUCompute backend.\n\n### Fixed\n- Dispatch limit issues on Split operator.\n- Optimization pass where Dense has transposed weights.\n- Import settings for Resize op on opset 10.\n- Links to external sources in docs.\n- Edge cases in ScatterElements and GatherElements infer correctly.\n- Conv operator going out of bounds on GPUCompute and GPUCommandBuffer.\n\n### Removed\n- Broken optimization pass for Dense > ScaleBias.\n- ArrayTensorData class and methods.\n- 'CreateWorker' method from model extensions.\n- Mapping of param symbolic tensor dims to original names.\n- Model API for adding inputs, constants, layers to model (in favour of Functional API).\n- Ops for tensor operations (in favour of Functional API)."
+    "changelog": "- Test fixes"
   },
   "upmCi": {
-    "footprint": "37efed2c75d71a402f23e53449a6be1f1e848f4c"
+    "footprint": "dd95a7b1dbbaaecbc6c8879c3a4cbf91a4edb28d"
   },
   "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.sentis@1.4/manual/index.html",
   "repository": {
     "url": "https://github.cds.internal.unity3d.com/unity/UnityInferenceEngine.git",
     "type": "git",
-    "revision": "aa807c1cb80872b70ccb2ac84e90f63a9d771ce3"
+    "revision": "50ab08b77294dd88a60da0f867509f761edb37e0"
   },
   "samples": [
     {

@@ -1,6 +1,6 @@
-# What's new in Sentis 1.4.0-pre.1
+# What's new in Sentis 1.4.0-pre.2
 
-This is a summary of the changes from Sentis 1.3.0-pre.3 to Sentis 1.4.0-pre.1.
+This is a summary of the changes from Sentis 1.3.0-pre.3 to Sentis 1.4.0-pre.2.
 
 ## Added
 

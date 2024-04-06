@@ -57,7 +57,7 @@ public class AsyncReadbackCompute : MonoBehaviour
 ```
 
 Note:
-You can also avoid a tensor data mutation to a CPU tensor that `CompleteOperationsAndDownload` does.
+You can also avoid a Tensor data mutation to a CPU tensor that `CompleteOperationsAndDownload` does.
 For that, simply call `tensor.dataOnBackend.Download<T>()` to get the data directly. This will keep the `tensor.dataOnDevice` on the given backend but you will have a CPU copy of it.
 Be careful with synchronization issues if you re-run a worker, you will need to issue a new download request.
 

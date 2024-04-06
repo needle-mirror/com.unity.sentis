@@ -24,7 +24,7 @@ The result of `PeekOutput` is a reference that is owned by Sentis worker memory 
 If you call `Execute` again, the tensor will be overwritten.
 
 > [!NOTE]
-> Be careful about reading data from an output tensor, as in a lot of cases you might inadvertently cause a  there may be a performance cost because Sentis waits for the model to finish running before downloading the data from the GPU or Burst to the CPU. To avoid this cost, you can [read output from a model asynchronously](read-output-async.md). Additionally, you can [profile a model](profile-a-model.md) to gain a better understanding of its performance. 
+> Be careful about reading data from an output tensor, as in a lot of cases you might inadvertently cause a blocking wait until the model finishes running before downloading the data from the GPU or Burst to the CPU. To avoid this cost, you can [read output from a model asynchronously](read-output-async.md). Additionally, you can [profile a model](profile-a-model.md) to gain a better understanding of its performance. 
 
 ### Take ownership of the original tensor
 

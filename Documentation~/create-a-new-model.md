@@ -33,11 +33,11 @@ public class CreateNewModel : MonoBehaviour
         }
 
         // Set up the input data types and shapes for the model as `InputDef`s.
-        // Our dot product operates on two vector tensors of the same size `d`.
+        // Our dot product operates on two vector tensors of the same size `6`.
         (InputDef, InputDef) inputDefs =
         (
-            new InputDef(DataType.Float, new TensorShape(1, 2, 3)),
-            new InputDef(DataType.Float, new TensorShape(1, 2, 3))
+            new InputDef(DataType.Float, new TensorShape(6)),
+            new InputDef(DataType.Float, new TensorShape(6))
         );
 
         // Build the model using the `Compile` method.
