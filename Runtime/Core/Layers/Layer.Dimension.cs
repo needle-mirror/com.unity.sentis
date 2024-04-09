@@ -128,7 +128,7 @@ namespace Unity.Sentis.Layers
         public override void Execute(ExecutionContext ctx)
         {
             var X = ctx.vars.GetTensor(inputs[0]);
-            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.vars.AllocateTensorAndStore(index, new TensorShape(), DataType.Int, ctx.backend.backendType) as TensorInt;
             BurstTensorData.Pin(O);
             O[0] = X.shape.length;
         }

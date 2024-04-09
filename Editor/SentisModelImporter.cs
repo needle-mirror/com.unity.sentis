@@ -22,6 +22,8 @@ namespace Unity.Sentis
         public override void OnImportAsset(AssetImportContext ctx)
         {
             var model = ModelLoader.Load(ctx.assetPath);
+            if (model == null)
+                return;
 
             ModelAsset asset = ScriptableObject.CreateInstance<ModelAsset>();
 

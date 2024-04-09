@@ -282,7 +282,6 @@ namespace Unity.Sentis
         public static readonly int k_ID_Scale = Shader.PropertyToID("Scale");
         public static readonly int k_ID_Bias = Shader.PropertyToID("Bias");
         public static readonly int k_ID_Sptr = Shader.PropertyToID("Sptr");
-        public static readonly int k_ID_BMptr = Shader.PropertyToID("BMptr");
         public static readonly int k_ID_inputForget = Shader.PropertyToID("inputForget");
         public static readonly int k_ID_detectNegative = Shader.PropertyToID("detectNegative");
         public static readonly int k_ID_detectPositive = Shader.PropertyToID("detectPositive");
@@ -368,17 +367,6 @@ namespace Unity.Sentis
         public static readonly int k_ID_offset = Shader.PropertyToID("offset");
         public static readonly int k_ID_Kdiv4 = Shader.PropertyToID("Kdiv4");
         public static readonly int k_ID_Ndiv4 = Shader.PropertyToID("Ndiv4");
-        public static readonly int k_ID_boxCount = Shader.PropertyToID("boxCount");
-        public static readonly int k_ID_classCount = Shader.PropertyToID("classCount");
-        public static readonly int k_ID_iouThreshold = Shader.PropertyToID("iouThreshold");
-        public static readonly int k_ID_scoreThreshold = Shader.PropertyToID("scoreThreshold");
-
-        public static readonly int k_ID_DiscardPrefixes = Shader.PropertyToID("DiscardPrefixes");
-        public static readonly int k_ID_discardPrefixesClassStride = Shader.PropertyToID("discardPrefixesClassStride");
-        public static readonly int k_ID_ClassAbsoluteOffsets = Shader.PropertyToID("ClassAbsoluteOffsets");
-        public static readonly int k_ID_discardFlagsBatchStride = Shader.PropertyToID("discardFlagsBatchStride");
-        public static readonly int k_ID_discardPrefixesBatchStride = Shader.PropertyToID("discardPrefixesBatchStride");
-        public static readonly int k_ID_maxOutputBoxesPerClass = Shader.PropertyToID("maxOutputBoxesPerClass");
 
         public static readonly TensorProperties k_TensorPropertiesO = new TensorProperties("O");
         public static readonly TensorProperties k_TensorPropertiesX = new TensorProperties("X");

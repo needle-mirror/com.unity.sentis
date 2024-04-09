@@ -1265,12 +1265,6 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void NonMaxSuppression(TensorFloat boxes, TensorFloat scores, TensorInt selectedBoxes, int maxOutputBoxesPerClass, float iouThreshold, float scoreThreshold, Layers.CenterPointBox centerPointBox)
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <inheritdoc/>
     public void RoiAlign(TensorFloat X, TensorFloat rois, TensorInt indices, TensorFloat O, Layers.RoiPoolingMode mode, int outputHeight, int outputWidth, int samplingRatio, float spatialScale)
     {
         var job = new RoiAlignJob();

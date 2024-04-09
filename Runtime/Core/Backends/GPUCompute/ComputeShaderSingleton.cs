@@ -33,11 +33,6 @@ namespace Unity.Sentis
 
         HashSet<string> m_UsedKernels = new HashSet<string>();
 
-        // Generic GPU compute primitive, ressources are allocated by clients, not here
-        GPUPrefixSum m_GPUPrefixSum;
-        internal GPUPrefixSum prefixSumWorker { get => m_GPUPrefixSum; }
-
-
         ComputeShaderSingleton()
         {
             RegisterGeneratedKernels();
@@ -171,36 +166,7 @@ namespace Unity.Sentis
                 });
 
             RegisterKernels("Sentis/ComputeShaders/ImageBased",
-                new[] {
-                    "DepthToSpaceDepthColumnRow", "DepthToSpaceColumnRowDepth", "SpaceToDepth", "RoiAlignAvg", "RoiAlignMax",
-                    "NMSBitMask", "NMSDiscardBitMaskLinearRectBox", "NMSDiscardBitMaskLinearCenterBox", "NMSDiscardBitMaskPredicatedGatherCompaction",
-                    "NMSDiscardBitMaskLinearSMCenterBox", "NMSDiscardBitMaskLinearSMRectBox"});
-                                  
-            RegisterKernels("Sentis/ComputeShaders/GPUPrefixSum",
-                new[] {
-                        "MainCalculateLevelDispatchArgsFromConst",
-                        "MainCalculateLevelDispatchArgsFromBuffer",
-                        "MainPrefixSumNextInput",
-                        "MainPrefixSumOnGroup",
-                        "MainPrefixSumOnGroupExclusive",
-                        "MainPrefixSumOnGroupOrigInputAsBitCnt",
-                        "MainPrefixSumOnGroupExclusiveOrigInputAsBitCnt",
-                        "MainPrefixSumOnGroupFillNext",
-                        "MainPrefixSumOnGroupExclusiveFillNext",
-                        "MainPrefixSumOnGroupOrigInputAsBitCntFillNext",
-                        "MainPrefixSumOnGroupExclusiveOrigInputAsBitCntFillNext",
-                        "MainPrefixSumResolveParentOrigInputAsBitCnt",
-                        "MainPrefixSumResolveParentExclusiveOrigInputAsBitCnt",
-                        "MainPrefixSumResolveParent",
-                        "MainPrefixSumResolveParentExclusive",
-                        "MainGatherScaleBiasClampAbove",
-                });
-
-            m_GPUPrefixSum = new GPUPrefixSum(new GPUPrefixSum.SystemResources
-            {
-                computeAsset = FindComputeShader("MainPrefixSumOnGroup") // awkward, but any kernel will do, we want the compute here
-            });
-
+                new[] { "DepthToSpaceDepthColumnRow", "DepthToSpaceColumnRowDepth", "SpaceToDepth", "RoiAlignAvg", "RoiAlignMax" });
         }
 
         void RegisterKernels(string shaderName, string[] kernelNames)

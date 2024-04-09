@@ -3010,11 +3010,6 @@ namespace Unity.Sentis
             throw new NotImplementedException();
         }
 
-        public void NonMaxSuppression(TensorFloat boxes, TensorFloat scores, TensorInt selectedBoxes, int maxOutputBoxesPerClass, float iouThreshold, float scoreThreshold, Layers.CenterPointBox centerPointBox)
-        {
-            throw new NotImplementedException();
-        }
-
         /// <inheritdoc/>
         public void CompressWithIndices(Tensor X, TensorInt indices, Tensor O, int numIndices, int axis)
         {

@@ -1418,17 +1418,6 @@ namespace Unity.Sentis
         void TopK(TensorFloat X, TensorFloat values, TensorInt indices, int k, int axis, bool largest);
 
         /// <summary>
-        /// Calculates `NonMaxSuppression` which selects indices of boxes from input `boxes` and `scores` tensors, and bases the indices on the scores and amount of intersection with previously selected boxes.
-        /// <param name="boxes">The boxes tensor.</param>
-        /// <param name="scores">The scores tensor.</param>
-        /// <param name="maxOutputBoxesPerClass">The maximum number of boxes to return for each class.</param>
-        /// <param name="iouThreshold">The threshold above which the intersect-over-union rejects a box.</param>
-        /// <param name="scoreThreshold">The threshold below which the box score filters a box from the output.</param>
-        /// <param name="centerPointBox">The format the `boxes` tensor uses to store the box data as a `CenterPointBox`. The default value is `CenterPointBox.Corners`.</param>
-        /// </summary>
-        void NonMaxSuppression(TensorFloat boxes, TensorFloat scores, TensorInt selectedBoxes, int maxOutputBoxesPerClass, float iouThreshold, float scoreThreshold, Layers.CenterPointBox centerPointBox);
-
-        /// <summary>
         /// Performs an `Einsum` math operation.
         /// </summary>
         /// <description>

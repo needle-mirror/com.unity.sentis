@@ -30,7 +30,7 @@ public partial class GPUCommandBufferBackend : IBackend
     public GPUCommandBufferBackend(CommandBuffer cb) { this.cb = cb; }
 
     /// <summary>
-    /// Initializes and returns an instance of `GPUCommandBufferBackend`.
+    /// Initializes and returns an instance of `GPUComputeOps`.
     /// </summary>
     public GPUCommandBufferBackend() { cb = new CommandBuffer(); }
 
@@ -2722,12 +2722,6 @@ public partial class GPUCommandBufferBackend : IBackend
         cb.SetTensorAsBuffer(fn, k_ID_Valuesptr, Pin(values));
         cb.SetTensorAsBuffer(fn, k_ID_Indicesptr, Pin(indices));
         cb.Dispatch(fn, innerLength, outerLength, 1);
-    }
-
-    /// <inheritdoc/>
-    public void NonMaxSuppression(TensorFloat boxes, TensorFloat scores, TensorInt selectedIndices, int maxOutputBoxesPerClass, float iouThreshold, float scoreThreshold, Layers.CenterPointBox centerPointBox)
-    {
-        throw new NotImplementedException();
     }
 
     /// <inheritdoc/>

@@ -1,12 +1,11 @@
-# What's new in Sentis 1.4.0-pre.2
+# What's new in Sentis 1.4.0-pre.3
 
-This is a summary of the changes from Sentis 1.3.0-pre.3 to Sentis 1.4.0-pre.2.
+This is a summary of the changes from Sentis 1.3.0-pre.3 to Sentis 1.4.0-pre.3.
 
 ## Added
 
 - Functional API for building and editing models using PyTorch style syntax. This includes operator overloads, sliced indexing with ranges and automatic type promotion.
 - Quantization API for compressing model weights by up to a factor of 4. Quantized models take up less space on disk and use less memory during inference.
-- Optimized CPU and GPUCompute inference for NonMaxSuppression. Inference of this operation is improved by an order of magnitude.
 - Fast path for ScatterElements and GatherElements operations.
 - Resize operator is supported on all back ends with all tensor shapes, and supports axes parameter.
 - Pad operator supports integer tensors and wrap mode, and supports axes input tensor.

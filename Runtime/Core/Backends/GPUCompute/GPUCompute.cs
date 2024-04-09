@@ -1,12 +1,10 @@
 using UnityEngine;
-using UnityEngine.Rendering;
 using UnityEngine.Assertions;
 using System;
 using System.Runtime.CompilerServices;
 using Unity.Mathematics;
 using static Unity.Sentis.ComputeTensorData;
 using static Unity.Sentis.ShaderPropertyID;
-using System.Linq;
 
 [assembly: InternalsVisibleTo("Unity.Sentis.EditorTests")]
 
@@ -18,34 +16,14 @@ namespace Unity.Sentis {
 public partial class GPUComputeBackend : IBackend
 {
     /// <summary>
-    /// Initializes and returns an instance of `GPUComputeBackend`.
+    /// Initializes and returns an instance of `GPUComputeOps`.
     /// </summary>
-    public GPUComputeBackend()
-    {
-        m_NmsPrefixCmdBuffer = new CommandBuffer();
-        m_NmsPrefixCmdBuffer.name = "NMS GPU Prefix Sum";
-
-
-        m_PrefixSumResourcesLarge = GPUPrefixSum.SupportResources.Create(maxElementCount: GPUPrefixSum.ShaderDefs.GroupSize * 64, maxConcurrentSums: 80, usePingPongInsteadOfGather: true, useRawIOBuffers: false,
-                                                                         groupEachIOPyramidLevels: true, groupEachIOSingleLevelLists: true);
-
-        m_PrefixSumResourcesMedium = GPUPrefixSum.SupportResources.Create(maxElementCount: GPUPrefixSum.ShaderDefs.GroupSize * 64, maxConcurrentSums: 1, usePingPongInsteadOfGather: true, useRawIOBuffers: false,
-                                                                         groupEachIOPyramidLevels: true, groupEachIOSingleLevelLists: true);
-
-        m_PrefixSumResourcesSingleThreadGroup = GPUPrefixSum.SupportResources.Create(maxElementCount: GPUPrefixSum.ShaderDefs.GroupSize, maxConcurrentSums: 1, usePingPongInsteadOfGather: true, useRawIOBuffers: false,
-                                                                                     groupEachIOPyramidLevels: true, groupEachIOSingleLevelLists: true);
-    }
+    public GPUComputeBackend() { }
 
     // Do we need this class or operate on ComputeTensorData instead?
     TensorClassPool<TensorFloat> m_TensorFloatPool = new TensorClassPool<TensorFloat>();
     TensorClassPool<TensorInt> m_TensorIntPool = new TensorClassPool<TensorInt>();
     TensorDataPool<ComputeTensorData> m_MemoryPool = new TensorDataPool<ComputeTensorData>();
-
-    GPUPrefixSum.SupportResources m_PrefixSumResourcesLarge;
-    GPUPrefixSum.SupportResources m_PrefixSumResourcesMedium;
-    GPUPrefixSum.SupportResources m_PrefixSumResourcesSingleThreadGroup;
-
-    CommandBuffer m_NmsPrefixCmdBuffer;
 
     TensorFloat AllocTensorFloat(TensorShape shape)
     {
@@ -100,10 +78,6 @@ public partial class GPUComputeBackend : IBackend
     {
         m_MemoryPool?.Dispose();
         m_MemoryPool = null;
-
-        m_PrefixSumResourcesLarge.Dispose();
-        m_PrefixSumResourcesMedium.Dispose();
-        m_PrefixSumResourcesSingleThreadGroup.Dispose();
     }
 
     /// <inheritdoc/>
@@ -2734,132 +2708,6 @@ public partial class GPUComputeBackend : IBackend
         fn.SetTensorAsBuffer(k_ID_Valuesptr, Pin(values));
         fn.SetTensorAsBuffer(k_ID_Indicesptr, Pin(indices));
         fn.Dispatch(innerLength, outerLength, 1);
-    }
-
-    /// <inheritdoc/>
-    public void NonMaxSuppression(TensorFloat boxes, TensorFloat scores, TensorInt selectedIndices, int maxOutputBoxesPerClass, float iouThreshold, float scoreThreshold, Layers.CenterPointBox centerPointBox)
-    {
-        int batchCount = scores.shape[0];
-        int classCount = scores.shape[1];
-        int boxCount = scores.shape[2];
-
-        // Algorithm:
-        //
-        // We will launch parallel IOUs in a brute boolean as int array which allows us to conceptually do the reduction on boxCount^2 comparisons
-        // in a class (for all batches also) as simple unordered writes on bitmasks with "boxCount" elements, vastly cutting the memory requirements
-        // and saving a reduction.
-        //
-        // We keep a discard mask (we have batchCount * classCount such masks).
-        //
-        // A series of *inclusive* prefix sum on each such *discard* bitmasks is calculated for all batches and classes in parallel.
-        // Note that such an inclusive prefix sum gives the negative relative offset when doing a predicated (ie select) scatter compaction later on:
-        // ie for element i, when predicate (here bitmask == 1 means discard) allows selection, it tells us that our write (scatter) spot is at position
-        // write_index = i - discardPrefixSum[i];
-        //
-        // Because all selections for all batches and classes must be grouped together in a final buffer, another prefix sum is needed to know
-        // the absolute offset of each batch and classes' selected box relative offset given by the "numConcurrentPrefixSums".
-        // This secondary prefix sum is *exclusive* and is essentially a second order prefix on the last element of each numConcurrentPrefixSums inclusive
-        // prefix sums, but with a few twists:
-        //      -the classes prefix sums are of *discards*: we need the *exclusive* prefix sum of *kept boxes* aggregates to have absolute write offsets
-        //       of each class (of each batch).
-        //      -not only that, we also need to cap each such aggregate to a maximum of maxOutputBoxesPerClass boxes.
-        //
-        // We solve the above constraints by running a special gather with scale bias and cap on the first prefix sums before computing the secondary one.
-        // Finally, the predicated select scatter is ran with the bitmasks, prefix sums, secondary (absolute write offsets of each class for each batch up to
-        // the capped maxOutputBoxesPerClass) to output the final selected indices 3-tuples.
-
-        var fn = centerPointBox == Layers.CenterPointBox.Corners ? ComputeFuncSingleton.Instance.Get("NMSDiscardBitMaskLinearRectBox") : ComputeFuncSingleton.Instance.Get("NMSDiscardBitMaskLinearCenterBox") ;
-        // Caching boxes and discard writes in shared memory version: no win, we're not global mem bw bound, so slightly slower in fact.
-        //var fn = centerPointBox == Layers.CenterPointBox.Corners ? ComputeFuncSingleton.Instance.Get("NMSDiscardBitMaskLinearSMRectBox") : ComputeFuncSingleton.Instance.Get("NMSDiscardBitMaskLinearSMCenterBox") ;
-
-        int numConcurrentPrefixSums = batchCount * classCount;
-        var boolDiscardMasks = AllocTensorInt(new TensorShape(numConcurrentPrefixSums * boxCount));
-        var perClassFromAllBatchesClampedSelectedCounts = AllocTensorInt(new TensorShape(numConcurrentPrefixSums));
-
-        MemClear(selectedIndices);
-        MemClear(boolDiscardMasks);
-
-        fn.SetInt(k_ID_classCount, classCount);
-        fn.SetInt(k_ID_boxCount, boxCount);
-        fn.SetFloat(k_ID_iouThreshold, iouThreshold);
-        fn.SetFloat(k_ID_scoreThreshold, scoreThreshold);
-        fn.SetTensorAsBuffer(k_ID_Xptr, Pin(boxes));
-        fn.SetTensorAsBuffer(k_ID_Sptr, Pin(scores));
-        fn.SetTensorAsBuffer(k_ID_OIntptr, Pin(boolDiscardMasks));
-        fn.Dispatch(boxCount, boxCount, numConcurrentPrefixSums);
-
-        // TODO: (This is a long term arch wip) Sentis wide mechanism to prime resources before a run that goes hand in hand with dirty check and caching of state
-        // and resources / pre-calculations management. That way no need to check for everything all the time:
-        m_PrefixSumResourcesLarge.EnsureConfigOrResize(newMaxElementCount: boxCount, newMaxConcurrentSums: numConcurrentPrefixSums, usePingPongInsteadOfGather: true, newUseRawIOBuffers: false,
-                                                       newGroupEachIOPyramidLevels: true, newGroupEachIOSingleLevelLists: true);
-
-        //int GetOutputConcurrentSumsStride(int numOfElementsPerSumUsed)
-        var mainPrefixArgs = new GPUPrefixSum.DirectArgs
-        {
-            exclusive = false,
-            castInputAsBitcounts = false,
-            perListElementCount = boxCount,
-            listCount = numConcurrentPrefixSums,
-            inputs = (boolDiscardMasks.dataOnBackend as ComputeTensorData).buffer,
-            supportResources = m_PrefixSumResourcesLarge
-        };
-
-        // TODO: same, no need to rebuild each time; also use async queue when we can, etc. (the later should be part of an indirect framework also)
-        m_NmsPrefixCmdBuffer.Clear();
-        ComputeShaderSingleton.Instance.prefixSumWorker.DispatchDirect(m_NmsPrefixCmdBuffer, mainPrefixArgs);
-        Graphics.ExecuteCommandBuffer(m_NmsPrefixCmdBuffer);
-
-        // Gather with scale/bias/clamp above giving perClassSelectedCount = min(maxOutputBoxesPerClass, boxCount + (-1 * discardCount))
-        //
-        m_NmsPrefixCmdBuffer.Clear();
-        ComputeBuffer perClassSelectedCounts = (perClassFromAllBatchesClampedSelectedCounts.dataOnBackend as ComputeTensorData).buffer;
-        ComputeShaderSingleton.Instance.prefixSumWorker.DispatchGatherScaleBiasClampAbove(m_NmsPrefixCmdBuffer, input: m_PrefixSumResourcesLarge.output, output: perClassSelectedCounts,
-            elementCount: numConcurrentPrefixSums, elementStride: m_PrefixSumResourcesLarge.GetOutputConcurrentSumsStride(numOfElementsPerSumUsed: boxCount),
-            scale: -1, bias: boxCount, clampToMaxValue: maxOutputBoxesPerClass);
-        Graphics.ExecuteCommandBuffer(m_NmsPrefixCmdBuffer);
-
-        // Exclusive prefix on per-class aggregate selected box counts
-        //
-        // This is for the final (batchId, classId, boxId) single final output buffer compaction: num elements in the capped-to-eg200-per-class prefix becomes numConcurrentPrefixSums itself:
-        GPUPrefixSum.SupportResources prefixSumResourcesSmall = (classCount > GPUPrefixSum.ShaderDefs.GroupSize) ? m_PrefixSumResourcesMedium : m_PrefixSumResourcesSingleThreadGroup;
-
-        prefixSumResourcesSmall.EnsureConfigOrResize(newMaxElementCount: numConcurrentPrefixSums, newMaxConcurrentSums: 1, usePingPongInsteadOfGather: true, newUseRawIOBuffers: false,
-                                                     newGroupEachIOPyramidLevels: true, newGroupEachIOSingleLevelLists: true);
-
-        var allClassPrefixArgs = new GPUPrefixSum.DirectArgs
-        {
-            exclusive = true, // important!
-            castInputAsBitcounts = false,
-            perListElementCount = numConcurrentPrefixSums,
-            listCount = 1,
-            inputs = perClassSelectedCounts, // gather result above
-            supportResources = prefixSumResourcesSmall // important, need a separate working resources set, we need the other prefixes still!
-        };
-
-        m_NmsPrefixCmdBuffer.Clear();
-        ComputeShaderSingleton.Instance.prefixSumWorker.DispatchDirect(m_NmsPrefixCmdBuffer, allClassPrefixArgs);
-        Graphics.ExecuteCommandBuffer(m_NmsPrefixCmdBuffer);
-
-        // Finally, gather the selected boxes
-        fn = ComputeFuncSingleton.Instance.Get("NMSDiscardBitMaskPredicatedGatherCompaction") ;
-        fn.SetInt(k_ID_classCount, classCount);
-        fn.SetInt(k_ID_boxCount, boxCount);
-        fn.SetInt(k_ID_discardFlagsBatchStride, classCount * boxCount);
-
-        // IMPORTANT: check k_ID_DiscardPrefixes below why we need a different batch stride for the prefix sum buffer vs the predicate flag buffer which just uses boxCount:
-        int concurrentSumsStride = m_PrefixSumResourcesLarge.GetOutputConcurrentSumsStride(numOfElementsPerSumUsed: boxCount);
-
-        fn.SetInt(k_ID_discardPrefixesBatchStride, classCount * concurrentSumsStride); // because numConcurrentPrefixSums = batchCount * classCount
-        fn.SetInt(k_ID_discardPrefixesClassStride, concurrentSumsStride);
-        fn.SetInt(k_ID_maxOutputBoxesPerClass, maxOutputBoxesPerClass);
-        fn.SetTensorAsBuffer(k_ID_Bptr, Pin(boolDiscardMasks));
-        fn.shader.SetBuffer(fn.kernelIndex, k_ID_DiscardPrefixes, m_PrefixSumResourcesLarge.output);   // this comes from the pyramid buffer of prefix resources, concurrentSumsStride is boxCount group-size aligned up if levels are packed!
-        fn.shader.SetBuffer(fn.kernelIndex, k_ID_ClassAbsoluteOffsets, prefixSumResourcesSmall.output);// this comes from the pyramid buffer of prefix resources, we only use first pyramid level 0
-        fn.SetTensorAsBuffer(k_ID_OIntptr, Pin(selectedIndices));
-        fn.Dispatch(boxCount, classCount, batchCount);
-
-        ReleaseTensorInt(boolDiscardMasks);
-        ReleaseTensorInt(perClassFromAllBatchesClampedSelectedCounts);
     }
 
     /// <inheritdoc/>

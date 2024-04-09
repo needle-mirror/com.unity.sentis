@@ -83,7 +83,7 @@ If you use a GPU Worker and the model has a layer that isn't supported, Sentis d
 |[Mul](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Mul) | float, int | float, int | float, int | |
 |[Multinomial](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Multinomial) | float | Not supported | Not supported | |
 |[Neg](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Neg) | float, int | float, int | float, int | |
-|[NonMaxSuppression](https://github.com/onnx/onnx/blob/main/docs/Operators.md#NonMaxSuppression) | float | float | Not supported | |
+|[NonMaxSuppression](https://github.com/onnx/onnx/blob/main/docs/Operators.md#NonMaxSuppression) | float | Not supported | Not supported | |
 |[NonZero](https://github.com/onnx/onnx/blob/main/docs/Operators.md#NonZero) | float, int | Not supported | Not supported | |
 |[Not](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Not) | int | int | int | |
 |[OneHot](https://github.com/onnx/onnx/blob/main/docs/Operators.md#OneHot) | float, int | float, int | float, int | |

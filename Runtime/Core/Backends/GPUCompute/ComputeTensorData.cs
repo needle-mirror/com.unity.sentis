@@ -66,16 +66,6 @@ public class ComputeTensorData : ITensorData
         ProfilerMarkers.ComputeTensorDataNewEmpty.End();
     }
 
-    /// <summary>
-    /// Initializes and returns an instance of `ComputeTensorData` from an already existing compute buffer.
-    /// </summary>
-    public ComputeTensorData(ComputeBuffer buffer)
-    {
-        m_Count = buffer.count;
-        m_Buffer = buffer;
-        m_DisposeBufferAfterUse = true;
-    }
-
     /// <inheritdoc/>
     public ITensorData Clone()
     {

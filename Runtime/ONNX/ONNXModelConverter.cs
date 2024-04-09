@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using Google.Protobuf;
-using Google.Protobuf.Collections;
 using Onnx;
 
 [assembly: InternalsVisibleTo("Unity.Sentis.Tests")]
@@ -13,96 +12,6 @@ using Onnx;
 
 namespace Unity.Sentis.ONNX
 {
-    /// <summary>
-    /// Attribute to define ONNX operator name for custom import.
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class | AttributeTargets.Struct)]
-    public class OpImportAttribute : Attribute
-    {
-        /// <summary>
-        /// Name of ONNX operator.
-        /// </summary>
-        public string opType;
-        /// <summary>
-        /// Instantiates and returns ONNX operator attribute.
-        /// </summary>
-        /// <param name="opType">Name of ONNX operator.</param>
-        public OpImportAttribute(string opType) { this.opType = opType; }
-    }
-
-    /// <summary>
-    /// Represents an ONNX operator for custom import.
-    /// </summary>
-    public struct OperatorNode
-    {
-        ONNXNodeWrapper node;
-        internal OperatorNode(ONNXNodeWrapper node) { this.node = node; }
-
-        /// <summary>
-        /// The name of the ONNX operator.
-        /// </summary>
-        public string Name { get { return node.Name; } }
-
-        /// <summary>
-        /// The outputs of the ONNX operator in order, as a string array.
-        /// </summary>
-        public string[] Outputs { get { return node.Outputs; } }
-
-        /// <summary>
-        /// The inputs of the ONNX operator in order, as a string array.
-        /// </summary>
-        public string[] Inputs { get { return node.Inputs; } }
-
-        /// <summary>
-        /// Whether the ONNX operator has an attribute called `name`.
-        /// </summary>
-        /// <param name="name">The name of the attribute.</param>
-        /// <returns>Whether operator has attribute with name.</returns>
-        public bool HasAttribute(string name) { return node.HasAttribute(name); }
-
-        /// <summary>
-        /// Gets the float attribute called `name`.
-        /// </summary>
-        /// <param name="name">The name of the attribute.</param>
-        /// <returns>The float value.</returns>
-        public float GetFloatAttribute(string name) { return node.GetRequiredFloat(name); }
-
-        /// <summary>
-        /// Gets a float list attribute called `name`, as an array of floats.
-        /// </summary>
-        /// <param name="name">The name of the attribute.</param>
-        /// <returns>The float list values as an array.</returns>
-        public float[] GetFloatArrayAttribute(string name) { return node.GetRequiredFloatArray(name); }
-
-        /// <summary>
-        /// Gets the int attribute called `name`.
-        /// </summary>
-        /// <param name="name">The name of the attribute.</param>
-        /// <returns>The int value.</returns>
-        public int GetIntAttribute(string name) { return node.GetRequiredInt(name); }
-
-        /// <summary>
-        /// Gets an int list attribute called `name`, as an array of ints.
-        /// </summary>
-        /// <param name="name">The name of the attribute.</param>
-        /// <returns>The int list values as an array.</returns>
-        public int[] GetIntArrayAttribute(string name) { return node.GetRequiredIntArray(name); }
-
-        /// <summary>
-        /// Gets the string attribute called `name`.
-        /// </summary>
-        /// <param name="name">The name of the attribute.</param>
-        /// <returns>The string value.</returns>
-        public string GetStringAttribute(string name) { return node.GetRequiredString(name); }
-
-        /// <summary>
-        /// Gets a string list attribute called `name`, as an array of strings.
-        /// </summary>
-        /// <param name="name">The name of the attribute.</param>
-        /// <returns>The string list values as an array.</returns>
-        public string[] GetStringArrayAttribute(string name) { return node.GetRequiredStringArray(name); }
-    }
-
     /// <summary>
     /// Represents a converter from an ONNX model to Sentis format.
     /// </summary>
