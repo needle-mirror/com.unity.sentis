@@ -3,7 +3,12 @@
         {
             "ValidationTest": "API Validation",
             "ExceptionMessage": "Breaking changes require a new major version.",
-            "PackageVersion": "1.4.0-pre.3"
+            "PackageVersion": "1.5.0-pre.2"
+        },
+        {
+            "ValidationTest": "API Validation",
+            "ExceptionMessage": "Adding the first entry in includePlatforms requires a new major version. Was:\"\" Now:\"Editor\"",
+            "PackageVersion": "1.5.0-pre.2"
         }
     ],
     "WarningExceptions": []

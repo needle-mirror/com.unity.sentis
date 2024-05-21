@@ -45,7 +45,11 @@ Shader "Hidden/Sentis/Random"
                 int3 lowerAxisUpper = UnravelO(blockIndexO);
                 uint4 unblocked4 = UnblockAxis(lowerAxisUpper[1]);
                 uint4 index4 = lowerAxisUpper[0] + StrideAxisO * (unblocked4 + DimAxisO * lowerAxisUpper[2]);
-                bool4 mask4 = (index4 < LengthO && unblocked4 < DimAxisO) ? 1 : 0;
+                bool4 mask4 = false;
+                mask4.x = (index4.x < LengthO && unblocked4.x < DimAxisO) ? 1 : 0;
+                mask4.y = (index4.y < LengthO && unblocked4.y < DimAxisO) ? 1 : 0;
+                mask4.z = (index4.z < LengthO && unblocked4.z < DimAxisO) ? 1 : 0;
+                mask4.w = (index4.w < LengthO && unblocked4.w < DimAxisO) ? 1 : 0;
                 index4 += seed;
                 // index may not be uint.MaxValue, in this case move to distant value
                 // following Unity.Mathematics.Random

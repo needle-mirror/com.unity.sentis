@@ -1,10 +1,10 @@
 # Get output from a model
 
-The following information describes how to get the output from a model. To get intermediate tensors from layers other than the model outputs, refer to [Get output from any layer](profile-a-model.md#get-output-from-any-layer).
+Use this information to understand how to get the output from a model. To get intermediate tensors from layers other than the model outputs, refer to [Get output from any layer](profile-a-model.md#get-output-from-any-layer).
 
 ## Get the tensor output
 
-To obtain the tensor output, you have two options: you can either use PeekOutput to get a reference to an output, or you can `TakeOwnership` of the original tensor. Refer to the following sections to understand the methods available for retrieving the tensor output, along with their respective strengths and weaknesses.
+To obtain the tensor output, you have two options: either use `PeekOutput` to get a reference to an output or `TakeOwnership` of the original tensor. Refer to the following sections to understand the methods available for retrieving the tensor output, along with their respective strengths and weaknesses.
 
 ### Use PeekOutput
 
@@ -15,7 +15,7 @@ worker.Execute(inputTensor);
 TensorFloat outputTensor = worker.PeekOutput() as TensorFloat;
 ```
 
-The result of `PeekOutput` is a reference that is owned by Sentis worker memory allocator. This implies the following:
+The result of `PeekOutput` is a reference that is owned by Sentis worker memory allocator, which implies the following:
 
 - You don't need to use `Dispose` on the output.
 - If you change the output or you rerun the worker, both the worker output and the `PeekOutput` copy change.
@@ -24,7 +24,7 @@ The result of `PeekOutput` is a reference that is owned by Sentis worker memory 
 If you call `Execute` again, the tensor will be overwritten.
 
 > [!NOTE]
-> Be careful about reading data from an output tensor, as in a lot of cases you might inadvertently cause a blocking wait until the model finishes running before downloading the data from the GPU or Burst to the CPU. To avoid this cost, you can [read output from a model asynchronously](read-output-async.md). Additionally, you can [profile a model](profile-a-model.md) to gain a better understanding of its performance. 
+> Be careful when reading data from an output tensor, as in many instances, you may unintentionally trigger a blocking wait until the model finishes running before downloading the data from the GPU or Burst to the CPU. To mitigate this overhead, consider [reading output from a model asynchronously](read-output-async.md). Additionally, [profiling a model](profile-a-model.md) can provide valuable insight into its performance. 
 
 ### Take ownership of the original tensor
 

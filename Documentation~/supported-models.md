@@ -25,7 +25,7 @@ You can download ONNX model files from the [ONNX model zoo](https://github.com/o
 
 Sentis doesn't support the following:
 
-- Models that use tensors with more than 8 dimensions
+- Models that use tensors with more than eight dimensions
 - Sparse input tensors or constants
 - String tensors
 - Complex number tensors

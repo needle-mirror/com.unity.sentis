@@ -13,6 +13,7 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Mathematics;
+using static Unity.Mathematics.math;
 
 namespace Unity.Sentis {
 public partial class CPUBackend

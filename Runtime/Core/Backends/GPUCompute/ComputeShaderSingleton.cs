@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.Profiling;
 
 namespace Unity.Sentis
 {
@@ -69,14 +68,8 @@ namespace Unity.Sentis
             RegisterKernels("Sentis/ComputeShaders/RNN",
                 new[] { "LSTMEnd" });
 
-            RegisterKernels("Sentis/ComputeShaders/Activations",
-                new[] { "AbsFloat", "NegFloat", "SquareFloat", "SignFloat", "ClipFloat", "AbsInt", "NegInt", "SquareInt", "SignInt", "ClipInt", "IsInf", "IsNaN" });
-
-            RegisterKernels("Sentis/ComputeShaders/ScalarMad",
-                new[] { "ScalarMad" });
-
             RegisterKernels("Sentis/ComputeShaders/LogicalOps",
-                new[] { "Or", "And", "Xor", "Not" });
+                new[] { "Or", "And", "Xor", "IsInf" });
 
             RegisterKernels("Sentis/ComputeShaders/CompareOps",
                 new[]
@@ -142,7 +135,7 @@ namespace Unity.Sentis
                 });
 
             RegisterKernels("Sentis/ComputeShaders/CopyOps",
-                new[] { "MemCopy", "MemCopyStride", "MemSet", "Split", "Tril", "Triu", "RangeFloat", "RangeInt", "CastFloatToInt", "CastIntToFloat", "CastHalfToFloat", "DequantizeUint8", "Transpose2D" });
+                new[] { "MemCopy", "MemCopyStride", "MemSet", "Split", "Tril", "Triu", "CastHalfToFloat", "DequantizeUint8", "Transpose2D" });
 
             RegisterKernels("Sentis/ComputeShaders/Random",
                 new[] { "RandomUniform", "RandomNormal", "BernoulliFloat", "BernoulliInt", "TopP" });

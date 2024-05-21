@@ -18,7 +18,6 @@
 #define BYTEBUFFER_NO_BOUNDS_CHECK
 
 using System;
-using System.Text;
 using System.Runtime.InteropServices;
 
 namespace Unity.Sentis.Google.FlatBuffers

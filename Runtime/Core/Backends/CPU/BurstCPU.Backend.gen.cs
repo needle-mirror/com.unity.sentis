@@ -373,259 +373,296 @@ public partial class CPUBackend
     public void Abs(TensorFloat X, TensorFloat O)
     {
         var job = new AbsFloatJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Abs(TensorInt X, TensorInt O)
     {
         var job = new AbsIntJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Neg(TensorFloat X, TensorFloat O)
     {
         var job = new NegFloatJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Neg(TensorInt X, TensorInt O)
     {
         var job = new NegIntJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Square(TensorFloat X, TensorFloat O)
     {
         var job = new SquareFloatJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Square(TensorInt X, TensorInt O)
     {
         var job = new SquareIntJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Sign(TensorFloat X, TensorFloat O)
     {
         var job = new SignFloatJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Sign(TensorInt X, TensorInt O)
     {
         var job = new SignIntJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void IsNaN(TensorFloat X, TensorInt O)
     {
         var job = new IsNaNJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Not(TensorInt X, TensorInt O)
     {
         var job = new NotJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Ceil(TensorFloat X, TensorFloat O)
     {
         var job = new CeilJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Floor(TensorFloat X, TensorFloat O)
     {
         var job = new FloorJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Round(TensorFloat X, TensorFloat O)
     {
         var job = new RoundJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Reciprocal(TensorFloat X, TensorFloat O)
     {
         var job = new ReciprocalJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Sqrt(TensorFloat X, TensorFloat O)
     {
         var job = new SqrtJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Exp(TensorFloat X, TensorFloat O)
     {
         var job = new ExpJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Log(TensorFloat X, TensorFloat O)
     {
         var job = new LogJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Acos(TensorFloat X, TensorFloat O)
     {
         var job = new AcosJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Acosh(TensorFloat X, TensorFloat O)
     {
         var job = new AcoshJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Asin(TensorFloat X, TensorFloat O)
     {
         var job = new AsinJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Asinh(TensorFloat X, TensorFloat O)
     {
         var job = new AsinhJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Atan(TensorFloat X, TensorFloat O)
     {
         var job = new AtanJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Atanh(TensorFloat X, TensorFloat O)
     {
         var job = new AtanhJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Cos(TensorFloat X, TensorFloat O)
     {
         var job = new CosJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Cosh(TensorFloat X, TensorFloat O)
     {
         var job = new CoshJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Sin(TensorFloat X, TensorFloat O)
     {
         var job = new SinJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Sinh(TensorFloat X, TensorFloat O)
     {
         var job = new SinhJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Tan(TensorFloat X, TensorFloat O)
     {
         var job = new TanJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Tanh(TensorFloat X, TensorFloat O)
     {
         var job = new TanhJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Relu(TensorFloat X, TensorFloat O)
     {
         var job = new ReluJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Relu6(TensorFloat X, TensorFloat O)
     {
         var job = new Relu6Job();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Softplus(TensorFloat X, TensorFloat O)
     {
         var job = new SoftplusJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Swish(TensorFloat X, TensorFloat O)
     {
         var job = new SwishJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Sigmoid(TensorFloat X, TensorFloat O)
     {
         var job = new SigmoidJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Erf(TensorFloat X, TensorFloat O)
     {
         var job = new ErfJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void Softsign(TensorFloat X, TensorFloat O)
     {
         var job = new SoftsignJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
     public void HardSwish(TensorFloat X, TensorFloat O)
     {
         var job = new HardSwishJob();
-        job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+        job.length = O.shape.length;
+        job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
     }
 
     /// <inheritdoc/>
@@ -1982,20 +2019,20 @@ public partial class CPUBackend
     public void Range(TensorFloat O, float start, float delta)
     {
         var job = new RangeFloatJob();
-        job.start = start;
-        job.delta = delta;
-        job.ScheduleO(Pin(O), O.shape.length, 1024);
+        job.alpha = start;
+        job.beta = delta;
+        job.length = O.shape.length;
+        job.ScheduleBatchO(Pin(O), O.shape.length, 1024);
     }
-
     /// <inheritdoc/>
     public void Range(TensorInt O, int start, int delta)
     {
         var job = new RangeIntJob();
-        job.start = start;
-        job.delta = delta;
-        job.ScheduleO(Pin(O), O.shape.length, 1024);
+        job.alphai = start;
+        job.betai = delta;
+        job.length = O.shape.length;
+        job.ScheduleBatchO(Pin(O), O.shape.length, 1024);
     }
-
 }
 
-} // namespace Unity.Sentis
+}

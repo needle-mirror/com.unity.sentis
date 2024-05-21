@@ -72,6 +72,10 @@ namespace Unity.Sentis
         public static readonly int k_ID_X_depth = Shader.PropertyToID("X_depth");
         public static readonly int k_ID_K_depth = Shader.PropertyToID("K_depth");
         public static readonly int k_ID_K_height = Shader.PropertyToID("K_height");
+        public static readonly int k_ID_X_float_ptr = Shader.PropertyToID("X_float_ptr");
+        public static readonly int k_ID_X_int_ptr = Shader.PropertyToID("X_int_ptr");
+        public static readonly int k_ID_O_float_ptr = Shader.PropertyToID("O_float_ptr");
+        public static readonly int k_ID_O_int_ptr = Shader.PropertyToID("O_int_ptr");
         public static readonly int k_ID_K_width = Shader.PropertyToID("K_width");
         public static readonly int k_ID_K_channelsDivGroupDiv4 = Shader.PropertyToID("K_channelsDivGroupDiv4");
         public static readonly int k_ID_K_mDivGroup = Shader.PropertyToID("K_mDivGroup");
@@ -131,13 +135,14 @@ namespace Unity.Sentis
         public static readonly int k_ID_rangeDeltaInt = Shader.PropertyToID("rangeDeltaInt");
         public static readonly int k_ID_OIntptr = Shader.PropertyToID("OIntptr");
         public static readonly int k_ID_alpha = Shader.PropertyToID("alpha");
+        public static readonly int k_ID_alphai = Shader.PropertyToID("alphai");
         public static readonly int k_ID_f1 = Shader.PropertyToID("f1");
         public static readonly int k_ID_f2 = Shader.PropertyToID("f2");
         public static readonly int k_ID_beta = Shader.PropertyToID("beta");
+        public static readonly int k_ID_betai = Shader.PropertyToID("betai");
         public static readonly int k_ID_gamma = Shader.PropertyToID("gamma");
         public static readonly int k_ID_minV = Shader.PropertyToID("minV");
         public static readonly int k_ID_maxV = Shader.PropertyToID("maxV");
-        public static readonly int k_ID_lambd = Shader.PropertyToID("lambd");
         public static readonly int k_ID_innerLength = Shader.PropertyToID("innerLength");
         public static readonly int k_ID_outerLength = Shader.PropertyToID("outerLength");
         public static readonly int k_ID_reduceLength = Shader.PropertyToID("reduceLength");

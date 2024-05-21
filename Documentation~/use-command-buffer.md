@@ -14,7 +14,7 @@ To add commands to the command buffer, do any of the following:
 - Use a Sentis API that takes the command buffer as a parameter, for example `TextureConverter.ToTensor`.
 - Use the `ExecuteWorker` method on the command buffer to add a command that runs the model.
 
-For example, the following code creates and execute a command buffer queue that converts a render texture to an input tensor, runs the model, then converts the output tensor to a render texture.
+For example, the following code creates and executes a command buffer queue. This queue first converts a render texture to an input tensor, then runs the model, and finally converts the output tensor back to a render texture.
 
 ```
 using UnityEngine;

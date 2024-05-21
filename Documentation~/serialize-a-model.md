@@ -1,6 +1,6 @@
 # Serialize a Model
 
-For larger models it is best to use a serialized asset. These have the file extension `.sentis`.
+For larger models, it is advisable to use a serialized asset, which typically comes with the file extension `.sentis`.
 
 ## Create a Serialized Asset
 
@@ -8,7 +8,7 @@ Once you've imported the ONNX file into your asset folder, you can click on it. 
 
 ## Loading a Serialized Asset
 
-The code to load a serialized model is much the same. For example if your model is called `mymodel.sentis` the code is:
+The code to load a serialized model is much the same. For example, if your model is called `mymodel.sentis`, the corresponding code is:
 
 ```
 Model model = ModelLoader.Load(Application.streamingAssetsPath + "/mymodel.sentis");

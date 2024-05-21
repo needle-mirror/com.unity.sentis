@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.Assertions;
-using UnityEngine.Profiling;
 using System;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Collections;
@@ -530,4 +529,4 @@ namespace Unity.Sentis
             return $"GPU<TextureTensorData>:{shape} texture: {bufferAsTexture}";
         }
     }
-} // namespace Unity.Sentis
+}

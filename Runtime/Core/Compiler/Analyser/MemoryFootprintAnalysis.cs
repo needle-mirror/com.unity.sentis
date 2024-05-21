@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Unity.Sentis;
 using UnityEngine;
 
 namespace Unity.Sentis.Compiler.Analyser
@@ -17,7 +16,7 @@ namespace Unity.Sentis.Compiler.Analyser
                 {
                     if (string.IsNullOrEmpty(input))
                         continue;
-                    if (prevLayer != null && input != prevLayer.index)
+                    if (prevLayer != null && input != prevLayer.outputs[0])
                         allInputsExceptFromPreviousLayer.Add(input);
                 }
                 prevLayer = layer;
@@ -30,8 +29,8 @@ namespace Unity.Sentis.Compiler.Analyser
             var requireStorage = new HashSet<Layers.Layer>();
             foreach (var layer in model.layers)
             {
-                if (allInputsExceptFromPreviousLayer.Contains(layer.index) ||
-                    allOutputs.Contains(layer.index))
+                if (allInputsExceptFromPreviousLayer.Contains(layer.outputs[0]) ||
+                    allOutputs.Contains(layer.outputs[0]))
                     requireStorage.Add(layer);
             }
 

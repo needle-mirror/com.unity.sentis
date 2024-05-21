@@ -171,7 +171,7 @@ namespace Unity.Sentis
         /// <returns>The output values and indices tensors in an array.</returns>
         public static FunctionalTensor[] TopK(FunctionalTensor input, int k, int dim = -1, bool largest = true, bool sorted = true)
         {
-            return FunctionalTensor.FromLayerMultiOutputs(new Layers.TopK(null, null, null, dim, largest, sorted, new string[2]), new[] { DataType.Float, DataType.Int }, new[] { input, Tensor(new[] { k }) });
+            return FunctionalTensor.FromLayerMultiOutputs(new Layers.TopK(null, null, null, null, dim, largest, sorted), new[] { DataType.Float, DataType.Int }, new[] { input, Tensor(new[] { k }) });
         }
     }
 }

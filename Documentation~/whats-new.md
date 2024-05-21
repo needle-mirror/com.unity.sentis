@@ -1,13 +1,27 @@
+# What's new in Sentis 1.5.0-pre.1
+
+This is a summary of the changes from Sentis 1.4.0-pre.3 to Sentis 1.5.0-pre.2.
+
+### Updated
+- Main thread cpu performance has been improved
+- Unary pointwise operations are now faster on GPU/CPU
+- Model serialization and import speed has been improved
+- Project dependencies has been reworked to reduce build size
+- Unconnected model input tensors are handled properly
+- Better ONNX opset 18 support 
+- Multinomial randomness is coherent across frames
+- Shader compilation errors on XBOX and Switch have been resolved
+
 # What's new in Sentis 1.4.0-pre.3
 
 This is a summary of the changes from Sentis 1.3.0-pre.3 to Sentis 1.4.0-pre.3.
 
 ## Added
 
-- Functional API for building and editing models using PyTorch style syntax. This includes operator overloads, sliced indexing with ranges and automatic type promotion.
+- Functional API for building and editing models using PyTorch style syntax. This includes operator overloads, sliced indexing with ranges, and automatic type promotion.
 - Quantization API for compressing model weights by up to a factor of 4. Quantized models take up less space on disk and use less memory during inference.
 - Fast path for ScatterElements and GatherElements operations.
-- Resize operator is supported on all back ends with all tensor shapes, and supports axes parameter.
+- All back ends support the resize operator for all tensor shapes, and it includes support for the axes parameter.
 - Pad operator supports integer tensors and wrap mode, and supports axes input tensor.
 - Docs pages and package samples for new features.
 
@@ -20,9 +34,9 @@ This is a summary of the changes from Sentis 1.3.0-pre.3 to Sentis 1.4.0-pre.3.
 
 ## Removed
 
-- Model API where inputs, constants and layers can be edited directly on a model. See the new functional API where you can build new models as well as adapt and extend existing models. 
+- Model API where inputs, constants, and layers can be edited directly on a model. See the new functional API where you can build new models as well as adapt and extend existing models. 
 - Ops for direct operations on tensors. See the new functional API where you can create models to perform optimized operations on tensors.
-- Custom ONNX layers can no longer be defined by users as they were not compatible with the new model serialization scheme. Custom import will be reworked for an upcoming release.
+- Users can no longer define custom Open Neural Network Exchange (ONNX) layers due to their incompatibility with the new model serialization scheme. The custom import functionality will be reworked for an upcoming release.
 
 # What's new in Sentis 1.3.0-pre.3
 
@@ -30,12 +44,12 @@ This is a summary of the changes from Sentis 1.3.0-pre.2 to Sentis 1.3.0-pre.3.
 
 ## Added
 
-- Docs pages for exporting models, and docs menu for project submissions.
+- Docs pages for exporting models and docs menu for project submissions.
 
 ## Updated
 
-- Updated Clip operator to support integer data type.
-- Fixed inference and compatibility issues for Resize, Dense, Split and NonZero operators.
+- Clip operator to support integer data type.
+- Fixed inference and compatibility issues for Resize, Dense, Split, and NonZero operators.
 - Inspector improvements including horizontal scrolling and operating while out of focus.
 - Docstrings have been updated for accuracy and links to models in docs are fixed.
 
@@ -56,12 +70,12 @@ This is a summary of the changes from Sentis 1.1 to Sentis 1.2.
 
 ## Removed
 
-- Removed the license requirement for using the Sentis package.
-- Removed the watermark on content generated with Sentis.
+- License requirement for using the Sentis package.
+- Watermark on content generated with Sentis.
 
 ## Added
 
-- Support and improvement for LayerNormalization, Gelu, Resize1D, Upsample, OneHot operators.
+- Support and improvement for LayerNormalization, Gelu, Resize1D, Upsample, and OneHot operators.
 - Improvements for model import and saving to serialized assets.
 - Optimizations for models with ScalarMad layer and operator.
 
@@ -78,7 +92,7 @@ This is a summary of the changes from Sentis 1.0 to Sentis 1.1.
 
 ## Updated
 
-- Improved compatibility for many operators including Conv, ConvTranspose and BatchNormalization.
+- Improved compatibility for many operators including Conv, ConvTranspose, and BatchNormalization.
 - Improved performance of many operators on GPUCompute and GPUCommandBuffer back ends.
 - Reduced allocation when executing worker.
 - Improved import times.
@@ -95,13 +109,13 @@ For information on how to upgrade, refer to the [Upgrade Guide](upgrade-guide.md
 
 ## Added
 
-- You can now override model layers in your code, and add your own layers. Refer to the `Add a custom layer` example in the [sample scripts](package-samples.md) for an example.
+- You can now override model layers in your code and add your own layers. Refer to the `Add a custom layer` example in the [sample scripts](package-samples.md) for an example.
 
 
 ## Updated
 
 - All the back end types have been optimized and improved so Sentis as a whole has better performance on both the GPU and the CPU.
-- The way Sentis represents tensors has changed to make Sentis compatible with more models, and make it easier to convert Python preprocessing code into C#. Refer to [Tensor fundamentals](tensor-fundamentals.md) and [Do operations on tensors](do-operations-on-tensors.md) for more information.
-- Sentis supports more Open Neural Network Exchange (ONNX) operators. Refer to [Supported ONNX operators](supported-operators.md) for more information. 
-- You can now import models larger than 2 gigabytes.
-- The [Model Asset Import Settings](onnx-model-importer-properties.md) window no longer contain contains `Force Arbitrary Batch Size` and `Treat Errors as Warnings` settings. The window also no longer contains an `Open imported NN model as temp file` button. Use `Open` instead.
+- The way Sentis represents tensors has changed to make Sentis compatible with more models and make it easier to convert Python preprocessing code into C#. Refer to [Tensor fundamentals](tensor-fundamentals.md) and [Do operations on tensors](do-operations-on-tensors.md) for more information.
+- Sentis supports more ONNX operators. Refer to [Supported ONNX operators](supported-operators.md) for more information. 
+- You can now import models larger than two gigabytes.
+- The [Model Asset Import Settings](onnx-model-importer-properties.md) window no longer has the options for `Force Arbitrary Batch Size` and `Treat Errors as Warnings` settings. Additionally, the `Open imported NN model as temp file` button is no longer available, simply use the `Open` button.

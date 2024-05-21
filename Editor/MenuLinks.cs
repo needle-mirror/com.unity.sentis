@@ -22,5 +22,4 @@ class MenuLinks : EditorWindow
     {
         Application.OpenURL("https://create.unity.com/sentis-project-submission");
     }
-
 }

@@ -1,10 +1,10 @@
 # Read output from a model asynchronously
 
-If you want the output tensor data from your model execution in a readable format you can use the [`CompleteOperationsAndDownload`](xref:Unity.Sentis.Tensor.CompleteOperationsAndDownload) method directly.
+If you want the output tensor data from your model execution in a readable format, you can directly use the [`CompleteOperationsAndDownload`](xref:Unity.Sentis.Tensor.CompleteOperationsAndDownload) method.
 
-However the following might be true when Sentis returns the tensor from `PeekOutput`:
-- Sentis might not have finished calculating the final tensor data, so there's scheduled work remaining.
-- If you using a GPU back end, the calculated tensor data might be on the GPU. This requires a read back to copy the data to the CPU in a readable format.
+However, the following might be true when Sentis returns the tensor from `PeekOutput`:
+- Sentis might not have finished calculating the final tensor data, so there's pending scheduled work.
+- If you use a GPU back end, the calculated tensor data might be on the GPU. This requires a read back to copy the data to the CPU in a readable format.
 
 If either of the above are true, `CompleteOperationsAndDownload` blocks the main thread until the steps complete. To avoid this, you can follow these steps to use asynchronous readback:
 
@@ -56,9 +56,9 @@ public class AsyncReadbackCompute : MonoBehaviour
 
 ```
 
-Note:
-You can also avoid a Tensor data mutation to a CPU tensor that `CompleteOperationsAndDownload` does.
-For that, simply call `tensor.dataOnBackend.Download<T>()` to get the data directly. This will keep the `tensor.dataOnDevice` on the given backend but you will have a CPU copy of it.
+!!! note "Note"
+
+    You can also avoid a Tensor data mutation to a CPU tensor that `CompleteOperationsAndDownload` does. For that, simply call `tensor.dataOnBackend.Download<T>()` to get the data directly. This will keep the `tensor.dataOnDevice` on the given backend but you will have a CPU copy of it.
 Be careful with synchronization issues if you re-run a worker, you will need to issue a new download request.
 
 Refer to the `Read output asynchronously` example in the [sample scripts](package-samples.md) for an example.

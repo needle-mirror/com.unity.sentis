@@ -2,7 +2,7 @@
 
 The **Model Asset Import Settings** window lets you do the following:
 
-- Serialize the model to the StreamingAssets folder.
+- Serialize the model to the `StreamingAssets` folder.
 - Check the properties of an imported and optimized model.
 
 To access this window, select an imported model asset in the **Project** window.
@@ -11,7 +11,7 @@ To access this window, select an imported model asset in the **Project** window.
 
 ### Inputs
 
-This section shows the total number of inputs the model has, and a list of the inputs.
+The table below shows both the total count of inputs that the model possesses and provides a list detailing these inputs.
 
 |Property|Description|
 |-|-|
@@ -22,7 +22,7 @@ This section shows the total number of inputs the model has, and a list of the i
 
 ### Outputs
 
-This section shows the total number of outputs the model has, and a list of the outputs.
+The table below shows both the total count of outputs that the model possesses and provides a list detailing these outputs.
 
 |Property|Description|
 |-|-|
@@ -33,7 +33,7 @@ This section shows the total number of outputs the model has, and a list of the 
 
 ### Layers
 
-This section shows the total number of layers the model has, and a list of the layers in the order Sentis runs them.
+The table below shows the overall count of layers the model possesses along with a list of layers detailing the order in which Sentis executes them.
 
 |Property|Description|
 |-|-|
@@ -44,7 +44,7 @@ This section shows the total number of layers the model has, and a list of the l
 
 ### Constants
 
-This section shows the total number of constants the model has and the total number of weights, and a list of the constants.
+The table below shows the total count of constants and weights that the model possesses along with a list detailing the constants.
 
 |Property|Description|
 |-|-|

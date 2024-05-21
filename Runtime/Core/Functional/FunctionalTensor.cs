@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.Assertions;
 
@@ -103,8 +102,7 @@ namespace Unity.Sentis
             foreach (var layer in model.layers)
             {
                 layer.inputs = (string[])layer.inputs.Clone();
-                if (layer.outputs != null)
-                    layer.outputs = (string[])layer.outputs.Clone();
+                layer.outputs = (string[])layer.outputs.Clone();
                 var layerInputs = new FunctionalTensor[layer.inputs.Length];
                 for (var i = 0; i < layerInputs.Length; i++)
                 {
@@ -115,21 +113,17 @@ namespace Unity.Sentis
 
                 // infer data types
                 layer.InferPartial(ctx);
-                var outputDataTypes = new DataType[layer.outputs?.Length ?? 1];
+                var outputDataTypes = new DataType[layer.outputs.Length];
                 for (var i = 0; i < outputDataTypes.Length; i++)
                 {
-                    var name = i == 0 ? layer.index : layer.outputs?[i];
-                    if (string.IsNullOrEmpty(name))
+                    if (string.IsNullOrEmpty(layer.outputs[i]))
                         continue;
-                    outputDataTypes[i] = ctx.GetPartialTensor(name).dataType;
+                    outputDataTypes[i] = ctx.GetPartialTensor(layer.outputs[i]).dataType;
                 }
 
                 var node = new FunctionalLayer(layerInputs, outputDataTypes, layer);
                 var layerOutputs = node.CreateOutputs();
-                expressions[layer.index] = layerOutputs[0];
-                if (layer.outputs is null)
-                    continue;
-                for (var i = 1; i < layer.outputs.Length; i++)
+                for (var i = 0; i < layer.outputs.Length; i++)
                 {
                     if (string.IsNullOrEmpty(layer.outputs[i]))
                         continue;

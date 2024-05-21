@@ -106,10 +106,7 @@ namespace Unity.Sentis
                 var indexString = index.ToString();
                 index++;
                 m_OutputNames[i] = indexString;
-                if (i == 0)
-                    m_Layer.index = indexString;
-                if (m_Layer.outputs != null)
-                    m_Layer.outputs[i] = indexString;
+                m_Layer.outputs[i] = indexString;
             }
 
             model.layers.Add(m_Layer);

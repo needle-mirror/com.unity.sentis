@@ -4,6 +4,24 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.5.0-pre.2] - 2024-05-21
+### Fixed
+- Fix linker error when doing a build
+
+## [1.5.0-pre.1] - 2024-05-08
+
+### Changed
+- Better main thread cpu performance
+- Faster unary pointwise operations
+- Faster model import
+
+### Fixed
+- Reworked project dependencies to reduce build size
+- Unconnected input tensors are handled properly
+- Better ONNX opset 18 support 
+- Multinomial randomness is coherent across frames
+- Fixed shader compilation errors on XBOX and Switch
+
 ## [1.4.0-pre.3] - 2024-04-09
 
 ### Fixed

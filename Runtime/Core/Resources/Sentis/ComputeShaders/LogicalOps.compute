@@ -1,7 +1,8 @@
 #pragma kernel Or OR SUFFIX=Or
 #pragma kernel And AND SUFFIX=And
 #pragma kernel Xor XOR SUFFIX=Xor
-#pragma kernel Not
+
+#pragma kernel IsInf
 
 #include "Tensor.cginc"
 
@@ -13,6 +14,8 @@ int shapeB[8];
 int stridesB[8];
 uint2 unrolledDispatchArgs;
 int rank;
+bool detectNegative;
+bool detectPositive;
 
 StructuredBuffer<int> Xptr;
 StructuredBuffer<int> Bptr;
@@ -52,15 +55,20 @@ void SUFFIX(uint3 dispatchThreadID : SV_DispatchThreadID)
     Optr[threadIdx] = CompareOp(a, b);
 }
 
+#define TILE_DIM 256
 
-[numthreads(64, 1, 1)]
-void Not(uint3 dispatchThreadID : SV_DispatchThreadID)
+StructuredBuffer<float> X_float_ptr;
+
+[numthreads(TILE_DIM, 1, 1)]
+void IsInf(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint threadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
 {
-    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
+    uint groupLengthX = unrolledDispatchArgs.x;
+    uint totalLength = unrolledDispatchArgs.y;
+
+    uint ti = threadIndex + TILE_DIM * (groupID.x + groupID.y * groupLengthX);
+    if (ti >= totalLength)
         return;
 
-    Optr[threadIdx] = (Xptr[threadIdx] == 0) ? 1 : 0;
+    float v = X_float_ptr[ti];
+    Optr[ti] = isinf(v) && ((v > 0 && detectPositive) || (v < 0 && detectNegative)) ? 1 : 0;
 }
-
-

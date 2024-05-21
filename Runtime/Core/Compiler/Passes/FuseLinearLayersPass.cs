@@ -31,7 +31,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                         sharedConstants.Add(i, false);
                 }
 
-                indexToLayerIndex.Add(l.index, idx);
+                indexToLayerIndex.Add(l.outputs[0], idx);
                 idx++;
             }
 
@@ -46,7 +46,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 var layer = model.layers[l];
 
                 bool isLayerLinear = LinearLayerFusing.IsLayerLinear(layer, constTensors);
-                bool isLayerPreserved = layer.flags.HasFlag(Layers.Flags.Preserve) || preserve.Contains(layer.index);
+                bool isLayerPreserved = preserve.Contains(layer.outputs[0]);
                 bool layerHasActivation = IsLayerFusedActivation(layer);
 
                 if (!isLayerLinear)
@@ -55,7 +55,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 // if layer has an activation, we fuse it, but treat it as non linear for future children
                 if (!layerHasActivation)
                 {
-                    remap[layer.index] = layer.index;
+                    remap[layer.outputs[0]] = layer.outputs[0];
                 }
 
                 // Multi input nodes can only fuse constants and same inputs
@@ -70,7 +70,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 var input = linearInputs[0];
 
                 // input is a linear layer, fuse it
-                int inputLayerIndex = model.layers.FindIndex(x => x.index == remap[input]);
+                int inputLayerIndex = model.layers.FindIndex(x => x.outputs[0] == remap[input]);
                 Layers.Layer inputLayer = model.layers[inputLayerIndex];
 
                 if (!AreLayersFusable(inputLayer, layer, constTensors, sharedConstants, linearLayerFusing))
@@ -94,18 +94,18 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 {
                     // cannot merge layer into input:
                     // remove input, no need to remap as inputs == input.inputs
-                    fusedLayer.index = layer.index;
+                    fusedLayer.outputs = (string[])layer.outputs.Clone();
                     model.layers[l] = fusedLayer;
 
-                    if (!preserve.Contains(inputLayer.index))
-                        mergedLayers.Add(inputLayer.index);
+                    if (!preserve.Contains(inputLayer.outputs[0]))
+                        mergedLayers.Add(inputLayer.outputs[0]);
                 }
                 else
                 {
                     // merge layer into input
                     // remove current and remap input indexes
-                    mergedLayers.Add(layer.index);
-                    remap[layer.index] = fusedLayer.index;
+                    mergedLayers.Add(layer.outputs[0]);
+                    remap[layer.outputs[0]] = fusedLayer.outputs[0];
                     model.layers[inputLayerIndex] = fusedLayer;
                 }
             }

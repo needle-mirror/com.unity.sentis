@@ -149,21 +149,29 @@ namespace Unity.Sentis.Layers
 
         internal Tensor WeightsToTensorWithSharedTensorData()
         {
+            Tensor output;
             switch (dataType)
             {
                 case DataType.Float:
                 {
-                    var array = new BurstTensorData(weights);
-                    return new TensorFloat(shape, array);
+                    output = TensorFloat.AllocNoData(shape);
+                    break;
                 }
                 case DataType.Int:
                 {
-                    var array = new BurstTensorData(weights);
-                    return new TensorInt(shape, array);
+                    output = TensorInt.AllocNoData(shape);
+                    break;
                 }
                 default:
                     throw new NotImplementedException();
             }
+
+            if (output.shape.HasZeroDims())
+                return output;
+
+            var array = new BurstTensorData(weights);
+            output.dataOnBackend = array;
+            return output;
         }
 
         /// <summary>

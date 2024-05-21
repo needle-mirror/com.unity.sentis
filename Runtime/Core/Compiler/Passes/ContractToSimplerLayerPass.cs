@@ -11,7 +11,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
         public void Run(ref Model model)
         {
             var op = new CPUOps();
-            var ctx = PartialInferenceAnalysis.InferModelPartialTensors(model, true);
+            var ctx = PartialInferenceAnalysis.InferModelPartialTensors(model);
 
             var modelConstants = new Dictionary<string, Layers.Constant>();
             foreach (var c in model.constants)
@@ -26,21 +26,21 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     // replace concat with one input with identity
                     if (layer.inputs.Length == 1)
                     {
-                        model.layers[l] = new Layers.Identity(concatLayer.index, concatLayer.inputs[0]);
+                        model.layers[l] = new Layers.Identity(concatLayer.outputs[0], concatLayer.inputs[0]);
                         continue;
                     }
 
                     // replace Concat layer which concatenates the only same tensor multiple times with Tile layer
-                    var shape = ctx.GetPartialTensor(concatLayer.index).shape;
+                    var shape = ctx.GetPartialTensor(concatLayer.outputs[0]).shape;
                     if (!shape.hasRank || concatLayer.inputs.Any(o => o != layer.inputs[0]))
                         continue;
 
                     var tileShape = TensorShape.Ones(shape.rank);
                     tileShape[concatLayer.axis] = concatLayer.inputs.Length;
 
-                    var repeatsConstant = new Layers.Constant(model.GetUniqueIndex(concatLayer.index + "_Repeats"), new TensorInt(new TensorShape(tileShape.rank), tileShape.ToArray()));
+                    var repeatsConstant = new Layers.Constant(model.GetUniqueIndex(concatLayer.outputs[0] + "_Repeats"), new TensorInt(new TensorShape(tileShape.rank), tileShape.ToArray()));
                     model.AddConstant(repeatsConstant);
-                    model.layers[l] = new Layers.Tile(concatLayer.index, concatLayer.inputs[0], repeatsConstant.index);
+                    model.layers[l] = new Layers.Tile(concatLayer.outputs[0], concatLayer.inputs[0], repeatsConstant.index);
                     continue;
                 }
                 if (layer is Layers.Transpose transposeLayer)
@@ -60,13 +60,13 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     }
 
                     if (nopTranspose)
-                        model.layers[l] = new Layers.Identity(transposeLayer.index, transposeLayer.inputs[0]);
+                        model.layers[l] = new Layers.Identity(transposeLayer.outputs[0], transposeLayer.inputs[0]);
                     continue;
                 }
                 if (layer is Layers.Reshape reshapeLayer)
                 {
                     // replace Reshape layer which does not reshape with identity layer
-                    var outputShape = ctx.GetPartialTensor(reshapeLayer.index).shape;
+                    var outputShape = ctx.GetPartialTensor(reshapeLayer.outputs[0]).shape;
                     var inputShape = ctx.GetPartialTensor(reshapeLayer.inputs[0]).shape;
                     if (!outputShape.hasRank || !inputShape.hasRank || outputShape.rank != inputShape.rank)
                         continue;
@@ -81,14 +81,14 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     }
 
                     if (isIdentity)
-                        model.layers[l] = new Layers.Identity(layer.index, layer.inputs[0]);
+                        model.layers[l] = new Layers.Identity(layer.outputs[0], layer.inputs[0]);
                     continue;
                 }
                 if (layer is Layers.Expand expandLayer)
                 {
                     // replace Expand layer which does not change the number of elements with a reshape or identity layer
                     // TODO: add support for cases such as tensor.shape = (A), expandShape = [1, A] which is a Reshape
-                    var outputShape = ctx.GetPartialTensor(expandLayer.index).shape;
+                    var outputShape = ctx.GetPartialTensor(expandLayer.outputs[0]).shape;
                     var inputShape = ctx.GetPartialTensor(expandLayer.inputs[0]).shape;
                     if (!outputShape.hasRank || !inputShape.hasRank)
                         continue;
@@ -108,19 +108,31 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
                         if (isIdentity)
                         {
-                            model.layers[l] = new Layers.Identity(layer.index, layer.inputs[0]);
+                            model.layers[l] = new Layers.Identity(layer.outputs[0], layer.inputs[0]);
                             continue;
                         }
                     }
 
                     if (outputShape.IsFullyKnown() && inputShape.IsFullyKnown() && outputShape.Length() == inputShape.Length())
                     {
-                        var shapeName = model.GetUniqueIndex(layer.index + "_Shape");
+                        var shapeName = model.GetUniqueIndex(layer.outputs[0] + "_Shape");
                         var shapeConstant = new Layers.Constant(model.GetUniqueIndex(shapeName), new TensorInt(new TensorShape(outputShape.rank), outputShape.ToTensorShape().ToArray()));
                         model.AddConstant(shapeConstant);
-                        model.layers[l] = new Layers.Reshape(layer.index, layer.inputs[0], shapeConstant.index);
+                        model.layers[l] = new Layers.Reshape(layer.outputs[0], layer.inputs[0], shapeConstant.index);
                     }
 
+                    continue;
+                }
+                if (layer is Layers.ScalarMad scalarMadLayer)
+                {
+                    // replace ScalarMad layer with scale 1 and bias 0 with identity
+                    if (scalarMadLayer.dataType == DataType.Float && (scalarMadLayer.sFloat != 1f || scalarMadLayer.bFloat != 0))
+                        continue;
+
+                    if (scalarMadLayer.dataType == DataType.Int && (scalarMadLayer.sInt != 1 || scalarMadLayer.bInt != 0))
+                        continue;
+
+                    model.layers[l] = new Layers.Identity(scalarMadLayer.outputs[0], scalarMadLayer.inputs[0]);
                     continue;
                 }
                 if (layer is Layers.Tile tileLayer)
@@ -138,17 +150,17 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     if (!allOnes)
                         continue;
 
-                    model.layers[l] = new Layers.Identity(tileLayer.index, tileLayer.inputs[0]);
+                    model.layers[l] = new Layers.Identity(tileLayer.outputs[0], tileLayer.inputs[0]);
                     continue;
                 }
                 if (layer is Layers.Reduce reduceLayer)
                 {
                     // replace Reduce layer which does not perform any reduction with Identity
-                    var axes = reduceLayer.inputs.Length > 1 ? ctx.GetPartialTensor(reduceLayer.inputs[1]) : null;
+                    var axes = ctx.GetPartialTensor(reduceLayer.inputs[1]);
                     var isEmptyAxes = (axes == null || axes.shape.Length() == 0);
                     if (reduceLayer.noopWithEmptyAxes && isEmptyAxes)
                     {
-                        model.layers[l] = new Layers.Identity(reduceLayer.index, reduceLayer.inputs[0]);
+                        model.layers[l] = new Layers.Identity(reduceLayer.outputs[0], reduceLayer.inputs[0]);
                         continue;
                     }
 
@@ -172,9 +184,9 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                         continue;
 
                     if (reduceLayer.keepdims)
-                        model.layers[l] = new Layers.Identity(reduceLayer.index, reduceLayer.inputs[0]);
+                        model.layers[l] = new Layers.Identity(reduceLayer.outputs[0], reduceLayer.inputs[0]);
                     else
-                        model.layers[l] = new Layers.Squeeze(reduceLayer.index, reduceLayer.inputs[0], reduceLayer.inputs[1]);
+                        model.layers[l] = new Layers.Squeeze(reduceLayer.outputs[0], reduceLayer.inputs[0], reduceLayer.inputs[1]);
                     continue;
                 }
                 if (layer is Layers.Cast castLayer)
@@ -184,7 +196,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     if (input.dataType != castLayer.toType)
                         continue;
 
-                    model.layers[l] = new Layers.Identity(castLayer.index, castLayer.inputs[0]);
+                    model.layers[l] = new Layers.Identity(castLayer.outputs[0], castLayer.inputs[0]);
                     continue;
                 }
                 if (layer is Layers.CastLike castLikeLayer)
@@ -194,11 +206,11 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     var targetType = ctx.GetPartialTensor(castLikeLayer.inputs[1]);
                     if (input.dataType == targetType.dataType)
                     {
-                        model.layers[l] = new Layers.Identity(castLikeLayer.index, castLikeLayer.inputs[0]);
+                        model.layers[l] = new Layers.Identity(castLikeLayer.outputs[0], castLikeLayer.inputs[0]);
                         continue;
                     }
 
-                    model.layers[l] = new Layers.Cast(castLikeLayer.index, castLikeLayer.inputs[0], targetType.dataType);
+                    model.layers[l] = new Layers.Cast(castLikeLayer.outputs[0], castLikeLayer.inputs[0], targetType.dataType);
                     continue;
                 }
                 if (layer is Layers.BatchNormalization bnLayer)
@@ -228,16 +240,17 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     using var m0 = op.Mul(scale, mean);
                     using var bias = op.Sub(beta, m0);
 
-                    var scaleConstantName = model.GetUniqueIndex($"{bnLayer.index}_Scale");
-                    var biasConstantName = model.GetUniqueIndex($"{bnLayer.index}_Bias");
+                    var scaleConstantName = model.GetUniqueIndex($"{bnLayer.outputs[0]}_Scale");
+                    var biasConstantName = model.GetUniqueIndex($"{bnLayer.outputs[0]}_Bias");
 
                     model.AddConstant(new Layers.Constant(scaleConstantName, scale));
                     model.AddConstant(new Layers.Constant(biasConstantName, bias));
 
-                    model.layers[l] = new Layers.ScaleBias(bnLayer.index, bnLayer.inputs[0], scaleConstantName, biasConstantName);
+                    model.layers[l] = new Layers.ScaleBias(bnLayer.outputs[0], bnLayer.inputs[0], scaleConstantName, biasConstantName);
                     continue;
                 }
             }
+
             op.Dispose();
         }
     }

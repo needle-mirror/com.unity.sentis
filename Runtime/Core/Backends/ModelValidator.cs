@@ -1,27 +1,26 @@
 using System;
-using System.Linq; // ToArray(), ToDictionary()
+
+// ToArray(), ToDictionary()
 using Unity.Sentis.Compiler.Passes;
 using Unity.Sentis.Compiler.Validation;
 
 namespace Unity.Sentis
 {
-
-static class ModelValidator
-{
-    internal static Model ValidateModel(Model model)
+    static class ModelValidator
     {
-        var validationPasses = new IValidationPass[] {
-            new ValidateBrokenLinks(),
-            new ValidateUnconectedLayers(),
-            new ValidateUniqueOutputs() };
-
-        foreach (var pass in validationPasses)
+        internal static Model ValidateModel(Model model)
         {
-            pass.Run(model);
-        }
+            var validationPasses = new IValidationPass[] {
+                new ValidateBrokenLinks(),
+                new ValidateUnconnectedLayers(),
+                new ValidateUniqueOutputs() };
 
-        return model;
+            foreach (var pass in validationPasses)
+            {
+                pass.Run(model);
+            }
+
+            return model;
+        }
     }
 }
-
-} // namespace Unity.Sentis

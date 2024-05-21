@@ -1,6 +1,6 @@
 # Do operations on tensors
 
-You can use the `IBackend` object to do individual tensor operations on a given back end. This can be easier to set up than writing a full model, and you can use it to dynamically handle input and output tensors at runtime.
+Use the `IBackend` object to perform individual tensor operations on a given back end. This approach can be simpler to set up as compared to writing a full model, and it enables dynamic handling of input and output tensors at runtime.
 
 ## Using IBackend
 
@@ -56,7 +56,7 @@ Refer to [Create an engine to run a model](create-an-engine.md) for more informa
 
 Almost all of the [supported ONNX operators](supported-operators.md) have corresponding `IBackend` methods. Sentis also provides convenience methods such as tensor arithmetic with scalar values.
 
-In the following example a series of tensors are calculated by applying `IBackend` methods.
+The following example calculates a series of tensors by applying `IBackend` methods.
 
 ``` 
 using UnityEngine;

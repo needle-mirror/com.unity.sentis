@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 using System;
-using System.Reflection;using System.Collections.Generic;
-using System.IO;
 
 namespace Unity.Sentis.Google.FlatBuffers
 {

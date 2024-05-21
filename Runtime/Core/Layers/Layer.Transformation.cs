@@ -144,38 +144,25 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents an element-wise `Cast` layer: f(x) = (float)x or f(x) = (int)x depending on the value of `toType`.
     /// </summary>
-    [Serializable]
     class Cast : Layer
     {
-        /// <summary>
-        /// The data type to cast to as a `DataType`.
-        /// </summary>
         public DataType toType;
 
-        /// <summary>
-        /// Initializes and returns an instance of `Cast` layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="toType">The data type to cast to as a `DataType`.</param>
-        public Cast(string name, string input, DataType toType)
+        public Cast(string output, string input, DataType toType)
+            : base(new[] { output }, new[] { input })
         {
-            index = name;
-            inputs = new[] { input };
             this.toType = toType;
         }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
-            ctx.AddPartialTensor(index, new PartialTensor(toType, ctx.GetPartialTensor(inputs[0]).shape));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(toType, ctx.GetPartialTensor(inputs[0]).shape));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
-            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, toType, ctx.backend.backendType);
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, toType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
 
@@ -197,34 +184,22 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents an element-wise `CastLike` layer: f(x) = (float)x or f(x) = (int)x depending on the data type of the targetType tensor.
     /// </summary>
-    [Serializable]
     [Optimization.CPUFallback.NoDataDependencyInputs(1)]
     class CastLike : Layer
     {
-        /// <summary>
-        /// Initializes and returns an instance of `CastLike` layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="targetType">The name to use for the targetType tensor of the layer. The layer does not use the values of this tensor in the computation.</param>
-        public CastLike(string name, string input, string targetType)
-        {
-            index = name;
-            inputs = new[] { input, targetType };
-        }
+        public CastLike(string output, string input, string targetType)
+            : base(new[] { output }, new[] { input, targetType }) { }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var toType = ctx.GetPartialTensor(inputs[1]).dataType;
-            ctx.AddPartialTensor(index, new PartialTensor(toType, ctx.GetPartialTensor(inputs[0]).shape));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(toType, ctx.GetPartialTensor(inputs[0]).shape));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
-            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, ctx.vars.GetTensor(inputs[1]).dataType, ctx.backend.backendType);
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, ctx.storage.GetTensor(inputs[1]).dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
 
@@ -246,28 +221,16 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `Concat` concatenation layer. The layer computes the output tensor by concatenating the input tensors along a given axis.
     /// </summary>
-    [Serializable]
     class Concat : Layer
     {
-        /// <summary>
-        /// The axis along which to concatenate the input tensors.
-        /// </summary>
         public int axis;
 
-        /// <summary>
-        /// Initializes and returns an instance of `Concat` layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="inputs">The names to use for the input tensors of the layer.</param>
-        /// <param name="axis">The axis along which to concatenate the input tensors.</param>
-        public Concat(string name, string[] inputs, int axis)
+        public Concat(string output, string[] inputs, int axis)
+            : base(new[] { output }, inputs)
         {
-            index = name;
-            this.inputs = inputs;
             this.axis = axis;
         }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             Logger.AssertIsTrue(inputs.Length > 0, "Concat.InputError: can't broadcast shapes array of size 0");
@@ -283,7 +246,7 @@ namespace Unity.Sentis.Layers
 
             if (rank.isUnknown)
             {
-                ctx.AddPartialTensor(this.index, new PartialTensor(dataType, SymbolicTensorShape.UnknownShape));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, SymbolicTensorShape.UnknownShape));
                 return;
             }
 
@@ -317,7 +280,7 @@ namespace Unity.Sentis.Layers
 
             if (shapeOut.rank != 1 || !tensorOut.isPartiallyKnown)
             {
-                ctx.AddPartialTensor(this.index, tensorOut);
+                ctx.AddPartialTensor(outputs[0], tensorOut);
                 return;
             }
 
@@ -330,24 +293,22 @@ namespace Unity.Sentis.Layers
                 }
             }
 
-            ctx.AddPartialTensor(this.index, tensorOut);
+            ctx.AddPartialTensor(outputs[0], tensorOut);
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
             Tensor[] tensors = new Tensor[inputs.Length];
             for (int i = 0; i < inputs.Length; i++)
             {
-                tensors[i] = ctx.vars.GetTensor(inputs[i]);
+                tensors[i] = ctx.storage.GetTensor(inputs[i]);
             }
-            var O = ctx.vars.AllocateTensorAndStore(index, TensorShapeHelper.ConcatShape(tensors, axis), ctx.vars.GetTensor(inputs[0]).dataType, ctx.backend.backendType);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.ConcatShape(tensors, axis), ctx.storage.GetTensor(inputs[0]).dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Concat(tensors, O, axis);
         }
 
-        /// <inheritdoc/>
         public override string ToString()
         {
             return $"{base.ToString()}, axis: {axis}";
@@ -359,53 +320,35 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `DepthToSpace` layer. The layer computes the output tensor by permuting data from depth into blocks of spatial data.
     /// </summary>
-    [Serializable]
     class DepthToSpace : Layer
     {
-        /// <summary>
-        /// The size of the blocks to move the depth data into.
-        /// </summary>
         public int blocksize;
-        /// <summary>
-        /// The ordering of the data in the output tensor as a `DepthToSpaceMode`.
-        /// </summary>
         public DepthToSpaceMode mode;
 
-        /// <summary>
-        /// Initializes and returns an instance of `DepthToSpace` layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="blocksize">The size of the blocks to move the depth data into.</param>
-        /// <param name="mode">The ordering of the data in the output tensor as a `DepthToSpaceMode`.</param>
-        public DepthToSpace(string name, string input, int blocksize, DepthToSpaceMode mode)
+        public DepthToSpace(string output, string input, int blocksize, DepthToSpaceMode mode)
+            : base(new[] { output }, new[] { input })
         {
-            index = name;
-            inputs = new[] { input };
             this.blocksize = blocksize;
             this.mode = mode;
         }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var X = ctx.GetPartialTensor(inputs[0]);
             var shapeX = X.shape;
             shapeX.DeclareRank(4);
-            ctx.AddPartialTensor(index, new PartialTensor(X.dataType, new SymbolicTensorShape(shapeX[0], shapeX[1] / (blocksize * blocksize), shapeX[2] * blocksize, shapeX[3] * blocksize)));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, new SymbolicTensorShape(shapeX[0], shapeX[1] / (blocksize * blocksize), shapeX[2] * blocksize, shapeX[3] * blocksize)));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
-            var O = ctx.vars.AllocateTensorAndStore(index, ShapeInference.DepthToSpace(X.shape, blocksize), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.DepthToSpace(X.shape, blocksize), DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.DepthToSpace(X, O, blocksize, mode);
         }
 
-        /// <inheritdoc/>
         public override string ToString()
         {
             return $"{base.ToString()}, blocksize: {string.Join(", ", blocksize)}, mode: {mode}";
@@ -417,36 +360,24 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents an `Expand` layer. The layer computes the output tensor by broadcasting the input tensor into a given shape.
     /// </summary>
-    [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(1)]
     class Expand : Layer
     {
-        /// <summary>
-        /// Initializes and returns an instance of `Expand` layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="shape">The name to use for the 1D shape tensor of the layer.</param>
-        public Expand(string name, string input, string shape)
-        {
-            index = name;
-            inputs = new[] { input, shape };
-        }
+        public Expand(string output, string input, string shape)
+            : base(new[] { output }, new[] { input, shape }) { }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var X = ctx.GetPartialTensor(inputs[0]);
             var shape = ctx.GetPartialTensor(inputs[1]);
-            ctx.AddPartialTensor(index, new PartialTensor(X.dataType, shape.ToSymbolicTensorShape().Broadcast(X.shape)));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, shape.ToSymbolicTensorShape().Broadcast(X.shape)));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
-            var shape = new TensorShape(ctx.vars.GetTensor(inputs[1]).ToReadOnlySpan<int>());
-            var O = ctx.vars.AllocateTensorAndStore(index, X.shape.Broadcast(shape), X.dataType, ctx.backend.backendType);
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var shape = new TensorShape(ctx.storage.GetTensor(inputs[1]).ToReadOnlySpan<int>());
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Broadcast(shape), X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Expand(X, O);
@@ -458,28 +389,16 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `Flatten` layer. The layer computes the output tensor by reshaping the input tensor into a 2D matrix according to the given axis.
     /// </summary>
-    [Serializable]
     class Flatten : Layer
     {
-        /// <summary>
-        /// The axis up to which to flatten the input dimensions into the first dimension of the output tensor.
-        /// </summary>
         public int axis;
 
-        /// <summary>
-        /// Initializes and returns an instance of `Flatten` layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="axis">The axis up to which to flatten the input dimensions into the first dimension of the output tensor. The default value is 1.</param>
-        public Flatten(string name, string input, int axis = 1)
+        public Flatten(string output, string input, int axis = 1)
+            : base(new[] { output }, new[] { input })
         {
-            index = name;
-            inputs = new[] { input };
             this.axis = axis;
         }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var X = ctx.GetPartialTensor(inputs[0]);
@@ -487,9 +406,9 @@ namespace Unity.Sentis.Layers
             if (!shapeX.hasRank)
             {
                 if (axis == 0)
-                    ctx.AddPartialTensor(index, X.Reshape(new SymbolicTensorShape(SymbolicTensorDim.One, shapeX.Length())));
+                    ctx.AddPartialTensor(outputs[0], X.Reshape(new SymbolicTensorShape(SymbolicTensorDim.One, shapeX.Length())));
                 else
-                    ctx.AddPartialTensor(index, X.Reshape(SymbolicTensorShape.UnknownOfRank(2)));
+                    ctx.AddPartialTensor(outputs[0], X.Reshape(SymbolicTensorShape.UnknownOfRank(2)));
                 return;
             }
 
@@ -505,21 +424,19 @@ namespace Unity.Sentis.Layers
                 shapeOut[1] *= shapeX[i];
             }
 
-            ctx.AddPartialTensor(index, X.Reshape(shapeOut));
+            ctx.AddPartialTensor(outputs[0], X.Reshape(shapeOut));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
+            var X = ctx.storage.GetTensor(inputs[0]);
             var shape = X.shape.Flatten(axis);
-            var O = ctx.vars.AllocateTensorAndStore(index, shape, X.dataType, ctx.backend.backendType);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Reshape(X, O);
         }
 
-        /// <inheritdoc/>
         public override string ToString()
         {
             return $"{base.ToString()}, axis: {axis}";
@@ -531,31 +448,20 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents an `Identity` layer. The output tensor is a copy of the input tensor.
     /// </summary>
-    [Serializable]
     class Identity : Layer
     {
-        /// <summary>
-        /// Initializes and returns an instance of `Identity` layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        public Identity(string name, string input)
-        {
-            index = name;
-            inputs = new[] { input };
-        }
+        public Identity(string output, string input)
+            : base(new[] { output }, new[] { input }) { }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
-            ctx.AddPartialTensor(index, ctx.GetPartialTensor(inputs[0]));
+            ctx.AddPartialTensor(outputs[0], ctx.GetPartialTensor(inputs[0]));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
-            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, X.dataType, ctx.backend.backendType);
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.MemCopy(X, O);
@@ -569,42 +475,26 @@ namespace Unity.Sentis.Layers
     ///
     /// Other dimensions of input that are not explicitly moved remain in their original order and appear at the positions not specified in destination.
     /// </summary>
-    [Serializable]
     class MoveDim : Layer
     {
-        /// <summary>
-        /// Original positions of the dims to move. These must be unique.
-        /// </summary>
         public int[] source;
-        /// <summary>
-        /// Destination positions for each of the original dims. These must be unique.
-        /// </summary>
         public int[] destination;
 
-        /// <summary>
-        /// Initializes and returns an instance of `MoveDim` layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="source">Original positions of the dims to move. These must be unique.</param>
-        /// <param name="destination">Destination positions for each of the original dims. These must be unique.</param>
-        public MoveDim(string name, string input, int[] source, int[] destination)
+        public MoveDim(string output, string input, int[] source, int[] destination)
+            : base(new[] { output }, new[] { input })
         {
-            index = name;
-            inputs = new[] { input };
             Logger.AssertIsTrue(source.Length == destination.Length, "MoveDim.ValueError: source and destination arrays must be same length");
             this.source = source;
             this.destination = destination;
         }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var shapeX = ctx.GetPartialTensor(inputs[0]).shape;
 
             if (!shapeX.hasRank)
             {
-                ctx.AddPartialTensor(index, new PartialTensor(ctx.GetPartialTensor(inputs[0]).dataType));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(ctx.GetPartialTensor(inputs[0]).dataType));
                 return;
             }
 
@@ -637,13 +527,12 @@ namespace Unity.Sentis.Layers
                 dstAxis++;
             }
 
-            ctx.AddPartialTensor(index, new PartialTensor(ctx.GetPartialTensor(inputs[0]).dataType, shapeOut));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(ctx.GetPartialTensor(inputs[0]).dataType, shapeOut));
         }
 
-        /// <inheritdoc/>
         public override unsafe void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
+            var X = ctx.storage.GetTensor(inputs[0]);
 
             Span<int> permutations = stackalloc int[X.shape.rank];
             // move given dims
@@ -673,13 +562,12 @@ namespace Unity.Sentis.Layers
                 dstAxis++;
             }
 
-            var O = ctx.vars.AllocateTensorAndStore(index, X.shape.Transpose(permutations), X.dataType, ctx.backend.backendType);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Transpose(permutations), X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Transpose(X, O, permutations);
         }
 
-        /// <inheritdoc/>
         public override string ToString()
         {
             return $"{base.ToString()}, source: [{string.Join(", ", source)}], destination: [{string.Join(", ", destination)}]";
@@ -691,32 +579,19 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `Narrow` layer. The layer calculates the output tensor by slicing the input tensor along a given dim with a given start and length.
     /// </summary>
-    [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(1, 2, 3)]
     class Narrow : Layer
     {
-        /// <summary>
-        /// Initializes and returns an instance of `Narrow` layer with given dim, start and length.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="dim">The name to use for the scalar int dim tensor of the layer.</param>
-        /// <param name="start">The name to use for the scalar int start tensor of the layer.</param>
-        /// <param name="length">The name to use for the scalar int length tensor of the layer.</param>
-        public Narrow(string name, string input, string dim, string start, string length)
-        {
-            index = name;
-            inputs = new[] { input, dim, start, length };
-        }
+        public Narrow(string output, string input, string dim, string start, string length)
+            : base(new[] { output }, new[] { input, dim, start, length }) { }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var X = ctx.GetPartialTensor(inputs[0]);
             var dim = ctx.GetPartialTensor(inputs[1]);
             if (!dim.IsFullyKnown())
             {
-                ctx.AddPartialTensor(index, new PartialTensor(X.dataType, SymbolicTensorShape.UnknownOfRank(X.shape.rank)));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, SymbolicTensorShape.UnknownOfRank(X.shape.rank)));
                 return;
             }
 
@@ -724,16 +599,15 @@ namespace Unity.Sentis.Layers
 
             var outShape = X.shape;
             outShape[dimValue] = SymbolicTensorDim.Unknown;
-            ctx.AddPartialTensor(index, new PartialTensor(X.dataType, outShape));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, outShape));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
-            var dim = ctx.vars.GetTensor(inputs[1]).ToReadOnlySpan<int>()[0];
-            var start = ctx.vars.GetTensor(inputs[2]).ToReadOnlySpan<int>()[0];
-            var length = ctx.vars.GetTensor(inputs[3]).ToReadOnlySpan<int>()[0];
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var dim = ctx.storage.GetTensor(inputs[1]).ToReadOnlySpan<int>()[0];
+            var start = ctx.storage.GetTensor(inputs[2]).ToReadOnlySpan<int>()[0];
+            var length = ctx.storage.GetTensor(inputs[3]).ToReadOnlySpan<int>()[0];
             dim = X.shape.Axis(dim);
             var dimSize = X.shape[dim];
             start = (start + dimSize) % dimSize;
@@ -741,7 +615,7 @@ namespace Unity.Sentis.Layers
             length = end - start;
             var oShape = X.shape;
             oShape[dim] = length;
-            var O = ctx.vars.AllocateTensorAndStore(index, oShape, X.dataType, ctx.backend.backendType);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], oShape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Split(X, O, dim, start);
@@ -753,61 +627,17 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `Pad` layer. The layer calculates the output tensor by adding padding to the input tensor according to the given padding values and mode.
     /// </summary>
-    [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(1, 2, 3)]
     class Pad : Layer
     {
-        /// <summary>
-        /// The `PadMode` to use when padding.
-        /// </summary>
         public PadMode padMode;
 
-        /// <summary>
-        /// Initializes and returns an instance of `Pad` layer without a constant value tensor.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="data">The name to use for the input tensor of the layer.</param>
-        /// <param name="pads">The name to use for the 1D pad tensor of the layer.</param>
-        /// <param name="mode">The `PadMode` to use when padding.</param>
-        public Pad(string name, string data, string pads, PadMode mode)
+        public Pad(string output, string data, string pads, string constantValue = "", string axes = "", PadMode mode = PadMode.Constant)
+            : base(new[] { output }, new[] { data, pads, constantValue, axes })
         {
-            index = name;
-            inputs = new[] { data, pads };
             padMode = mode;
         }
 
-        /// <summary>
-        /// Initializes and returns an instance of `Pad` layer with a constant value tensor.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="data">The name to use for the input tensor of the layer.</param>
-        /// <param name="pads">The name to use for the 1D pad tensor of the layer.</param>
-        /// <param name="constantValue">The name to use for the scalar constant value tensor of the layer.</param>
-        /// <param name="mode">The `PadMode` to use when padding.</param>
-        public Pad(string name, string data, string pads, string constantValue, PadMode mode)
-        {
-            index = name;
-            inputs = new[] { data, pads, constantValue };
-            padMode = mode;
-        }
-
-        /// <summary>
-        /// Initializes and returns an instance of `Pad` layer with a constant value tensor and axes tensor.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="data">The name to use for the input tensor of the layer.</param>
-        /// <param name="pads">The name to use for the 1D pad tensor of the layer.</param>
-        /// <param name="constantValue">The name to use for the scalar constant value tensor of the layer.</param>
-        /// <param name="axes">The name to use for the scalar constant value tensor of the layer.</param>
-        /// <param name="mode">The `PadMode` to use when padding.</param>
-        public Pad(string name, string data, string pads, string constantValue, string axes, PadMode mode)
-        {
-            index = name;
-            inputs = new[] { data, pads, constantValue, axes };
-            padMode = mode;
-        }
-
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var X = ctx.GetPartialTensor(inputs[0]);
@@ -820,13 +650,9 @@ namespace Unity.Sentis.Layers
                 Logger.AssertIsTrue(!shapePads[0].isValue || shapePads[0].value % 2 == 0, "Pad.ValueError: length of pads must divide by 2");
             }
 
-            PartialTensor axes;
+            var axes = ctx.GetPartialTensor(inputs[3]);
 
-            if (inputs.Length > 3 && !string.IsNullOrEmpty(inputs[3]))
-            {
-                axes = ctx.GetPartialTensor(inputs[3]);
-            }
-            else
+            if (axes == null)
             {
                 shapeX.DeclareRank(shapePads[0] / 2);
                 axes = shapeX.hasRank ? PartialTensor.Range(0, shapeX.rank) : new PartialTensor(DataType.Int, SymbolicTensorShape.UnknownOfRank(1));
@@ -836,7 +662,7 @@ namespace Unity.Sentis.Layers
 
             if (!axes.isPartiallyKnown)
             {
-                ctx.AddPartialTensor(index, new PartialTensor(X.dataType, shapeOut));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, shapeOut));
                 return;
             }
 
@@ -851,15 +677,14 @@ namespace Unity.Sentis.Layers
                 shapeOut[axis] = shapeX[axis] + (SymbolicTensorDim)dimPad;
             }
 
-            ctx.AddPartialTensor(index, new PartialTensor(X.dataType, shapeOut));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, shapeOut));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
-            var pad = ctx.vars.GetTensor(inputs[1]).ToReadOnlySpan<int>();
-            var axes = (inputs.Length > 3 && !string.IsNullOrEmpty(inputs[3])) ? ctx.vars.GetTensor(inputs[3]).ToReadOnlySpan<int>() : null;
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var pad = ctx.storage.GetTensor(inputs[1]).ToReadOnlySpan<int>();
+            var axes = !string.IsNullOrEmpty(inputs[3]) ? ctx.storage.GetTensor(inputs[3]).ToReadOnlySpan<int>() : null;
 
             Span<int> pads = stackalloc int[2 * X.shape.rank];
             if (axes != null)
@@ -876,7 +701,7 @@ namespace Unity.Sentis.Layers
                 pad.CopyTo(pads);
             }
 
-            var O = ctx.vars.AllocateTensorAndStore(index, X.shape.Pad(pads), X.dataType, ctx.backend.backendType);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Pad(pads), X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             if (padMode != PadMode.Constant)
@@ -891,7 +716,7 @@ namespace Unity.Sentis.Layers
 
             if (X.dataType == DataType.Float)
             {
-                var constantValue = inputs.Length > 2 && !string.IsNullOrEmpty(inputs[2]) ? ctx.vars.GetTensor(inputs[2]).ToReadOnlySpan<float>()[0] : 0f;
+                var constantValue = ctx.storage.GetTensor(inputs[2])?.ToReadOnlySpan<float>()[0] ?? 0f;
                 if (X.shape.HasZeroDims())
                     ctx.backend.MemSet(O as TensorFloat, constantValue);
                 else
@@ -899,7 +724,7 @@ namespace Unity.Sentis.Layers
             }
             else
             {
-                var constantValue = inputs.Length > 2 && !string.IsNullOrEmpty(inputs[2]) ? ctx.vars.GetTensor(inputs[2]).ToReadOnlySpan<int>()[0] : 0;
+                var constantValue = ctx.storage.GetTensor(inputs[2])?.ToReadOnlySpan<int>()[0] ?? 0;
                 if (X.shape.HasZeroDims())
                     ctx.backend.MemSet(O as TensorInt, constantValue);
                 else
@@ -915,36 +740,17 @@ namespace Unity.Sentis.Layers
     ///
     /// Only one of the elements of the shape can be -1. The layer infers the size of this dimension from the remaining dimensions and the length of the input tensor.
     /// </summary>
-    [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(1)]
     class Reshape : Layer
     {
-        /// <summary>
-        /// Whether to handle zeros in the shape like numpy.
-        ///
-        /// If the shape has a dimension of size 0 and `allowZero` is `true`, the output tensor has a dimension of size zero in the same place.
-        ///
-        /// If the shape has a dimension of size 0 and if `allowZero` is `false`, the output tensor has the same dimension as the input tensor at this axis.
-        /// </summary>
         public bool allowZero;
 
-        /// <summary>
-        /// Initializes and returns an instance of `Reshape` layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="shape">The name to use for the 1D shape tensor of the layer.</param>
-        /// <param name="allowZero">Whether to handle zeros in the shape like numpy.
-        ///
-        /// The default value is `false` and zero-sized dimensions in the shape take their value from the input tensor shape.</param>
-        public Reshape(string name, string input, string shape, bool allowZero = false)
+        public Reshape(string output, string input, string shape, bool allowZero = false)
+            : base(new[] { output }, new[] { input, shape })
         {
-            index = name;
-            inputs = new[] { input, shape };
             this.allowZero = allowZero;
         }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var X = ctx.GetPartialTensor(inputs[0]);
@@ -955,9 +761,9 @@ namespace Unity.Sentis.Layers
             if (!shape.isPartiallyKnown)
             {
                 if (shape.shape[0].isValue)
-                    ctx.AddPartialTensor(index, X.Reshape(SymbolicTensorShape.UnknownOfRank(shape.shape[0].value)));
+                    ctx.AddPartialTensor(outputs[0], X.Reshape(SymbolicTensorShape.UnknownOfRank(shape.shape[0].value)));
                 else
-                    ctx.AddPartialTensor(index, X.Reshape(SymbolicTensorShape.UnknownShape));
+                    ctx.AddPartialTensor(outputs[0], X.Reshape(SymbolicTensorShape.UnknownShape));
                 return;
             }
 
@@ -1001,21 +807,19 @@ namespace Unity.Sentis.Layers
                     shapeOut[i] = allowZero ? SymbolicTensorDim.Zero : shapeX[i];
             }
 
-            ctx.AddPartialTensor(index, X.Reshape(shapeOut, !containsMinusOne));
+            ctx.AddPartialTensor(outputs[0], X.Reshape(shapeOut, !containsMinusOne));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
-            var shape = X.shape.Reshape(ctx.vars.GetTensor(inputs[1]).ToReadOnlySpan<int>(), allowZero);
-            var O = ctx.vars.AllocateTensorAndStore(index, shape, X.dataType, ctx.backend.backendType);
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var shape = X.shape.Reshape(ctx.storage.GetTensor(inputs[1]).ToReadOnlySpan<int>(), allowZero);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Reshape(X, O);
         }
 
-        /// <inheritdoc/>
         public override string ToString()
         {
             return $"{base.ToString()}, allowZero: {allowZero}";
@@ -1027,46 +831,18 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `Resize` layer. The layer calculates the output tensor by resampling the input tensor along the spatial dimensions to a given shape.
     /// </summary>
-    [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(1)]
     class Resize : Layer
     {
-        /// <summary>
-        /// The `ScaleMode` to use for the layer.
-        /// </summary>
         public ScaleMode scaleMode;
-        /// <summary>
-        /// The `CoordTransformMode` to use for the layer.
-        /// </summary>
         public CoordTransformMode coordTransformMode;
-        /// <summary>
-        /// The `InterpolationMode` to use for the layer.
-        /// </summary>
         public InterpolationMode mode;
-        /// <summary>
-        /// The `NearestMode` to use for the layer when using `InterpolationMode.NearestMode`.
-        /// </summary>
         public NearestMode nearestMode;
-        /// <summary>
-        /// The axes to resize.
-        /// </summary>
         public int[] axes;
 
-        /// <summary>
-        /// Initializes and returns an instance of `Resize` layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="scalesOrSizes">The name to use for the 1D scales or sizes tensor of the layer depending on the `scaleMode`.</param>
-        /// <param name="scaleMode">The `ScaleMode` to use for the layer.</param>
-        /// <param name="mode">The `InterpolationMode` to use for the layer.</param>
-        /// <param name="coordTransformMode">The `CoordTransformMode` to use for the layer.</param>
-        /// <param name="nearestMode">The `NearestMode` to use for the layer when using `InterpolationMode.NearestMode`.</param>
-        /// <param name="axes">The axes to resize.</param>
-        public Resize(string name, string input, string scalesOrSizes, ScaleMode scaleMode, InterpolationMode mode, CoordTransformMode coordTransformMode, NearestMode nearestMode, int[] axes)
+        public Resize(string output, string input, string scalesOrSizes, ScaleMode scaleMode, InterpolationMode mode, CoordTransformMode coordTransformMode, NearestMode nearestMode, int[] axes)
+            : base(new[] { output }, new[] { input, scalesOrSizes })
         {
-            index = name;
-            inputs = new[] { input, scalesOrSizes };
             this.scaleMode = scaleMode;
             this.coordTransformMode = coordTransformMode;
             this.mode = mode;
@@ -1074,7 +850,6 @@ namespace Unity.Sentis.Layers
             this.axes = axes;
         }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var dataType = ctx.GetPartialTensor(inputs[0]).dataType;
@@ -1102,14 +877,13 @@ namespace Unity.Sentis.Layers
                 }
             }
 
-            ctx.AddPartialTensor(index, new PartialTensor(dataType, shapeOut));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, shapeOut));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
-            var scalesOrSizes = ctx.vars.GetTensor(inputs[1]);
+            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
+            var scalesOrSizes = ctx.storage.GetTensor(inputs[1]);
             Span<float> s = stackalloc float[X.shape.rank];
             for (var i = 0; i < s.Length; i++)
                 s[i] = 1f;
@@ -1132,7 +906,7 @@ namespace Unity.Sentis.Layers
                         s[i] = sizes[i] / (float)X.shape[i];
                 }
 
-                var O = ctx.vars.AllocateTensorAndStore(index, ShapeInference.Resize(X.shape, s), DataType.Float, ctx.backend.backendType) as TensorFloat;
+                var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.Resize(X.shape, s), DataType.Float, ctx.backend.backendType) as TensorFloat;
                 if (O.shape.HasZeroDims())
                     return;
                 ctx.backend.Resize(X, O, s, mode, nearestMode, coordTransformMode);
@@ -1155,14 +929,13 @@ namespace Unity.Sentis.Layers
                         s[i] = scales[i];
                 }
 
-                var O = ctx.vars.AllocateTensorAndStore(index, ShapeInference.Resize(X.shape, scales), DataType.Float, ctx.backend.backendType) as TensorFloat;
+                var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.Resize(X.shape, scales), DataType.Float, ctx.backend.backendType) as TensorFloat;
                 if (O.shape.HasZeroDims())
                     return;
                 ctx.backend.Resize(X, O, scales, mode, nearestMode, coordTransformMode);
             }
         }
 
-        /// <inheritdoc/>
         public override string ToString()
         {
             return $"{base.ToString()}, mode: {mode}, coordTransformMode: {coordTransformMode}, nearestMode: {nearestMode}";
@@ -1174,31 +947,19 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `Select` layer. The layer calculates the output tensor by slicing the input tensor along a given dim with a given index, the sliced dim is removed from the output.
     /// </summary>
-    [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(1, 2)]
     class Select : Layer
     {
-        /// <summary>
-        /// Initializes and returns an instance of `Select` layer with given dim and index.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="dim">The name to use for the scalar int dim tensor of the layer.</param>
-        /// <param name="index">The name to use for the scalar int index tensor of the layer.</param>
-        public Select(string name, string input, string dim, string index)
-        {
-            this.index = name;
-            inputs = new[] { input, dim, index };
-        }
+        public Select(string output, string input, string dim, string selectIndex)
+            : base(new[] { output }, new[] { input, dim, selectIndex }) { }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var X = ctx.GetPartialTensor(inputs[0]);
             var dim = ctx.GetPartialTensor(inputs[1]);
             if (!dim.IsFullyKnown())
             {
-                ctx.AddPartialTensor(index, new PartialTensor(X.dataType, SymbolicTensorShape.UnknownOfRank(X.shape.rank - 1)));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, SymbolicTensorShape.UnknownOfRank(X.shape.rank - 1)));
                 return;
             }
 
@@ -1206,24 +967,23 @@ namespace Unity.Sentis.Layers
             var outShape = X.shape;
             outShape[axis] = SymbolicTensorDim.One;
             outShape = outShape.Squeeze(axis);
-            ctx.AddPartialTensor(index, new PartialTensor(X.dataType, outShape));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, outShape));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
-            var dim = ctx.vars.GetTensor(inputs[1]).ToReadOnlySpan<int>()[0];
-            var i = ctx.vars.GetTensor(inputs[2]).ToReadOnlySpan<int>()[0];
-            var O = ctx.vars.AllocateTensorAndStore(index, X.shape.Reduce(dim, false), X.dataType, ctx.backend.backendType);
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var dim = ctx.storage.GetTensor(inputs[1]).ToReadOnlySpan<int>()[0];
+            var selectIndex = ctx.storage.GetTensor(inputs[2]).ToReadOnlySpan<int>()[0];
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(dim, false), X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            var unsqueezed = ctx.vars.AllocateTensor(X.shape.Reduce(dim, true), X.dataType, ctx.backend.backendType);
+            var unsqueezed = ctx.storage.AllocateTensor(X.shape.Reduce(dim, true), X.dataType, ctx.backend.backendType);
             dim = X.shape.Axis(dim);
-            i = i < 0 ? i + X.shape[dim] : i;
-            ctx.backend.Split(X, unsqueezed, dim, i);
+            selectIndex = selectIndex < 0 ? selectIndex + X.shape[dim] : selectIndex;
+            ctx.backend.Split(X, unsqueezed, dim, selectIndex);
             ctx.backend.Reshape(unsqueezed, O);
-            ctx.vars.Dispose(unsqueezed);
+            ctx.storage.Dispose(unsqueezed);
         }
 
         internal override string profilerTag => "Select";
@@ -1232,66 +992,25 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `Slice` layer. The layer calculates the output tensor by slicing the input tensor along given axes with given starts, ends and steps.
     /// </summary>
-    [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(1, 2, 3, 4)]
     class Slice : Layer
     {
-        /// <summary>
-        /// Initializes and returns an instance of `Slice` layer with given starts and ends. The layer slices the first axes of the input with step 1.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="starts">The name to use for the 1D starts tensor of the layer.</param>
-        /// <param name="ends">The name to use for the 1D ends tensor of the layer.</param>
-        public Slice(string name, string input, string starts, string ends)
-        {
-            index = name;
-            inputs = new[] { input, starts, ends };
-        }
+        public Slice(string output, string input, string starts, string ends, string axes = "", string steps = "")
+            : base(new[] { output }, new[] { input, starts, ends, axes, steps }) { }
 
-        /// <summary>
-        /// Initializes and returns an instance of `Slice` layer with given starts, ends and axes. The layer uses step 1.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="starts">The name to use for the 1D starts tensor of the layer.</param>
-        /// <param name="ends">The name to use for the 1D ends tensor of the layer.</param>
-        /// <param name="axes">The name to use for the 1D axes tensor of the layer.</param>
-        public Slice(string name, string input, string starts, string ends, string axes)
-        {
-            index = name;
-            inputs = new[] { input, starts, ends, axes };
-        }
-
-        /// <summary>
-        /// Initializes and returns an instance of `Slice` layer with given starts, ends, axes, and steps.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="starts">The name to use for the 1D starts tensor of the layer.</param>
-        /// <param name="ends">The name to use for the 1D ends tensor of the layer.</param>
-        /// <param name="axes">The name to use for the 1D axes tensor of the layer.</param>
-        /// <param name="steps">The name to use for the 1D steps tensor of the layer.</param>
-        public Slice(string name, string input, string starts, string ends, string axes, string steps)
-        {
-            index = name;
-            inputs = new[] { input, starts, ends, axes, steps };
-        }
-
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var data = ctx.GetPartialTensor(inputs[0]);
             if (!data.shape.hasRank)
             {
-                ctx.AddPartialTensor(index, new PartialTensor(data.dataType));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(data.dataType));
                 return;
             }
 
             var starts = ctx.GetPartialTensor(inputs[1]);
             var ends = ctx.GetPartialTensor(inputs[2]);
-            var axes = (inputs.Length > 3 ? ctx.GetPartialTensor(inputs[3]) : null) ?? PartialTensor.Range(0, data.shape.rank);
-            var steps = (inputs.Length > 4 ? ctx.GetPartialTensor(inputs[4]) : null) ?? PartialTensor.Ones(starts.shape);
+            var axes = ctx.GetPartialTensor(inputs[3]) ?? PartialTensor.Range(0, data.shape.rank);
+            var steps = ctx.GetPartialTensor(inputs[4]) ?? PartialTensor.Ones(starts.shape);
 
             if (data.isPartiallyKnown && data.shape.rank == 1 && starts[0].isIntValue && ends[0].isIntValue && steps[0].isIntValue)
             {
@@ -1318,13 +1037,13 @@ namespace Unity.Sentis.Layers
                     tensorOut[i] = data[start + i * step];
                 }
 
-                ctx.AddPartialTensor(index, tensorOut);
+                ctx.AddPartialTensor(outputs[0], tensorOut);
                 return;
             }
 
             if (!axes.isPartiallyKnown)
             {
-                ctx.AddPartialTensor(index, new PartialTensor(data.dataType, SymbolicTensorShape.UnknownOfRank(data.shape.rank)));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(data.dataType, SymbolicTensorShape.UnknownOfRank(data.shape.rank)));
                 return;
             }
 
@@ -1342,18 +1061,19 @@ namespace Unity.Sentis.Layers
                 shapeOut[axis] = data.shape[axis].Slice(starts[i], ends[i], steps[i]);
             }
 
-            ctx.AddPartialTensor(index, new PartialTensor(data.dataType, shapeOut));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(data.dataType, shapeOut));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
-            var starts = ctx.vars.GetTensor(inputs[1]).ToReadOnlySpan<int>();
-            var ends = ctx.vars.GetTensor(inputs[2]).ToReadOnlySpan<int>();
-            var axes = inputs.Length > 3 && ctx.vars.GetTensor(inputs[3]) != null ? ctx.vars.GetTensor(inputs[3]).ToReadOnlySpan<int>() : null;
-            var steps = inputs.Length > 4 && ctx.vars.GetTensor(inputs[4]) != null ? ctx.vars.GetTensor(inputs[4]).ToReadOnlySpan<int>() : null;
-            var O = ctx.vars.AllocateTensorAndStore(index, X.shape.Slice(starts, ends, axes, steps), X.dataType, ctx.backend.backendType);
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var starts = ctx.storage.GetTensor(inputs[1]).ToReadOnlySpan<int>();
+            var ends = ctx.storage.GetTensor(inputs[2]).ToReadOnlySpan<int>();
+            var axesTensor = ctx.storage.GetTensor(inputs[3]);
+            var axes = axesTensor != null ? axesTensor.ToReadOnlySpan<int>() : null;
+            var stepsTensor = ctx.storage.GetTensor(inputs[4]);
+            var steps = stepsTensor != null ? stepsTensor.ToReadOnlySpan<int>() : null;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Slice(starts, ends, axes, steps), X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Slice(X, O, starts, axes, steps);
@@ -1362,72 +1082,27 @@ namespace Unity.Sentis.Layers
         internal override string profilerTag => "Slice";
     }
 
-    [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(2, 3, 4, 5)]
     class SliceSet : Layer
     {
-        /// <summary>
-        /// Initializes and returns an instance of `SliceSet` layer with given starts and ends. The layer slices the first axes of the input with step 1.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="values">The name to use for the source tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="starts">The name to use for the 1D starts tensor of the layer.</param>
-        /// <param name="ends">The name to use for the 1D ends tensor of the layer.</param>
-        public SliceSet(string name, string input, string values, string starts, string ends)
-        {
-            index = name;
-            inputs = new[] { input, values, starts, ends };
-        }
+        public SliceSet(string output, string input, string values, string starts, string ends, string axes = "", string steps = "")
+            : base(new[] { output }, new[] { input, values, starts, ends, axes, steps }) { }
 
-        /// <summary>
-        /// Initializes and returns an instance of `SliceSet` layer with given starts, ends and axes. The layer uses step 1.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="values">The name to use for the source tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="starts">The name to use for the 1D starts tensor of the layer.</param>
-        /// <param name="ends">The name to use for the 1D ends tensor of the layer.</param>
-        /// <param name="axes">The name to use for the 1D axes tensor of the layer.</param>
-        public SliceSet(string name, string input, string values, string starts, string ends, string axes)
-        {
-            index = name;
-            inputs = new[] { input, values, starts, ends, axes };
-        }
-
-        /// <summary>
-        /// Initializes and returns an instance of `SliceSet` layer with given starts, ends, axes, and steps.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="values">The name to use for the source tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="starts">The name to use for the 1D starts tensor of the layer.</param>
-        /// <param name="ends">The name to use for the 1D ends tensor of the layer.</param>
-        /// <param name="axes">The name to use for the 1D axes tensor of the layer.</param>
-        /// <param name="steps">The name to use for the 1D steps tensor of the layer.</param>
-        public SliceSet(string name, string input, string values, string starts, string ends, string axes, string steps)
-        {
-            index = name;
-            inputs = new[] { input, values, starts, ends, axes, steps };
-        }
-
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var X = ctx.GetPartialTensor(inputs[0]);
-            ctx.AddPartialTensor(index, new PartialTensor(X.dataType, X.shape));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, X.shape));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
-            var values = ctx.vars.GetTensor(inputs[1]);
-            var starts = ctx.vars.GetTensor(inputs[2]).ToReadOnlySpan<int>();
-            var ends = ctx.vars.GetTensor(inputs[3]).ToReadOnlySpan<int>();
-            var axes = inputs.Length > 4 && ctx.vars.GetTensor(inputs[4]) != null ? ctx.vars.GetTensor(inputs[4]).ToReadOnlySpan<int>() : null;
-            var steps = inputs.Length > 5 && ctx.vars.GetTensor(inputs[5]) != null ? ctx.vars.GetTensor(inputs[5]).ToReadOnlySpan<int>() : null;
-            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, X.dataType, ctx.backend.backendType);
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var values = ctx.storage.GetTensor(inputs[1]);
+            var starts = ctx.storage.GetTensor(inputs[2]).ToReadOnlySpan<int>();
+            var ends = ctx.storage.GetTensor(inputs[3]).ToReadOnlySpan<int>();
+            var axes = !string.IsNullOrEmpty(inputs[4]) ? ctx.storage.GetTensor(inputs[4]).ToReadOnlySpan<int>() : null;
+            var steps = !string.IsNullOrEmpty(inputs[5]) ? ctx.storage.GetTensor(inputs[5]).ToReadOnlySpan<int>() : null;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             var slicedShape = X.shape.Slice(starts, ends, axes, steps);
@@ -1435,10 +1110,10 @@ namespace Unity.Sentis.Layers
             if (slicedShape != values.shape)
             {
                 // broadcast values
-                var broadcastValues = ctx.vars.AllocateTensor(slicedShape, values.dataType, ctx.backend.backendType);
+                var broadcastValues = ctx.storage.AllocateTensor(slicedShape, values.dataType, ctx.backend.backendType);
                 ctx.backend.Expand(values, broadcastValues);
                 ctx.backend.SliceSet(X, broadcastValues, O, starts, axes, steps);
-                ctx.vars.Dispose(broadcastValues);
+                ctx.storage.Dispose(broadcastValues);
             }
             else
             {
@@ -1452,46 +1127,32 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `SpaceToDepth` layer. The layer computes the output tensor by permuting data from blocks of spatial data into depth.
     /// </summary>
-    [Serializable]
     class SpaceToDepth : Layer
     {
-        /// <summary>
-        /// The size of the spatial blocks to move into depth.
-        /// </summary>
         public int blocksize;
 
-        /// <summary>
-        /// Initializes and returns an instance of `SpaceToDepth` layer with given starts, ends, axes, and steps.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="blocksize">The size of the spatial blocks to move into depth.</param>
-        public SpaceToDepth(string name, string input, int blocksize)
+        public SpaceToDepth(string output, string input, int blocksize)
+            : base(new[] { output }, new[] { input })
         {
-            index = name;
-            inputs = new[] { input };
             this.blocksize = blocksize;
         }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var shapeX = ctx.GetPartialTensor(inputs[0]).shape;
             shapeX.DeclareRank(4);
-            ctx.AddPartialTensor(index, new PartialTensor(ctx.GetPartialTensor(inputs[0]).dataType, new SymbolicTensorShape(shapeX[0], shapeX[1] * (blocksize * blocksize), shapeX[2] / blocksize, shapeX[3] / blocksize)));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(ctx.GetPartialTensor(inputs[0]).dataType, new SymbolicTensorShape(shapeX[0], shapeX[1] * (blocksize * blocksize), shapeX[2] / blocksize, shapeX[3] / blocksize)));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
-            var O = ctx.vars.AllocateTensorAndStore(index, ShapeInference.SpaceToDepth(X.shape, blocksize), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.SpaceToDepth(X.shape, blocksize), DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.SpaceToDepth(X, O, blocksize);
         }
 
-        /// <inheritdoc/>
         public override string ToString()
         {
             return $"{base.ToString()}, blocksize: {blocksize}";
@@ -1503,68 +1164,29 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `Split` layer. The layer computes the output tensors by splitting the input tensor along a single given axis.
     /// </summary>
-    [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(1)]
     class Split : Layer
     {
-        /// <summary>
-        /// The axis along which to split.
-        /// </summary>
         public int axis;
-        /// <summary>
-        /// The number of outputs along which to split the input tensor if no split tensor is used.
-        /// </summary>
         public int numOutputs;
 
-        /// <summary>
-        /// Initializes and returns an instance of `Split` layer where the input tensor is split equally.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="outputs">The names to use for all of the output tensors of the layer.</param>
-        /// <param name="axis">The axis along which to split.</param>
-        /// <param name="numOutputs">The number of outputs to split the input tensor into.</param>
-        public Split(string name, string input, string[] outputs, int axis, int numOutputs)
+        public Split(string[] outputs, string input, string split = "", int axis = 0, int numOutputs = 0)
+            : base(outputs, new[] { input, split })
         {
-            index = name;
-            inputs = new[] { input };
             Logger.AssertIsTrue(outputs.Length >= 1, "Split.InputError: output array must have length at least 1");
-            this.outputs = outputs;
             this.axis = axis;
             this.numOutputs = numOutputs;
-            Logger.AssertIsTrue(numOutputs >= outputs.Length, "Split.InputError: numOutputs must be at least the length of output array");
         }
 
-        /// <summary>
-        /// Initializes and returns an instance of `Split` layer where the input tensor is split according to the split tensor.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="split">The name to use for the 1D split tensor of the layer.</param>
-        /// <param name="outputs">The names to use for all of the output tensors of the layer.</param>
-        /// <param name="axis">The axis along which to split.</param>
-        public Split(string name, string input, string split, string[] outputs, int axis)
-        {
-            index = name;
-            inputs = new[] { input, split };
-            Logger.AssertIsTrue(outputs.Length >= 1, "Split.InputError: output array must have length at least 1");
-            this.outputs = outputs;
-            this.axis = axis;
-        }
-
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
-            PartialTensor partialSplit;
-            if (inputs.Length == 2)
-            {
-                partialSplit = ctx.GetPartialTensor(inputs[1]);
-            }
-            else
+            var X = ctx.GetPartialTensor(inputs[0]);
+            var partialSplit = ctx.GetPartialTensor(inputs[1]);
+            if (partialSplit == null)
             {
                 partialSplit = new PartialTensor(DataType.Int, new SymbolicTensorShape(numOutputs));
 
-                var dim = ctx.GetPartialTensor(inputs[0]).shape[axis];
+                var dim = X.shape[axis];
                 if (dim.isParam && numOutputs == 1)
                 {
                     partialSplit[0] = PartialTensorElement.Param(dim.param);
@@ -1586,27 +1208,23 @@ namespace Unity.Sentis.Layers
 
             for (var i = 0; i < outputs.Length; i++)
             {
-                var output = i == 0 ? index : outputs[i];
-                if (string.IsNullOrEmpty(output))
-                    continue;
-                var outputShape = new SymbolicTensorShape(ctx.GetPartialTensor(inputs[0]).shape);
+                var outputShape = new SymbolicTensorShape(X.shape);
                 outputShape[axis] = (SymbolicTensorDim)partialSplit[i];
-                ctx.AddPartialTensor(output, new PartialTensor(ctx.GetPartialTensor(inputs[0]).dataType, outputShape));
+                ctx.AddPartialTensor(outputs[i], new PartialTensor(X.dataType, outputShape));
             }
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
+            var X = ctx.storage.GetTensor(inputs[0]);
 
-            Tensor firstOutput = null;
             var dim = X.shape[axis];
             ReadOnlySpan<int> split = null;
             var equalSplitLength = 0;
-            if (inputs.Length > 1 && ctx.vars.GetTensor(inputs[1]) != null)
+            var splitTensor = ctx.storage.GetTensor(inputs[1]);
+            if (splitTensor != null)
             {
-                split = ctx.vars.GetTensor(inputs[1]).ToReadOnlySpan<int>();
+                split = splitTensor.ToReadOnlySpan<int>();
             }
             else
             {
@@ -1618,19 +1236,13 @@ namespace Unity.Sentis.Layers
             {
                 var end = start + (split != null ? split[i] : equalSplitLength);
                 end = Math.Min(end, dim);
-                var O = ctx.vars.AllocateTensor(X.shape.Split(axis, start, end), X.dataType, ctx.backend.backendType);
+                var O = ctx.storage.AllocateTensorAndStore(outputs[i], X.shape.Split(axis, start, end), X.dataType, ctx.backend.backendType);
                 if (!O.shape.HasZeroDims())
                     ctx.backend.Split(X, O, axis, start);
-                if (i == 0)
-                    firstOutput = O;
-                else
-                    ctx.vars.Store(outputs[i], O);
                 start = end;
             }
-            ctx.vars.Store(index, firstOutput);
         }
 
-        /// <inheritdoc/>
         public override string ToString()
         {
             return $"{base.ToString()}, axis: {axis}, numOutputs: {numOutputs}";
@@ -1642,67 +1254,37 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `Squeeze` layer. The layer computes the output tensor by reshaping the input tensor by removing dimensions of size 1.
     /// </summary>
-    [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(1)]
     class Squeeze : Layer
     {
-        /// <summary>
-        /// Initializes and returns an instance of `Squeeze` layer where the layer squeezes all the axes of size 1 from the input.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        public Squeeze(string name, string input)
-        {
-            index = name;
-            inputs = new[] { input };
-        }
+        public Squeeze(string output, string input, string axes = "")
+            : base(new[] { output }, new[] { input, axes }) { }
 
-        /// <summary>
-        /// Initializes and returns an instance of `Squeeze` layer where the layer squeezes the specified axes of size 1 from the input.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="axes">The name to use for the 1D axes tensor of the layer.</param>
-        public Squeeze(string name, string input, string axes)
-        {
-            index = name;
-            inputs = new[] { input, axes };
-        }
-
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var X = ctx.GetPartialTensor(inputs[0]);
-            if (inputs.Length == 2)
+            var axes = ctx.GetPartialTensor(inputs[1]);
+            if (axes != null)
             {
-                var axes = ctx.GetPartialTensor(inputs[1]);
                 if (!axes.isPartiallyKnown)
-                    ctx.AddPartialTensor(index, X.Reshape(SymbolicTensorShape.UnknownShape));
+                    ctx.AddPartialTensor(outputs[0], X.Reshape(SymbolicTensorShape.UnknownShape));
                 else if (!axes.IsFullyKnown())
-                    ctx.AddPartialTensor(index, X.Reshape(SymbolicTensorShape.UnknownOfRank(X.shape.rank - axes.length)));
+                    ctx.AddPartialTensor(outputs[0], X.Reshape(SymbolicTensorShape.UnknownOfRank(X.shape.rank - axes.length)));
                 else
-                    ctx.AddPartialTensor(index, X.Reshape(X.shape.Squeeze(axes)));
+                    ctx.AddPartialTensor(outputs[0], X.Reshape(X.shape.Squeeze(axes)));
                 return;
             }
 
-            ctx.AddPartialTensor(index, X.Reshape(X.shape.Squeeze()));
+            ctx.AddPartialTensor(outputs[0], X.Reshape(X.shape.Squeeze()));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
+            var X = ctx.storage.GetTensor(inputs[0]);
             TensorShape shape;
-            if (inputs.Length > 1 && ctx.vars.GetTensor(inputs[1]) != null)
-            {
-                var axes = ctx.vars.GetTensor(inputs[1]).ToReadOnlySpan<int>();
-                shape = X.shape.Squeeze(axes);
-            }
-            else
-            {
-                shape = X.shape.Squeeze();
-            }
-            var O = ctx.vars.AllocateTensorAndStore(index, shape, X.dataType, ctx.backend.backendType);
+            var axes = ctx.storage.GetTensor(inputs[1]);
+            shape = axes != null ? X.shape.Squeeze(axes.ToReadOnlySpan<int>()) : X.shape.Squeeze();
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Reshape(X, O); // TODO<tensordata> refcount tensordata
@@ -1714,23 +1296,12 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `Tile` layer. The layer computes the output tensor by repeating the input layer a given number of times along each axis.
     /// </summary>
-    [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(1)]
     class Tile : Layer
     {
-        /// <summary>
-        /// Initializes and returns an instance of `Tile` layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="repeats">The name to use for the 1D repeats tensor of the layer.</param>
-        public Tile(string name, string input, string repeats)
-        {
-            index = name;
-            inputs = new[] { input, repeats };
-        }
+        public Tile(string output, string input, string repeats)
+            : base(new[] { output }, new[] { input, repeats }) { }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var dataType = ctx.GetPartialTensor(inputs[0]).dataType;
@@ -1743,7 +1314,7 @@ namespace Unity.Sentis.Layers
                 if (repeats.shape[0].isValue && !shapeX.hasRank)
                     shapeX = SymbolicTensorShape.UnknownOfRank(repeats.shape[0].value);
                 Logger.AssertIsFalse(repeats.shape[0] != shapeX.rank, "Tile.InputError: repeats value must be equal to input rank");
-                ctx.AddPartialTensor(index, new PartialTensor(dataType, SymbolicTensorShape.UnknownOfRankLike(shapeX)));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, SymbolicTensorShape.UnknownOfRankLike(shapeX)));
                 return;
             }
 
@@ -1754,15 +1325,14 @@ namespace Unity.Sentis.Layers
             {
                 shapeOut[i] *= (SymbolicTensorDim)repeats[i];
             }
-            ctx.AddPartialTensor(index, new PartialTensor(dataType, shapeOut));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, shapeOut));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
-            var repeats = ctx.vars.GetTensor(inputs[1]).ToReadOnlySpan<int>();
-            var O = ctx.vars.AllocateTensorAndStore(index, X.shape.Tile(repeats), X.dataType, ctx.backend.backendType);
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var repeats = ctx.storage.GetTensor(inputs[1]).ToReadOnlySpan<int>();
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Tile(repeats), X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Tile(X, O, repeats);
@@ -1774,30 +1344,16 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `Transpose` layer. The layer computes the output tensor by permuting the axes and data of the input tensor according to the given permutations.
     /// </summary>
-    [Serializable]
     class Transpose : Layer
     {
-        /// <summary>
-        /// The axes to sample the output tensor from in the input tensor.
-        ///
-        /// If this is `null`, the layer reverses the dimensions of the input tensor in the output tensor.
-        /// </summary>
         public int[] permutations;
 
-        /// <summary>
-        /// Initializes and returns an instance of `Transpose` layer with permutations as an array of integers.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="permutations">The axes to sample the output tensor from in the input tensor.</param>
-        public Transpose(string name, string input, int[] permutations)
+        public Transpose(string output, string input, int[] permutations)
+            : base(new[] { output }, new[] { input })
         {
-            index = name;
-            inputs = new[] { input };
             this.permutations = permutations;
         }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var shapeX = ctx.GetPartialTensor(inputs[0]).shape;
@@ -1806,7 +1362,7 @@ namespace Unity.Sentis.Layers
 
             if (!shapeX.hasRank)
             {
-                ctx.AddPartialTensor(index, new PartialTensor(ctx.GetPartialTensor(inputs[0]).dataType));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(ctx.GetPartialTensor(inputs[0]).dataType));
                 return;
             }
 
@@ -1832,16 +1388,15 @@ namespace Unity.Sentis.Layers
                 }
             }
 
-            ctx.AddPartialTensor(index, new PartialTensor(ctx.GetPartialTensor(inputs[0]).dataType, shapeOut));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(ctx.GetPartialTensor(inputs[0]).dataType, shapeOut));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
+            var X = ctx.storage.GetTensor(inputs[0]);
             if (permutations == null)
             {
-                var O = ctx.vars.AllocateTensorAndStore(index, X.shape.Transpose(), X.dataType, ctx.backend.backendType);
+                var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Transpose(), X.dataType, ctx.backend.backendType);
                 if (O.shape.HasZeroDims())
                     return;
                 ctx.backend.Transpose(X, O);
@@ -1849,7 +1404,7 @@ namespace Unity.Sentis.Layers
             }
             else
             {
-                var O = ctx.vars.AllocateTensorAndStore(index, X.shape.Transpose(permutations), X.dataType, ctx.backend.backendType);
+                var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Transpose(permutations), X.dataType, ctx.backend.backendType);
                 if (O.shape.HasZeroDims())
                     return;
                 ctx.backend.Transpose(X, O, permutations);
@@ -1857,7 +1412,6 @@ namespace Unity.Sentis.Layers
             }
         }
 
-        /// <inheritdoc/>
         public override string ToString()
         {
             if (permutations == null)
@@ -1872,54 +1426,28 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `Trilu` layer. The layer computes the output tensor by retaining the upper or lower triangular values from an input matrix or matrix batch and setting the other values to zero.
     /// </summary>
-    [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(1)]
     class Trilu : Layer
     {
-        /// <summary>
-        /// The lower or upper mode for the operation.
-        /// </summary>
         public TriluMode mode;
 
-        /// <summary>
-        /// Initializes and returns an instance of `Trilu` layer with no k offset value.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="mode">The lower or upper mode for the operation.</param>
-        public Trilu(string name, string input, TriluMode mode)
+        public Trilu(string output, string input, string k = "", TriluMode mode = TriluMode.Upper)
+            : base(new[] { output }, new[] { input, k })
         {
-            index = name;
-            inputs = new[] { input };
             this.mode = mode;
         }
 
-        /// <summary>
-        /// Initializes and returns an instance of `Trilu` layer with k offset value.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="k">The name to use for the scalar k offset tensor of the layer.</param>
-        /// <param name="mode">The lower or upper mode for the operation.</param>
-        public Trilu(string name, string input, string k, TriluMode mode)
-        {
-            index = name;
-            inputs = new[] { input, k };
-            this.mode = mode;
-        }
-
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
-            ctx.AddPartialTensor(index, new PartialTensor(ctx.GetPartialTensor(inputs[0]).dataType, ctx.GetPartialTensor(inputs[0]).shape));
+            var X = ctx.GetPartialTensor(inputs[0]);
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, X.shape));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
-            var k = inputs.Length > 1 && ctx.vars.GetTensor(inputs[1]) != null ? ctx.vars.GetTensor(inputs[1]).ToReadOnlySpan<int>()[0] : 0;
-            var O = ctx.vars.AllocateTensorAndStore(index, X.shape, X.dataType, ctx.backend.backendType);
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var k = ctx.storage.GetTensor(inputs[1])?.ToReadOnlySpan<int>()[0] ?? 0;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             if (mode == TriluMode.Upper)
@@ -1928,7 +1456,6 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Tril(X, O, k);
         }
 
-        /// <inheritdoc/>
         public override string ToString()
         {
             return $"{base.ToString()}, mode: {mode}";
@@ -1940,36 +1467,24 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents an `Unsqueeze` layer. The layer computes the output tensor by reshaping the input tensor by adding dimensions of size 1 at the given axes.
     /// </summary>
-    [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(1)]
     class Unsqueeze : Layer
     {
-        /// <summary>
-        /// Initializes and returns an instance of `Unsqueeze` layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="axes">The name to use for the 1D axes tensor of the layer.</param>
-        public Unsqueeze(string name, string input, string axes)
-        {
-            index = name;
-            inputs = new[] { input, axes };
-        }
+        public Unsqueeze(string output, string input, string axes)
+            : base(new[] { output }, new[] { input, axes }) { }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var X = ctx.GetPartialTensor(inputs[0]);
             var shape = ctx.GetPartialTensor(inputs[1]);
-            ctx.AddPartialTensor(index, X.Reshape(X.shape.Unsqueeze(shape)));
+            ctx.AddPartialTensor(outputs[0], X.Reshape(X.shape.Unsqueeze(shape)));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
-            var shape = X.shape.Unsqueeze(ctx.vars.GetTensor(inputs[1]).ToReadOnlySpan<int>());
-            var O = ctx.vars.AllocateTensorAndStore(index, shape, X.dataType, ctx.backend.backendType);
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var shape = X.shape.Unsqueeze(ctx.storage.GetTensor(inputs[1]).ToReadOnlySpan<int>());
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Reshape(X, O); // TODO<tensordata> refcount tensordata

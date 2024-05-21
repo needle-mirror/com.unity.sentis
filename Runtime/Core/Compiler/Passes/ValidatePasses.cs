@@ -33,17 +33,10 @@ namespace Unity.Sentis.Compiler.Passes
                 {
                     if (!string.IsNullOrEmpty(input) && !knownInputs.Contains(input))
                     {
-                        unconnectedLinks.Add(layer.index);
+                        unconnectedLinks.Add(layer.outputs[0]);
                         break;
                     }
                 }
-                knownInputs.Add(layer.index);
-
-                if (globalOutputs.ContainsKey(layer.index))
-                    globalOutputs[layer.index] = true;
-
-                if (layer.outputs == null)
-                    continue;
 
                 foreach (var output in layer.outputs)
                 {
@@ -81,7 +74,7 @@ namespace Unity.Sentis.Compiler.Passes
         }
     }
 
-    class ValidateUnconectedLayers : IValidationPass
+    class ValidateUnconnectedLayers : IValidationPass
     {
         public void Run(Model model)
         {
@@ -97,12 +90,6 @@ namespace Unity.Sentis.Compiler.Passes
 
             foreach (var layer in model.layers)
             {
-                if (globalOutputs.ContainsKey(layer.index))
-                    globalOutputs[layer.index] = true;
-
-                if (layer.outputs == null)
-                    continue;
-
                 foreach (var o in layer.outputs)
                 {
                     if (globalOutputs.ContainsKey(o))

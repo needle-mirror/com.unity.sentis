@@ -1,14 +1,12 @@
 # Supported ONNX operators
 
-The table shows which Open Neural Network Exchange (ONNX) operators Sentis supports, and which data types Sentis supports for each [back end type](create-an-engine.md#back-end-types).
-
-When you import a model, each ONNX operator in the model graph becomes a Sentis layer. A Sentis layer has the same name as the ONNX operator, unless the table shows the operator maps to a different layer. Refer to [How Sentis optimizes a model](models-concept.md#how-sentis-optimizes-a-model) for more information.
+When you import a model, each Open Neural Network Exchange (ONNX) operator in the model graph becomes a Sentis layer. A Sentis layer has the same name as the ONNX operator, unless the table shows the operator maps to a different layer. Refer to [How Sentis optimizes a model](models-concept.md#how-sentis-optimizes-a-model) for more information.
 
 If you use a GPU Worker and the model has a layer that isn't supported, Sentis defaults to using `BackendType.CPU` for the layer that uses Burst. If `BackendType.CPU` isn't supported, Sentis resorts to utilizing a slower CPU implementation of the layer that doesn't use Burst.
 
-## Supported operators
+## Supported ONNX operators
 
-### ONNX operators
+The table below shows which ONNX operators Sentis supports, and which data types Sentis supports for each [back end type](create-an-engine.md#back-end-types).
 
 |Name|Supported data types with `BackendType.CPU`|Supported data types with `BackendType.GPUCompute`|Supported data types with `BackendType.GPUPixel`|Notes|
 |-|-|-|-|-|

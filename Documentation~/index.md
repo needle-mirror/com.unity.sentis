@@ -20,7 +20,7 @@ To use Sentis, it helps if you have some experience in using machine learning mo
 
 Sentis supports [all the platforms Unity supports](https://docs.unity3d.com/Documentation/Manual/PlatformSpecific.html).
 
-How long a model takes to run depends on the complexity of the model, the platform, and the engine type you use. Refer to [Models](models-concept.md) and [Create an engine](create-an-engine.md) for more information.
+The runtime of a model varies based on factors such as its complexity, the platform it runs on, and the type of engine you use. Refer to [Models](models-concept.md) and [Create an engine](create-an-engine.md) for more information.
 
 ## Supported model types
 

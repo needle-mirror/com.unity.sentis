@@ -14,7 +14,7 @@ outputTensor.CompleteOperationsAndDownload();
 float[] outputData = outputTensor.ToReadOnlyArray();
 ```
 
-You can also avoid a mutation of the underlying tensor data with the following
+You can also avoid a mutation of the underlying tensor data with the following:
 ```
 TensorFloat outputTensor = worker.Execute(inputTensor).PeekOutput();
 outputTensor.CompleteOperations();
@@ -30,7 +30,7 @@ To convert a tensor to a render texture, use the following APIs:
 
 If you use `ToTexture`, Sentis uses the tensor to set the size and channels of the render texture. Sentis makes the following changes if the tensor doesn't match the render texture: 
 
-- Linearly samples the tensor if the dimensions don't match.
+- Samples the tensor linearly if the dimensions don't match.
 - Removes channels from the end, if the render texture has fewer channels than the tensor.
 - Sets values in RGB channels to 0 and values in the alpha channel to 1, if the render texture has more channels than the tensor.
 
@@ -54,7 +54,7 @@ void Start()
 }
 ```
 
-You can use parameters in `ToTexture` to override the width, height and number of channels of a texture. 
+You can use parameters in `ToTexture` to override the width, height, and number of channels of a texture. 
 
 For example:
 
@@ -94,7 +94,7 @@ To copy an output tensor to the screen, follow these steps:
 
 If the image is too bright, the output tensor might be using values from 0 to 255 instead of values from 0 to 1. You can use [Edit a model](edit-a-model.md) to remap the values in the output tensor before you call `RenderToScreen`.
 
-The following script uses a model to change a texture, then copies the result to the screen. You can set `modelAsset` to one of the [style transfer models](https://github.com/onnx/models/tree/main/validated/vision/style_transfer/fast_neural_style) from ONNX, and `inputImage` to a texture. [Check the Texture import settings](convert-texture-to-tensor.md) to make sure the texture matches the shape and layout the model needs.
+The following script uses a model to change a texture, then copies the result to the screen. You can set `modelAsset` to one of the [style transfer models](https://github.com/onnx/models/tree/main/validated/vision/style_transfer/fast_neural_style) from ONNX and `inputImage` to a texture. [Check the Texture import settings](convert-texture-to-tensor.md) to make sure the texture matches the shape and layout the model needs.
 
 ```
 using UnityEngine;

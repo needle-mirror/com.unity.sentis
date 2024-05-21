@@ -1,14 +1,14 @@
 # Create input for a model
 
-A model requires input tensors with certain shapes and data types. Refer to the following information to understand how to find model inputs, and how to create input tensors for your model.
+A model requires input tensors with certain shapes and data types. Use this information for guidance on finding model inputs and creating input tensors for your model.
 
 ## Understand the required input
 
 Before you can create input tensors for a model, you must first understand the shape and data types of the model inputs. 
 
-To understand model inputs, and the types of input shapes, refer to [Model inputs](models-concept.md#model-inputs).
+To understand model inputs and the types of input shapes, refer to [Model inputs](models-concept.md#model-inputs).
 
-The [`TensorShape`](xref:Unity.Sentis.TensorShape) of the `[`Tensor`](xref:Unity.Sentis.Tensor)` you create, must be compatible with the [`SymbolicTensorShape`](xref:Unity.Sentis.SymbolicTensorShape), which defines the shape of the model input.
+The [`TensorShape`](xref:Unity.Sentis.TensorShape) of the `[`Tensor`](xref:Unity.Sentis.Tensor)` you create must be compatible with the [`SymbolicTensorShape`](xref:Unity.Sentis.SymbolicTensorShape), which defines the shape of the model input.
 
 ## Convert an array to a tensor
 

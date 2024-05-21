@@ -1,5 +1,4 @@
 using System;
-using Unity.Sentis;
 
 namespace Unity.Sentis
 {

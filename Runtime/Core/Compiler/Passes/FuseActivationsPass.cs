@@ -16,7 +16,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 if (activationLayer.inputs.Length != 1)
                     continue;
 
-                var mainLayer = model.layers.Find(l => l.index == activationLayer.inputs[0]);
+                var mainLayer = model.layers.Find(l => l.outputs[0] == activationLayer.inputs[0]);
                 if (mainLayer == null)
                     continue;
 
@@ -25,7 +25,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 if ((mainLayer as Layers.FusedActivation).fusedActivation != Layers.FusableActivation.None)
                     continue;
 
-                if (model.outputs.Aggregate(false, (current, o) => current | o.index == mainLayer.index))
+                if (model.outputs.Aggregate(false, (current, o) => current | o.index == mainLayer.outputs[0]))
                     continue;
 
                 //Need to check that no other layers uses mainLayer directly.
@@ -33,10 +33,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 //conv -> relu -----.
                 //    \             v
                 //     `---------> concat
-                if (model.layers.Exists(l => l != activationLayer && l.inputs.Contains(mainLayer.index)))
-                    continue;
-
-                if (activationLayer.flags.HasFlag(Layers.Flags.Preserve))
+                if (model.layers.Exists(l => l != activationLayer && l.inputs.Contains(mainLayer.outputs[0])))
                     continue;
 
                 FuseActivation(ref model, mainLayer, activationLayer);
@@ -67,16 +64,16 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             {
                 for (int i = 0; i < l.inputs.Length; ++i)
                 {
-                    if (l.inputs[i] == activationToFuse.index)
-                        l.inputs[i] = mainLayer.index;
+                    if (l.inputs[i] == activationToFuse.outputs[0])
+                        l.inputs[i] = mainLayer.outputs[0];
                 }
             }
 
             //remove `activationToFuse` if not an output, if an output make it an identity layer instead.
-            if (model.outputs.Aggregate(false, (current, o) => current | o.index == activationToFuse.index))
+            if (model.outputs.Aggregate(false, (current, o) => current | o.index == activationToFuse.outputs[0]))
             {
                 int activationToFuseIndex = model.layers.FindIndex(x => x == activationToFuse);
-                model.layers[activationToFuseIndex] = new Layers.Identity(activationToFuse.index, activationToFuse.inputs[0]);
+                model.layers[activationToFuseIndex] = new Layers.Identity(activationToFuse.outputs[0], activationToFuse.inputs[0]);
             }
             else
                 model.layers.Remove(activationToFuse);

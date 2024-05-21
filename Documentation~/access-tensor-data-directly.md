@@ -1,12 +1,12 @@
 # Access tensor data directly
 
-To avoid having to do a slow readback of a tensor from a device when you want to access a tensor, or when you need to pass a tensor between multiple models, you can read from and write to the tensor underlying native data directly instead.
+To avoid having to do a slow readback of a tensor from a device when accessing or passing it between multiple models, opt to directly read from and write to the tensor's underlying native data.
 
 Refer to [Tensor fundamentals in Sentis](tensor-fundamentals.md#memory-location) for more information about how Sentis stores tensor data.
 
 ## Check where the data for a tensor is stored
 
-Use the `dataOnBackend.backendType` property of a tensor to check where the tensor data is stored. The property is either `CPU`, `GPUPixel` or `GPUCompute`.
+Use the `dataOnBackend.backendType` property of a tensor to check where the tensor data is stored. The property is either `CPU`, `GPUPixel`, or `GPUCompute`.
 
 For example:
 
@@ -45,14 +45,16 @@ TensorFloat inputTensor = TensorFloat.AllocZeros(new TensorShape(1, 3, 2, 2));
 ComputeTensorData computeTensorData = ComputeTensorData.Pin(inputTensor);
 ```
 
-Note:
-* If the tensor data is already on the device you force it to, the method is a passthrough.
-* If not the previous data will be disposed and new memory will be allocated on the target backend.
+!!! note "Note"
+
+    * If the tensor data is already on the device you force it to, the method is a passthrough.
+    * If not, the previous data will be disposed and new memory will be allocated on the target backend.
+
 ## Access a tensor in GPU memory
 
 To access a tensor in GPU-compute memory, first get the tensor data as a [`ComputeTensorData`](xref:Unity.Sentis.ComputeTensorData) by using [`ComputeTensorData.Pin`](xref:Unity.Sentis.ComputeTensorData.Pin(Unity.Sentis.Tensor,System.Boolean)).
 
-You can then use the `buffer` property of the `ComputeTensorData` object to access the tensor data in the compute buffer directly. Refer to [`ComputeBuffer`](https://docs.unity3d.com/ScriptReference/ComputeBuffer.html) in the Unity API reference for more information about how to access a compute buffer.
+You can then use the `buffer` property of the `ComputeTensorData` object to directly access the tensor data in the compute buffer. Refer to [`ComputeBuffer`](https://docs.unity3d.com/ScriptReference/ComputeBuffer.html) in the Unity API reference for more information about how to access a compute buffer.
 
 Refer to the `Read output asynchronously` example in the [sample scripts](package-samples.md) for an example.
 
@@ -64,8 +66,8 @@ You can then use the object in a Burst function like [`IJobParallelFor`](https:/
 
 Refer to the following:
 
-- The `Use Burst to write data` example in the [sample scripts](package-samples.md) for an example.
-- The [Burst documentation](https://docs.unity3d.com/Packages/com.unity.burst@latest).
+- `Use Burst to write data` example in the [sample scripts](package-samples.md) for an example
+- [Burst documentation](https://docs.unity3d.com/Packages/com.unity.burst@latest)
 
 You can then use methods in the [`NativeTensorArray`](xref:Unity.Sentis.NativeTensorArray) class to read from and write to the tensor data as a native array.
 

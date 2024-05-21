@@ -24,7 +24,7 @@ using Unity.Sentis;
 
 Sentis can import model files in [Open Neural Network Exchange](https://onnx.ai/) (ONNX) format. To load a model, follow these steps:
 
-1. [Export a model to ONNX format from a machine learning framework](export-convert-onnx.md), or download an ONNX model from the internet. 
+1. [Export a model to ONNX format from a machine learning framework](export-convert-onnx.md) or download an ONNX model from the Internet. 
 
 2. Add the model file to the `Assets` folder of the **Project** window.
 

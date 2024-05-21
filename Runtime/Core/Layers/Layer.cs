@@ -5,26 +5,8 @@ using UnityEngine;
 namespace Unity.Sentis.Layers
 {
     /// <summary>
-    /// Options for the flags of a layer.
-    /// </summary>
-    [Flags]
-    public enum Flags
-    {
-        /// <summary>
-        /// Use no layer flags.
-        /// </summary>
-        None = 0,
-
-        /// <summary>
-        /// Use layer preservation and don't edit or remove the layer in an optimization pass.
-        /// </summary>
-        Preserve = 1 << 1,
-    }
-
-    /// <summary>
     /// Represents the base class for all model layers.
     /// </summary>
-    [Serializable]
     public abstract class Layer
     {
         /// <summary>
@@ -33,20 +15,15 @@ namespace Unity.Sentis.Layers
         public string[] inputs;
 
         /// <summary>
-        /// The name to use for the first output tensor for a layer.
-        /// </summary>
-        public string index;
-
-        /// <summary>
         /// The names to use for all of the output tensors for a layer. This is `null` if a layer has only one output.
         /// </summary>
         public string[] outputs;
 
-        /// <summary>
-        /// The flags set on the layer.
-        /// </summary>
-        [NonSerialized]
-        public Flags flags;
+        protected Layer(string[] outputs, string[] inputs)
+        {
+            this.outputs = outputs;
+            this.inputs = inputs;
+        }
 
         /// <summary>
         /// Infer the output partial tensors.
@@ -69,7 +46,7 @@ namespace Unity.Sentis.Layers
         /// <returns>The string representation of the `Layer`.</returns>
         public override string ToString()
         {
-            return $"{profilerTag} - index: {index}, inputs: [{string.Join(", ", inputs)}]";
+            return $"{profilerTag} - index: {outputs[0]}, inputs: [{string.Join(", ", inputs)}]";
         }
     }
 
@@ -91,15 +68,13 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a base class for layers with an optional fused activation at the end of the execution.
     /// </summary>
-    [Serializable]
     abstract class FusedActivation : Layer
     {
-        /// <summary>
-        /// The fused activation to apply at the end of the execution as a `FusableActivation`.
-        /// </summary>
         public FusableActivation fusedActivation;
 
-        /// <inheritdoc/>
+        protected FusedActivation(string[] outputs, string[] inputs)
+            : base(outputs, inputs) { }
+
         public override string ToString()
         {
             return $"{base.ToString()}, fusedActivation: {fusedActivation}";
@@ -109,21 +84,11 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a base class for layers that apply an operation to input tensors using numpy-style broadcasting.
     /// </summary>
-    [Serializable]
     abstract class Broadcast : Layer
     {
-        /// <summary>
-        /// Initializes and returns an instance of broadcast layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="inputs">The names to use for the input tensors of the layer.</param>
-        protected Broadcast(string name, params string[] inputs)
-        {
-            this.index = name;
-            this.inputs = inputs;
-        }
+        protected Broadcast(string output, params string[] inputs)
+            : base(new[] { output }, inputs) { }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             Logger.AssertIsTrue(inputs.Length > 0, "Broadcast.InputError: can't broadcast shapes array of size 0");
@@ -132,7 +97,7 @@ namespace Unity.Sentis.Layers
 
             if (inputTensors.Length == 1)
             {
-                ctx.AddPartialTensor(index, inputTensors[0]);
+                ctx.AddPartialTensor(outputs[0], inputTensors[0]);
                 return;
             }
 
@@ -152,7 +117,7 @@ namespace Unity.Sentis.Layers
                     }
                 }
 
-                ctx.AddPartialTensor(index, tensorOut);
+                ctx.AddPartialTensor(outputs[0], tensorOut);
                 return;
             }
 
@@ -161,7 +126,7 @@ namespace Unity.Sentis.Layers
             {
                 if (!input.shape.hasRank)
                 {
-                    ctx.AddPartialTensor(index, new PartialTensor(dataType));
+                    ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType));
                     return;
                 }
 
@@ -178,7 +143,7 @@ namespace Unity.Sentis.Layers
                 }
             }
 
-            ctx.AddPartialTensor(index, new PartialTensor(dataType, shapeOut));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, shapeOut));
         }
 
         /// <summary>

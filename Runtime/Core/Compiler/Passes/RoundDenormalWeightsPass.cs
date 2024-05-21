@@ -1,8 +1,6 @@
-using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Burst;
-using Unity.Mathematics;
 
 namespace Unity.Sentis.Compiler.Passes.Optimization
 {

@@ -2,7 +2,7 @@
 
 The following example includes a simple script that takes an image of a handwritten digit and predicts the likelihood of the image representing a digit. 
 
-Use this example to [Understand the sentis workflow](understand-sentis-workflow.md)
+Use this example to [Understand the sentis workflow](understand-sentis-workflow.md).
 
 ## Use the example
 

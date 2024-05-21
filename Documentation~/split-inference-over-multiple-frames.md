@@ -1,10 +1,10 @@
 # Split inference over multiple frames
 
-To run a model a layer at a time, use the [`StartManualSchedule`](xref:Unity.Sentis.GenericWorker.StartManualSchedule) method of the worker. This method creates an `IEnumerator` object.
+To run a model one layer at a time, use the [`StartManualSchedule`](xref:Unity.Sentis.GenericWorker.StartManualSchedule) method of the worker. This method creates an `IEnumerator` object.
 
-For example a model may take 50 milliseconds to execute. Running execution in a single frame would cause low or stuttering framerates in gameplay. Splitting the model to run across 10 frames could ideally spend 5 milliseconds of execution per frame allowing for smooth framerates.
+For example, a model may take 50 milliseconds to execute. Executing it within a single frame could result in low or stuttering framerates in gameplay. Alternatively, splitting the model to run across 10 frames would ideally allocate 5 milliseconds of execution per frame, ensuring smoother framerates.
 
-The following code sample runs the model one layer per frame, and executes the rest of the `Update` method only after the model finishes.
+The following code sample runs the model one layer per frame and executes the rest of the `Update` method only after the model finishes.
 
 ```
 using UnityEngine;

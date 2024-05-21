@@ -107,13 +107,21 @@ void GCONV_KERNEL_NAME(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 group
         uint4 kernelOffsetXW = topX + _Dilation.z * dx - _Pad.z;
 
         kernelOffsetX = kernelOffsetXD * X_height * X_width + kernelOffsetXH * X_width + kernelOffsetXW;
-        maskX = (kernelOffsetXW < X_width) && (kernelOffsetXH < X_height) && (kernelOffsetXD < X_depth);
+
+        maskX.x = (kernelOffsetXW.x < X_width) && (kernelOffsetXH.x < X_height) && (kernelOffsetXD.x < X_depth);
+        maskX.y = (kernelOffsetXW.y < X_width) && (kernelOffsetXH.y < X_height) && (kernelOffsetXD.y < X_depth);
+        maskX.z = (kernelOffsetXW.z < X_width) && (kernelOffsetXH.z < X_height) && (kernelOffsetXD.z < X_depth);
+        maskX.w = (kernelOffsetXW.w < X_width) && (kernelOffsetXH.w < X_height) && (kernelOffsetXD.w < X_depth);
         #elif defined(GCONV2D)
         uint4 kernelOffsetXH = topY + _Dilation.x * dy - _Pad.x;
         uint4 kernelOffsetXW = topX + _Dilation.y * dx - _Pad.y;
 
         kernelOffsetX = kernelOffsetXH * X_width + kernelOffsetXW;
-        maskX = (kernelOffsetXH < X_height) && (kernelOffsetXW < X_width);
+
+        maskX.x = (kernelOffsetXH.x < X_height) && (kernelOffsetXW.x < X_width);
+        maskX.y = (kernelOffsetXH.y < X_height) && (kernelOffsetXW.y < X_width);
+        maskX.z = (kernelOffsetXH.z < X_height) && (kernelOffsetXW.z < X_width);
+        maskX.w = (kernelOffsetXH.w < X_height) && (kernelOffsetXW.w < X_width);
         #elif defined(GCONV1D)
         uint4 kernelOffsetXW = topX + _Dilation.x * dx - _Pad.x;
 

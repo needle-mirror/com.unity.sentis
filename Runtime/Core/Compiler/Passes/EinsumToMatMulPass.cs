@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Unity.Sentis.Compiler.Analyser;
 using Unity.Sentis.Layers;
-using Unity.Sentis;
 
 namespace Unity.Sentis.Compiler.Passes.Optimization
 {
@@ -109,7 +108,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 return false;
 
             var insertLayerIndex = model.layers.IndexOf(einsumLayer) + 1;
-            var outputIndex = einsumLayer.index;
+            var outputIndex = einsumLayer.outputs[0];
 
             if (isPermuted)
             {
@@ -129,7 +128,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 model.layers.Insert(insertLayerIndex, reshapeLayer);
             }
 
-            einsumLayer.index = outputIndex;
+            einsumLayer.outputs = new[] { outputIndex };
             return true;
         }
 
@@ -139,7 +138,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             if (einsumLayers.Count == 0)
                 return;
 
-            var ctx = PartialInferenceAnalysis.InferModelPartialTensors(model, true);
+            var ctx = PartialInferenceAnalysis.InferModelPartialTensors(model);
 
             foreach (var layer in einsumLayers)
             {
@@ -253,15 +252,15 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
                 // insert permute and reshape layers to take inputs to desired matmul inputs
                 if (!InsertPermuteReshapeLayers(model, einsumLayer, 0, operandIndices[0], transformedDims0, ctx.GetPartialTensor(einsumLayer.inputs[0]).shape))
-                    return;
+                    break;
                 if (!InsertPermuteReshapeLayers(model, einsumLayer, 1, operandIndices[1], transformedDims1, ctx.GetPartialTensor(einsumLayer.inputs[1]).shape))
-                    return;
+                    break;
 
                 // insert reshape and permute layers to get desired output from matmul output
-                if (!InsertInversePermuteReshapeLayers(model, einsumLayer, outputIndices, transformedDimsOut, ctx.GetPartialTensor(einsumLayer.index).shape))
-                    return;
+                if (!InsertInversePermuteReshapeLayers(model, einsumLayer, outputIndices, transformedDimsOut, ctx.GetPartialTensor(einsumLayer.outputs[0]).shape))
+                    break;
 
-                model.layers[model.layers.IndexOf(einsumLayer)] = new MatMul(einsumLayer.index, einsumLayer.inputs[0], einsumLayer.inputs[1]);
+                model.layers[model.layers.IndexOf(einsumLayer)] = new MatMul(einsumLayer.outputs[0], einsumLayer.inputs[0], einsumLayer.inputs[1]);
             }
         }
     }

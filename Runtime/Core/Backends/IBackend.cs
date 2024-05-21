@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 namespace Unity.Sentis
 {
@@ -1634,7 +1633,7 @@ namespace Unity.Sentis
         /// <summary>
         /// The `IModelStorage` used for execution
         /// </summary>
-        public IModelStorage vars;
+        public IModelStorage storage;
     }
 }
 

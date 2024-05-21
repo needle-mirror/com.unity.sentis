@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Collections.Generic;
 
 [assembly: InternalsVisibleTo("Unity.Sentis.EditorTests")]
-[assembly: InternalsVisibleTo("Unity.Sentis.Tests")]
+[assembly: InternalsVisibleTo("Unity.Sentis.RuntimeTests")]
 
 namespace Unity.Sentis
 {

@@ -1,6 +1,4 @@
 using System;
-using Unity.Collections;
-using UnityEngine.Assertions;
 
 namespace Unity.Sentis
 {
@@ -47,4 +45,4 @@ namespace Unity.Sentis
             PinToDevice(destination, disposeUnpinned: true);
         }
     }
-} // namespace Unity.Sentis
+}

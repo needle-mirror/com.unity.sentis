@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.Sentis.Compiler.Analyser;
-using Unity.Sentis;
 using UnityEngine;
 
 namespace Unity.Sentis.Compiler.Passes.Optimization
@@ -29,7 +27,6 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             for (int l = 0; l < model.layers.Count; ++l)
             {
                 Layers.Layer layer = model.layers[l];
-                layerDownstream.Add(layer.index, new List<Layers.Layer>());
 
                 foreach (var input in layer.inputs)
                 {
@@ -37,9 +34,6 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                         continue;
                     layerDownstream[input].Add(layer);
                 }
-
-                if (layer.outputs == null)
-                    continue;
 
                 foreach (var output in layer.outputs)
                 {
@@ -65,7 +59,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     continue;
 
                 // const bias of rank 1
-                List<Layers.Layer> downStreamLayers = layerDownstream[layer.index];
+                List<Layers.Layer> downStreamLayers = layerDownstream[layer.outputs[0]];
                 if (!downStreamLayers.Any(x => x is Layers.Add) && !downStreamLayers.Any(x => x is Layers.ScalarMad))
                     continue;
 
@@ -81,7 +75,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                         continue;
                     var biasS = biasMad.bFloat;
                     using TensorFloat biasT = ops.ConstantOfShape(new TensorShape(constTensors[weightsIndex].shape[transposeWeights ? -2 : -1]), biasS);
-                    biasIndex = bias.index + "_Bias";
+                    biasIndex = bias.outputs[0] + "_Bias";
                     constTensors.Add(biasIndex, biasT);
                     model.constants.Add(new Layers.Constant(biasIndex, biasT));
                 }
@@ -89,28 +83,28 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 {
                     bias = downStreamLayers.Find(x => x is Layers.Add);
                     var biasInputsConst = bias.inputs.Where(x =>
-                        x != layer.index && constTensors.ContainsKey(x) && constTensors[x].shape.rank == 1).ToList();
+                        x != layer.outputs[0] && constTensors.ContainsKey(x) && constTensors[x].shape.rank == 1).ToList();
                     if (biasInputsConst.Count != 1)
                         continue;
                     biasIndex = biasInputsConst[0];
                 }
 
-                if (preserve.Contains(bias.index))
+                if (preserve.Contains(bias.outputs[0]))
                     continue;
 
                 TensorFloat weightT = constTensors[weightsIndex] as TensorFloat;
 
                 removeLayers.Add(weightsIndex);
-                removeLayers.Add(bias.index);
+                removeLayers.Add(bias.outputs[0]);
 
                 if (transposeWeights)
                 {
-                    weightsIndex = model.GetUniqueIndex(weightsIndex + "_t_for" + layer.index);
+                    weightsIndex = model.GetUniqueIndex(weightsIndex + "_t_for" + layer.outputs[0]);
                     model.constants.Add(new Layers.Constant(weightsIndex, ops.Transpose(weightT)));
                 }
 
-                model.layers[l] = new Layers.Dense(layer.index, layer.inputs[0], weightsIndex, biasIndex);
-                remap[bias.index] = layer.index;
+                model.layers[l] = new Layers.Dense(layer.outputs[0], layer.inputs[0], weightsIndex, biasIndex);
+                remap[bias.outputs[0]] = layer.outputs[0];
             }
 
             Passes.PassesUtils.RemoveAndRemap(ref model, removeLayers, remap);
@@ -121,7 +115,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 for (int i = 0; i < layer.inputs.Length; i++)
                 {
                     var input = layer.inputs[i];
-                    if (remap.ContainsKey(input) && layer.index != remap[input])
+                    if (remap.ContainsKey(input) && layer.outputs[0] != remap[input])
                         model.layers[l].inputs[i] = remap[input];
                 }
             }

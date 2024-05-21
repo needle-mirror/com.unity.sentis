@@ -19,40 +19,41 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Add partial tensor with a given name to context.
+        /// Add partial tensor with a given index to context.
         /// </summary>
-        public void AddPartialTensor(string name, PartialTensor partialTensor)
+        public void AddPartialTensor(string index, PartialTensor partialTensor)
         {
-            if (string.IsNullOrEmpty(name))
+            if (string.IsNullOrEmpty(index))
                 return;
-            if (m_PartialTensors.TryGetValue(name, out var prevTensor))
+            if (m_PartialTensors.TryGetValue(index, out var prevTensor))
                 partialTensor = PartialTensor.MaxDefinedPartialTensor(partialTensor, prevTensor);
-            m_PartialTensors[name] = partialTensor;
+            m_PartialTensors[index] = partialTensor;
         }
 
         /// <summary>
-        /// Returns array of partial tensors from array of names.
+        /// Returns array of partial tensors from array of indexes.
         /// </summary>
-        public PartialTensor[] GetPartialTensors(string[] names)
+        public PartialTensor[] GetPartialTensors(string[] indexes)
         {
-            var partialTensors = new PartialTensor[names.Length];
+            var partialTensors = new PartialTensor[indexes.Length];
 
-            for (var i = 0; i < names.Length; i++)
+            for (var i = 0; i < indexes.Length; i++)
             {
-                if (string.IsNullOrEmpty(names[i]))
-                    continue;
-                partialTensors[i] = GetPartialTensor(names[i]);
+                partialTensors[i] = GetPartialTensor(indexes[i]);
             }
 
             return partialTensors;
         }
 
         /// <summary>
-        /// Returns partial tensor from name.
+        /// Returns partial tensor from index.
         /// </summary>
-        public PartialTensor GetPartialTensor(string name)
+        public PartialTensor GetPartialTensor(string index)
         {
-            return string.IsNullOrEmpty(name) ? null : m_PartialTensors[name];
+            if (string.IsNullOrEmpty(index))
+                return null;
+
+            return m_PartialTensors[index];
         }
     }
 }

@@ -4,6 +4,7 @@ using UnityEngine.Assertions;
 using System;
 using static Unity.Sentis.ShaderPropertyID;
 
+[assembly: InternalsVisibleTo("Unity.Sentis.RuntimeTests")]
 [assembly: InternalsVisibleTo("Unity.Sentis.EditorTests")]
 
 namespace Unity.Sentis
@@ -3038,8 +3039,6 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Dispose()
-        {
-        }
+        public void Dispose() { }
     }
-} // namespace Unity.Sentis
+}

@@ -4,6 +4,9 @@ using System.IO;
 using Unity.Sentis.Google.FlatBuffers;
 using SentisFlatBuffer;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("Unity.Sentis.Editor")]
 
 namespace Unity.Sentis
 {
@@ -195,7 +198,7 @@ namespace Unity.Sentis
                 foreach (var field in fields)
                 {
                     var name = field.Name;
-                    if (name == "name" || name == "inputs" || name == "flags" || name == "outputs")
+                    if (name == "name" || name == "inputs" || name == "outputs")
                         continue;
 
                     var value = field.GetValue(layer);
@@ -256,42 +259,25 @@ namespace Unity.Sentis
                 }
 
                 var layerOutputs = new List<int>(); // TODO layer outputs
-                layerOutputs.Add(valuesCount);
-                layerInputIndices[layer.index] = valuesCount;
-                var valT = SentisFlatBuffer.Tensor.CreateTensor(builder);
-                values.Add(EValue.CreateEValue(builder, KernelTypes.Tensor, valT.Value));
-                if (outputs.ContainsKey(layer.index) && !outputs[layer.index])
-                {
-                    outputIndices.Add(valuesCount);
-                    outputsNames.Add(builder.CreateString(outputFromIndex[layer.index].name));
-                    outputs[layer.index] = true;
-                }
-                valuesCount++;
 
-                if (layer.outputs != null)
+                foreach (var output in layer.outputs)
                 {
-                    foreach (var output in layer.outputs)
+                    layerOutputs.Add(valuesCount);
+                    layerInputIndices[output] = valuesCount;
+                    var valTo = SentisFlatBuffer.Tensor.CreateTensor(builder);
+                    values.Add(EValue.CreateEValue(builder, KernelTypes.Tensor, valTo.Value));
+                    if (outputs.ContainsKey(output) && !outputs[output])
                     {
-                        if (output == layer.index)
-                            continue;
-
-                        layerOutputs.Add(valuesCount);
-                        layerInputIndices[output] = valuesCount;
-                        var valTo = SentisFlatBuffer.Tensor.CreateTensor(builder);
-                        values.Add(EValue.CreateEValue(builder, KernelTypes.Tensor, valTo.Value));
-                        if (outputs.ContainsKey(output) && !outputs[output])
-                        {
-                            outputIndices.Add(valuesCount);
-                            outputsNames.Add(builder.CreateString(output));
-                            outputs[output] = true;
-                        }
-                        valuesCount++;
+                        outputIndices.Add(valuesCount);
+                        outputsNames.Add(builder.CreateString(output));
+                        outputs[output] = true;
                     }
+                    valuesCount++;
                 }
 
-                if (model.LayerCPUFallback.Contains(layer.index))
+                if (model.LayerCPUFallback.Contains(layer.outputs[0]))
                 {
-                    chainCPU.Add(layerInputIndices[layer.index]);
+                    chainCPU.Add(layerInputIndices[layer.outputs[0]]);
                 }
 
                 var layerInputVector = ExecutionPlan.CreateInputsVector(builder, layerInputs);
@@ -311,6 +297,39 @@ namespace Unity.Sentis
                 Chain.AddInstructions(builder, lInstructionVector);
                 var lChain = Chain.EndChain(builder);
                 chains.Add(lChain);
+            }
+
+            for (int i = 0; i < model.constants.Count; i++)
+            {
+                var constant = model.constants[i];
+                if (!outputs.ContainsKey(constant.index) || outputs[constant.index])
+                    continue;
+
+                outputIndices.Add(valuesCount);
+                outputsNames.Add(builder.CreateString(outputFromIndex[constant.index].name));
+                outputs[constant.index] = true;
+
+                var size = SentisFlatBuffer.Tensor.CreateFixedSizesVector(builder, constant.shape.ToArray());
+                var val = SentisFlatBuffer.Tensor.CreateTensor(builder, (ScalarType)constant.dataType, constant.lengthBytes, size, (uint)(1 + segmentLength.Count), (int)constantBufferOffset);
+                values.Add(EValue.CreateEValue(builder, KernelTypes.Tensor, val.Value));
+                constantBufferOffset += constant.lengthBytes;
+                constantBuffersSize += constant.lengthBytes;
+
+                var constantVector = ExecutionPlan.CreateInputsVector(builder, new[] { valuesCount });
+
+                var kernelCall = KernelCall.CreateKernelCall(builder);
+                Instruction.StartInstruction(builder);
+                Instruction.AddInstrArgsType(builder, InstructionArguments.NONE);
+                var linstruction = Instruction.EndInstruction(builder);
+
+                var lInstructionVector = Chain.CreateInstructionsVector(builder, new[] { linstruction });
+                Chain.StartChain(builder);
+                Chain.AddInputs(builder, constantVector);
+                Chain.AddInstructions(builder, lInstructionVector);
+                var lChain = Chain.EndChain(builder);
+                chains.Add(lChain);
+
+                valuesCount++;
             }
 
             var epModelOutputsNames = ExecutionPlan.CreateOutputsNameVector(builder, outputsNames.ToArray());
@@ -376,6 +395,16 @@ namespace Unity.Sentis
                     constantsInOrder.Add(constants[input]);
                 }
             }
+            for (int i = 0; i < model.outputs.Count; i++)
+            {
+                var output = model.outputs[i];
+                if (!constants.ContainsKey(output.index))
+                    continue;
+                if (foundConstants.Contains(output.index))
+                    continue;
+                foundConstants.Add(output.index);
+                constantsInOrder.Add(constants[output.index]);
+            }
 
             List<byte[]> segmentData = new List<byte[]>();
             long constantBufferByteSize = 0;
@@ -432,4 +461,4 @@ namespace Unity.Sentis
             return segmentBuffers;
         }
     }
-} // namespace Unity.Sentis
+}

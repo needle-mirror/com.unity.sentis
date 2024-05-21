@@ -51,7 +51,7 @@ public class ModelAssetEditor : UnityEditor.Editor
         var items = new List<string>(outputs.Count);
         try
         {
-            var ctx = PartialInferenceAnalysis.InferModelPartialTensors(m_Model, false);
+            var ctx = PartialInferenceAnalysis.InferModelPartialTensors(m_Model);
             foreach (var output in outputs)
             {
                 var partialTensor = ctx.GetPartialTensor(output.index);
@@ -137,7 +137,6 @@ public class ModelAssetEditor : UnityEditor.Editor
         CreateLayersListView(rootInspector);
         CreateConstantsListView(rootInspector);
 
-        rootInspector.Add(new Label($"Default Opset Version: {m_Model.DefaultOpsetVersion}"));
         rootInspector.Add(new Label($"Producer Name: {m_Model.ProducerName}"));
 
         return rootInspector;

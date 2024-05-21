@@ -1,5 +1,4 @@
 using NUnit.Framework;
-using Unity.Sentis;
 using UnityEditor;
 using UnityEngine;
 
@@ -17,7 +16,6 @@ namespace Unity.Sentis.Editor.Tests
         [Test]
         public void BasicNNInferenceTest()
         {
-
             string[] allCandidates = AssetDatabase.FindAssets(modelFileName);
 
             Assert.True(allCandidates.Length > 0);

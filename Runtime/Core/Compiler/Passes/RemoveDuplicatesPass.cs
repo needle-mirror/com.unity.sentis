@@ -25,7 +25,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             foreach (var field in fields)
             {
                 var name = field.Name;
-                if (name == "index" || name == "flags" || name == "outputs")
+                if (name == "index" || name == "outputs")
                     continue;
                 infos.Add(field.GetValue(layer));
             }
@@ -63,10 +63,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
         List<object> GetComparableFields(ref Dictionary<string, List<object>> comparableFieldsByLayer, Layer layer)
         {
-            if (!comparableFieldsByLayer.TryGetValue(layer.index, out var layerFields))
+            if (!comparableFieldsByLayer.TryGetValue(layer.outputs[0], out var layerFields))
             {
                 layerFields = GetComparableFields(layer);
-                comparableFieldsByLayer.Add(layer.index, layerFields);
+                comparableFieldsByLayer.Add(layer.outputs[0], layerFields);
             }
 
             return layerFields;
@@ -110,13 +110,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     if (!AllEqual(layerFields, fields))
                         continue;
 
-                    remapRemovedIndexes.Add(layer.index, similarLayer.index);
+                    remapRemovedIndexes.Add(layer.outputs[0], similarLayer.outputs[0]);
 
-                    layersToRemove.Add(layer.index);
+                    layersToRemove.Add(layer.outputs[0]);
                     removed = true;
-
-                    if (layer.outputs == null || similarLayer.outputs == null)
-                        break;
 
                     if (layer.outputs.Length != similarLayer.outputs.Length)
                         break;
@@ -134,7 +131,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     collisionLayers.Add(layer);
             }
 
-            model.layers.RemoveAll(l => layersToRemove.Contains(l.index));
+            model.layers.RemoveAll(l => layersToRemove.Contains(l.outputs[0]));
 
             // all inputs have been remapped in place, no need to update layers
 

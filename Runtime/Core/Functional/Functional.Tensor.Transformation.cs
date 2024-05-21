@@ -234,7 +234,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor SelectScatter(FunctionalTensor input, FunctionalTensor src, int dim, int index)
         {
-            return FunctionalTensor.FromLayer(new Layers.SliceSet(null, null, null, null, null, null), CommonType(input, src), new[] { input, Unsqueeze(src, dim), Tensor(new[] { index }), Tensor(new[] { index + 1 }), Tensor(new[] { dim }) });
+            return FunctionalTensor.FromLayer(new Layers.SliceSet(null, null, null, null, null, null, null), CommonType(input, src), new[] { input, Unsqueeze(src, dim), Tensor(new[] { index }), Tensor(new[] { index + 1 }), Tensor(new[] { dim }), null });
         }
 
         /// <summary>
@@ -277,7 +277,7 @@ namespace Unity.Sentis
             var dataTypes = new DataType[sections.Length];
             for (var i = 0; i < dataTypes.Length; i++)
                 dataTypes[i] = input.DataType;
-            return FunctionalTensor.FromLayerMultiOutputs(new Layers.Split(null, null, null, new string[sections.Length], dim), dataTypes, new[] { input, Tensor(sections) });
+            return FunctionalTensor.FromLayerMultiOutputs(new Layers.Split(new string[sections.Length], null, null, dim, sections.Length), dataTypes, new[] { input, Tensor(sections) });
         }
 
         /// <summary>
@@ -287,7 +287,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Squeeze(this FunctionalTensor input)
         {
-            return FunctionalTensor.FromLayer(new Layers.Squeeze(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Squeeze(null, null, null), input.DataType, new[] { input, null });
         }
 
         /// <summary>

@@ -1,7 +1,5 @@
 using System.Linq;
-using Unity.Sentis.Compiler.Analyser;
 using Unity.Sentis.Layers;
-using Unity.Sentis;
 using System.Collections.Generic;
 using System;
 using UnityEngine;
@@ -244,13 +242,13 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
         // value: layer to spawn, layersInPattern is all the layers that match the expression
         Dictionary<Func<InputNode, INode>, Func<Layer, List<string>, List<Constant>, Layer>> remappingRules = new Dictionary<Func<InputNode, INode>, Func<Layer, List<string>, List<Constant>, Layer>>()
         {
-            { x => INode.Pow(x, -1.0f),                                      (y, iLayers, iConstants) => new Reciprocal(y.index, iLayers[0]) },
-            { x => INode.Pow(x, 0.5f),                                       (y, iLayers, iConstants) => new Sqrt(y.index, iLayers[0]) },
-            { x => INode.Pow(x, 1.0f),                                       (y, iLayers, iConstants) => new Identity(y.index, iLayers[0]) },
-            { x => INode.Pow(x, 2.0f),                                       (y, iLayers, iConstants) => new Square(y.index, iLayers[0]) },
-            { x => (x * INode.Sigmoid(x)),                                   (y, iLayers, iConstants) => new Swish(y.index, iLayers[0]) },
-            { x => (x * (INode.Erf((x / Mathf.Sqrt(2.0f))) + 1.0f)) * 0.5f,  (y, iLayers, iConstants) => new Gelu(y.index, iLayers[0]) },
-            { x => (x * 0.5f) * (INode.Tanh((x + (INode.Pow(x, 3.0f) * 0.044714998453855515f)) * 0.7978845834732056f) + 1),  (y, iLayers, iConstants) => new GeluFast(y.index, iLayers[0]) },
+            { x => INode.Pow(x, -1.0f),                                      (y, iLayers, iConstants) => new Reciprocal(y.outputs[0], iLayers[0]) },
+            { x => INode.Pow(x, 0.5f),                                       (y, iLayers, iConstants) => new Sqrt(y.outputs[0], iLayers[0]) },
+            { x => INode.Pow(x, 1.0f),                                       (y, iLayers, iConstants) => new Identity(y.outputs[0], iLayers[0]) },
+            { x => INode.Pow(x, 2.0f),                                       (y, iLayers, iConstants) => new Square(y.outputs[0], iLayers[0]) },
+            { x => (x * INode.Sigmoid(x)),                                   (y, iLayers, iConstants) => new Swish(y.outputs[0], iLayers[0]) },
+            { x => (x * (INode.Erf((x / Mathf.Sqrt(2.0f))) + 1.0f)) * 0.5f,  (y, iLayers, iConstants) => new Gelu(y.outputs[0], iLayers[0]) },
+            { x => (x * 0.5f) * (INode.Tanh((x + (INode.Pow(x, 3.0f) * 0.044714998453855515f)) * 0.7978845834732056f) + 1),  (y, iLayers, iConstants) => new GeluFast(y.outputs[0], iLayers[0]) },
             { x => {
                 var mean = INode.ReduceMean(x, -1);
                 var y = x - mean;
@@ -262,16 +260,16 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 return v * scale + bias; },
                     (y, iLayers, iConstants) => {
                     float epsilon = iConstants[0].weights.Get<float>(0);
-                    return new LayerNormalization(y.index, iLayers[iLayers.Count - 1], iLayers[1], iLayers[0], epsilon);
+                    return new LayerNormalization(y.outputs[0], iLayers[iLayers.Count - 1], iLayers[1], iLayers[0], epsilon);
                 }
             },
-            { x => x + new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.index, iLayers[0], 1.0f, iConstants[0].weights.Get<float>(0)) },
-            { x => new VariableScalarFloat() + x, (y, iLayers, iConstants) => new ScalarMad(y.index, iLayers[0], 1.0f, iConstants[0].weights.Get<float>(0)) },
-            { x => x - new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.index, iLayers[0], 1.0f, -iConstants[0].weights.Get<float>(0)) },
-            { x => new VariableScalarFloat() - x, (y, iLayers, iConstants) => new ScalarMad(y.index, iLayers[0], -1.0f, iConstants[0].weights.Get<float>(0)) },
-            { x => x * new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.index, iLayers[0], iConstants[0].weights.Get<float>(0), 0) },
-            { x => new VariableScalarFloat() * x, (y, iLayers, iConstants) => new ScalarMad(y.index, iLayers[0], iConstants[0].weights.Get<float>(0), 0) },
-            { x => x / new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.index, iLayers[0], 1.0f / iConstants[0].weights.Get<float>(0), 0) },
+            { x => x + new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1.0f, iConstants[0].weights.Get<float>(0)) },
+            { x => new VariableScalarFloat() + x, (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1.0f, iConstants[0].weights.Get<float>(0)) },
+            { x => x - new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1.0f, -iConstants[0].weights.Get<float>(0)) },
+            { x => new VariableScalarFloat() - x, (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], -1.0f, iConstants[0].weights.Get<float>(0)) },
+            { x => x * new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], iConstants[0].weights.Get<float>(0), 0) },
+            { x => new VariableScalarFloat() * x, (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], iConstants[0].weights.Get<float>(0), 0) },
+            { x => x / new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1.0f / iConstants[0].weights.Get<float>(0), 0) },
         };
 
         bool Validate(INode root, Layer input)
@@ -280,7 +278,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             Stack<INode> nodeStack = new Stack<INode>();
 
             nodeStack.Push(root);
-            layerStack.Push(input.index);
+            layerStack.Push(input.outputs[0]);
             while (nodeStack.Count != 0)
             {
                 INode node = nodeStack.Pop();
@@ -330,21 +328,21 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             HashSet<string> layersInSubGraph = new HashSet<string>();
             foreach (var layer in subGraph)
             {
-                layersInSubGraph.Add(layer.index);
+                layersInSubGraph.Add(layer.outputs[0]);
                 foreach (var input in layer.inputs)
                 {
                     layersInSubGraph.Add(input);
                 }
-                foreach (var downStream in downstreamLayers[layer.index])
+                foreach (var downStream in downstreamLayers[layer.outputs[0]])
                 {
                     if (downStream != null)
-                        layersInSubGraph.Add(downStream.index);
+                        layersInSubGraph.Add(downStream.outputs[0]);
                 }
             }
 
             foreach (var layer in layersInPattern)
             {
-                layersInSubGraph.Remove(layer.index);
+                layersInSubGraph.Remove(layer.outputs[0]);
                 foreach (var input in layer.inputs)
                 {
                     if (modelConstants.ContainsKey(input))
@@ -352,13 +350,13 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 }
             }
 
-            foreach (var downStream in downstreamLayers[root.index])
+            foreach (var downStream in downstreamLayers[root.outputs[0]])
             {
                 if (downStream == null)
                     continue;
-                if (!layersInSubGraph.Contains(downStream.index))
+                if (!layersInSubGraph.Contains(downStream.outputs[0]))
                     return false;
-                layersInSubGraph.Remove(downStream.index);
+                layersInSubGraph.Remove(downStream.outputs[0]);
             }
 
             if (layersInSubGraph.Count != 1)
@@ -389,8 +387,8 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             for (int l = 0; l < model.layers.Count; ++l)
             {
                 Layer layer = model.layers[l];
-                indexToLayer.Add(layer.index, layer);
-                indexToLayerIndex.Add(layer.index, l);
+                indexToLayer.Add(layer.outputs[0], layer);
+                indexToLayerIndex.Add(layer.outputs[0], l);
 
                 foreach (var input in layer.inputs)
                 {
@@ -400,9 +398,9 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                         downstreamLayers[input] = new List<Layer> { layer };
                 }
 
-                if (outputs.Contains(layer.index))
+                if (outputs.Contains(layer.outputs[0]))
                 {
-                    downstreamLayers[layer.index] = new List<Layer> { null };
+                    downstreamLayers[layer.outputs[0]] = new List<Layer> { null };
                 }
             }
 
@@ -440,25 +438,25 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     bool unconnectedOutputs = false;
                     foreach (var layerToDelete in layersInPattern)
                     {
-                        unconnectedOutputs |= (remapLayer.index != layerToDelete.index) && outputs.Contains(layerToDelete.index);
+                        unconnectedOutputs |= (remapLayer.outputs[0] != layerToDelete.outputs[0]) && outputs.Contains(layerToDelete.outputs[0]);
                     }
                     if (unconnectedOutputs)
                         break;
 
 
-                    model.layers[indexToLayerIndex[remapLayer.index]] = remapLayer;
+                    model.layers[indexToLayerIndex[remapLayer.outputs[0]]] = remapLayer;
 
                     foreach (var layerToDelete in layersInPattern)
                     {
-                        if (remapLayer.index != layerToDelete.index)
-                            layersToRemove.Add(layerToDelete.index);
+                        if (remapLayer.outputs[0] != layerToDelete.outputs[0])
+                            layersToRemove.Add(layerToDelete.outputs[0]);
                     }
 
                     break;
                 }
             }
 
-            model.layers.RemoveAll(l => layersToRemove.Contains(l.index));
+            model.layers.RemoveAll(l => layersToRemove.Contains(l.outputs[0]));
         }
     }
 }

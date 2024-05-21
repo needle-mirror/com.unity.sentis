@@ -15,11 +15,7 @@ namespace Unity.Sentis
         {
             boxes = boxes.Float();
             scores = scores.Float();
-            var layer = new Layers.NonMaxSuppression(null, null, null)
-            {
-                inputs = new string[4]
-            };
-            return FunctionalTensor.FromLayer(layer, DataType.Int, new[] { boxes.Unsqueeze(0), scores.Reshape(new[] { 1, 1, -1 }), Tensor(-1), Tensor(iouThreshold) }).Select(1, 2);
+            return FunctionalTensor.FromLayer(new Layers.NonMaxSuppression(null, null, null, null, null, null), DataType.Int, new[] { boxes.Unsqueeze(0), scores.Reshape(new[] { 1, 1, -1 }), Tensor(-1), Tensor(iouThreshold), null }).Select(1, 2);
         }
     }
 }

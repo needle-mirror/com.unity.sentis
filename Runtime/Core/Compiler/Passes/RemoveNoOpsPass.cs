@@ -41,21 +41,18 @@ namespace Unity.Sentis.Compiler.Passes.Cleanup
                     }
                 }
 
-                if (layer.flags.HasFlag(Layers.Flags.Preserve))
-                    continue;
-
                 if (layer.inputs.Length == 0) // const
                     continue;
 
                 // if layer is noop = nop, identity or flatten
                 if (layer is Layers.Identity)
                 {
-                    remap[layer.index] = layer.inputs[0];
-                    noopLayers.Add(layer.index);
+                    remap[layer.outputs[0]] = layer.inputs[0];
+                    noopLayers.Add(layer.outputs[0]);
                 }
             }
 
-            model.layers.RemoveAll(x => noopLayers.Contains(x.index) && !preserve.Contains(x.index));
+            model.layers.RemoveAll(x => noopLayers.Contains(x.outputs[0]) && !preserve.Contains(x.outputs[0]));
         }
 
         static bool IsLayerNoop(Model model, Layers.Layer layer)

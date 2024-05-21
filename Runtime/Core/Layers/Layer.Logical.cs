@@ -5,19 +5,11 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents an element-wise comparison layer.
     /// </summary>
-    [Serializable]
     abstract class Comparison : Broadcast
     {
-        /// <summary>
-        /// Initializes and returns an instance of `Comparison` logical operation layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="a">The name to use for the first input tensor of the layer.</param>
-        /// <param name="b">The name to use for the second input tensor of the layer.</param>
-        protected Comparison(string name, string a, string b)
-            : base(name, a, b) { }
+        protected Comparison(string output, string a, string b)
+            : base(output, a, b) { }
 
-        /// <inheritdoc/>
         internal override DataType InferPartialDataType(PartialTensor[] inputTensors)
         {
             return DataType.Int;
@@ -29,24 +21,16 @@ namespace Unity.Sentis.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    [Serializable]
     class And : Broadcast
     {
-        /// <summary>
-        /// Initializes and returns an instance of `And` logical operation layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="a">The name to use for the first input tensor of the layer.</param>
-        /// <param name="b">The name to use for the second input tensor of the layer.</param>
-        public And(string name, string a, string b)
-            : base(name, a, b) { }
+        public And(string output, string a, string b)
+            : base(output, a, b) { }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var A = ctx.vars.GetTensor(inputs[0]) as TensorInt;
-            var B = ctx.vars.GetTensor(inputs[1]) as TensorInt;
-            var O = ctx.vars.AllocateTensorAndStore(index, A.shape.Broadcast(B.shape), DataType.Int, ctx.backend.backendType) as TensorInt;
+            var A = ctx.storage.GetTensor(inputs[0]) as TensorInt;
+            var B = ctx.storage.GetTensor(inputs[1]) as TensorInt;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], A.shape.Broadcast(B.shape), DataType.Int, ctx.backend.backendType) as TensorInt;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.And(A, B, O);
@@ -59,46 +43,18 @@ namespace Unity.Sentis.Layers
     /// Represents a `Compress` logical layer that selects slices of an input tensor along a given axis according to a condition tensor.
     /// If you don't provide an axis, the layer flattens the input tensor.
     /// </summary>
-    [Serializable]
     class Compress : Layer
     {
-        /// <summary>
-        /// Whether to perform the `Compress` along an axis. If `false`, the layer flattens the input tensor.
-        /// </summary>
         public bool hasAxis;
-        /// <summary>
-        /// The axis along which to apply the Compress when `hasAxis` is `true`.
-        /// </summary>
         public int axis;
 
-        /// <summary>
-        /// Initializes and returns an instance of `Compress` logical layer without an axis. The layer flattens the input tensor.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="condition">The name to use for the condition tensor of the layer.</param>
-        public Compress(string name, string input, string condition)
+        public Compress(string output, string input, string condition, int? axis)
+            : base(new[] { output }, new[] { input, condition })
         {
-            this.index = name;
-            inputs = new[] { input, condition };
+            hasAxis = axis.HasValue;
+            this.axis = axis ?? 0;
         }
 
-        /// <summary>
-        /// Initializes and returns an instance of `Compress` logical layer along an axis.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="condition">The name to use for the condition tensor of the layer.</param>
-        /// <param name="axis">The axis along which to apply the `Compress`.</param>
-        public Compress(string name, string input, string condition, int axis)
-        {
-            this.index = name;
-            inputs = new[] { input, condition };
-            hasAxis = true;
-            this.axis = axis;
-        }
-
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var X = ctx.GetPartialTensor(inputs[0]);
@@ -108,29 +64,28 @@ namespace Unity.Sentis.Layers
             var isZero = shapeX.Length() * condition.shape.Length() == 0;
             if (!hasAxis)
             {
-                ctx.AddPartialTensor(index, new PartialTensor(dataType, new SymbolicTensorShape(isZero ? SymbolicTensorDim.Zero : SymbolicTensorDim.Unknown)));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, new SymbolicTensorShape(isZero ? SymbolicTensorDim.Zero : SymbolicTensorDim.Unknown)));
                 return;
             }
 
             var shapeOut = shapeX;
             shapeOut[axis] = isZero ? SymbolicTensorDim.Zero : SymbolicTensorDim.Unknown;
-            ctx.AddPartialTensor(index, new PartialTensor(dataType, shapeOut));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, shapeOut));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]);
+            var X = ctx.storage.GetTensor(inputs[0]);
             if (!hasAxis)
             {
                 var flattenedShape = new TensorShape(X.shape.length);
                 X.shape = flattenedShape;
             }
 
-            var condition = ctx.vars.GetTensor(inputs[1]) as TensorInt;
+            var condition = ctx.storage.GetTensor(inputs[1]) as TensorInt;
             var numCondition = condition.shape.length;
 
-            var indices = ctx.vars.AllocateTensor(condition.shape, DataType.Int, BackendType.CPU) as TensorInt;
+            var indices = ctx.storage.AllocateTensor(condition.shape, DataType.Int, BackendType.CPU) as TensorInt;
             BurstTensorData.Pin(indices);
 
             var numIndices = 0;
@@ -142,14 +97,13 @@ namespace Unity.Sentis.Layers
                 numIndices++;
             }
 
-            var O = ctx.vars.AllocateTensorAndStore(index, ShapeInference.Compress(X.shape, numIndices, axis), X.dataType, ctx.backend.backendType);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.Compress(X.shape, numIndices, axis), X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.CompressWithIndices(X, indices, O, numIndices, axis);
-            ctx.vars.Dispose(indices);
+            ctx.storage.Dispose(indices);
         }
 
-        /// <inheritdoc/>
         public override string ToString()
         {
             return $"{base.ToString()}, hasAxis: {hasAxis}, axis: {axis}";
@@ -163,24 +117,16 @@ namespace Unity.Sentis.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    [Serializable]
     class Equal : Comparison
     {
-        /// <summary>
-        /// Initializes and returns an instance of `Equal` logical operation layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="a">The name to use for the first input tensor of the layer.</param>
-        /// <param name="b">The name to use for the second input tensor of the layer.</param>
-        public Equal(string name, string a, string b)
-            : base(name, a, b) { }
+        public Equal(string output, string a, string b)
+            : base(output, a, b) { }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var A = ctx.vars.GetTensor(inputs[0]);
-            var B = ctx.vars.GetTensor(inputs[1]);
-            var O = ctx.vars.AllocateTensorAndStore(index, A.shape.Broadcast(B.shape), DataType.Int, ctx.backend.backendType) as TensorInt;
+            var A = ctx.storage.GetTensor(inputs[0]);
+            var B = ctx.storage.GetTensor(inputs[1]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], A.shape.Broadcast(B.shape), DataType.Int, ctx.backend.backendType) as TensorInt;
             if (O.shape.HasZeroDims())
                 return;
             if (A is TensorInt)
@@ -197,24 +143,16 @@ namespace Unity.Sentis.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    [Serializable]
     class Greater : Comparison
     {
-        /// <summary>
-        /// Initializes and returns an instance of `Greater` logical operation layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="a">The name to use for the first input tensor of the layer.</param>
-        /// <param name="b">The name to use for the second input tensor of the layer.</param>
-        public Greater(string name, string a, string b)
-            : base(name, a, b) { }
+        public Greater(string output, string a, string b)
+            : base(output, a, b) { }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var A = ctx.vars.GetTensor(inputs[0]);
-            var B = ctx.vars.GetTensor(inputs[1]);
-            var O = ctx.vars.AllocateTensorAndStore(index, A.shape.Broadcast(B.shape), DataType.Int, ctx.backend.backendType) as TensorInt;
+            var A = ctx.storage.GetTensor(inputs[0]);
+            var B = ctx.storage.GetTensor(inputs[1]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], A.shape.Broadcast(B.shape), DataType.Int, ctx.backend.backendType) as TensorInt;
             if (O.shape.HasZeroDims())
                 return;
             if (A is TensorInt)
@@ -231,24 +169,16 @@ namespace Unity.Sentis.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    [Serializable]
     class GreaterOrEqual : Comparison
     {
-        /// <summary>
-        /// Initializes and returns an instance of `GreaterOrEqual` logical operation layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="a">The name to use for the first input tensor of the layer.</param>
-        /// <param name="b">The name to use for the second input tensor of the layer.</param>
-        public GreaterOrEqual(string name, string a, string b)
-            : base(name, a, b) { }
+        public GreaterOrEqual(string output, string a, string b)
+            : base(output, a, b) { }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var A = ctx.vars.GetTensor(inputs[0]);
-            var B = ctx.vars.GetTensor(inputs[1]);
-            var O = ctx.vars.AllocateTensorAndStore(index, A.shape.Broadcast(B.shape), DataType.Int, ctx.backend.backendType) as TensorInt;
+            var A = ctx.storage.GetTensor(inputs[0]);
+            var B = ctx.storage.GetTensor(inputs[1]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], A.shape.Broadcast(B.shape), DataType.Int, ctx.backend.backendType) as TensorInt;
             if (O.shape.HasZeroDims())
                 return;
             if (A is TensorInt)
@@ -263,50 +193,32 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents an element-wise `IsInf` logical layer: f(x) = 1 elementwise if x is +Inf and detectPositive, or x is -Inf and `detectNegative` is true. Otherwise f(x) = 0.
     /// </summary>
-    [Serializable]
     class IsInf : Layer
     {
-        /// <summary>
-        /// Whether to detect negative infinities in the `IsInf` function.
-        /// </summary>
         public bool detectNegative;
-        /// <summary>
-        /// Whether to detect positive infinities in the `IsInf` function.
-        /// </summary>
         public bool detectPositive;
 
-        /// <summary>
-        /// Initializes and returns an instance of `IsInf` logical layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="detectNegative">Whether to detect negative infinities in the `IsInf` function.</param>
-        /// <param name="detectPositive">Whether to detect positive infinities in the `IsInf` function.</param>
-        public IsInf(string name, string input, bool detectNegative, bool detectPositive)
+        public IsInf(string output, string input, bool detectNegative, bool detectPositive)
+            : base(new[] { output }, new[] { input })
         {
-            this.index = name;
-            inputs = new[] { input };
             this.detectNegative = detectNegative;
             this.detectPositive = detectPositive;
         }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
-            ctx.AddPartialTensor(index, new PartialTensor(DataType.Int, ctx.GetPartialTensor(inputs[0]).shape));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Int, ctx.GetPartialTensor(inputs[0]).shape));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var A = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
-            var O = ctx.vars.AllocateTensorAndStore(index, A.shape, DataType.Int, ctx.backend.backendType) as TensorInt;
+            var A = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], A.shape, DataType.Int, ctx.backend.backendType) as TensorInt;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.IsInf(A, O, detectNegative, detectPositive);
         }
 
-        /// <inheritdoc/>
         public override string ToString()
         {
             return $"{base.ToString()}, detectNegative: {detectNegative}, detectPositive: {detectPositive}";
@@ -318,31 +230,20 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents an element-wise `IsNaN` logical layer: f(x) = 1 if x is NaN, otherwise f(x) = 0.
     /// </summary>
-    [Serializable]
     class IsNaN : Layer
     {
-        /// <summary>
-        /// Initializes and returns an instance of `IsNaN` logical layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        public IsNaN(string name, string input)
-        {
-            this.index = name;
-            inputs = new[] { input };
-        }
+        public IsNaN(string output, string input)
+            : base(new[] { output }, new[] { input }) { }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
-            ctx.AddPartialTensor(index, new PartialTensor(DataType.Int, ctx.GetPartialTensor(inputs[0]).shape));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Int, ctx.GetPartialTensor(inputs[0]).shape));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var A = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
-            var O = ctx.vars.AllocateTensorAndStore(index, A.shape, DataType.Int, ctx.backend.backendType) as TensorInt;
+            var A = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], A.shape, DataType.Int, ctx.backend.backendType) as TensorInt;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.IsNaN(A, O);
@@ -356,24 +257,16 @@ namespace Unity.Sentis.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    [Serializable]
     class Less : Comparison
     {
-        /// <summary>
-        /// Initializes and returns an instance of `Less` logical operation layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="a">The name to use for the first input tensor of the layer.</param>
-        /// <param name="b">The name to use for the second input tensor of the layer.</param>
-        public Less(string name, string a, string b)
-            : base(name, a, b) { }
+        public Less(string output, string a, string b)
+            : base(output, a, b) { }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var A = ctx.vars.GetTensor(inputs[0]);
-            var B = ctx.vars.GetTensor(inputs[1]);
-            var O = ctx.vars.AllocateTensorAndStore(index, A.shape.Broadcast(B.shape), DataType.Int, ctx.backend.backendType) as TensorInt;
+            var A = ctx.storage.GetTensor(inputs[0]);
+            var B = ctx.storage.GetTensor(inputs[1]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], A.shape.Broadcast(B.shape), DataType.Int, ctx.backend.backendType) as TensorInt;
             if (O.shape.HasZeroDims())
                 return;
             if (A is TensorInt)
@@ -390,24 +283,16 @@ namespace Unity.Sentis.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    [Serializable]
     class LessOrEqual : Comparison
     {
-        /// <summary>
-        /// Initializes and returns an instance of `LessOrEqual` logical operation layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="a">The name to use for the first input tensor of the layer.</param>
-        /// <param name="b">The name to use for the second input tensor of the layer.</param>
-        public LessOrEqual(string name, string a, string b)
-            : base(name, a, b) { }
+        public LessOrEqual(string output, string a, string b)
+            : base(output, a, b) { }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var A = ctx.vars.GetTensor(inputs[0]);
-            var B = ctx.vars.GetTensor(inputs[1]);
-            var O = ctx.vars.AllocateTensorAndStore(index, A.shape.Broadcast(B.shape), DataType.Int, ctx.backend.backendType) as TensorInt;
+            var A = ctx.storage.GetTensor(inputs[0]);
+            var B = ctx.storage.GetTensor(inputs[1]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], A.shape.Broadcast(B.shape), DataType.Int, ctx.backend.backendType) as TensorInt;
             if (O.shape.HasZeroDims())
                 return;
             if (A is TensorInt)
@@ -422,31 +307,20 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents an element-wise `Not` logical layer: f(x) = ~x.
     /// </summary>
-    [Serializable]
     class Not : Layer
     {
-        /// <summary>
-        /// Initializes and returns an instance of `Not` logical layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        public Not(string name, string input)
-        {
-            this.index = name;
-            this.inputs = new[] { input };
-        }
+        public Not(string output, string input)
+            : base(new[] { output }, new[] { input }) { }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
-            ctx.AddPartialTensor(index, new PartialTensor(DataType.Int, ctx.GetPartialTensor(inputs[0]).shape));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Int, ctx.GetPartialTensor(inputs[0]).shape));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var A = ctx.vars.GetTensor(inputs[0]) as TensorInt;
-            var O = ctx.vars.AllocateTensorAndStore(index, A.shape, DataType.Int, ctx.backend.backendType) as TensorInt;
+            var A = ctx.storage.GetTensor(inputs[0]) as TensorInt;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], A.shape, DataType.Int, ctx.backend.backendType) as TensorInt;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Not(A, O);
@@ -459,24 +333,16 @@ namespace Unity.Sentis.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    [Serializable]
     class Or : Broadcast
     {
-        /// <summary>
-        /// Initializes and returns an instance of `Or` logical operation layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="a">The name to use for the first input tensor of the layer.</param>
-        /// <param name="b">The name to use for the second input tensor of the layer.</param>
-        public Or(string name, string a, string b)
-            : base(name, a, b) { }
+        public Or(string output, string a, string b)
+            : base(output, a, b) { }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var A = ctx.vars.GetTensor(inputs[0]) as TensorInt;
-            var B = ctx.vars.GetTensor(inputs[1]) as TensorInt;
-            var O = ctx.vars.AllocateTensorAndStore(index, A.shape.Broadcast(B.shape), DataType.Int, ctx.backend.backendType) as TensorInt;
+            var A = ctx.storage.GetTensor(inputs[0]) as TensorInt;
+            var B = ctx.storage.GetTensor(inputs[1]) as TensorInt;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], A.shape.Broadcast(B.shape), DataType.Int, ctx.backend.backendType) as TensorInt;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Or(A, B, O);
@@ -490,24 +356,16 @@ namespace Unity.Sentis.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    [Serializable]
     class Xor : Broadcast
     {
-        /// <summary>
-        /// Initializes and returns an instance of `Xor` logical operation layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="a">The name to use for the first input tensor of the layer.</param>
-        /// <param name="b">The name to use for the second input tensor of the layer.</param>
-        public Xor(string name, string a, string b)
-            : base(name, a, b) { }
+        public Xor(string output, string a, string b)
+            : base(output, a, b) { }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var A = ctx.vars.GetTensor(inputs[0]) as TensorInt;
-            var B = ctx.vars.GetTensor(inputs[1]) as TensorInt;
-            var O = ctx.vars.AllocateTensorAndStore(index, A.shape.Broadcast(B.shape), DataType.Int, ctx.backend.backendType) as TensorInt;
+            var A = ctx.storage.GetTensor(inputs[0]) as TensorInt;
+            var B = ctx.storage.GetTensor(inputs[1]) as TensorInt;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], A.shape.Broadcast(B.shape), DataType.Int, ctx.backend.backendType) as TensorInt;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Xor(A, B, O);
@@ -521,32 +379,22 @@ namespace Unity.Sentis.Layers
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
-    [Serializable]
     class Where : Broadcast
     {
-        /// <summary>
-        /// Initializes and returns an instance of `Where` logical operation layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="condition">The name to use for the condition input tensor of the layer.</param>
-        /// <param name="input1">The name to use for the first input tensor of the layer.</param>
-        /// <param name="input2">The name to use for the second input tensor of the layer.</param>
-        public Where(string name, string condition, string input1, string input2)
-            : base(name, condition, input1, input2) { }
+        public Where(string output, string condition, string input1, string input2)
+            : base(output, condition, input1, input2) { }
 
-        /// <inheritdoc/>
         internal override DataType InferPartialDataType(PartialTensor[] inputTensors)
         {
             return inputTensors[1].dataType;
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var C = ctx.vars.GetTensor(inputs[0]) as TensorInt;
-            var A = ctx.vars.GetTensor(inputs[1]);
-            var B = ctx.vars.GetTensor(inputs[2]);
-            var O = ctx.vars.AllocateTensorAndStore(index, A.shape.Broadcast(B.shape.Broadcast(C.shape)), A.dataType, ctx.backend.backendType);
+            var C = ctx.storage.GetTensor(inputs[0]) as TensorInt;
+            var A = ctx.storage.GetTensor(inputs[1]);
+            var B = ctx.storage.GetTensor(inputs[2]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], A.shape.Broadcast(B.shape.Broadcast(C.shape)), A.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Where(C, A, B, O);

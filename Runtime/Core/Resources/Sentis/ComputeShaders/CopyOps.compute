@@ -4,10 +4,6 @@
 #pragma kernel MemCopy
 #pragma kernel MemCopyStride
 #pragma kernel MemSet
-#pragma kernel RangeFloat
-#pragma kernel RangeInt
-#pragma kernel CastIntToFloat
-#pragma kernel CastFloatToInt
 #pragma kernel Transpose2D
 #pragma kernel CastHalfToFloat
 #pragma kernel DequantizeUint8
@@ -150,77 +146,8 @@ void Triu(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV
 StructuredBuffer<int> XIntptr;
 RWStructuredBuffer<int> OIntptr;
 
-[numthreads(TILE_DIM * BLOCK_ROWS, 1, 1)]
-void CastIntToFloat(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint threadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
-{
-    uint x = groupID.x * TILE_DIM * TILE_DIM + groupThreadID.x;
-    uint4 x4 = uint4(0, 1, 2, 3) * BLOCK_ROWS * TILE_DIM + x;
 
-    if (x4.x < X_length)
-        Optr[x4.x] = (float)XIntptr[x4.x];
-    if (x4.y < X_length)
-        Optr[x4.y] = (float)XIntptr[x4.y];
-    if (x4.z < X_length)
-        Optr[x4.z] = (float)XIntptr[x4.z];
-    if (x4.w < X_length)
-        Optr[x4.w] = (float)XIntptr[x4.w];
-}
-
-[numthreads(TILE_DIM * BLOCK_ROWS, 1, 1)]
-void CastFloatToInt(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint threadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
-{
-    uint x = groupID.x * TILE_DIM * TILE_DIM + groupThreadID.x;
-    uint4 x4 = uint4(0, 1, 2, 3) * BLOCK_ROWS * TILE_DIM + x;
-
-    if (x4.x < X_length)
-        OIntptr[x4.x] = (int)Xptr[x4.x];
-    if (x4.y < X_length)
-        OIntptr[x4.y] = (int)Xptr[x4.y];
-    if (x4.z < X_length)
-        OIntptr[x4.z] = (int)Xptr[x4.z];
-    if (x4.w < X_length)
-        OIntptr[x4.w] = (int)Xptr[x4.w];
-}
-
-uint O_length;
-float rangeStartFloat, rangeDeltaFloat;
-int rangeStartInt, rangeDeltaInt;
-
-[numthreads(TILE_DIM * BLOCK_ROWS, 1, 1)]
-void RangeFloat(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint threadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
-{
-    uint x = groupID.x * TILE_DIM * TILE_DIM + groupThreadID.x;
-    uint4 x4 = uint4(0, 1, 2, 3) * BLOCK_ROWS * TILE_DIM + x;
-    float4 v4 = rangeDeltaFloat * float4(x4) + rangeStartFloat ;
-
-    if (x4.x < O_length)
-        Optr[x4.x] = v4.x;
-    if (x4.y < O_length)
-        Optr[x4.y] = v4.y;
-    if (x4.z < O_length)
-        Optr[x4.z] = v4.z;
-    if (x4.w < O_length)
-        Optr[x4.w] = v4.w;
-}
-
-[numthreads(TILE_DIM * BLOCK_ROWS, 1, 1)]
-void RangeInt(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint threadIndex : SV_GroupIndex, uint3 groupID : SV_GroupID)
-{
-    uint x = groupID.x * TILE_DIM * TILE_DIM + groupThreadID.x;
-    uint4 x4 = uint4(0, 1, 2, 3) * BLOCK_ROWS * TILE_DIM + x;
-    int4 v4 = rangeDeltaInt * int4(x4) + rangeStartInt;
-
-    if (x4.x < O_length)
-        OIntptr[x4.x] = v4.x;
-    if (x4.y < O_length)
-        OIntptr[x4.y] = v4.y;
-    if (x4.z < O_length)
-        OIntptr[x4.z] = v4.z;
-    if (x4.w < O_length)
-        OIntptr[x4.w] = v4.w;
-}
-
-
+// https://developer.nvidia.com/blog/efficient-matrix-transpose-cuda-cc/
 #define BLOCK_DIM 16
 
 groupshared float LDS_BLOCK[BLOCK_DIM][BLOCK_DIM + 1];

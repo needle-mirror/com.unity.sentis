@@ -1,6 +1,4 @@
-using System.Collections.Generic;
 using Unity.Sentis.Compiler.Analyser;
-using Unity.Sentis;
 
 namespace Unity.Sentis.Compiler.Validation
 {

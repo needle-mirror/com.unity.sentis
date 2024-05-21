@@ -13,6 +13,47 @@ namespace Unity.Sentis
         // Binary Broadcast
 
         /// <inheritdoc/>
+        public void PRelu(TensorFloat A, TensorFloat B, TensorFloat O)
+        {
+            if (A.shape == O.shape && B.shape.length == 1)
+            {
+                var fn = ComputeFuncSingleton.Instance.Get("ScalarBroadcastPRelu");
+                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
+                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
+                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
+                var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
+                var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
+                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
+                fn.Dispatch(numBlocksX, numBlocksY, 1);
+            }
+            else if (A.shape == O.shape && B.shape == O.shape)
+            {
+                var fn = ComputeFuncSingleton.Instance.Get("BroadcastPRelu");
+                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
+                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
+                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
+                var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeFunc.SafeDispatchLimit);
+                var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
+                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
+                fn.Dispatch(numBlocksX, numBlocksY, 1);
+            }
+            else
+            {
+                var fn = ComputeFuncSingleton.Instance.Get("ElementwisePRelu");
+                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
+                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
+                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
+                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+
+                fn.ScheduleXBO(Pin(A), Pin(B), Pin(O), O.shape.length);
+            }
+        }
+
+        /// <inheritdoc/>
         public void Pow(TensorFloat A, TensorFloat B, TensorFloat O)
         {
             if (A.shape == O.shape && B.shape.length == 1)

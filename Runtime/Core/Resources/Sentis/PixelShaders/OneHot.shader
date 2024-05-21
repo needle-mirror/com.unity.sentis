@@ -35,7 +35,11 @@ Shader "Hidden/Sentis/OneHot"
                 uint blockIndexO = GetBlockIndexO(screenPos);
                 uint3 lowerAxisUpper = Unravel(uint2(StrideAxis, DimAxisO), blockIndexO);
                 int4 indices = SampleBlockX(Ravel(uint1(StrideAxis), lowerAxisUpper.xz));
-                bool4 mask4 = (indices == (int4)lowerAxisUpper.y) || ((indices + (int)DimAxisO) == (int4)lowerAxisUpper.y);
+                bool4 mask4 = false;
+                mask4.x = (indices.x == (int4)lowerAxisUpper.y) || ((indices.x + (int)DimAxisO) == (int4)lowerAxisUpper.y);
+                mask4.y = (indices.y == (int4)lowerAxisUpper.y) || ((indices.y + (int)DimAxisO) == (int4)lowerAxisUpper.y);
+                mask4.z = (indices.z == (int4)lowerAxisUpper.y) || ((indices.z + (int)DimAxisO) == (int4)lowerAxisUpper.y);
+                mask4.w = (indices.w == (int4)lowerAxisUpper.y) || ((indices.w + (int)DimAxisO) == (int4)lowerAxisUpper.y);
                 #ifdef OneHotInt
                 return mask4 ? onValueInt : offValueInt;
                 #else

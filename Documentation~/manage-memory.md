@@ -1,6 +1,6 @@
 # Manage memory
 
-As a Sentis user, you are responsible for calling [`Dispose`](xref:Unity.Sentis.GenericWorker.Dispose) on any worker, inputs, and sometimes outputs. Specifically, you must call `Dispose` on outputs obtained via [`TakeOutputOwnership`](xref:Unity.Sentis.IWorker.TakeOutputOwnership), or if you take ownership by calling [`CompleteOperationsAndDownload`](xref:Unity.Sentis.Tensor.CompleteOperationsAndDownload). 
+As a Sentis user, you are responsible for calling [`Dispose`](xref:Unity.Sentis.GenericWorker.Dispose) on any worker, inputs, and sometimes outputs. Specifically, you must call `Dispose` on outputs obtained via [`TakeOutputOwnership`](xref:Unity.Sentis.IWorker.TakeOutputOwnership) or if you take ownership by calling [`CompleteOperationsAndDownload`](xref:Unity.Sentis.Tensor.CompleteOperationsAndDownload). 
 
 > [!NOTE]
 > Calling `Dispose` is necessary to properly free up GPU resources.
@@ -22,7 +22,7 @@ public void OnDestroy()
 }
 ```
 
-If you get a handle to a tensor via the [`worker.PeekOutput`](xref:Unity.Sentis.IWorker.PeekOutput) call, the memory allocator still holds responsibility for that memory, you thus do not need to `Dispose` of it. For more information on `PeekOutput`, refer to [Get output from a model](get-the-output.md).
+When you get a handle to a tensor using the [`worker.PeekOutput`](xref:Unity.Sentis.IWorker.PeekOutput) call, the memory allocator remains responsible for that memory, so there is no need for you to `Dispose` of it. For more information on `PeekOutput`, refer to [Get output from a model](get-the-output.md).
 
 ## Additional resources
 

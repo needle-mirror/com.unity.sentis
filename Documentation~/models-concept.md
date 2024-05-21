@@ -4,7 +4,7 @@ Sentis can import and run trained machine learning model files in Open Neural Ne
 
 To get a model that's compatible with Sentis, you can do one of the following:
 
-- Train a model using a framework like TensorFlow, PyTorch, or Keras. Then, [export it in ONNX format](export-convert-onnx.md).
+- Train a model using a framework like TensorFlow, PyTorch, or Keras, and subsequently [export it in ONNX format](export-convert-onnx.md).
 - Download a trained model file and [convert to ONNX format](export-convert-onnx.md). Refer to the [ONNXXMLTools](https://github.com/onnx/onnxmltools) Python package for more information.
 - Download a trained model that's already in ONNX format, such as those available in the [ONNX Model Zoo](https://github.com/onnx/models). Refer to [supported models](supported-models.md) for more resources.
 

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Unity.Sentis.Compiler.Passes.Optimization;
 using UnityEngine.Assertions;
 
 namespace Unity.Sentis

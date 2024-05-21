@@ -105,14 +105,13 @@ void TopP(uint3 dispatchThreadID : SV_DispatchThreadID)
         return;
 
     int n = threadIdx / count;
-    int samplei = threadIdx % count;
 
-    float prob = Bptr[samplei];
+    float prob = Bptr[threadIdx];
     float accum = 0.0f;
     uint x = 0;
     for (; x < innerLength; x++)
     {
-        if (prob < accum)
+        if (prob <= accum)
         {
             break;
         }

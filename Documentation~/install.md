@@ -4,9 +4,9 @@ The Sentis package is available from the Unity Package Manager.
 
 ## Unity Editor version compatibility
 
-Sentis 1.4.0 is compatible with Unity 2023.2 (or later). 
+Sentis 1.5.0 is compatible with Unity 2023.2 (or later). 
 
-## Install the Sentis Package in Unity
+## Install the Sentis package in Unity
 
 To add the Sentis package to a Unity project:
 1. Create a new Unity project or open an existing one.

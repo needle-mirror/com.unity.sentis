@@ -6,9 +6,9 @@ After you [create a worker](create-an-engine.md), use [`Execute`](xref:Unity.Sen
 worker.Execute(inputTensor);
 ```
 
-When you run a model for the first time in the Unity Editor, it might be slow because Sentis needs to compile code and shaders. Later runs are faster.
+The initial execution of a model within the Unity Editor may be slow as Sentis needs to compile code and shaders. Subsequent runs will be faster due to caching.
 
-Refer to the `Run a model` example in the [sample scripts](package-samples.md) for an example.
+For an example, refer to the `Run a model` sample in the [sample scripts](package-samples.md).
 
 ## Additional resources
 

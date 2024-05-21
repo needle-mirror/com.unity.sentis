@@ -112,13 +112,9 @@ internal unsafe struct GatherElementsJob : IJobParallelFor, IJobResourceDeclarat
         int axis = (int)(uint)posAxis;
         int curDim;
 
-        // this is for GPU:
-        rank = min(rank, TensorShape.maxRank);
-        axis = min(axis, rank - 1);
-
         remainder = (uint)threadIdx;
         inputLinearIdx = 0;
-        
+
         for (curDim = 0; curDim < axis; curDim++)
         {
             idxOnCurDim = remainder / (uint)stridesO[curDim];
@@ -132,13 +128,13 @@ internal unsafe struct GatherElementsJob : IJobParallelFor, IJobResourceDeclarat
         curDim++;
 
         // We assume that the tensors are compact, no strides on the innermost dimensions, so we dont do the loop at curDim == rank - 1
-        
         for (; curDim < rank - 1; curDim++)
         {
             idxOnCurDim = remainder / (uint)stridesO[curDim];
             remainder = remainder % (uint)stridesO[curDim];
             inputLinearIdx += idxOnCurDim * (uint)stridesX[curDim];
         }
+
         // curDim == rank - 1 == innermost (assume stride 1; also, obviously X.shape[rank-1] >= O and indices.shape[rank-1].
         // Also, even if curDim == rank (ie axis was rank-1 and we already processed last/innermost dim), we can still safely
         // do the last step in any case because the remainder of anything % 1 (stride[rank-1] is always 1) will be 0:
@@ -289,13 +285,8 @@ internal unsafe struct ScatterElementsJob : IJobParallelFor, IJobResourceDeclara
         int axis = (int)(uint)posAxis;
         int curDim;
 
-        // this is for GPU:
-        rank = min(rank, TensorShape.maxRank);
-        axis = min(axis, rank - 1);
-
         remainder = (uint)threadIdx;
         outLinearIdx = 0;
-        
         for (curDim = 0; curDim < axis; curDim++)
         {
             idxOnCurDim = remainder / (uint)stridesX[curDim];
@@ -309,7 +300,6 @@ internal unsafe struct ScatterElementsJob : IJobParallelFor, IJobResourceDeclara
         curDim++;
 
         // We assume that the tensors are compact, no strides on the innermost dimensions, so we dont do the loop at curDim == rank - 1
-        
         for (; curDim < rank - 1; curDim++)
         {
             idxOnCurDim = remainder / (uint)stridesX[curDim];

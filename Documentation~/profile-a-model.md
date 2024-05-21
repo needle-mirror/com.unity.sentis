@@ -1,6 +1,6 @@
 # Profile a model
 
-The performance of a model depends on the following:
+The performance of a model depends on the following factors:
 
 - The complexity of the model.
 - Whether the model uses performance-heavy operators such as `Conv` or `MatMul`.
@@ -27,8 +27,8 @@ If your model runs slower than you expect, refer to:
 
 To help you profile a model, you can get the output from any layer in a model. Follow these steps: 
 
-1. Get the index of the layer want to output from the model inspector.
-2. Use [`Model.AddOutput("layer-name", index)`](xref:Unity.Sentis.Model.AddOutput(System.String)) to add the layer to the model outputs, before you create the worker.
+1. Get the index of the layer that you want to output from the model inspector.
+2. Use [`Model.AddOutput("layer-name", index)`](xref:Unity.Sentis.Model.AddOutput(System.String)) to add the layer to the model outputs before you create the worker.
 3. Run the model.
 4. Use [`IWorker.PeekOutput("layer-name")`](xref:Unity.Sentis.IWorker.PeekOutput) to get the output from the layer.
 

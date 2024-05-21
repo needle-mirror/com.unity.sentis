@@ -55,7 +55,7 @@ For example:
 
 ## Get layers and layer properties
 
-Use the [`layers`](xref:Unity.Sentis.Model.layers) property of the runtime model to get the neural network layers in the model, and the index, inputs, outputs or flags of each layer.
+Use the [`layers`](xref:Unity.Sentis.Model.layers) property of the runtime model to get the neural network layers in the model, and the index, inputs or outputs of each layer.
 
 ## Open a model as a graph
 

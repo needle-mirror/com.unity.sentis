@@ -7,14 +7,10 @@ namespace Unity.Sentis.Compiler.Passes.Cleanup
     {
         bool IsOutputUsed(Layers.Layer layer, HashSet<string> outputsUsed)
         {
-            if (outputsUsed.Contains(layer.index))
-                return true;
-
-            if (layer.outputs == null)
-                return false;
-
             foreach (var lo in layer.outputs)
             {
+                if (string.IsNullOrEmpty(lo))
+                    continue;
                 if (outputsUsed.Contains(lo))
                     return true;
             }
@@ -40,7 +36,7 @@ namespace Unity.Sentis.Compiler.Passes.Cleanup
 
                 bool isOutputUsed = IsOutputUsed(layer, outputsUsed);
 
-                if (isOutputUsed || layer.flags.HasFlag(Layers.Flags.Preserve))
+                if (isOutputUsed)
                 {
                     foreach (var input in layer.inputs)
                     {
@@ -51,11 +47,11 @@ namespace Unity.Sentis.Compiler.Passes.Cleanup
                 }
                 else
                 {
-                    layersToRemove.Add(layer.index);
+                    layersToRemove.Add(layer.outputs[0]);
                 }
             }
 
-            model.layers = model.layers.Where(l => !layersToRemove.Contains(l.index)).ToList();
+            model.layers = model.layers.Where(l => !layersToRemove.Contains(l.outputs[0])).ToList();
             model.constants = model.constants.Where(c => outputsUsed.Contains(c.index)).ToList();
         }
     }

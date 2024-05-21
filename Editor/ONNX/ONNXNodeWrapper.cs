@@ -21,24 +21,36 @@ namespace Unity.Sentis.ONNX
                 return $"{m_ONNXNode.OpType}_{m_ONNXNode.ToString().GetHashCode()}";
             return name;
         }
-        public string Name { get { return GetName(); } }
-        public string OperatorType { get { return m_ONNXNode.OpType; } }
+        public string Name => GetName();
+        public string OperatorType => m_ONNXNode.OpType;
 
         // Outputs
-        public string[] Outputs { get { return m_ONNXNode.Output.ToArray(); }}
+        public string[] Outputs
+        {
+            get
+            {
+                var outputs = new string[m_ONNXNode.Output.Count];
+                for (var i = 0; i < m_ONNXNode.Output.Count; i++)
+                    outputs[i] = OptionalOutput(i);
+                return outputs;
+            }
+        }
+        public string Output0 => RequiredOutput(0);
+        public string Output1 => RequiredOutput(1);
+        public string Output2 => RequiredOutput(2);
 
         // Inputs
-        public int InputCount { get { return m_ONNXNode.Input.Count;  } }
-        public string[] Inputs { get { return m_ONNXNode.Input.ToArray(); } }
-        public string Input0 { get { return GetRequiredInput(0); } }
-        public string Input1 { get { return GetRequiredInput(1); } }
-        public string Input2 { get { return GetRequiredInput(2); } }
-        public string Input3 { get { return GetRequiredInput(3); } }
-        public string Input4 { get { return GetRequiredInput(4); } }
-        public string Input5 { get { return GetRequiredInput(5); } }
-        public string Input6 { get { return GetRequiredInput(6); } }
-        public string Input7 { get { return GetRequiredInput(7); } }
-        public string Input8 { get { return GetRequiredInput(8); } }
+        public int InputCount => m_ONNXNode.Input.Count;
+        public string[] Inputs => m_ONNXNode.Input.ToArray();
+        public string Input0 => RequiredInput(0);
+        public string Input1 => RequiredInput(1);
+        public string Input2 => RequiredInput(2);
+        public string Input3 => RequiredInput(3);
+        public string Input4 => RequiredInput(4);
+        public string Input5 => RequiredInput(5);
+        public string Input6 => RequiredInput(6);
+        public string Input7 => RequiredInput(7);
+        public string Input8 => RequiredInput(8);
 
         public int? Seed
         {
@@ -49,18 +61,6 @@ namespace Unity.Sentis.ONNX
                 return null;
             }
         }
-
-        public TensorProto ValueAsTensor { get { return GetRequiredTensor("value"); } }
-        public int Axis { get { return GetRequiredInt("axis"); } }
-        public int BlockSize { get { return GetRequiredInt("blocksize"); } }
-        public int[] Shape { get { return GetRequiredIntArray("shape"); } }
-        public float[] Bias { get { return GetRequiredFloatArray("bias"); } }
-        public float AlphaOptional(float defaultValue) { return GetOptionalFloat("alpha", defaultValue); }
-        public float BetaOptional(float defaultValue) { return GetOptionalFloat("beta", defaultValue); }
-        public float GammaOptional(float defaultValue) { return GetOptionalFloat("gamma", defaultValue); }
-        public float EpsilonOptional(float defaultValue=1e-5f) { return GetOptionalFloat("epsilon", defaultValue); }
-        public int AxisOptional(int defaultValue) { return GetOptionalInt("axis", defaultValue); }
-        public string ModeOptional(string defaultValue) { return GetOptionalString("mode", defaultValue); }
 
         // ---------------------------------------------------------------------------------
         // Implementation
@@ -128,12 +128,39 @@ namespace Unity.Sentis.ONNX
         public void IgnoredAttribute(string name, string reasonToIgnore) { }
 
         // Input helpers
-        internal string GetRequiredInput(int inputIndex)
+        internal string RequiredInput(int inputIndex)
         {
             if ((inputIndex >= m_ONNXNode.Input.Count) || (m_ONNXNode.Input[inputIndex] == ""))
                 throw new OnnxLayerImportException($"required Input {inputIndex} was not found.");
 
             return m_ONNXNode.Input[inputIndex];
+        }
+        internal string OptionalInput(int inputIndex)
+        {
+            if (inputIndex >= m_ONNXNode.Input.Count || string.IsNullOrEmpty(m_ONNXNode.Input[inputIndex]))
+                return string.Empty;
+
+            return m_ONNXNode.Input[inputIndex];
+        }
+
+        // Output helpers
+        internal string RequiredOutput(int outputIndex)
+        {
+            if (outputIndex == 0)
+                return GetName();
+            if (outputIndex >= m_ONNXNode.Output.Count || string.IsNullOrEmpty(m_ONNXNode.Output[outputIndex]))
+                throw new OnnxLayerImportException($"required Output {outputIndex} was not found.");
+
+            return m_ONNXNode.Output[outputIndex];
+        }
+        internal string OptionalOutput(int outputIndex)
+        {
+            if (outputIndex == 0)
+                return GetName();
+            if (outputIndex >= m_ONNXNode.Output.Count || string.IsNullOrEmpty(m_ONNXNode.Output[outputIndex]))
+                return string.Empty;
+
+            return m_ONNXNode.Output[outputIndex];
         }
 
         // Attribute helpers
@@ -280,7 +307,7 @@ namespace Unity.Sentis.ONNX
 
         public Layers.PadMode PadMode()
         {
-            var mode = ModeOptional("constant");
+            var mode = GetOptionalString("mode", "constant");
             var modeType = Layers.PadMode.Constant;
             switch (mode)
             {
@@ -335,18 +362,20 @@ namespace Unity.Sentis.ONNX
 
         public Layers.ScatterReductionMode ScatterReductionMode()
         {
-            string reduction = GetOptionalString("reduction", "none");
-            Layers.ScatterReductionMode reductionMode = Layers.ScatterReductionMode.None;
+            var reduction = GetOptionalString("reduction", "none");
+            var reductionMode = Layers.ScatterReductionMode.None;
             if (reduction == "add")
                 reductionMode = Layers.ScatterReductionMode.Add;
             else if (reduction == "mul")
                 reductionMode = Layers.ScatterReductionMode.Mul;
+            else if (reduction != "none")
+                Warn($"Reduction `{reduction}` is not supported for type {OperatorType}.", WarningType.Warning);
             return reductionMode;
         }
 
         public Layers.InterpolationMode InterpolationMode()
         {
-            string mode = ModeOptional("nearest");
+            string mode = GetOptionalString("mode", "nearest");
 
             Layers.InterpolationMode outputMode = Layers.InterpolationMode.Nearest;
             if (mode == "linear" || mode == "bilinear")
@@ -355,11 +384,6 @@ namespace Unity.Sentis.ONNX
                 Warn($"Mode `{mode}` is not supported for type {OperatorType}.", WarningType.Warning);
 
             return outputMode;
-        }
-
-        public Layers.RoiPoolingMode RoiPoolingMode()
-        {
-            return GetOptionalString("mode", "avg") == "avg" ? Layers.RoiPoolingMode.Avg : Layers.RoiPoolingMode.Max;
         }
 
         public Layers.CoordTransformMode CoordinateTransformMode()

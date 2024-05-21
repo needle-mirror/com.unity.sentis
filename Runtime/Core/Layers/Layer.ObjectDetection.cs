@@ -22,54 +22,30 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `NonMaxSuppression` object detection layer. This calculates an output tensor of selected indices of boxes from input `boxes` and `scores` tensors, and bases the indices on the scores and amount of intersection with previously selected boxes.
     /// </summary>
-    [Serializable]
     [Optimization.CPUFallback.CPUReadInputs(2, 3, 4)]
     class NonMaxSuppression : Layer
     {
-        /// <summary>
-        /// The format in which the box data is stored in the `boxes` tensor as a `CenterPointBox`.
-        /// </summary>
         public CenterPointBox centerPointBox;
 
-        /// <summary>
-        /// Initializes and returns an instance of `NonMaxSuppression` object detection layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="boxes">The name to use for the boxes tensor of the layer.</param>
-        /// <param name="scores">The name to use for the scores tensor of the layer.</param>
-        /// <param name="maxOutputBoxesPerClass">The name to use for an optional scalar tensor, with the maximum number of boxes to return for each class.</param>
-        /// <param name="iouThreshold">The name to use for optional scalar tensor, with the threshold above which the intersect-over-union rejects a box.</param>
-        /// <param name="scoreThreshold">The name to use for an optional scalar tensor, with the threshold below which the box score filters a box from the output.</param>
-        /// <param name="centerPointBox">The format the `boxes` tensor uses to store the box data as a `CenterPointBox`. The default value is `CenterPointBox.Corners`.</param>
-        public NonMaxSuppression(string name, string boxes, string scores, string maxOutputBoxesPerClass = null, string iouThreshold = null, string scoreThreshold = null, CenterPointBox centerPointBox = CenterPointBox.Corners)
+        public NonMaxSuppression(string output, string boxes, string scores, string maxOutputBoxesPerClass = "", string iouThreshold = "", string scoreThreshold = "", CenterPointBox centerPointBox = CenterPointBox.Corners)
+            : base(new[] { output }, new[] { boxes, scores, maxOutputBoxesPerClass, iouThreshold, scoreThreshold })
         {
-            this.index = name;
-            if (scoreThreshold != null)
-                this.inputs = new[] { boxes, scores, maxOutputBoxesPerClass, iouThreshold, scoreThreshold };
-            else if (iouThreshold != null)
-                this.inputs = new[] { boxes, scores, maxOutputBoxesPerClass, iouThreshold };
-            else if (maxOutputBoxesPerClass != null)
-                this.inputs = new[] { boxes, scores, maxOutputBoxesPerClass };
-            else
-                this.inputs = new[] { boxes, scores };
             this.centerPointBox = centerPointBox;
         }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var shape = new SymbolicTensorShape(SymbolicTensorDim.Unknown, SymbolicTensorDim.Int(3));
-            ctx.AddPartialTensor(index, new PartialTensor(DataType.Int, shape));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Int, shape));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var maxOutputBoxesPerClass = inputs.Length > 2 && ctx.vars.GetTensor(inputs[2]) != null ? ctx.vars.GetTensor(inputs[2]).ToReadOnlySpan<int>()[0] : 0;
-            var iouThreshold = inputs.Length > 3 && ctx.vars.GetTensor(inputs[3]) != null ? ctx.vars.GetTensor(inputs[3]).ToReadOnlySpan<float>()[0] : 0f;
-            var scoreThreshold = inputs.Length > 4 && ctx.vars.GetTensor(inputs[4]) != null ? ctx.vars.GetTensor(inputs[4]).ToReadOnlySpan<float>()[0] : 0f;
-            var boxes = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
-            var scores = ctx.vars.GetTensor(inputs[1]) as TensorFloat;
+            var maxOutputBoxesPerClass = ctx.storage.GetTensor(inputs[2])?.ToReadOnlySpan<int>()[0] ?? 0;
+            var iouThreshold = ctx.storage.GetTensor(inputs[3])?.ToReadOnlySpan<float>()[0] ?? 0f;
+            var scoreThreshold = ctx.storage.GetTensor(inputs[4])?.ToReadOnlySpan<float>()[0] ?? 0f;
+            var boxes = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
+            var scores = ctx.storage.GetTensor(inputs[1]) as TensorFloat;
             if (maxOutputBoxesPerClass == -1)
                 maxOutputBoxesPerClass = boxes.shape[1];
 
@@ -84,7 +60,7 @@ namespace Unity.Sentis.Layers
             ShapeInference.NonMaxSuppression(boxes.shape, scores.shape, iouThreshold);
             if (boxes.shape.HasZeroDims() || scores.shape.HasZeroDims() || maxOutputBoxesPerClass <= 0)
             {
-                ctx.vars.AllocateTensorAndStore(index, new TensorShape(0, 3), DataType.Int, ctx.backend.backendType);
+                ctx.storage.AllocateTensorAndStore(outputs[0], new TensorShape(0, 3), DataType.Int, ctx.backend.backendType);
                 return;
             }
 
@@ -209,7 +185,7 @@ namespace Unity.Sentis.Layers
             }
 
             // create output tensor of correct length by trimming outputData
-            var O = ctx.vars.AllocateTensorAndStore(index, new TensorShape(numberOfBoxes, 3), DataType.Int, ctx.backend.backendType) as TensorInt;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], new TensorShape(numberOfBoxes, 3), DataType.Int, ctx.backend.backendType) as TensorInt;
             if (numberOfBoxes == 0)
                 return;
             NativeTensorArray.Copy(outputData, BurstTensorData.Pin(O).array, numberOfBoxes * 3);
@@ -332,46 +308,17 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents an `RoiAlign` region of interest alignment layer. This calculates an output tensor by pooling the input tensor across each region of interest given by the `rois` tensor.
     /// </summary>
-    [Serializable]
     class RoiAlign : Layer
     {
-        /// <summary>
-        /// The pooling mode of the operation as an `RoiPoolingMode`.
-        /// </summary>
         public RoiPoolingMode mode;
-        /// <summary>
-        /// The height of the output tensor.
-        /// </summary>
         public int outputHeight;
-        /// <summary>
-        /// The width of the output tensor.
-        /// </summary>
         public int outputWidth;
-        /// <summary>
-        /// The number of sampling points in the interpolation grid used to compute the output value of each pooled output bin.
-        /// </summary>
         public int samplingRatio;
-        /// <summary>
-        /// The multiplicative spatial scale factor used to translate coordinates from their input spatial scale to the scale used when pooling.
-        /// </summary>
         public float spatialScale;
 
-        /// <summary>
-        /// Initializes and returns an instance of `RoiAlign` region of interest alignment layer.
-        /// </summary>
-        /// <param name="name">The name to use for the output tensor of the layer.</param>
-        /// <param name="input">The name to use for the input tensor of the layer.</param>
-        /// <param name="rois">The name to use for the region of interest tensor of the layer.</param>
-        /// <param name="batchIndices">The name to use for the 1D input tensor where each element denotes the index of the image in the batch for a given region of interest.</param>
-        /// <param name="mode">The pooling mode of the operation as an `RoiPoolingMode`.</param>
-        /// <param name="outputHeight">The height of the output tensor.</param>
-        /// <param name="outputWidth">The width of the output tensor.</param>
-        /// <param name="samplingRatio">The number of sampling points in the interpolation grid used to compute the output value of each pooled output bin.</param>
-        /// <param name="spatialScale">The multiplicative spatial scale factor used to translate coordinates from their input spatial scale to the scale used when pooling.</param>
-        public RoiAlign(string name, string input, string rois, string batchIndices, RoiPoolingMode mode, int outputHeight, int outputWidth, int samplingRatio, float spatialScale)
+        public RoiAlign(string output, string input, string rois, string batchIndices, RoiPoolingMode mode, int outputHeight, int outputWidth, int samplingRatio, float spatialScale)
+            : base(new[] { output }, new[] { input, rois, batchIndices })
         {
-            this.index = name;
-            this.inputs = new[] { input, rois, batchIndices };
             this.mode = mode;
             this.outputHeight = outputHeight;
             this.outputWidth = outputWidth;
@@ -379,7 +326,6 @@ namespace Unity.Sentis.Layers
             this.spatialScale = spatialScale;
         }
 
-        /// <inheritdoc/>
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var X = ctx.GetPartialTensor(inputs[0]);
@@ -403,22 +349,20 @@ namespace Unity.Sentis.Layers
             shapeOut[2] = SymbolicTensorDim.Int(outputHeight);
             shapeOut[3] = SymbolicTensorDim.Int(outputWidth);
 
-            ctx.AddPartialTensor(index, new PartialTensor(DataType.Float, shapeOut));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Float, shapeOut));
         }
 
-        /// <inheritdoc/>
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.vars.GetTensor(inputs[0]) as TensorFloat;
-            var rois = ctx.vars.GetTensor(inputs[1]) as TensorFloat;
-            var indices = ctx.vars.GetTensor(inputs[2]) as TensorInt;
-            var O = ctx.vars.AllocateTensorAndStore(index, ShapeInference.RoiAlign(X.shape, rois.shape, indices.shape, outputHeight, outputWidth), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
+            var rois = ctx.storage.GetTensor(inputs[1]) as TensorFloat;
+            var indices = ctx.storage.GetTensor(inputs[2]) as TensorInt;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.RoiAlign(X.shape, rois.shape, indices.shape, outputHeight, outputWidth), DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.RoiAlign(X, rois, indices, O, mode, outputHeight, outputWidth, samplingRatio, spatialScale);
         }
 
-        /// <inheritdoc/>
         public override string ToString()
         {
             return $"{base.ToString()}, mode: {mode}, outputHeight: {outputHeight}, outputWidth: {outputWidth}, samplingRatio: {samplingRatio}, spatialScale: {spatialScale}";

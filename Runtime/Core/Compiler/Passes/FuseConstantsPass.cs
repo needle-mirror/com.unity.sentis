@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using Unity.Sentis.Layers;
 using UnityEngine;
 
 namespace Unity.Sentis.Compiler.Passes.Optimization
@@ -21,17 +20,16 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             var executionContext = new ExecutionContext
             {
                 backend = backend,
-                vars = vars
+                storage = vars
             };
 
             var constantTensors = new Dictionary<string, Tensor>();
             var calculatedTensors = new Dictionary<string, Tensor>();
 
             // model constants
-            // TODO refactor pass to have constants in vars.m_TensorByName to avoid copy/access to layer.Execute
             foreach (var constant in model.constants)
             {
-                var constantTensor = constant.WeightsToTensor();
+                var constantTensor = constant.WeightsToTensorWithSharedTensorData();
                 constantTensors.Add(constant.index, constantTensor);
                 ctx.AddPartialTensor(constant.index, PartialTensor.FromTensor(constantTensor));
             }
@@ -55,12 +53,9 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 {
                     // partial tensor inference
                     layer.InferPartial(ctx);
-                    var outputPartialTensor = ctx.GetPartialTensor(layer.index);
-                    if (outputPartialTensor.IsFullyKnown())
-                        calculatedTensors.Add(layer.index, outputPartialTensor.ToTensor());
-                    for (var i = 1; i < (layer.outputs?.Length ?? 0); i++)
+                    for (var i = 0; i < layer.outputs.Length; i++)
                     {
-                        outputPartialTensor = ctx.GetPartialTensor(layer.outputs[i]);
+                        var outputPartialTensor = ctx.GetPartialTensor(layer.outputs[i]);
                         if (outputPartialTensor.IsFullyKnown())
                             calculatedTensors.Add(layer.outputs[i], outputPartialTensor.ToTensor());
                     }
@@ -77,34 +72,37 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     else
                         tensor = constantTensors[layer.inputs[i]];
 
-                    executionContext.vars.SetInput(layer.inputs[i], tensor);
+                    executionContext.storage.SetInput(layer.inputs[i], tensor);
                 }
 
                 // full inference
                 layer.Execute(executionContext);
-                var outputTensor = executionContext.vars.GetTensor(layer.index);
 
-                calculatedTensors.Add(layer.index, outputTensor);
-                ctx.AddPartialTensor(layer.index, PartialTensor.FromTensor(outputTensor));
-
-                if (layer.outputs == null)
-                    continue;
-
-                for (var i = 1; i < layer.outputs.Length; i++)
+                for (var i = 0; i < layer.outputs.Length; i++)
                 {
-                    outputTensor = vars.PeekTensor(layer.outputs[i]);
+                    var outputTensor = executionContext.storage.GetTensor(layer.outputs[i]);
                     calculatedTensors.Add(layer.outputs[i], outputTensor);
                     ctx.AddPartialTensor(layer.outputs[i], PartialTensor.FromTensor(outputTensor));
                 }
             }
 
             // remove precalculated layers
-            model.layers.RemoveAll(x => calculatedTensors.ContainsKey(x.index));
+            model.layers.RemoveAll(x =>
+            {
+                var isLayerCalculated = true;
+                foreach (var output in x.outputs)
+                {
+                    if (string.IsNullOrEmpty(output))
+                        continue;
+                    isLayerCalculated &= calculatedTensors.ContainsKey(output);
+                }
+                return isLayerCalculated;
+            });
 
             // add precalculated constants
             foreach (var kvp in calculatedTensors)
             {
-                model.constants.Add(new Constant(kvp.Key, kvp.Value));
+                model.constants.Add(new Layers.Constant(kvp.Key, kvp.Value));
                 kvp.Value.Dispose();
             }
 

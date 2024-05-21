@@ -56,7 +56,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             {
                 var layer = model.layers[layerIndex];
 
-                if (!layersOnCPU.Contains(layer.index))
+                if (!layersOnCPU.Contains(layer.outputs[0]))
                     continue;
 
                 NoDataDependencyInputs attribute = (NoDataDependencyInputs)Attribute.GetCustomAttribute(layer.GetType(), typeof(NoDataDependencyInputs));
@@ -100,7 +100,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             Dictionary<string, string> remapConstants = new Dictionary<string, string>();
             foreach (var layer in model.layers)
             {
-                if (layersOnCPU.Contains(layer.index))
+                if (layersOnCPU.Contains(layer.outputs[0]))
                     continue;
 
                 // layer not on cpu, check if input that is supposed to be on gpu is a constant on the cpu

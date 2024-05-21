@@ -19,10 +19,10 @@ public class ConvertTextureToTensor : MonoBehaviour
 
 By default, the tensor has the following properties:
 
-- The same height, width and number of channels as the texture.
-- A tensor layout of batch, channels, height, width (NCHW), for example 1 × 3 × 24 × 32 for a single RGB texture with a height of 24 and a width of 32.
-- A data type of float.
-- Uses mipmap level 0 if there's a mipmap. Refer to [Mipmaps introduction](https://docs.unity3d.com/Documentation/Manual/texture-mipmaps-introduction.html) for more information.
+- It matches the texture's height, width, and number of channels.
+- It has a data type of float.
+- It follows the tensor layout of batch, channels, height, width (NCHW), for example 1 × 3 × 24 × 32 for a single RGB texture with a height of 24 and a width of 32.
+- It uses mipmap level 0 if there's a mipmap. Refer to [Mipmaps introduction](https://docs.unity3d.com/Documentation/Manual/texture-mipmaps-introduction.html) for more information.
 
 Make sure the format of the texture matches what your model needs. If you need to change the format of the texture, for example to change the number of channels, you can use the settings in [Texture Import Settings window](https://docs.unity3d.com/Documentation/Manual/class-TextureImporter.html).
 
@@ -32,7 +32,7 @@ Refer to the `Convert textures to tensors` example in the [sample scripts](packa
 
 ### Override texture shape and layout
 
-You can use parameters in `TextureConverter.ToTensor` to override the width, height and number of channels of a texture. For example:
+You can use parameters in `TextureConverter.ToTensor` to override the width, height, and number of channels of a texture. For example:
 
 ```
 // Set a property to -1 to use the default value
@@ -65,7 +65,7 @@ Refer to the [TextureTransform](xref:Unity.Sentis.TextureTransform) API referenc
 
 ### Set a tensor to the correct format
 
-When you convert a texture to a tensor, Sentis defaults to the batch size, channels, height, width (NCHW) layout.
+When you convert a texture to a tensor, Sentis defaults to the NCHW layout.
 
 If your model needs a different layout, use [`TextureTransform.SetTensorLayout`](xref:Unity.Sentis.TextureTransform.SetTensorLayout(Unity.Sentis.TensorLayout)) to set the layout of the converted tensor.
 

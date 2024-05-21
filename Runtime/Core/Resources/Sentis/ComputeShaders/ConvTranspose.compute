@@ -119,29 +119,29 @@ void FUNC_NAME(KERNEL_NAME, BLOCK_SIZE)(uint3 dispatchThreadID : SV_DispatchThre
         uint4 readH = (topY + dy - Pad.y) / _Stride.y;
         uint4 readD = (topZ + dz - Pad.x) / _Stride.x;
 
-        maskX = (readD < X_depth) &&
-            (readH < X_height) &&
-            (readW < X_width) &&
-            ((topZ + dz - Pad.x) % _Stride.x == 0) &&
-            ((topY + dy - Pad.y) % _Stride.y == 0) &&
-            ((topX + dx - Pad.z) % _Stride.z == 0);
+        maskX.x = (readD.x < X_depth) && (readH.x < X_height) && (readW.x < X_width) && ((topZ.x + dz - Pad.x) % _Stride.x == 0) && ((topY.x + dy - Pad.y) % _Stride.y == 0) && ((topX.x + dx - Pad.z) % _Stride.z == 0);
+        maskX.y = (readD.y < X_depth) && (readH.y < X_height) && (readW.y < X_width) && ((topZ.y + dz - Pad.x) % _Stride.x == 0) && ((topY.y + dy - Pad.y) % _Stride.y == 0) && ((topX.y + dx - Pad.z) % _Stride.z == 0);
+        maskX.z = (readD.z < X_depth) && (readH.z < X_height) && (readW.z < X_width) && ((topZ.z + dz - Pad.x) % _Stride.x == 0) && ((topY.z + dy - Pad.y) % _Stride.y == 0) && ((topX.z + dx - Pad.z) % _Stride.z == 0);
+        maskX.w = (readD.w < X_depth) && (readH.w < X_height) && (readW.w < X_width) && ((topZ.w + dz - Pad.x) % _Stride.x == 0) && ((topY.w + dy - Pad.y) % _Stride.y == 0) && ((topX.w + dx - Pad.z) % _Stride.z == 0);
 
         kernelOffsetX = readX + readD * X_width * X_height + readH * X_width + readW;
         #elif defined(CONV2D)
         uint4 readW = (topX + dx - Pad.y) / _Stride.y;
         uint4 readH = (topY + dy - Pad.x) / _Stride.x;
 
-        maskX = (readH < X_height) &&
-            (readW < X_width) &&
-            ((topY + dy - Pad.x) % _Stride.x == 0) &&
-            ((topX + dx - Pad.y) % _Stride.y == 0);
+        maskX.x = (readH.x < X_height) && (readW.x < X_width) && ((topY.x + dy - Pad.x) % _Stride.x == 0) && ((topX.x + dx - Pad.y) % _Stride.y == 0);
+        maskX.y = (readH.y < X_height) && (readW.y < X_width) && ((topY.y + dy - Pad.x) % _Stride.x == 0) && ((topX.y + dx - Pad.y) % _Stride.y == 0);
+        maskX.z = (readH.z < X_height) && (readW.z < X_width) && ((topY.z + dy - Pad.x) % _Stride.x == 0) && ((topX.z + dx - Pad.y) % _Stride.y == 0);
+        maskX.w = (readH.w < X_height) && (readW.w < X_width) && ((topY.w + dy - Pad.x) % _Stride.x == 0) && ((topX.w + dx - Pad.y) % _Stride.y == 0);
 
         kernelOffsetX = readX + readH * X_width + readW;
         #elif defined(CONV1D)
         uint4 readW = (topX + dx - Pad.x) / _Stride.x;
 
-        maskX = (readW < X_width) &&
-            ((topX + dx - Pad.x) % _Stride.x == 0);
+        maskX.x = (readW.x < X_width) && ((topX.x + dx - Pad.x) % _Stride.x == 0);
+        maskX.y = (readW.y < X_width) && ((topX.y + dx - Pad.x) % _Stride.x == 0);
+        maskX.z = (readW.z < X_width) && ((topX.z + dx - Pad.x) % _Stride.x == 0);
+        maskX.w = (readW.w < X_width) && ((topX.w + dx - Pad.x) % _Stride.x == 0);
 
         kernelOffsetX = readX + readW;
         #endif
