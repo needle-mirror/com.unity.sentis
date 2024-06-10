@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
-using NUnit.Framework;
 using Unity.Sentis.Google.FlatBuffers;
 using SentisFlatBuffer;
 using Unity.Sentis.Layers;

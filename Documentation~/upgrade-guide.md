@@ -1,6 +1,6 @@
-# Upgrade from Sentis 1.3 to Sentis 1.4
+# Upgrade from Sentis 1.3 to Sentis 1.5
 
-To upgrade from Sentis 1.3 to Sentis 1.4, do the following:
+To upgrade from Sentis 1.3 to Sentis 1.5, do the following:
 
 - Reimport models that were previously imported in an earlier version of Sentis.
 - Reexport serialized .sentis files and encrypted serialized models using Sentis 1.4.

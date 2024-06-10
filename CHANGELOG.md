@@ -4,6 +4,8 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.5.0-pre.3] - 2024-06-10
+
 ## [1.5.0-pre.2] - 2024-05-21
 ### Fixed
 - Fix linker error when doing a build

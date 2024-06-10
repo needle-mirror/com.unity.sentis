@@ -1,7 +1,7 @@
 {
   "name": "com.unity.sentis",
   "displayName": "Sentis",
-  "version": "1.5.0-pre.2",
+  "version": "1.5.0-pre.3",
   "unity": "2023.2",
   "description": "Sentis is a neural network inference library. It enables you to import trained neural network models, connect the network inputs and outputs to your game code, and then run them locally in your end-user app. Use cases include capabilities like natural language processing, object recognition, automated game opponents, sensor data classification, and many more.\n\nSentis automatically optimizes your network for real-time use to speed up inference. It also allows you to tune your implementation further with tools like frame slicing, quantization, and custom backend (i.e. compute type) dispatching.\n\nVisit https://unity.com/sentis for more resources.",
   "dependencies": {
@@ -10,16 +10,16 @@
     "com.unity.modules.imageconversion": "1.0.0"
   },
   "_upm": {
-    "changelog": "### Fixed\n- Fix linker error when doing a build"
+    "changelog": ""
   },
   "upmCi": {
-    "footprint": "5ecc75ae634840ecc6116e2784abfdbbb3d48705"
+    "footprint": "4db41df289c681757bd8c87694483ab7de3e9e29"
   },
   "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.sentis@1.5/manual/index.html",
   "repository": {
     "url": "https://github.cds.internal.unity3d.com/unity/UnityInferenceEngine.git",
     "type": "git",
-    "revision": "c747875a1a8b40bb896cdf1c11c7e410310fb612"
+    "revision": "4a23d4f7cfd98e560e22f27947ba326f53435865"
   },
   "samples": [
     {
