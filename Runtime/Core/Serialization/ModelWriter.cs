@@ -16,7 +16,7 @@ namespace Unity.Sentis
     public static class ModelWriter
     {
         internal const long maxSize = 0x10000000;
-        internal const int version = 1;
+        internal const int version = 2;
 
         /// <summary>
         /// Serializes and saves the model description and weights to a file.
@@ -75,7 +75,7 @@ namespace Unity.Sentis
             // values: tensor desc + float/int layer values
             var values = new List<Offset<EValue>>();
             int valuesCount = 0;
-            Dictionary<string, int> layerInputIndices = new Dictionary<string, int>();
+            Dictionary<int, int> layerInputIndices = new Dictionary<int, int>();
 
             // Inputs
             var inputsIndices = new int[model.inputs.Count];
@@ -124,9 +124,8 @@ namespace Unity.Sentis
             var epModelName = builder.CreateString(model.ProducerName);
 
             // Model
-            var outputsIndices = new int[model.outputs.Count];
-            var outputs = new Dictionary<string, bool>();
-            var outputFromIndex = new Dictionary<string, Model.Output>();
+            var outputs = new Dictionary<int, bool>();
+            var outputFromIndex = new Dictionary<int, Model.Output>();
             var outputIndices = new List<int>();
             var outputsNames = new List<StringOffset>();
             foreach (var output in model.outputs)
@@ -136,7 +135,7 @@ namespace Unity.Sentis
             }
 
             // constants
-            var constants = new Dictionary<string, Layers.Constant>();
+            var constants = new Dictionary<int, Layers.Constant>();
             for (int i = 0; i < model.constants.Count; i++)
             {
                 constants.Add(model.constants[i].index, model.constants[i]);
@@ -190,7 +189,7 @@ namespace Unity.Sentis
                         valuesCount++;
                     }
 
-                    layerInputs[k] = string.IsNullOrEmpty(input) ? -1 : layerInputIndices[input];
+                    layerInputs[k] = (input == -1) ? -1 : layerInputIndices[input];
                 }
 
                 var layerAttributesInputs = new List<int>();
@@ -269,15 +268,10 @@ namespace Unity.Sentis
                     if (outputs.ContainsKey(output) && !outputs[output])
                     {
                         outputIndices.Add(valuesCount);
-                        outputsNames.Add(builder.CreateString(output));
+                        outputsNames.Add(builder.CreateString(outputFromIndex[output].name));
                         outputs[output] = true;
                     }
                     valuesCount++;
-                }
-
-                if (model.LayerCPUFallback.Contains(layer.outputs[0]))
-                {
-                    chainCPU.Add(layerInputIndices[layer.outputs[0]]);
                 }
 
                 var layerInputVector = ExecutionPlan.CreateInputsVector(builder, layerInputs);
@@ -299,14 +293,16 @@ namespace Unity.Sentis
                 chains.Add(lChain);
             }
 
-            for (int i = 0; i < model.constants.Count; i++)
+            for (int i = 0; i < model.outputs.Count; i++)
             {
-                var constant = model.constants[i];
-                if (!outputs.ContainsKey(constant.index) || outputs[constant.index])
+                var output = model.outputs[i];
+                if (!constants.ContainsKey(output.index))
                     continue;
 
+                var constant = constants[output.index];
+
                 outputIndices.Add(valuesCount);
-                outputsNames.Add(builder.CreateString(outputFromIndex[constant.index].name));
+                outputsNames.Add(builder.CreateString(output.name));
                 outputs[constant.index] = true;
 
                 var size = SentisFlatBuffer.Tensor.CreateFixedSizesVector(builder, constant.shape.ToArray());
@@ -375,8 +371,8 @@ namespace Unity.Sentis
         {
             ProfilerMarkers.SaveModelWeights.Begin();
 
-            var constants = new Dictionary<string, Layers.Constant>();
-            var foundConstants = new HashSet<string>();
+            var constants = new Dictionary<int, Layers.Constant>();
+            var foundConstants = new HashSet<int>();
             for (int i = 0; i < model.constants.Count; i++)
             {
                 constants.Add(model.constants[i].index, model.constants[i]);

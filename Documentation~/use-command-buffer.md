@@ -5,7 +5,7 @@ You can use a [command buffer](https://docs.unity3d.com/ScriptReference/Renderin
 Follow these steps:
 
 1. Create or get an empty command buffer.
-2. [Create a worker](create-an-engine.md) with the `BackendType.GPUCommandBuffer` back end type.
+2. [Create a worker](create-an-engine.md) with the `BackendType.GPUCommandBuffer` backend type.
 3. In a Unity event function, for example [`OnRenderImage`](https://docs.unity3d.com/ScriptReference/MonoBehaviour.OnRenderImage.html), add Sentis methods to the command buffer.
 4. Use `Graphics.ExecuteCommandBuffer` to execute the command buffer.
 
@@ -28,7 +28,7 @@ public class UseCommandBuffer : MonoBehaviour
 
     void Start()
     {
-        // Create a worker that uses the GPUCommandBuffer back end type
+        // Create a worker that uses the GPUCommandBuffer backend type
         worker = WorkerFactory.CreateWorker(BackendType.GPUCommandBuffer, ModelLoader.Load(modelAsset));
     }
 

@@ -17,7 +17,7 @@ namespace Unity.Sentis
         internal DataType DataType => m_DataType;
         internal FunctionalNode Source => m_Source;
         internal int OutputIndex => m_OutputIndex;
-        internal string Name => m_Source.OutputNames[m_OutputIndex];
+        internal int Index => m_Source.OutputIndices[m_OutputIndex];
 
         internal FunctionalTensor(DataType dataType, FunctionalNode source, int outputIndex)
         {
@@ -33,7 +33,23 @@ namespace Unity.Sentis
         /// <returns>The functional tensor.</returns>
         public static FunctionalTensor FromTensor(Tensor tensor)
         {
-            var constant = new Layers.Constant(null, tensor);
+            Layers.Constant constant;
+            switch (tensor.dataType)
+            {
+                case DataType.Float:
+                {
+                    constant = new Layers.Constant(-1, tensor.shape, tensor.ToReadOnlyArray<float>());
+                    break;
+                }
+                case DataType.Int:
+                {
+                    constant = new Layers.Constant(-1, tensor.shape, tensor.ToReadOnlyArray<int>());
+                    break;
+                }
+                default:
+                    throw new NotImplementedException();
+            }
+
             var constantNode = new FunctionalConstant(constant);
             return new FunctionalTensor(constant.dataType, constantNode, 0);
         }
@@ -84,7 +100,7 @@ namespace Unity.Sentis
             if (withCopy)
                 model = model.DeepCopy();
             Logger.AssertIsTrue(inputs.Length == model.inputs.Count, "ModelOutputs.ValueError: inputs length does not equal model input count {0}, {1}", inputs.Length, model.inputs.Count);
-            var expressions = new Dictionary<string, FunctionalTensor>();
+            var expressions = new Dictionary<int, FunctionalTensor>();
 
             for (var i = 0; i < inputs.Length; i++)
                 expressions[model.inputs[i].index] = inputs[i];
@@ -101,12 +117,12 @@ namespace Unity.Sentis
 
             foreach (var layer in model.layers)
             {
-                layer.inputs = (string[])layer.inputs.Clone();
-                layer.outputs = (string[])layer.outputs.Clone();
+                layer.inputs = (int[])layer.inputs.Clone();
+                layer.outputs = (int[])layer.outputs.Clone();
                 var layerInputs = new FunctionalTensor[layer.inputs.Length];
                 for (var i = 0; i < layerInputs.Length; i++)
                 {
-                    if (string.IsNullOrEmpty(layer.inputs[i]))
+                    if (layer.inputs[i] == -1)
                         continue;
                     layerInputs[i] = expressions[layer.inputs[i]];
                 }
@@ -116,7 +132,7 @@ namespace Unity.Sentis
                 var outputDataTypes = new DataType[layer.outputs.Length];
                 for (var i = 0; i < outputDataTypes.Length; i++)
                 {
-                    if (string.IsNullOrEmpty(layer.outputs[i]))
+                    if (layer.outputs[i] == -1)
                         continue;
                     outputDataTypes[i] = ctx.GetPartialTensor(layer.outputs[i]).dataType;
                 }
@@ -125,7 +141,7 @@ namespace Unity.Sentis
                 var layerOutputs = node.CreateOutputs();
                 for (var i = 0; i < layer.outputs.Length; i++)
                 {
-                    if (string.IsNullOrEmpty(layer.outputs[i]))
+                    if (layer.outputs[i] == -1)
                         continue;
                     expressions[layer.outputs[i]] = layerOutputs[i];
                 }

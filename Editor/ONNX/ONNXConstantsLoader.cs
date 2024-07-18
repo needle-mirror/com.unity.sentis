@@ -18,7 +18,7 @@ namespace Unity.Sentis.ONNX
             var shape = GetShape(tensorProto);
             var dataType = GetDataType(tensorProto);
 
-            var constant = new Layers.Constant(tensorProto.Name, shape, dataType, shape.length * NativeTensorArray.k_DataItemSize);
+            var constant = new Layers.Constant(-1, shape, dataType, shape.length * NativeTensorArray.k_DataItemSize);
             if (shape.HasZeroDims())
             {
                 return constant;
@@ -49,12 +49,10 @@ namespace Unity.Sentis.ONNX
             var shape = GetShape(tensorProto);
             var dataType = GetDataType(tensorProto);
 
-            var constant = new Layers.Constant(tensorProto.Name, shape, dataType, shape.length * NativeTensorArray.k_DataItemSize);
+            var constant = new Layers.Constant(-1, shape, dataType, shape.length * NativeTensorArray.k_DataItemSize);
 
             if (shape.HasZeroDims())
-            {
                 return constant;
-            }
 
             NativeTensorArray tensorData = new NativeTensorArray(shape.length);
 
@@ -133,6 +131,9 @@ namespace Unity.Sentis.ONNX
 
         static NativeTensorArray GetTensorData(byte[] byteArray, int length, TensorShape shape, TensorProto.Types.DataType dataType)
         {
+            if (shape.HasZeroDims())
+                return null;
+
             NativeTensorArray data = new NativeTensorArray(shape.length);
 
             // Double

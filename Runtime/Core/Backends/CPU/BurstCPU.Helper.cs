@@ -874,11 +874,18 @@ namespace Unity.Sentis
 
                 for (int i = 0; i < starts.Length; i++)
                 {
-                    int axis = axes != null ? shapeX.Axis(axes[i]) : i;
-                    int dimX = shapeX[axis];
-                    int start = Math.Min(starts[i], dimX - 1);
-                    startsLocal[axis] = start >= 0 ? start : start + dimX;
-                    stepsLocal[axis] = steps != null ? steps[i] : 1;
+                    var axis = axes == null ? i : shapeX.Axis(axes[i]);
+                    var step = steps != null ? steps[i] : 1;
+                    var dim = shapeX[axis];
+
+                    var clampAdjustDirection = step < 0 ? -1 : 0;
+
+                    var start = starts[i];
+                    start = start < 0 ? dim + start : start;
+                    start = Mathf.Clamp(start, 0, dim + clampAdjustDirection);
+
+                    startsLocal[axis] = start;
+                    stepsLocal[axis] = step;
                 }
 
                 PrepareWithLocals(shapeX, shapeO, startsLocal, stepsLocal);
@@ -887,7 +894,7 @@ namespace Unity.Sentis
             /// <summary>
             /// Prepare for slice on single axis with start value between 0 and the size of the slice axis.
             /// </summary>
-            internal void PrepareSplit(TensorShape shapeX, TensorShape shapeO, int axis, int start)
+            internal void Prepare(TensorShape shapeX, TensorShape shapeO, int axis, int start, int step = 1)
             {
                 int* startsLocal = stackalloc int[TensorShape.maxRank];
                 int* stepsLocal = stackalloc int[TensorShape.maxRank];
@@ -900,6 +907,7 @@ namespace Unity.Sentis
 
                 axis = shapeX.Axis(axis);
                 startsLocal[axis] = start;
+                stepsLocal[axis] = step;
 
                 PrepareWithLocals(shapeX, shapeO, startsLocal, stepsLocal);
             }

@@ -17,7 +17,7 @@ namespace Unity.Sentis
                 depthTensor = ReduceMax(tensor, 0) + 1;
             else
                 depthTensor = Tensor(numClasses);
-            return FunctionalTensor.FromLayer(new Layers.OneHot(null, null, null, null, -1), DataType.Int, new[] { tensor, depthTensor, Tensor(new[] { 0, 1 }) });
+            return FunctionalTensor.FromLayer(new Layers.OneHot(-1, -1, -1, -1, -1), DataType.Int, new[] { tensor, depthTensor, Tensor(new[] { 0, 1 }) });
         }
     }
 }

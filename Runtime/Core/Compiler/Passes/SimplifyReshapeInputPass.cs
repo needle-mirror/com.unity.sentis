@@ -73,9 +73,8 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 if (!newShape.IsFullyKnown())
                     continue;
 
-                var shapeIndex = model.GetUniqueIndex(reshapeLayer.outputs[0] + "_Shape");
-                using var shapeTensor = newShape.ToTensor();
-                var shapeConstant = new Constant(model.GetUniqueIndex(shapeIndex), shapeTensor);
+                var shapeIndex = model.GetUniqueIndex();
+                var shapeConstant = new Constant(model.GetUniqueIndex(), newShape.shape.ToTensorShape(), newShape.ToArray<int>());
                 reshapeLayer.inputs[1] = shapeIndex;
                 model.AddConstant(shapeConstant);
             }

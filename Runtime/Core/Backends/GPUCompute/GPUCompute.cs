@@ -114,7 +114,7 @@ namespace Unity.Sentis
                 return;
             }
 
-            var fn = ComputeFuncSingleton.Instance.Get("MatMul");
+            var fn = ComputeFunctions.k_MatMul;
 
             unsafe
             {
@@ -151,14 +151,12 @@ namespace Unity.Sentis
 
         void BatchedGemm(TensorFloat X, TensorFloat Y, TensorFloat O, int batch, int M, int K, int N)
         {
-            string kernel;
-
+            ComputeFunction fn;
             if (N % 64 == 0 && K % 16 == 0)
-                kernel = "GemmBatched_T16x16_R4x4";
+                fn = ComputeFunctions.k_GemmBatched_T16x16_R4x4;
             else
-                kernel = "GemmBatched_T8x8_R4x4";
+                fn = ComputeFunctions.k_GemmBatched_T8x8_R4x4;
 
-            var fn = ComputeFuncSingleton.Instance.Get(kernel);
 
             fn.SetInt(k_ID_maxXIndex, X.shape.length - 1);
             fn.SetInt(k_ID_maxWIndex, Y.shape.length - 1);
@@ -192,10 +190,11 @@ namespace Unity.Sentis
             }
         }
 
-        void Trilu(Tensor X, Tensor O, int k, string kernel)
+        /// <inheritdoc/>
+        public void Tril(Tensor X, Tensor O, int k)
         {
             // Warning, for some reason shared mem implementation on intel gpu is x2 faster than regular one
-            ComputeFunc fn = ComputeFuncSingleton.Instance.Get(kernel);
+            var fn = ComputeFunctions.k_Tril;
             fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
             fn.SetInt(k_ID_X_width, X.shape[-1]);
@@ -207,15 +206,18 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Tril(Tensor X, Tensor O, int k)
-        {
-            Trilu(X, O, k, "Tril");
-        }
-
-        /// <inheritdoc/>
         public void Triu(Tensor X, Tensor O, int k)
         {
-            Trilu(X, O, k, "Triu");
+            // Warning, for some reason shared mem implementation on intel gpu is x2 faster than regular one
+            var fn = ComputeFunctions.k_Triu;
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            fn.SetInt(k_ID_X_width, X.shape[-1]);
+            fn.SetInt(k_ID_X_height, X.shape[-2]);
+            fn.SetInt(k_ID_X_length, X.shape.length);
+            fn.SetInt(k_ID_diagonalK, k);
+
+            fn.Dispatch(ComputeHelper.IDivC(X.shape.length, 4), 1, 1);
         }
 
         void ApplyFusedActivation(TensorFloat X, TensorFloat O, Layers.FusableActivation fusedActivation)
@@ -260,7 +262,7 @@ namespace Unity.Sentis
 
             int workItemsX, workItemsY, workItemsZ;
 
-            ComputeFunc fn;
+            ComputeFunction fn;
             if (X.shape.rank == 5)
             {
                 var n = O.shape[0];
@@ -269,7 +271,7 @@ namespace Unity.Sentis
                 var h = O.shape[3];
                 var w = O.shape[4];
 
-                fn = K.shape.Length(2) == 1 ? ComputeFuncSingleton.Instance.Get("Conv3D_1x1_T16x16_R4x4") : ComputeFuncSingleton.Instance.Get("Conv3D_T16x16_R4x4");
+                fn = K.shape.Length(2) == 1 ? ComputeFunctions.k_Conv3D_1x1_T16x16_R4x4 : ComputeFunctions.k_Conv3D_T16x16_R4x4;
                 fn.SetInt(k_ID_O_depth, O.shape[2]);
                 fn.SetInt(k_ID_O_height, O.shape[3]);
                 fn.SetInt(k_ID_O_width, O.shape[4]);
@@ -312,7 +314,7 @@ namespace Unity.Sentis
                 workItemsY = ComputeHelper.IDivC(k, 8);
                 workItemsZ = n;
 
-                fn = K.shape.Length(2) == 1 ? ComputeFuncSingleton.Instance.Get("Conv2D_1x1") : ComputeFuncSingleton.Instance.Get("Conv2D_KxK");
+                fn = K.shape.Length(2) == 1 ? ComputeFunctions.k_Conv2D_1x1 : ComputeFunctions.k_Conv2D_KxK;
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
                 fn.SetTensorAsBuffer(k_ID_Wptr, Pin(K));
                 if (B != null)
@@ -355,7 +357,7 @@ namespace Unity.Sentis
                 workItemsY = ComputeHelper.IDivC(k, 8);
                 workItemsZ = n;
 
-                fn = K.shape.Length(2) == 1 ? ComputeFuncSingleton.Instance.Get("Conv1D_1x1") : ComputeFuncSingleton.Instance.Get("Conv1D_KxK");
+                fn = K.shape.Length(2) == 1 ? ComputeFunctions.k_Conv1D_1x1 : ComputeFunctions.k_Conv1D_KxK;
                 fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
                 fn.SetTensorAsBuffer(k_ID_Wptr, Pin(K));
                 if (B != null)
@@ -393,7 +395,7 @@ namespace Unity.Sentis
         {
             int workItemsX, workItemsY, workItemsZ;
 
-            ComputeFunc fn;
+            ComputeFunction fn;
             // TODO regular conv faster for small spatial/channels size, figure good rule of thumb
             // TODO see when to call T8x8
             if (X.shape.rank == 5)
@@ -404,9 +406,9 @@ namespace Unity.Sentis
                 var h = O.shape[3];
                 var w = O.shape[4];
 
-                fn = ComputeFuncSingleton.Instance.Get("Conv3D_T16x16_R4x4");
+                fn = ComputeFunctions.k_Conv3D_T16x16_R4x4;
                 if (K.shape.Length(2) == 1)
-                    fn = ComputeFuncSingleton.Instance.Get("Conv3D_1x1_T16x16_R4x4");
+                    fn = ComputeFunctions.k_Conv3D_1x1_T16x16_R4x4;
                 fn.SetInt(k_ID_O_depth, O.shape[2]); fn.SetInt(k_ID_O_height, O.shape[3]); fn.SetInt(k_ID_O_width, O.shape[4]);
                 fn.SetInt(k_ID_X_depth, X.shape[2]); fn.SetInt(k_ID_X_height, X.shape[3]); fn.SetInt(k_ID_X_width, X.shape[4]);
                 fn.SetInt(k_ID_K_depth, K.shape[2]); fn.SetInt(k_ID_K_height, K.shape[3]); fn.SetInt(k_ID_K_width, K.shape[4]);
@@ -419,9 +421,9 @@ namespace Unity.Sentis
                 var h = O.shape[2];
                 var w = O.shape[3];
 
-                fn = ComputeFuncSingleton.Instance.Get("Conv2D_T16x16_R4x4");
+                fn = ComputeFunctions.k_Conv2D_T16x16_R4x4;
                 if (K.shape.Length(2) == 1)
-                    fn = ComputeFuncSingleton.Instance.Get("Conv2D_1x1_T16x16_R4x4");
+                    fn = ComputeFunctions.k_Conv2D_1x1_T16x16_R4x4;
                 fn.SetInt(k_ID_O_height, O.shape[2]); fn.SetInt(k_ID_O_width, O.shape[3]);
                 fn.SetInt(k_ID_X_height, X.shape[2]); fn.SetInt(k_ID_X_width, X.shape[3]);
                 fn.SetInt(k_ID_K_height, K.shape[2]); fn.SetInt(k_ID_K_width, K.shape[3]);
@@ -433,9 +435,9 @@ namespace Unity.Sentis
                 var k = O.shape[1];
                 var w = O.shape[2];
 
-                fn = ComputeFuncSingleton.Instance.Get("Conv1D_T16x16_R4x4");
+                fn = ComputeFunctions.k_Conv1D_T16x16_R4x4;
                 if (K.shape.Length(2) == 1)
-                    fn = ComputeFuncSingleton.Instance.Get("Conv1D_1x1_T16x16_R4x4");
+                    fn = ComputeFunctions.k_Conv1D_1x1_T16x16_R4x4;
                 fn.SetInt(k_ID_O_width, O.shape[2]);
                 fn.SetInt(k_ID_X_width, X.shape[2]);
                 fn.SetInt(k_ID_K_width, K.shape[2]);
@@ -482,14 +484,14 @@ namespace Unity.Sentis
                 return;
             }
 
-            ComputeFunc fn;
+            ComputeFunction fn;
 
             var numSpatialDims = X.shape.rank - 2;
 
             if (numSpatialDims == 1)
-                fn = ComputeFuncSingleton.Instance.Get("ConvTranspose1D_KxK");
+                fn = ComputeFunctions.k_ConvTranspose1D_KxK;
             else
-                fn = ComputeFuncSingleton.Instance.Get("ConvTranspose2D_KxK");
+                fn = ComputeFunctions.k_ConvTranspose2D_KxK;
 
             var workItemsX = ComputeHelper.IDivC(O.shape.Length(2), 4);
             var workItemsY = ComputeHelper.IDivC(O.shape[1], 8);
@@ -543,16 +545,16 @@ namespace Unity.Sentis
 
         void ConvTransposeMobile(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Span<int> stride, Span<int> pad, Span<int> outputAdjustment, Layers.FusableActivation fusedActivation)
         {
-            ComputeFunc fn;
+            ComputeFunction fn;
 
             var numSpatialDims = X.shape.rank - 2;
 
             if (numSpatialDims == 1)
-                fn = ComputeFuncSingleton.Instance.Get("ConvTranspose1D_T16x16_R4x4");
+                fn = ComputeFunctions.k_ConvTranspose1D_T16x16_R4x4;
             else if (numSpatialDims == 2)
-                fn = ComputeFuncSingleton.Instance.Get("ConvTranspose2D_T16x16_R4x4");
+                fn = ComputeFunctions.k_ConvTranspose2D_T16x16_R4x4;
             else
-                fn = ComputeFuncSingleton.Instance.Get("ConvTranspose3D_T16x16_R4x4");
+                fn = ComputeFunctions.k_ConvTranspose3D_T16x16_R4x4;
 
             fn.SetInt(k_ID_O_channels, O.shape[1]);
             fn.SetInt(k_ID_X_channels, X.shape[1]);
@@ -627,6 +629,86 @@ namespace Unity.Sentis
             }
         }
 
+        /// <inheritdoc/>
+        public void GridSample(TensorFloat X, TensorFloat grid, TensorFloat O, Layers.InterpolationMode mode, Layers.PaddingMode paddingMode, bool alignCorners)
+        {
+            int n = O.shape[0]; int c = O.shape[1];
+            int oH = O.shape[-2]; int oW = O.shape[-1];
+            int xH = X.shape[-2]; int xW = X.shape[-1];
+            int oSpatialDim = oH * oW;
+            int xSpatialDim = xH * xW;
+
+            ComputeFunction fn = null;
+            switch (X.shape.rank)
+            {
+                case 4:
+                    fn = ComputeFunctions.k_GridSample2D;
+                    break;
+                case 5:
+                    fn = ComputeFunctions.k_GridSample3D;
+                    int oD = O.shape[2];
+                    int xD = X.shape[2];
+                    oSpatialDim *= oD;
+                    xSpatialDim *= xD;
+
+                    fn.SetInt(k_ID_inDepth, xD);
+                    fn.SetInt(k_ID_outDepth, oD);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+
+            fn.SetInt(k_ID_outBatch, n);
+            fn.SetInt(k_ID_outChannels, c);
+            fn.SetInt(k_ID_inHeight, xH);
+            fn.SetInt(k_ID_inWidth, xW);
+            fn.SetInt(k_ID_outHeight, oH);
+            fn.SetInt(k_ID_outWidth, oW);
+            fn.SetInt(k_ID_inSpatialSize, xSpatialDim);
+            fn.SetInt(k_ID_outSpatialSize, oSpatialDim);
+
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Sptr, Pin(grid));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+
+            switch (mode)
+            {
+                case Layers.InterpolationMode.Nearest:
+                    fn.DisableKeyword("LINEAR");
+                    break;
+                case Layers.InterpolationMode.Linear:
+                    fn.EnableKeyword("LINEAR");
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
+            }
+
+            switch (paddingMode)
+            {
+                case Layers.PaddingMode.Zeros:
+                    fn.DisableKeyword("BORDER");
+                    fn.DisableKeyword("REFLECTION");
+                    break;
+                case Layers.PaddingMode.Border:
+                    fn.DisableKeyword("REFLECTION");
+                    fn.EnableKeyword("BORDER");
+                    break;
+                case Layers.PaddingMode.Reflection:
+                    fn.DisableKeyword("BORDER");
+                    fn.EnableKeyword("REFLECTION");
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(paddingMode), paddingMode, null);
+            }
+
+            if (alignCorners)
+                fn.EnableKeyword("ALIGN_CORNERS");
+            else
+                fn.DisableKeyword("ALIGN_CORNERS");
+
+            fn.Dispatch(oSpatialDim, c, n);
+        }
+
         void ResizeND(TensorFloat X, TensorFloat O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
         {
             // calculate first and last axes with scaling
@@ -664,28 +746,26 @@ namespace Unity.Sentis
         {
             OpsUtils.GetScaleAndBias(X.shape[axis], O.shape[axis], scale, coordTransformMode, interpolationMode, nearestMode, out float outputScale, out float outputBias);
 
-            ComputeFunc fn;
+            ComputeFunction fn;
             if (interpolationMode == Layers.InterpolationMode.Nearest)
             {
-                string kernelName;
                 switch (nearestMode)
                 {
                     case Layers.NearestMode.RoundPreferFloor:
                     case Layers.NearestMode.Ceil:
-                        kernelName = "Resize1D_Nearest_Ceil";
+                        fn = ComputeFunctions.k_Resize1D_Nearest_Ceil;
                         break;
                     case Layers.NearestMode.RoundPreferCeil:
                     case Layers.NearestMode.Floor:
-                        kernelName = "Resize1D_Nearest_Floor";
+                        fn = ComputeFunctions.k_Resize1D_Nearest_Floor;
                         break;
                     default:
                         throw new NotImplementedException();
                 }
-                fn = ComputeFuncSingleton.Instance.Get(kernelName);
             }
             else //if (interpolationMode == Layers.InterpolationMode.Linear)
             {
-                fn = ComputeFuncSingleton.Instance.Get("Resize1D_Linear_None");
+                fn = ComputeFunctions.k_Resize1D_Linear_None;
             }
 
             int innerLength = O.shape.Strides(axis);
@@ -708,28 +788,26 @@ namespace Unity.Sentis
         {
             OpsUtils.GetScaleAndBias(X.shape[2], O.shape[2], scale[2], coordTransformMode, interpolationMode, nearestMode, out float outputScale, out float outputBias);
 
-            ComputeFunc fn;
+            ComputeFunction fn;
             if (interpolationMode == Layers.InterpolationMode.Nearest)
             {
-                string kernelName;
                 switch (nearestMode)
                 {
                     case Layers.NearestMode.RoundPreferFloor:
                     case Layers.NearestMode.Ceil:
-                        kernelName = "Upsample1D_Nearest_Ceil";
+                        fn = ComputeFunctions.k_Upsample1D_Nearest_Ceil;
                         break;
                     case Layers.NearestMode.RoundPreferCeil:
                     case Layers.NearestMode.Floor:
-                        kernelName = "Upsample1D_Nearest_Floor";
+                        fn = ComputeFunctions.k_Upsample1D_Nearest_Floor;
                         break;
                     default:
                         throw new NotImplementedException();
                 }
-                fn = ComputeFuncSingleton.Instance.Get(kernelName);
             }
             else //if (interpolationMode == Layers.InterpolationMode.Linear)
             {
-                fn = ComputeFuncSingleton.Instance.Get("Upsample1D_Linear_None");
+                fn = ComputeFunctions.k_Upsample1D_Linear_None;
             }
 
             fn.SetFloat(k_ID_scale1D, outputScale);
@@ -754,28 +832,26 @@ namespace Unity.Sentis
                 biasXY[i] = outputBias;
             }
 
-            ComputeFunc fn;
+            ComputeFunction fn;
             if (interpolationMode == Layers.InterpolationMode.Nearest)
             {
-                string kernelName;
                 switch (nearestMode)
                 {
                     case Layers.NearestMode.RoundPreferFloor:
                     case Layers.NearestMode.Ceil:
-                        kernelName = "Upsample2D_Nearest_Ceil";
+                        fn = ComputeFunctions.k_Upsample2D_Nearest_Ceil;
                         break;
                     case Layers.NearestMode.RoundPreferCeil:
                     case Layers.NearestMode.Floor:
-                        kernelName = "Upsample2D_Nearest_Floor";
+                        fn = ComputeFunctions.k_Upsample2D_Nearest_Floor;
                         break;
                     default:
                         throw new NotImplementedException();
                 }
-                fn = ComputeFuncSingleton.Instance.Get(kernelName);
             }
             else //if (interpolationMode == Layers.InterpolationMode.Linear)
             {
-                fn = ComputeFuncSingleton.Instance.Get("Upsample2D_Linear_None");
+                fn = ComputeFunctions.k_Upsample2D_Linear_None;
             }
 
             fn.SetVector(k_ID_scale, scaleXY);
@@ -802,28 +878,26 @@ namespace Unity.Sentis
                 biasXYD[i] = outputBias;
             }
 
-            ComputeFunc fn;
+            ComputeFunction fn;
             if (interpolationMode == Layers.InterpolationMode.Nearest)
             {
-                string kernelName;
                 switch (nearestMode)
                 {
                     case Layers.NearestMode.RoundPreferFloor:
                     case Layers.NearestMode.Ceil:
-                        kernelName = "Upsample3D_Nearest_Ceil";
+                        fn = ComputeFunctions.k_Upsample3D_Nearest_Ceil;
                         break;
                     case Layers.NearestMode.RoundPreferCeil:
                     case Layers.NearestMode.Floor:
-                        kernelName = "Upsample3D_Nearest_Floor";
+                        fn = ComputeFunctions.k_Upsample3D_Nearest_Floor;
                         break;
                     default:
                         throw new NotImplementedException();
                 }
-                fn = ComputeFuncSingleton.Instance.Get(kernelName);
             }
             else //if (interpolationMode == Layers.InterpolationMode.Linear)
             {
-                fn = ComputeFuncSingleton.Instance.Get("Upsample3D_Linear_None");
+                fn = ComputeFunctions.k_Upsample3D_Linear_None;
             }
 
             fn.SetVector(k_ID_scale, scaleXYD);
@@ -846,7 +920,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void DepthToSpace(TensorFloat X, TensorFloat O, int blocksize, Layers.DepthToSpaceMode mode)
         {
-            var fn = ComputeFuncSingleton.Instance.Get(mode == Layers.DepthToSpaceMode.DepthColumnRow ? "DepthToSpaceDepthColumnRow" : "DepthToSpaceColumnRowDepth");
+            var fn = (mode == Layers.DepthToSpaceMode.DepthColumnRow) ? ComputeFunctions.k_DepthToSpaceDepthColumnRow : ComputeFunctions.k_DepthToSpaceColumnRowDepth;
             fn.SetInt(k_ID_blocksize, blocksize);
             fn.SetInt(k_ID_inputChannels, X.shape[1]);
             fn.SetInt(k_ID_inputHeight, X.shape[2]);
@@ -867,7 +941,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void SpaceToDepth(TensorFloat X, TensorFloat O, int blocksize)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("SpaceToDepth");
+            var fn = ComputeFunctions.k_SpaceToDepth;
             fn.SetInt(k_ID_blocksize, blocksize);
             fn.SetInt(k_ID_inputChannels, X.shape[1]);
             fn.SetInt(k_ID_inputHeight, X.shape[2]);
@@ -883,194 +957,6 @@ namespace Unity.Sentis
             fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
             fn.Dispatch(O.shape[0] * O.shape[1], O.shape[2] * O.shape[3], 1);
-        }
-
-        void LocalPool1D(TensorFloat X, TensorFloat O, int[] pool, int[] stride, int[] pad, string kernelName)
-        {
-            var fn = ComputeFuncSingleton.Instance.Get(kernelName);
-            fn.SetInt(k_ID_stride, stride[0]);
-            fn.SetInt(k_ID_pad, pad[0]);
-            fn.SetInt(k_ID_inHeight, X.shape[2]);
-            fn.SetInt(k_ID_pool, pool[0]);
-            fn.SetInt(k_ID_outHeight, O.shape[2]);
-            fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
-        }
-
-        void LocalPool2D(TensorFloat X, TensorFloat O, int[] pool, int[] stride, int[] pad, string kernelName)
-        {
-            var fn = ComputeFuncSingleton.Instance.Get(kernelName);
-            fn.SetInt(k_ID_strideX, stride[1]);
-            fn.SetInt(k_ID_strideY, stride[0]);
-            fn.SetInt(k_ID_padX, pad[1]);
-            fn.SetInt(k_ID_padY, pad[0]);
-
-            fn.SetInt(k_ID_inHeight, X.shape[2]);
-            fn.SetInt(k_ID_inWidth, X.shape[3]);
-
-            fn.SetInt(k_ID_poolX, pool[1]);
-            fn.SetInt(k_ID_poolY, pool[0]);
-
-            fn.SetInt(k_ID_outHeight, O.shape[2]);
-            fn.SetInt(k_ID_outWidth, O.shape[3]);
-
-            fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
-        }
-
-        /// <inheritdoc/>
-        public void MaxPool(TensorFloat X, TensorFloat O, int[] kernelShape, int[] strides, int[] pads)
-        {
-            switch (X.shape.rank)
-            {
-                case 3:
-                    LocalPool1D(X, O, kernelShape, strides, pads, "MaxPool1D");
-                    return;
-                case 4:
-                    LocalPool2D(X, O, kernelShape, strides, pads, "MaxPool2D");
-                    return;
-                default:
-                    throw new NotImplementedException();
-            }
-        }
-
-        /// <inheritdoc/>
-        public void AveragePool(TensorFloat X, TensorFloat O, int[] kernelShape, int[] strides, int[] pads)
-        {
-            switch (X.shape.rank)
-            {
-                case 3:
-                    LocalPool1D(X, O, kernelShape, strides, pads, "AveragePool1D");
-                    return;
-                case 4:
-                    LocalPool2D(X, O, kernelShape, strides, pads, "AveragePool2D");
-                    return;
-                default:
-                    throw new NotImplementedException();
-            }
-        }
-
-        void Reduce(Tensor X, Tensor O, int outerLength, int reduceLength, int innerLength, string localKernel, string globalKernel, string fallbackKernel)
-        {
-            Reduce(X, null, O, outerLength, reduceLength, innerLength, localKernel, globalKernel, fallbackKernel);
-        }
-
-        void Reduce(Tensor X, Tensor Xmax, Tensor O, int outerLength, int reduceLength, int innerLength, string localKernel, string globalKernel, string fallbackKernel)
-        {
-            if (innerLength > (int)ComputeFunc.SafeDispatchLimit || outerLength > (int)ComputeFunc.SafeDispatchLimit)
-            {
-                var fnUnrolled = ComputeFuncSingleton.Instance.Get(fallbackKernel);
-                fnUnrolled.SetInt(k_ID_ReducedDim, reduceLength);
-                fnUnrolled.SetInt(k_ID_InnerDim, innerLength);
-                fnUnrolled.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
-
-                if (Xmax != null)
-                    fnUnrolled.ScheduleXBO(Pin(X), Pin(Xmax), Pin(O), outerLength * innerLength);
-                else
-                    fnUnrolled.ScheduleXO(Pin(X), Pin(O), outerLength * innerLength);
-                return;
-            }
-
-            int localReduceLength = reduceLength;
-            bool isFirstDispatch = true;
-
-            const int kernelReductionThreadCount = 64 * 4;
-
-            // downsample with pyramid approach
-            while (localReduceLength > kernelReductionThreadCount)
-            {
-                int spatialLengthO = ComputeHelper.IDivC(localReduceLength, kernelReductionThreadCount);
-
-                var Otemp = AllocTensorFloat(new TensorShape(outerLength * spatialLengthO * innerLength));
-
-                var fnPool = ComputeFuncSingleton.Instance.Get(localKernel);
-                fnPool.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                if (Xmax != null)
-                    fnPool.SetTensorAsBuffer(k_ID_Bptr, Pin(Xmax));
-                fnPool.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                fnPool.SetInt(k_ID_ReducedDim, localReduceLength);
-                fnPool.SetInt(k_ID_InnerDim, innerLength);
-                fnPool.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                fnPool.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-
-                fnPool.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
-
-                if (!isFirstDispatch)
-                    ReleaseTensorFloat(X as TensorFloat);
-
-                X = Otemp;
-                localReduceLength = spatialLengthO;
-                isFirstDispatch = false;
-            }
-
-            var fn = ComputeFuncSingleton.Instance.Get(globalKernel);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            if (Xmax != null)
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(Xmax));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.SetInt(k_ID_ReducedDim, localReduceLength);
-            fn.SetInt(k_ID_InnerDim, innerLength);
-            fn.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            fn.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
-
-            fn.Dispatch(outerLength, 1, innerLength);
-
-            if (!isFirstDispatch)
-                ReleaseTensorFloat(X as TensorFloat);
-        }
-
-        void GlobalPool(TensorFloat X, TensorFloat O, string localKernel, string globalKernel)
-        {
-            int globalSpatialDims = X.shape.Length(2);
-            int globalNonSpatialLength = X.shape[0] * X.shape[1];
-
-            int localSpatialLength = globalSpatialDims;
-
-            var Oshape = new TensorShape(X.shape[0], X.shape[1], localSpatialLength);
-            bool isTempAlloc = false;
-
-            // downsample with pyramid approach
-            while (localSpatialLength > 64 * 4)
-            {
-                int spatialLengthO = ComputeHelper.IDivC(localSpatialLength, 64 * 4);
-                Oshape[2] = spatialLengthO;
-                var Otemp = AllocTensorFloat(Oshape);
-
-                var fnPool = ComputeFuncSingleton.Instance.Get(localKernel);
-                fnPool.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fnPool.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                fnPool.SetInt(k_ID_SpatialDims, localSpatialLength);
-                fnPool.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-
-                fnPool.Dispatch(globalNonSpatialLength, ComputeHelper.IDivC(localSpatialLength, 4), 1);
-
-                if (isTempAlloc)
-                    ReleaseTensorFloat(X);
-                X = Otemp;
-                localSpatialLength = spatialLengthO;
-                isTempAlloc = true;
-            }
-
-            var fn = ComputeFuncSingleton.Instance.Get(globalKernel);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.SetInt(k_ID_SpatialDims, localSpatialLength);
-            fn.SetInt(k_ID_GlobalSpatialDims, globalSpatialDims);
-
-            fn.Dispatch(globalNonSpatialLength, 1, 1);
-
-            if (isTempAlloc)
-                ReleaseTensorFloat(X);
-        }
-
-        /// <inheritdoc/>
-        public void GlobalMaxPool(TensorFloat X, TensorFloat O)
-        {
-            GlobalPool(X, O, "MaxPoolReduce", "GlobalMaxPool");
-        }
-
-        /// <inheritdoc/>
-        public void GlobalAveragePool(TensorFloat X, TensorFloat O)
-        {
-            GlobalPool(X, O, "AveragePoolReduce", "GlobalAveragePool");
         }
 
         /// <inheritdoc/>
@@ -1094,7 +980,7 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(Oshape);
                 var O2temp = AllocTensorFloat(Oshape);
 
-                var fnPool = ComputeFuncSingleton.Instance.Get("AverageVariancePoolReduce");
+                var fnPool = ComputeFunctions.k_AverageVariancePoolReduce;
                 fnPool.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
                 fnPool.SetTensorAsBuffer(k_ID_X2ptr, Pin(X2));
                 fnPool.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
@@ -1116,7 +1002,7 @@ namespace Unity.Sentis
                 isFirstDispatch = false;
             }
 
-            var fn = ComputeFuncSingleton.Instance.Get("GlobalAverageVariancePool");
+            var fn = ComputeFunctions.k_GlobalAverageVariancePool;
             fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_X2ptr, Pin(X2));
             fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
@@ -1139,11 +1025,11 @@ namespace Unity.Sentis
 
             int outputGroupedChannels = Otmp.shape[1] / groups;
 
-            ComputeFunc fn;
+            ComputeFunction fn;
 
             if (X.shape.rank == 5)
             {
-                fn = ComputeFuncSingleton.Instance.Get(outputGroupedChannels < 64 ? "GroupedConv3D" : "GroupedConv3D_GroupLower64");
+                fn = (outputGroupedChannels < 64) ? ComputeFunctions.k_GroupedConv3D : ComputeFunctions.k_GroupedConv3D_GroupLower64;
                 fn.SetInt(k_ID_O_depth, Otmp.shape[2]);
                 fn.SetInt(k_ID_O_height, Otmp.shape[3]);
                 fn.SetInt(k_ID_O_width, Otmp.shape[4]);
@@ -1156,7 +1042,7 @@ namespace Unity.Sentis
             }
             else if (X.shape.rank == 4)
             {
-                fn = ComputeFuncSingleton.Instance.Get(outputGroupedChannels < 64 ? "GroupedConv2D" : "GroupedConv2D_GroupLower64");
+                fn = (outputGroupedChannels < 64) ? ComputeFunctions.k_GroupedConv2D : ComputeFunctions.k_GroupedConv2D_GroupLower64;
                 fn.SetInt(k_ID_O_height, Otmp.shape[2]);
                 fn.SetInt(k_ID_O_width, Otmp.shape[3]);
                 fn.SetInt(k_ID_X_height, X.shape[2]);
@@ -1166,7 +1052,7 @@ namespace Unity.Sentis
             }
             else
             {
-                fn = ComputeFuncSingleton.Instance.Get(outputGroupedChannels < 64 ? "GroupedConv1D" : "GroupedConv1D_GroupLower64");
+                fn = (outputGroupedChannels < 64) ? ComputeFunctions.k_GroupedConv1D : ComputeFunctions.k_GroupedConv1D_GroupLower64;
                 fn.SetInt(k_ID_O_width, Otmp.shape[2]);
                 fn.SetInt(k_ID_X_width, X.shape[2]);
                 fn.SetInt(k_ID_K_width, K.shape[2]);
@@ -1209,7 +1095,7 @@ namespace Unity.Sentis
         {
             var Otmp = (fusedActivation != Layers.FusableActivation.None) ? AllocTensorFloat(O.shape) : O;
 
-            ComputeFunc fn;
+            ComputeFunction fn;
             int workItemsX, workItemsY, workItemsZ;
 
             TensorFloat KWE = null;
@@ -1217,13 +1103,13 @@ namespace Unity.Sentis
             {
                 KWE = AllocTensorFloat(new TensorShape(Otmp.shape[1], 4, 4));
 
-                ComputeFunc fnKE = ComputeFuncSingleton.Instance.Get("KernelWinoExpand");
+                ComputeFunction fnKE = ComputeFunctions.k_KernelWinoExpand;
                 fnKE.SetTensorAsBuffer(k_ID_Kptr, Pin(K));
                 fnKE.SetTensorAsBuffer(k_ID_Optr, Pin(KWE));
                 fnKE.SetInt(k_ID_O_channels, O.shape[1]);
                 fnKE.Dispatch(O.shape[1], 1, 1);
 
-                fn = ComputeFuncSingleton.Instance.Get("DepthwiseConv2DWinograd");
+                fn = ComputeFunctions.k_DepthwiseConv2DWinograd;
 
                 fn.SetTensorAsBuffer(k_ID_KWEptr, Pin(KWE));
 
@@ -1233,7 +1119,7 @@ namespace Unity.Sentis
             }
             else
             {
-                fn = ComputeFuncSingleton.Instance.Get("DepthwiseConv2DDirect");
+                fn = ComputeFunctions.k_DepthwiseConv2DDirect;
 
                 fn.SetTensorAsBuffer(k_ID_Kptr, Pin(K));
 
@@ -1292,7 +1178,7 @@ namespace Unity.Sentis
             int channels = X.shape[1];
             int spatialDims = X.shape.Length(2);
 
-            var fn = ComputeFuncSingleton.Instance.Get("ScaleBias");
+            var fn = ComputeFunctions.k_ScaleBias;
 
             fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_Sptr, Pin(S));
@@ -1312,13 +1198,19 @@ namespace Unity.Sentis
             var meanVariance = AllocTensorFloat(reduceOpShape);
             GlobalAverageVariancePool(X, meanVariance, 2);
 
-            var fn = ComputeFuncSingleton.Instance.Get("InstanceNormalizationTail");
+            var fn = ComputeFunctions.k_InstanceNormalizationTail;
 
             fn.SetInt(k_ID_channels, X.shape[1]);
             fn.SetInt(k_ID_spatialDims, X.shape.length / (X.shape[0] * X.shape[1]));
             fn.SetFloat(k_ID_epsilon, epsilon);
 
-            fn.ScheduleXSBWO(Pin(X), Pin(S), Pin(B), Pin(meanVariance), Pin(O), O.shape.length);
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Sptr, Pin(S));
+            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
+            fn.SetTensorAsBuffer(k_ID_Wptr, Pin(meanVariance));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+
+            fn.UnrolledDispatch(O.shape.length);
             ReleaseTensorFloat(meanVariance);
         }
 
@@ -1336,7 +1228,7 @@ namespace Unity.Sentis
             var meanVariance = AllocTensorFloat(reducedShape);
             GlobalAverageVariancePool(X, meanVariance, -1);
 
-            var fn = ComputeFuncSingleton.Instance.Get("LayerNormalizationTail");
+            var fn = ComputeFunctions.k_LayerNormalizationTail;
             fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_Wptr, Pin(meanVariance));
             fn.SetTensorAsBuffer(k_ID_Sptr, Pin(S));
@@ -1357,7 +1249,7 @@ namespace Unity.Sentis
             var channels = X.shape.rank == 1 ? 1 : X.shape[1];
             var spatialDims = X.shape.Length(2);
 
-            var fn = ComputeFuncSingleton.Instance.Get("BatchNormalization");
+            var fn = ComputeFunctions.k_BatchNormalization;
 
             fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_Wptr, Pin(mean));
@@ -1376,7 +1268,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Range(TensorFloat O, float start, float delta)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("RangeFloat");
+            var fn = ComputeFunctions.k_RangeFloat;
             fn.SetFloat(k_ID_alpha, start);
             fn.SetFloat(k_ID_beta, delta);
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
@@ -1386,7 +1278,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Range(TensorInt O, int start, int delta)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("RangeInt");
+            var fn = ComputeFunctions.k_RangeInt;
             fn.SetInt(k_ID_alphai, start);
             fn.SetInt(k_ID_betai, delta);
             fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
@@ -1396,7 +1288,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Relu(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Relu");
+            var fn = ComputeFunctions.k_Relu;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1405,7 +1297,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Relu6(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Relu6");
+            var fn = ComputeFunctions.k_Relu6;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1414,7 +1306,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void LeakyRelu(TensorFloat X, TensorFloat O, float alpha)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("LeakyRelu");
+            var fn = ComputeFunctions.k_LeakyRelu;
             fn.SetFloat(k_ID_alpha, 0.5f * (1f + alpha));
             fn.SetFloat(k_ID_beta, 0.5f * (1f - alpha));
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
@@ -1425,7 +1317,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Tanh(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Tanh");
+            var fn = ComputeFunctions.k_Tanh;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1434,7 +1326,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Softplus(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Softplus");
+            var fn = ComputeFunctions.k_Softplus;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1443,7 +1335,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Sigmoid(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Sigmoid");
+            var fn = ComputeFunctions.k_Sigmoid;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1452,7 +1344,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void HardSigmoid(TensorFloat X, TensorFloat O, float alpha, float beta)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("HardSigmoid");
+            var fn = ComputeFunctions.k_HardSigmoid;
             fn.SetFloat(k_ID_alpha, alpha);
             fn.SetFloat(k_ID_beta, beta);
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
@@ -1463,7 +1355,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Elu(TensorFloat X, TensorFloat O, float alpha)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Elu");
+            var fn = ComputeFunctions.k_Elu;
             fn.SetFloat(k_ID_alpha, alpha);
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
@@ -1473,7 +1365,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Gelu(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Gelu");
+            var fn = ComputeFunctions.k_Gelu;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1482,7 +1374,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void GeluFast(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("GeluFast");
+            var fn = ComputeFunctions.k_GeluFast;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1491,7 +1383,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Selu(TensorFloat X, TensorFloat O, float alpha, float gamma)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Selu");
+            var fn = ComputeFunctions.k_Selu;
             fn.SetFloat(k_ID_alpha, alpha);
             fn.SetFloat(k_ID_gamma, gamma);
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
@@ -1502,7 +1394,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Swish(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Swish");
+            var fn = ComputeFunctions.k_Swish;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1511,7 +1403,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Abs(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("AbsFloat");
+            var fn = ComputeFunctions.k_AbsFloat;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1520,7 +1412,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Abs(TensorInt X, TensorInt O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("AbsInt");
+            var fn = ComputeFunctions.k_AbsInt;
             fn.SetTensorAsBuffer(k_ID_X_int_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1529,7 +1421,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Neg(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("NegFloat");
+            var fn = ComputeFunctions.k_NegFloat;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1538,7 +1430,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Neg(TensorInt X, TensorInt O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("NegInt");
+            var fn = ComputeFunctions.k_NegInt;
             fn.SetTensorAsBuffer(k_ID_X_int_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1547,7 +1439,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Ceil(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Ceil");
+            var fn = ComputeFunctions.k_Ceil;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1556,7 +1448,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Clip(TensorFloat X, TensorFloat O, float min, float max)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("ClipFloat");
+            var fn = ComputeFunctions.k_ClipFloat;
             fn.SetFloat(k_ID_alpha, min);
             fn.SetFloat(k_ID_beta, max);
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
@@ -1567,7 +1459,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Clip(TensorInt X, TensorInt O, int min, int max)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("ClipInt");
+            var fn = ComputeFunctions.k_ClipInt;
             fn.SetInt(k_ID_alphai, min);
             fn.SetInt(k_ID_betai, max);
             fn.SetTensorAsBuffer(k_ID_X_int_ptr, Pin(X));
@@ -1578,7 +1470,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Floor(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Floor");
+            var fn = ComputeFunctions.k_Floor;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1587,7 +1479,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Round(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Round");
+            var fn = ComputeFunctions.k_Round;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1596,7 +1488,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Reciprocal(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Reciprocal");
+            var fn = ComputeFunctions.k_Reciprocal;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1605,7 +1497,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Square(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("SquareFloat");
+            var fn = ComputeFunctions.k_SquareFloat;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1614,7 +1506,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Square(TensorInt X, TensorInt O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("SquareInt");
+            var fn = ComputeFunctions.k_SquareInt;
             fn.SetTensorAsBuffer(k_ID_X_int_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1623,7 +1515,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Exp(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Exp");
+            var fn = ComputeFunctions.k_Exp;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1632,7 +1524,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Log(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Log");
+            var fn = ComputeFunctions.k_Log;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1641,7 +1533,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Sqrt(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Sqrt");
+            var fn = ComputeFunctions.k_Sqrt;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1650,7 +1542,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Acos(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Acos");
+            var fn = ComputeFunctions.k_Acos;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1659,7 +1551,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Acosh(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Acosh");
+            var fn = ComputeFunctions.k_Acosh;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1668,7 +1560,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Asin(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Asin");
+            var fn = ComputeFunctions.k_Asin;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1677,7 +1569,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Asinh(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Asinh");
+            var fn = ComputeFunctions.k_Asinh;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1686,7 +1578,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Atan(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Atan");
+            var fn = ComputeFunctions.k_Atan;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1695,7 +1587,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Atanh(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Atanh");
+            var fn = ComputeFunctions.k_Atanh;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1704,7 +1596,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Cos(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Cos");
+            var fn = ComputeFunctions.k_Cos;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1713,7 +1605,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Cosh(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Cosh");
+            var fn = ComputeFunctions.k_Cosh;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1722,7 +1614,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Sin(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Sin");
+            var fn = ComputeFunctions.k_Sin;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1731,7 +1623,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Sinh(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Sinh");
+            var fn = ComputeFunctions.k_Sinh;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1740,7 +1632,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Tan(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Tan");
+            var fn = ComputeFunctions.k_Tan;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1749,7 +1641,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Erf(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Erf");
+            var fn = ComputeFunctions.k_Erf;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1758,7 +1650,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Celu(TensorFloat X, TensorFloat O, float alpha)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Celu");
+            var fn = ComputeFunctions.k_Celu;
             fn.SetFloat(k_ID_alpha, alpha);
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
@@ -1768,7 +1660,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Shrink(TensorFloat X, TensorFloat O, float bias, float lambd)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Shrink");
+            var fn = ComputeFunctions.k_Shrink;
             fn.SetFloat(k_ID_alpha, bias);
             fn.SetFloat(k_ID_beta, lambd);
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
@@ -1779,7 +1671,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Softsign(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Softsign");
+            var fn = ComputeFunctions.k_Softsign;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -1788,7 +1680,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void ThresholdedRelu(TensorFloat X, TensorFloat O, float alpha)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("ThresholdedRelu");
+            var fn = ComputeFunctions.k_ThresholdedRelu;
             fn.SetFloat(k_ID_alpha, alpha);
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
@@ -1808,14 +1700,20 @@ namespace Unity.Sentis
 
             // x_max = X.max(axis=1)
             // e_x_sum = Sum[exp(x[:,c] - x_max[:]), c]
-            Reduce(X, Xmax, outerLength, reduceLength, innerLength, "ReduceMaxFloat", "GlobalReduceMaxFloat", "UnrolledReduceMaxFloat");
-            Reduce(X, Xmax, XexpSums, outerLength, reduceLength, innerLength, "ReduceSumExpFloat", "GlobalReduceSumExpFloat", "UnrolledReduceSumExpFloat");
+            ReduceMax(X, Xmax, outerLength, reduceLength, innerLength);
+            ReduceSumExp(X, Xmax, XexpSums, outerLength, reduceLength, innerLength);
 
             // exp(x[n,c] - x_max[n]) / e_x_sum[n]
-            var fn = ComputeFuncSingleton.Instance.Get("SoftmaxEnd");
+            var fn = ComputeFunctions.k_SoftmaxEnd;
             fn.SetInt(k_ID_innerLength, innerLength);
             fn.SetInt(k_ID_reduceLength, reduceLength);
-            fn.ScheduleXSBO(Pin(X), Pin(XexpSums), Pin(Xmax), Pin(O), O.shape.length);
+
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Sptr, Pin(XexpSums));
+            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(Xmax));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+
+            fn.UnrolledDispatch(O.shape.length);
 
             ReleaseTensorFloat(Xmax);
             ReleaseTensorFloat(XexpSums);
@@ -1834,14 +1732,19 @@ namespace Unity.Sentis
 
             // x_max = X.max(axis=1)
             // logexp_sum = log(Sum[exp(x[:,c] - x_max[:]), c]) - x_max[:]
-            Reduce(X, Xmax, outerLength, reduceLength, innerLength, "ReduceMaxFloat", "GlobalReduceMaxFloat", "UnrolledReduceMaxFloat");
-            Reduce(X, Xmax, XexpSums, outerLength, reduceLength, innerLength, "ReduceLogSumExpFloat", "GlobalReduceLogSumExpFloat", "UnrolledReduceLogSumExpFloat");
+            ReduceMax(X, Xmax, outerLength, reduceLength, innerLength);
+            ReduceLogSumExp(X, Xmax, XexpSums, outerLength, reduceLength, innerLength);
 
             // x[n,c] - logexp_sum
-            var fn = ComputeFuncSingleton.Instance.Get("LogSoftmaxEnd");
+            var fn = ComputeFunctions.k_LogSoftmaxEnd;
             fn.SetInt(k_ID_innerLength, innerLength);
             fn.SetInt(k_ID_reduceLength, reduceLength);
-            fn.ScheduleXBO(Pin(X), Pin(XexpSums), Pin(O), O.shape.length);
+
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(XexpSums));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+
+            fn.UnrolledDispatch(O.shape.length);
 
             ReleaseTensorFloat(Xmax);
             ReleaseTensorFloat(XexpSums);
@@ -1858,17 +1761,23 @@ namespace Unity.Sentis
 
             // argmax
             {
-                var fn = ComputeFuncSingleton.Instance.Get("ArgMaxFloatFirst");
+                var fn = ComputeFunctions.k_ArgMaxFloatFirst;
                 fn.SetInt(k_ID_innerLength, offsetReduce);
                 fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-                fn.ScheduleXO(Pin(X), Pin(argMax), reduceOpShape.length);
+                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+                fn.SetTensorAsBuffer(k_ID_Optr, Pin(argMax));
+                fn.UnrolledDispatch(reduceOpShape.length);
             }
             // one hot from argmax
             {
-                var fn = ComputeFuncSingleton.Instance.Get("HardmaxEnd");
+                var fn = ComputeFunctions.k_HardmaxEnd;
                 fn.SetInt(k_ID_innerLength, offsetReduce);
                 fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-                fn.ScheduleXBO(Pin(X), Pin(argMax), Pin(O), O.shape.length);
+
+                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(argMax));
+                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+                fn.UnrolledDispatch(O.shape.length);
             }
 
             ReleaseTensorFloat(argMax);
@@ -1877,7 +1786,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void ScalarMad(TensorFloat X, TensorFloat O, float s, float b)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("ScalarMadFloat");
+            var fn = ComputeFunctions.k_ScalarMadFloat;
             fn.SetFloat(k_ID_alpha, s);
             fn.SetFloat(k_ID_beta, b);
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
@@ -1888,7 +1797,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void ScalarMad(TensorInt X, TensorInt O, int s, int b)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("ScalarMadInt");
+            var fn = ComputeFunctions.k_ScalarMadInt;
             fn.SetInt(k_ID_alphai, s);
             fn.SetInt(k_ID_betai, b);
             fn.SetTensorAsBuffer(k_ID_X_int_ptr, Pin(X));
@@ -1902,10 +1811,12 @@ namespace Unity.Sentis
             var reduceOpShape = X.shape.Reduce(axis);
             var offsetReduce = X.shape.Strides(axis);
 
-            var fn = ComputeFuncSingleton.Instance.Get(reverse ? (exclusive ? "CumSumFloatReverseExclusive" : "CumSumFloatReverseInclusive") : (exclusive ? "CumSumFloatForwardExclusive" : "CumSumFloatForwardInclusive"));
+            var fn = (reverse ? (exclusive ? ComputeFunctions.k_CumSumFloatReverseExclusive : ComputeFunctions.k_CumSumFloatReverseInclusive) : (exclusive ? ComputeFunctions.k_CumSumFloatForwardExclusive : ComputeFunctions.k_CumSumFloatForwardInclusive));
             fn.SetInt(k_ID_innerLength, offsetReduce);
             fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-            fn.ScheduleXO(Pin(X), Pin(O), reduceOpShape.length);
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            fn.UnrolledDispatch(reduceOpShape.length);
         }
 
         /// <inheritdoc/>
@@ -1914,10 +1825,12 @@ namespace Unity.Sentis
             var reduceOpShape = X.shape.Reduce(axis);
             var offsetReduce = X.shape.Strides(axis);
 
-            var fn = ComputeFuncSingleton.Instance.Get(reverse ? (exclusive ? "CumSumIntReverseExclusive" : "CumSumIntReverseInclusive") : (exclusive ? "CumSumIntForwardExclusive" : "CumSumIntForwardInclusive"));
+            var fn = (reverse ? (exclusive ? ComputeFunctions.k_CumSumIntReverseExclusive : ComputeFunctions.k_CumSumIntReverseInclusive) : (exclusive ? ComputeFunctions.k_CumSumIntForwardExclusive : ComputeFunctions.k_CumSumIntForwardInclusive));
             fn.SetInt(k_ID_innerLength, offsetReduce);
             fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-            fn.ScheduleXO(Pin(X), Pin(O), reduceOpShape.length);
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            fn.UnrolledDispatch(reduceOpShape.length);
         }
 
         /// <inheritdoc/>
@@ -1927,7 +1840,7 @@ namespace Unity.Sentis
             {
                 case 1:
                 {
-                    var fn = ComputeFuncSingleton.Instance.Get("EinsumOne");
+                    var fn = ComputeFunctions.k_EinsumOne;
 
                     unsafe
                     {
@@ -1945,12 +1858,14 @@ namespace Unity.Sentis
                     fn.SetInt(k_ID_sumRank, sumShape.rank);
                     fn.SetInt(k_ID_outRank, O.shape.rank);
 
-                    fn.ScheduleXO(Pin(inputTensors[0]), Pin(O), O.shape.length);
+                    fn.SetTensorAsBuffer(k_ID_Xptr, Pin(inputTensors[0]));
+                    fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+                    fn.UnrolledDispatch(O.shape.length);
                     return;
                 }
                 case 2:
                 {
-                    var fn = ComputeFuncSingleton.Instance.Get("EinsumTwo");
+                    var fn = ComputeFunctions.k_EinsumTwo;
 
                     unsafe
                     {
@@ -1974,44 +1889,118 @@ namespace Unity.Sentis
                     fn.SetInt(k_ID_sumRank, sumShape.rank);
                     fn.SetInt(k_ID_outRank, O.shape.rank);
 
-                    fn.ScheduleXBO(Pin(inputTensors[0]), Pin(inputTensors[1]), Pin(O), O.shape.length);
+                    fn.SetTensorAsBuffer(k_ID_Xptr, Pin(inputTensors[0]));
+                    fn.SetTensorAsBuffer(k_ID_Bptr, Pin(inputTensors[1]));
+                    fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+                    fn.UnrolledDispatch(O.shape.length);
                     return;
                 }
             }
         }
 
-        /// <inheritdoc/>
-        public void Concat(Tensor[] inputs, Tensor O, int axis)
+        /// <summary>
+        /// Performs `NonMaxSuppression` on boxes with scores.
+        /// </summary>
+        /// <param name="boxes">The boxes input tensor containing the position and dimensions of the boxes for each batch.</param>
+        /// <param name="scores">The scores input tensor containing the score for each box per class per batch.</param>
+        /// <param name="O">The output tensor to be computed and filled (and truncated) with the batch, class and index of the boxes in decreasing order of score.</param>
+        /// <param name="maxOutputBoxesPerClass">The maximum number of output boxes per class.</param>
+        /// <param name="iouThreshold">Boxes with intersect-over-union with a selected box above this threshold are discarded.</param>
+        /// <param name="scoreThreshold">Boxes with a score below this threshold are discarded.</param>
+        /// <param name="centerPointBox">The types of the box coordinates, either [x1, y1, x2, y2] or [x, y, w, h].</param>
+        public void NonMaxSuppression(TensorFloat boxes, TensorFloat scores, TensorInt O, int maxOutputBoxesPerClass, float iouThreshold, float scoreThreshold, Layers.CenterPointBox centerPointBox)
         {
-            unsafe
+            // based on https://github.com/pytorch/vision/blob/main/torchvision/csrc/ops/cpu/nms_kernel.cpp
+            // extended to onnx multiple class multiple batch inputs as here
+            // https://github.com/microsoft/onnxruntime/blob/main/onnxruntime/core/providers/cpu/object_detection/non_max_suppression.cc
+
+            var numBatches = scores.shape[0];
+            var numClasses = scores.shape[1];
+            var numBoxes = scores.shape[2];
+            var maxNumOutput = O.shape[0];
+
+            var selected = AllocTensorInt(scores.shape);
+            var bitmask = AllocTensorInt(new TensorShape(numBatches, numBoxes, numBoxes));
+
+            // create bitmask of boxes
             {
-                // product of all tensor dimensions starting from axis
-                var copyBlockLengths = stackalloc int[inputs.Length];
-                var copyBlockLengthsAcum = stackalloc int[inputs.Length];
-                int copyBlockLengthsSum = 0;
-                for (int i = 0; i < inputs.Length; ++i)
-                {
-                    copyBlockLengthsAcum[i] = copyBlockLengthsSum;
-                    copyBlockLengths[i] = inputs[i].shape.Length(axis);
-                    copyBlockLengthsSum += copyBlockLengths[i];
-                }
-
-                // copy tensor data interleaved into O
-                int takes = O.shape.Length(0, axis);
-                for (int i = 0; i < inputs.Length; ++i)
-                {
-                    if (inputs[i].shape.HasZeroDims())
-                        continue;
-
-                    MemCopyStride(inputs[i], O, copyBlockLengths[i], copyBlockLengthsSum, copyBlockLengths[i], takes, 0, copyBlockLengthsAcum[i]);
-                }
+                var fn = centerPointBox == Layers.CenterPointBox.Center ? ComputeFunctions.k_NMSBitmaskCenter : ComputeFunctions.k_NMSBitmaskCorners;
+                fn.SetInt(k_ID_numBatches, numBatches);
+                fn.SetInt(k_ID_numBoxes, numBoxes);
+                fn.SetFloat(k_ID_iouThreshold, iouThreshold);
+                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(boxes));
+                fn.SetTensorAsBuffer(k_ID_Optr, Pin(bitmask));
+                fn.Dispatch(numBatches, numBoxes, numBoxes);
             }
+
+            // sort
+            var order = AllocTensorInt(new TensorShape(numBoxes));
+            Range(order, 0, 1);
+            var indicesSorted = AllocTensorInt(scores.shape);
+            Span<int> tiles = stackalloc int[1]; tiles[0] = numBatches * numClasses;
+            Tile(order, indicesSorted, tiles);
+            var scoresSorted = AllocTensorFloat(scores.shape);
+            MemCopy(scores, scoresSorted);
+            BitonicSort(scoresSorted, indicesSorted, true);
+
+            var bitmaskOverlap = AllocTensorInt(scores.shape);
+
+            // selection
+            {
+                var fn = ComputeFunctions.k_NMSSelect;
+                fn.SetInt(k_ID_numBatches, numBatches);
+                fn.SetInt(k_ID_numBoxes, numBoxes);
+                fn.SetInt(k_ID_numClasses, numClasses);
+                fn.SetFloat(k_ID_scoreThreshold, scoreThreshold);
+                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(bitmask));
+                fn.SetTensorAsBuffer(k_ID_Sptr, Pin(scoresSorted));
+                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indicesSorted));
+                fn.SetTensorAsBuffer(k_ID_Wptr, Pin(bitmaskOverlap));
+                fn.SetTensorAsBuffer(k_ID_Optr, Pin(selected));
+                fn.Dispatch(1, numClasses, numBatches);
+            }
+
+            // compaction
+            var numSelected = AllocTensorInt(new TensorShape());
+            {
+                var fn = ComputeFunctions.k_NMSCompact;
+                fn.SetInt(k_ID_numBatches, numBatches);
+                fn.SetInt(k_ID_numBoxes, numBoxes);
+                fn.SetInt(k_ID_numClasses, numClasses);
+                fn.SetInt(k_ID_maxNumOutput, maxNumOutput);
+                fn.SetInt(k_ID_maxOutputBoxesPerClass, maxOutputBoxesPerClass);
+                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(selected));
+                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+                fn.SetTensorAsBuffer(k_ID_Iptr, Pin(numSelected));
+                fn.Dispatch(1, 1, 1);
+            }
+
+            ReleaseTensorFloat(scoresSorted);
+            ReleaseTensorInt(order);
+            ReleaseTensorInt(indicesSorted);
+            ReleaseTensorInt(selected);
+            ReleaseTensorInt(bitmask);
+            ReleaseTensorInt(bitmaskOverlap);
+            var numSelectedCPU = numSelected.DownloadToNativeArray<int>();
+            ReleaseTensorInt(numSelected);
+
+            O.shape = new TensorShape(numSelectedCPU[0], 3);
+        }
+
+        /// <inheritdoc/>
+        public void SliceSet(Tensor X, Tensor O, int axis, int start, int step)
+        {
+            var strideX = X.shape.Length(axis);
+            var strideO = O.shape.Length(axis) * step;
+            var length = strideX;
+            var count = X.shape.Length(0, axis);
+            MemCopyStride(X, O, strideX, strideO, length, count, 0, O.shape.Strides(axis) * start);
         }
 
         /// <inheritdoc/>
         public void Slice(Tensor X, Tensor O, ReadOnlySpan<int> starts, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Slice");
+            var fn = ComputeFunctions.k_Slice;
             unsafe
             {
                 fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
@@ -2033,18 +2022,20 @@ namespace Unity.Sentis
             }
             fn.SetInt(k_ID_rank, O.shape.rank);
 
-            fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            fn.UnrolledDispatch(O.shape.length);
         }
 
         /// <inheritdoc/>
         public void SliceSet(Tensor X, Tensor values, Tensor O, ReadOnlySpan<int> starts, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps)
         {
             MemCopy(X, O);
-            var fn = ComputeFuncSingleton.Instance.Get("SliceSet");
+            var fn = ComputeFunctions.k_SliceSet;
             unsafe
             {
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, values.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
+                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
+                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, values.shape);
                 var pStarts = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
                 var pSteps = stackalloc int[8] { 1, 1, 1, 1, 1, 1, 1, 1 };
 
@@ -2062,7 +2053,9 @@ namespace Unity.Sentis
             }
             fn.SetInt(k_ID_rank, O.shape.rank);
 
-            fn.ScheduleXO(Pin(values), Pin(O), values.shape.length);
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(values));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            fn.UnrolledDispatch(values.shape.length);
         }
 
         /// <inheritdoc/>
@@ -2070,7 +2063,7 @@ namespace Unity.Sentis
         {
             axis = X.shape.Axis(axis);
 
-            var fn = ComputeFuncSingleton.Instance.Get("Split");
+            var fn = ComputeFunctions.k_Split;
             fn.SetInt(k_ID_start, start);
             fn.SetInt(k_ID_lengthO, O.shape.length);
             fn.SetInt(k_ID_strideLower, O.shape.Strides(axis));
@@ -2082,7 +2075,7 @@ namespace Unity.Sentis
             fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
 
-            var numBlocksY = ComputeHelper.IDivC(O.shape.length, (int)ComputeFunc.SafeDispatchLimit);
+            var numBlocksY = ComputeHelper.IDivC(O.shape.length, (int)ComputeHelper.SafeDispatchLimit);
             var numBlocksX = ComputeHelper.IDivC(O.shape.length, numBlocksY);
             fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX);
             fn.Dispatch(numBlocksX, numBlocksY, 1);
@@ -2091,29 +2084,28 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Pad(TensorFloat X, TensorFloat O, ReadOnlySpan<int> pad, Layers.PadMode padMode, float constant)
         {
-            string padKernel;
+            ComputeFunction fn;
             switch (padMode)
             {
                 case Layers.PadMode.Constant:
-                    padKernel = "PadBorderND";
+                    fn = ComputeFunctions.k_PadBorderND;
                     break;
                 case Layers.PadMode.Reflect:
-                    padKernel = "PadReflectND";
+                    fn = ComputeFunctions.k_PadReflectND;
                     break;
                 case Layers.PadMode.Edge:
-                    padKernel = "PadEdgeND";
+                    fn = ComputeFunctions.k_PadEdgeND;
                     break;
                 case Layers.PadMode.Symmetric:
-                    padKernel = "PadSymmetricND";
+                    fn = ComputeFunctions.k_PadSymmetricND;
                     break;
                 case Layers.PadMode.Wrap:
-                    padKernel = "PadWrapND";
+                    fn = ComputeFunctions.k_PadWrapND;
                     break;
                 default:
                     throw new NotImplementedException();
             }
 
-            var fn = ComputeFuncSingleton.Instance.Get(padKernel);
             fn.SetFloat(k_ID_Beta, constant);
 
             fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
@@ -2121,35 +2113,36 @@ namespace Unity.Sentis
             fn.SetInt16(k_ID_pad, pad);
             fn.SetInt(k_ID_rank, X.shape.rank);
 
-            fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            fn.UnrolledDispatch(O.shape.length);
         }
 
         /// <inheritdoc/>
         public void Pad(TensorInt X, TensorInt O, ReadOnlySpan<int> pad, Layers.PadMode padMode, int constant)
         {
-            string padKernel;
+            ComputeFunction fn;
             switch (padMode)
             {
                 case Layers.PadMode.Constant:
-                    padKernel = "PadBorderND";
+                    fn = ComputeFunctions.k_PadBorderND;
                     break;
                 case Layers.PadMode.Reflect:
-                    padKernel = "PadReflectND";
+                    fn = ComputeFunctions.k_PadReflectND;
                     break;
                 case Layers.PadMode.Edge:
-                    padKernel = "PadEdgeND";
+                    fn = ComputeFunctions.k_PadEdgeND;
                     break;
                 case Layers.PadMode.Symmetric:
-                    padKernel = "PadSymmetricND";
+                    fn = ComputeFunctions.k_PadSymmetricND;
                     break;
                 case Layers.PadMode.Wrap:
-                    padKernel = "PadWrapND";
+                    fn = ComputeFunctions.k_PadWrapND;
                     break;
                 default:
                     throw new NotImplementedException();
             }
 
-            var fn = ComputeFuncSingleton.Instance.Get(padKernel);
             fn.SetFloat(k_ID_Beta, math.asfloat(constant));
 
             fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
@@ -2157,13 +2150,15 @@ namespace Unity.Sentis
             fn.SetInt16(k_ID_pad, pad);
             fn.SetInt(k_ID_rank, X.shape.rank);
 
-            fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            fn.UnrolledDispatch(O.shape.length);
         }
 
         /// <inheritdoc/>
         public void Transpose(Tensor X, Tensor O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Transpose");
+            var fn = ComputeFunctions.k_Transpose;
             unsafe
             {
                 fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
@@ -2175,7 +2170,9 @@ namespace Unity.Sentis
             }
             fn.SetInt(k_ID_rank, X.shape.rank);
 
-            fn.ScheduleXO(Pin(X), Pin(O), X.shape.length);
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            fn.UnrolledDispatch(X.shape.length);
         }
 
         /// <inheritdoc/>
@@ -2191,7 +2188,7 @@ namespace Unity.Sentis
                     return;
                 }
 
-                var fn = ComputeFuncSingleton.Instance.Get("Transpose2D");
+                var fn = ComputeFunctions.k_Transpose2D;
                 fn.SetInt(k_ID_X_width, equivalentXW);
                 fn.SetInt(k_ID_X_height, equivalentXH);
 
@@ -2203,7 +2200,7 @@ namespace Unity.Sentis
             else
             {
 
-                var fn = ComputeFuncSingleton.Instance.Get("Transpose");
+                var fn = ComputeFunctions.k_Transpose;
                 unsafe
                 {
                     fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
@@ -2211,7 +2208,9 @@ namespace Unity.Sentis
                 }
                 fn.SetInt(k_ID_rank, X.shape.rank);
 
-                fn.ScheduleXO(Pin(X), Pin(O), X.shape.length);
+                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+                fn.UnrolledDispatch(X.shape.length);
             }
         }
 
@@ -2236,7 +2235,7 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(Oshape);
                 var Oindicestemp = AllocTensorInt(Oshape);
 
-                var fnPool = ComputeFuncSingleton.Instance.Get("ArgMaxReduce");
+                var fnPool = ComputeFunctions.k_ArgMaxReduce;
                 fnPool.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
                 fnPool.SetTensorAsBuffer(k_ID_XIndices, Pin(Xindices));
                 fnPool.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
@@ -2262,7 +2261,7 @@ namespace Unity.Sentis
                 isFirstDispatch = false;
             }
 
-            var fn = ComputeFuncSingleton.Instance.Get("GlobalArgMaxReduce");
+            var fn = ComputeFunctions.k_GlobalArgMaxReduce;
             fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_XIndices, Pin(Xindices));
             fn.SetTensorAsBuffer(k_ID_OIndices, Pin(O));
@@ -2277,7 +2276,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ArgMax(TensorFloat X, TensorInt O, int axis, bool keepdim, bool selectLastIndex)
+        public void ArgMax(TensorFloat X, TensorInt O, int axis, bool selectLastIndex)
         {
             int dimAxis = X.shape[axis];
             Assert.AreNotEqual(0, dimAxis, "ValueError: zero-size array to reduction operation maximum which has no identity.");
@@ -2288,136 +2287,55 @@ namespace Unity.Sentis
                 return;
             }
 
-            var fn = ComputeFuncSingleton.Instance.Get(selectLastIndex ? "ArgMaxFloatLast" : "ArgMaxFloatFirst");
+            var fn = (selectLastIndex ? ComputeFunctions.k_ArgMaxFloatLast : ComputeFunctions.k_ArgMaxFloatFirst);
             fn.SetInt(k_ID_innerLength, X.shape.Strides(axis));
             fn.SetInt(k_ID_reduceLength, dimAxis);
-            fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            fn.UnrolledDispatch(O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void ArgMax(TensorInt X, TensorInt O, int axis, bool keepdim, bool selectLastIndex)
+        public void ArgMax(TensorInt X, TensorInt O, int axis, bool selectLastIndex)
         {
             Assert.AreNotEqual(0, X.shape[axis], "ValueError: zero-size array to reduction operation maximum which has no identity.");
 
-            var fn = ComputeFuncSingleton.Instance.Get(selectLastIndex ? "ArgMaxIntLast" : "ArgMaxIntFirst");
+            var fn = (selectLastIndex ? ComputeFunctions.k_ArgMaxIntLast : ComputeFunctions.k_ArgMaxIntFirst);
             fn.SetInt(k_ID_innerLength, X.shape.Strides(axis));
             fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-            fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            fn.UnrolledDispatch(O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void ArgMin(TensorFloat X, TensorInt O, int axis, bool keepdim, bool selectLastIndex)
+        public void ArgMin(TensorFloat X, TensorInt O, int axis, bool selectLastIndex)
         {
             Assert.AreNotEqual(0, X.shape[axis], "ValueError: zero-size array to reduction operation minimum which has no identity.");
 
-            var fn = ComputeFuncSingleton.Instance.Get(selectLastIndex ? "ArgMinFloatLast" : "ArgMinFloatFirst");
+            var fn = (selectLastIndex ? ComputeFunctions.k_ArgMinFloatLast : ComputeFunctions.k_ArgMinFloatFirst);
             fn.SetInt(k_ID_innerLength, X.shape.Strides(axis));
             fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-            fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            fn.UnrolledDispatch(O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void ArgMin(TensorInt X, TensorInt O, int axis, bool keepdim, bool selectLastIndex)
+        public void ArgMin(TensorInt X, TensorInt O, int axis, bool selectLastIndex)
         {
-            var fn = ComputeFuncSingleton.Instance.Get(selectLastIndex ? "ArgMinIntLast" : "ArgMinIntFirst");
+            var fn = (selectLastIndex ? ComputeFunctions.k_ArgMinIntLast : ComputeFunctions.k_ArgMinIntFirst);
             fn.SetInt(k_ID_innerLength, X.shape.Strides(axis));
             fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-            fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
-        }
-
-        void Compare(Tensor A, Tensor B, TensorInt O, string kernel)
-        {
-            var fn = ComputeFuncSingleton.Instance.Get(kernel);
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeA, k_ID_stridesA, A.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
-            fn.SetInt(k_ID_rank, O.shape.rank);
-
-            fn.ScheduleXBO(Pin(A), Pin(B), Pin(O), O.shape.length);
-        }
-
-        /// <inheritdoc/>
-        public void Greater(TensorFloat A, TensorFloat B, TensorInt O)
-        {
-            Compare(A, B, O, "Greater");
-        }
-
-        /// <inheritdoc/>
-        public void Greater(TensorInt A, TensorInt B, TensorInt O)
-        {
-            Compare(A, B, O, "GreaterInt");
-        }
-
-        /// <inheritdoc/>
-        public void GreaterOrEqual(TensorFloat A, TensorFloat B, TensorInt O)
-        {
-            Compare(A, B, O, "GreaterOrEqual");
-        }
-
-        /// <inheritdoc/>
-        public void GreaterOrEqual(TensorInt A, TensorInt B, TensorInt O)
-        {
-            Compare(A, B, O, "GreaterOrEqualInt");
-        }
-
-        /// <inheritdoc/>
-        public void Less(TensorFloat A, TensorFloat B, TensorInt O)
-        {
-            Compare(A, B, O, "Less");
-        }
-
-        /// <inheritdoc/>
-        public void Less(TensorInt A, TensorInt B, TensorInt O)
-        {
-            Compare(A, B, O, "LessInt");
-        }
-
-        /// <inheritdoc/>
-        public void LessOrEqual(TensorFloat A, TensorFloat B, TensorInt O)
-        {
-            Compare(A, B, O, "LessOrEqual");
-        }
-
-        /// <inheritdoc/>
-        public void LessOrEqual(TensorInt A, TensorInt B, TensorInt O)
-        {
-            Compare(A, B, O, "LessOrEqualInt");
-        }
-
-        /// <inheritdoc/>
-        public void Equal(TensorFloat A, TensorFloat B, TensorInt O)
-        {
-            Compare(A, B, O, "Equal");
-        }
-
-        /// <inheritdoc/>
-        public void Equal(TensorInt A, TensorInt B, TensorInt O)
-        {
-            Compare(A, B, O, "EqualInt");
-        }
-
-        /// <inheritdoc/>
-        public void Or(TensorInt A, TensorInt B, TensorInt O)
-        {
-            Compare(A, B, O, "Or");
-        }
-
-        /// <inheritdoc/>
-        public void And(TensorInt A, TensorInt B, TensorInt O)
-        {
-            Compare(A, B, O, "And");
-        }
-
-        /// <inheritdoc/>
-        public void Xor(TensorInt A, TensorInt B, TensorInt O)
-        {
-            Compare(A, B, O, "Xor");
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            fn.UnrolledDispatch(O.shape.length);
         }
 
         /// <inheritdoc/>
         public void Not(TensorInt X, TensorInt O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Not");
+            var fn = ComputeFunctions.k_Not;
             fn.SetTensorAsBuffer(k_ID_X_int_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -2426,7 +2344,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void HardSwish(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("HardSwish");
+            var fn = ComputeFunctions.k_HardSwish;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -2435,7 +2353,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Sign(TensorFloat X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("SignFloat");
+            var fn = ComputeFunctions.k_SignFloat;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -2444,7 +2362,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Sign(TensorInt X, TensorInt O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("SignInt");
+            var fn = ComputeFunctions.k_SignInt;
             fn.SetTensorAsBuffer(k_ID_X_int_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -2453,7 +2371,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void IsInf(TensorFloat X, TensorInt O, bool detectNegative, bool detectPositive)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("IsInf");
+            var fn = ComputeFunctions.k_IsInf;
             fn.SetBool(k_ID_detectNegative, detectNegative);
             fn.SetBool(k_ID_detectPositive, detectPositive);
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
@@ -2464,7 +2382,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void IsNaN(TensorFloat X, TensorInt O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("IsNaN");
+            var fn = ComputeFunctions.k_IsNaN;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -2473,23 +2391,31 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Where(TensorInt C, Tensor A, Tensor B, Tensor O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Where");
+            var fn = ComputeFunctions.k_Where;
             fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
             fn.SetTensorShapeStrides(k_ID_shapeC, k_ID_stridesC, C.shape);
             fn.SetTensorShapeStrides(k_ID_shapeA, k_ID_stridesA, A.shape);
             fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
             fn.SetInt(k_ID_rank, O.shape.rank);
-            fn.ScheduleXSBO(Pin(C), Pin(A), Pin(B), Pin(O), O.shape.length);
+
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(C));
+            fn.SetTensorAsBuffer(k_ID_Sptr, Pin(A));
+            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+
+            fn.UnrolledDispatch(O.shape.length);
         }
 
         /// <inheritdoc/>
         public void Tile(Tensor X, Tensor O, ReadOnlySpan<int> repeats)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Tile");
+            var fn = ComputeFunctions.k_Tile;
             fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
             fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
             fn.SetInt(k_ID_rank, O.shape.rank);
-            fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            fn.UnrolledDispatch(O.shape.length);
         }
 
         /// <inheritdoc/>
@@ -2497,10 +2423,10 @@ namespace Unity.Sentis
         {
             var length = O.shape.length;
             var numWords = ComputeHelper.IDivC(length, 4);
-            var wordsHeight = ComputeHelper.IDivC(numWords, (int)ComputeFunc.SafeDispatchLimit * 32 * 8);
+            var wordsHeight = ComputeHelper.IDivC(numWords, (int)ComputeHelper.SafeDispatchLimit * 32 * 8);
             var wordsWidth = ComputeHelper.IDivC(numWords, wordsHeight);
 
-            var fn = ComputeFuncSingleton.Instance.Get("MemSet");
+            var fn = ComputeFunctions.k_MemSet;
             fn.SetFloat(k_ID_memValueFloat, 0);
             fn.SetInt(k_ID_offsetO, 0);
             fn.SetInt(k_ID_count, length);
@@ -2515,10 +2441,10 @@ namespace Unity.Sentis
         {
             var length = O.shape.length;
             var numWords = ComputeHelper.IDivC(length, 4);
-            var wordsHeight = ComputeHelper.IDivC(numWords, (int)ComputeFunc.SafeDispatchLimit * 32 * 8);
+            var wordsHeight = ComputeHelper.IDivC(numWords, (int)ComputeHelper.SafeDispatchLimit * 32 * 8);
             var wordsWidth = ComputeHelper.IDivC(numWords, wordsHeight);
 
-            var fn = ComputeFuncSingleton.Instance.Get("MemSet");
+            var fn = ComputeFunctions.k_MemSet;
             fn.SetFloat(k_ID_memValueFloat, value);
             fn.SetInt(k_ID_offsetO, 0);
             fn.SetInt(k_ID_count, length);
@@ -2533,10 +2459,10 @@ namespace Unity.Sentis
         {
             var length = O.shape.length;
             var numWords = ComputeHelper.IDivC(length, 4);
-            var wordsHeight = ComputeHelper.IDivC(numWords, (int)ComputeFunc.SafeDispatchLimit * 32 * 8);
+            var wordsHeight = ComputeHelper.IDivC(numWords, (int)ComputeHelper.SafeDispatchLimit * 32 * 8);
             var wordsWidth = ComputeHelper.IDivC(numWords, wordsHeight);
 
-            var fn = ComputeFuncSingleton.Instance.Get("MemSet");
+            var fn = ComputeFunctions.k_MemSet;
             fn.SetFloat(k_ID_memValueFloat, math.asfloat(value));
             fn.SetInt(k_ID_offsetO, 0);
             fn.SetInt(k_ID_count, length);
@@ -2549,31 +2475,41 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Expand(Tensor X, Tensor O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Expand");
+            var fn = ComputeFunctions.k_Expand;
             fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
             fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
             fn.SetInt(k_ID_rank, O.shape.rank);
-            fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            fn.UnrolledDispatch(O.shape.length);
         }
 
         /// <inheritdoc/>
         public void CompressWithIndices(Tensor X, TensorInt indices, Tensor O, int numIndices, int axis)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Gather");
+            var fn = ComputeFunctions.k_Gather;
             fn.SetInt(k_ID_endLength, X.shape.Strides(axis));
             fn.SetInt(k_ID_indicesLength, numIndices);
             fn.SetInt(k_ID_axisDim, X.shape[axis]);
-            fn.ScheduleXBO(Pin(X), Pin(indices), Pin(O), O.shape.length);
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indices));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            fn.UnrolledDispatch(O.shape.length);
         }
 
         /// <inheritdoc/>
         public void Gather(Tensor X, TensorInt indices, Tensor O, int axis)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("Gather");
+            var fn = ComputeFunctions.k_Gather;
             fn.SetInt(k_ID_endLength, X.shape.Strides(axis));
             fn.SetInt(k_ID_indicesLength, indices.shape.length);
             fn.SetInt(k_ID_axisDim, X.shape[axis]);
-            fn.ScheduleXBO(Pin(X), Pin(indices), Pin(O), O.shape.length);
+
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indices));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+
+            fn.UnrolledDispatch(O.shape.length);
         }
 
         /// <inheritdoc/>
@@ -2585,7 +2521,7 @@ namespace Unity.Sentis
 
             // See ScatterElements for more info
             bool fastPathPossible = ShapeInference.ScatterGatherElementsSupportsFastPath(indices.shape, X.shape, axis);
-            var fn = fastPathPossible ? ComputeFuncSingleton.Instance.Get("GatherElementsFast") : ComputeFuncSingleton.Instance.Get("GatherElements");
+            var fn = fastPathPossible ? ComputeFunctions.k_GatherElementsFast : ComputeFunctions.k_GatherElements;
 
             fn.SetInt(k_ID_inputAxisSize, X.shape[axis]);
 
@@ -2594,7 +2530,12 @@ namespace Unity.Sentis
                 fn.SetInt(k_ID_indicesAxisElementStride, indices.shape.Strides(axis));
                 fn.SetInt(k_ID_inputAxisElementStride, X.shape.Strides(axis));
                 fn.SetInt(k_ID_indicesAxisMinusOneElementStride, indices.shape[axis] * indices.shape.Strides(axis));
-                fn.ScheduleXBO(Pin(X), Pin(indices), Pin(O), indices.shape.length);
+
+                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indices));
+                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+
+                fn.UnrolledDispatch(indices.shape.length);
             }
             else
             {
@@ -2602,14 +2543,19 @@ namespace Unity.Sentis
                 fn.SetTensorStridesCompactedAtHead(k_ID_stridesX, X.shape); // WARNING: Remember that X in the shader and here are inputs!
                 fn.SetInt(k_ID_posAxis, axis);
                 fn.SetInt(k_ID_rank, X.shape.rank);
-                fn.ScheduleXBO(Pin(X), Pin(indices), Pin(O), indices.shape.length);
+
+                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indices));
+                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+
+                fn.UnrolledDispatch(indices.shape.length);
             }
         }
 
         /// <inheritdoc/>
         public void GatherND(Tensor X, TensorInt indices, Tensor O, int batchDims)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("GatherND");
+            var fn = ComputeFunctions.k_GatherND;
             fn.SetInt(k_ID_rankX, X.shape.rank);
             fn.SetInt(k_ID_rankO, O.shape.rank);
             fn.SetInt(k_ID_rankIndices, indices.shape.rank);
@@ -2622,7 +2568,12 @@ namespace Unity.Sentis
             fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
             fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
             fn.SetTensorShapeStrides(k_ID_shapeIndices, k_ID_stridesIndices, indices.shape);
-            fn.ScheduleXBO(Pin(X), Pin(indices), Pin(O), O.shape.length);
+
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indices));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+
+            fn.UnrolledDispatch(O.shape.length);
         }
 
         /// <inheritdoc/>
@@ -2642,7 +2593,7 @@ namespace Unity.Sentis
             axis = X.shape.Axis(axis); // note: this is safe since the ranks of X and indices match
 
             bool fastPathPossible = ShapeInference.ScatterGatherElementsSupportsFastPath(indices.shape, X.shape, axis);
-            var fn = fastPathPossible ? ComputeFuncSingleton.Instance.Get("ScatterElementsFast") : ComputeFuncSingleton.Instance.Get("ScatterElements");
+            var fn = fastPathPossible ? ComputeFunctions.k_ScatterElementsFast : ComputeFunctions.k_ScatterElements;
 
             fn.SetInt(k_ID_outAxisSize, X.shape[axis]);
             fn.SetInt(k_ID_reductionType, (int)reduction);
@@ -2652,7 +2603,12 @@ namespace Unity.Sentis
                 fn.SetInt(k_ID_indicesAxisElementStride, indices.shape.Strides(axis));
                 fn.SetInt(k_ID_outAxisElementStride, X.shape.Strides(axis));
                 fn.SetInt(k_ID_indicesAxisMinusOneElementStride, indices.shape[axis] * indices.shape.Strides(axis));
-                fn.ScheduleXBO(Pin(updates), Pin(indices), Pin(O), indices.shape.length);
+
+                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(updates));
+                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indices));
+                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+
+                fn.UnrolledDispatch(indices.shape.length);
             }
             else
             {
@@ -2660,7 +2616,12 @@ namespace Unity.Sentis
                 fn.SetTensorStridesCompactedAtHead(k_ID_stridesX, indices.shape); // WARNING: Remember that X in the shader code is updates, but here X is the input tensor!
                 fn.SetInt(k_ID_posAxis, axis);
                 fn.SetInt(k_ID_rank, X.shape.rank);
-                fn.ScheduleXBO(Pin(updates), Pin(indices), Pin(O), indices.shape.length);
+
+                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(updates));
+                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indices));
+                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+
+                fn.UnrolledDispatch(indices.shape.length);
             }
         }
 
@@ -2672,7 +2633,7 @@ namespace Unity.Sentis
             int indicesLength = indices.shape.Length(0, -1);
             int updatesLength = updates.shape.length / indicesLength;
 
-            var fn = ComputeFuncSingleton.Instance.Get("ScatterNDFloat");
+            var fn = ComputeFunctions.k_ScatterNDFloat;
             fn.SetInt(k_ID_updatesLength, updatesLength);
             fn.SetInt(k_ID_indicesLength, indicesLength);
             fn.SetInt(k_ID_indexRemapDim, indexRemapDim);
@@ -2703,7 +2664,7 @@ namespace Unity.Sentis
             int indicesLength = indices.shape.Length(0, -1);
             int updatesLength = updates.shape.length / indicesLength;
 
-            var fn = ComputeFuncSingleton.Instance.Get("ScatterNDInt");
+            var fn = ComputeFunctions.k_ScatterNDInt;
             fn.SetInt(k_ID_updatesLength, updatesLength);
             fn.SetInt(k_ID_indicesLength, indicesLength);
             fn.SetInt(k_ID_indexRemapDim, indexRemapDim);
@@ -2730,7 +2691,7 @@ namespace Unity.Sentis
         {
             axis = O.shape.Axis(axis);
 
-            var fn = ComputeFuncSingleton.Instance.Get("OneHot");
+            var fn = ComputeFunctions.k_OneHot;
             fn.SetInt(k_ID_depth, depth);
             fn.SetInt(k_ID_offValue, offValue);
             fn.SetInt(k_ID_onValue, onValue);
@@ -2750,7 +2711,7 @@ namespace Unity.Sentis
         {
             axis = O.shape.Axis(axis);
 
-            var fn = new ComputeFunc("OneHot");
+            var fn = ComputeFunctions.k_OneHot;
             fn.SetInt(k_ID_depth, depth);
             fn.SetInt(k_ID_offValue, math.asint(offValue));
             fn.SetInt(k_ID_onValue, math.asint(onValue));
@@ -2772,7 +2733,7 @@ namespace Unity.Sentis
             int innerLength = X.shape.Strides(axis);
             int outerLength = X.shape.length / (reduceLength * innerLength);
 
-            var fn = ComputeFuncSingleton.Instance.Get(largest ? "TopKLargest" : "TopKSmallest");
+            var fn = (largest ? ComputeFunctions.k_TopKLargest : ComputeFunctions.k_TopKSmallest);
             fn.SetInt(k_ID_innerLength, innerLength);
             fn.SetInt(k_ID_outerLength, outerLength);
             fn.SetInt(k_ID_reduceLength, reduceLength);
@@ -2786,7 +2747,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void RoiAlign(TensorFloat X, TensorFloat rois, TensorInt indices, TensorFloat O, Layers.RoiPoolingMode mode, int outputHeight, int outputWidth, int samplingRatio, float spatialScale)
         {
-            var fn = ComputeFuncSingleton.Instance.Get(mode == Layers.RoiPoolingMode.Avg ? "RoiAlignAvg" : "RoiAlignMax");
+            var fn = (mode == Layers.RoiPoolingMode.Avg ? ComputeFunctions.k_RoiAlignAvg : ComputeFunctions.k_RoiAlignMax);
             fn.SetInt(k_ID_numRois, rois.shape[0]);
             fn.SetInt(k_ID_inputChannels, X.shape[1]);
             fn.SetInt(k_ID_inputHeight, X.shape[2]);
@@ -2812,7 +2773,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void RandomNormal(TensorFloat O, float mean, float scale, int? seed)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("RandomNormal");
+            var fn = ComputeFunctions.k_RandomNormal;
             fn.SetInt(k_ID_lengthO, O.shape.length);
             fn.SetInt(k_ID_seed, (int)Random.GetSeed(seed));
             fn.SetFloat(k_ID_mean, mean);
@@ -2828,7 +2789,7 @@ namespace Unity.Sentis
         {
             var batch = O.shape.length;
 
-            var fn = ComputeFuncSingleton.Instance.Get("TopP");
+            var fn = ComputeFunctions.k_TopP;
             fn.SetInt(k_ID_count, O.shape[-1]);
             fn.SetInt(k_ID_innerLength, X.shape[-1]);
             fn.SetInt(k_ID_outerLength, batch);
@@ -2841,7 +2802,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void RandomUniform(TensorFloat O, float low, float high, int? seed)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("RandomUniform");
+            var fn = ComputeFunctions.k_RandomUniform;
             fn.SetInt(k_ID_lengthO, O.shape.length);
             fn.SetInt(k_ID_seed, (int)Random.GetSeed(seed));
             fn.SetFloat(k_ID_low, low);
@@ -2855,16 +2816,18 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Bernoulli(TensorFloat X, Tensor O, int? seed)
         {
-            var fn = ComputeFuncSingleton.Instance.Get(O.dataType == DataType.Float ? "BernoulliFloat" : "BernoulliInt");
+            var fn = (O.dataType == DataType.Float ? ComputeFunctions.k_BernoulliFloat : ComputeFunctions.k_BernoulliInt);
             fn.SetInt(k_ID_lengthO, O.shape.length);
             fn.SetInt(k_ID_seed, (int)Random.GetSeed(seed));
-            fn.ScheduleXO(Pin(X), Pin(O), O.shape.length);
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            fn.UnrolledDispatch(O.shape.length);
         }
 
         /// <inheritdoc/>
         public void Cast(TensorInt X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("CastIntToFloat");
+            var fn = ComputeFunctions.k_CastIntToFloat;
             fn.SetTensorAsBuffer(k_ID_X_int_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -2873,7 +2836,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Cast(TensorFloat X, TensorInt O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("CastFloatToInt");
+            var fn = ComputeFunctions.k_CastFloatToInt;
             fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
             fn.UnrolledDispatchFast(O.shape.length);
@@ -2882,24 +2845,30 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Cast(TensorShort X, TensorFloat O)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("CastHalfToFloat");
+            var fn = ComputeFunctions.k_CastHalfToFloat;
             fn.SetInt(k_ID_lengthO, O.shape.length);
             fn.SetTensorAsBuffer(k_ID_XIntptr, Pin(X));
-            fn.ScheduleXO(Pin(X), Pin(O), X.count);
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            fn.UnrolledDispatch(X.count);
         }
 
         /// <inheritdoc/>
         public void MemCopy(Tensor X, Tensor O)
         {
-            var length = O.shape.length;
-            var numWords = ComputeHelper.IDivC(length, 4);
-            var wordsHeight = ComputeHelper.IDivC(numWords, (int)ComputeFunc.SafeDispatchLimit * 32 * 8);
+            MemCopy(X, O, O.shape.length, 0, 0);
+        }
+
+        void MemCopy(Tensor X, Tensor O, int count, int offsetX, int offsetO)
+        {
+            var numWords = ComputeHelper.IDivC(count, 4);
+            var wordsHeight = ComputeHelper.IDivC(numWords, (int)ComputeHelper.SafeDispatchLimit * 32 * 8);
             var wordsWidth = ComputeHelper.IDivC(numWords, wordsHeight);
 
-            var fn = ComputeFuncSingleton.Instance.Get("MemCopy");
-            fn.SetInt(k_ID_offsetO, 0);
-            fn.SetInt(k_ID_offsetX, 0);
-            fn.SetInt(k_ID_count, length);
+            var fn = ComputeFunctions.k_MemCopy;
+            fn.SetInt(k_ID_offsetO, offsetO);
+            fn.SetInt(k_ID_offsetX, offsetX);
+            fn.SetInt(k_ID_count, count);
             fn.SetInt(k_ID_O_width, wordsWidth * 4);
             fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
@@ -2912,13 +2881,19 @@ namespace Unity.Sentis
         {
             if (length == 0 || count == 0)
                 return;
+            if (count == 1 || (strideX == length && strideO == length))
+            {
+                // contiguous memory can be copied together
+                MemCopy(X, O, length * count, offsetX, offsetO);
+                return;
+            }
             Logger.AssertIsTrue(length > 0, "MemCopy.InputError: copy stride length must be greater than 0");
             Logger.AssertIsTrue(count > 0, "MemCopy.InputError: copy stride count must be greater than 0");
             Logger.AssertIsTrue(offsetX >= 0, "MemCopy.BoundsError: copy stride out of bounds for tensor X");
             Logger.AssertIsTrue(offsetX + (count - 1) * strideX + length <= X.shape.length, "MemCopy.BoundsError: copy stride out of bounds for tensor X");
             Logger.AssertIsTrue(offsetO >= 0, "MemCopy.BoundsError: copy stride out of bounds for tensor O");
             Logger.AssertIsTrue(offsetO + (count - 1) * strideO + length <= O.shape.length, "MemCopy.BoundsError: copy stride out of bounds for tensor O");
-            var fn = ComputeFuncSingleton.Instance.Get("MemCopyStride");
+            var fn = ComputeFunctions.k_MemCopyStride;
             var copyLength = count * length;
             fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
             fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
@@ -2934,27 +2909,25 @@ namespace Unity.Sentis
         void Gemm(TensorFloat X, TensorFloat Y, TensorFloat B, TensorFloat O, int M, int K, int N)
         {
             int workItemsX, workItemsY;
-            string kernel;
+            ComputeFunction fn;
             if (M == 1)
             {
-                kernel = "Dense_V_L1Cached64";
+                fn = ComputeFunctions.k_Dense_V_L1Cached64;
                 workItemsX = ComputeHelper.IDivC(N, 4);
                 workItemsY = 1;
             }
             else if (N % 64 == 0 && K % 16 == 0)
             {
-                kernel = "Dense_T16x16_R4x4";
+                fn = ComputeFunctions.k_Dense_T16x16_R4x4;
                 workItemsX = ComputeHelper.IDivC(N, 4);
                 workItemsY = ComputeHelper.IDivC(M, 4);
             }
             else
             {
-                kernel = "Dense_T8x8_R4x4";
+                fn = ComputeFunctions.k_Dense_T8x8_R4x4;
                 workItemsX = ComputeHelper.IDivC(N, 4);
                 workItemsY = ComputeHelper.IDivC(M, 4);
             }
-
-            var fn = ComputeFuncSingleton.Instance.Get(kernel);
 
             fn.SetInt(k_ID_X_width, K);
             fn.SetInt(k_ID_W_width, N);
@@ -2976,14 +2949,13 @@ namespace Unity.Sentis
         {
             if (transposeA || transposeB)
             {
-                string kernel;
+                ComputeFunction fn;
 
                 if (transposeA)
-                    kernel = transposeB ? "GemmT_XT_WT_T8x8_R4x4" : "GemmT_XT_T8x8_R4x4";
+                    fn = transposeB ? ComputeFunctions.k_GemmT_XT_WT_T8x8_R4x4 : ComputeFunctions.k_GemmT_XT_T8x8_R4x4;
                 else
-                    kernel = "GemmT_WT_T8x8_R4x4";
+                    fn = ComputeFunctions.k_GemmT_WT_T8x8_R4x4;
 
-                var fn = ComputeFuncSingleton.Instance.Get(kernel);
 
                 fn.SetInt(k_ID_M, M);
                 fn.SetInt(k_ID_N, N);
@@ -2999,31 +2971,29 @@ namespace Unity.Sentis
             else
             {
                 int workItemsX, workItemsY, workItemsZ;
-                string kernel;
+                ComputeFunction fn;
 
                 if (M == 1)
                 {
-                    kernel = "Gemm_V_L1Cached64";
+                    fn = ComputeFunctions.k_Gemm_V_L1Cached64;
                     workItemsX = ComputeHelper.IDivC(N, 4);
                     workItemsY = 1;
                     workItemsZ = 1;
                 }
                 else if (N % 64 == 0 && K % 16 == 0)
                 {
-                    kernel = "Gemm_T16x16_R4x4";
+                    fn = ComputeFunctions.k_Gemm_T16x16_R4x4;
                     workItemsX = ComputeHelper.IDivC(N, 4);
                     workItemsY = ComputeHelper.IDivC(M, 4);
                     workItemsZ = 1;
                 }
                 else
                 {
-                    kernel = "Gemm_T8x8_R4x4";
+                    fn = ComputeFunctions.k_Gemm_T8x8_R4x4;
                     workItemsX = ComputeHelper.IDivC(N, 4);
                     workItemsY = ComputeHelper.IDivC(M, 4);
                     workItemsZ = 1;
                 }
-
-                var fn = ComputeFuncSingleton.Instance.Get(kernel);
 
                 fn.SetInt(k_ID_X_width, K);
                 fn.SetInt(k_ID_W_width, N);
@@ -3074,7 +3044,7 @@ namespace Unity.Sentis
 
             Gemm(X, W, XsixWT, seqLength * batchSize, inputSize, 4 * hiddenSize, transposeB: true);
 
-            var endFn = ComputeFuncSingleton.Instance.Get("LSTMEnd");
+            var endFn = ComputeFunctions.k_LSTMEnd;
             endFn.SetInt(k_ID_hiddenSize, hiddenSize);
             endFn.SetInt(k_ID_batchSize, batchSize);
             endFn.SetInt(k_ID_xStride, xStrideBatch);
@@ -3220,18 +3190,61 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void DequantizeLinear(TensorByte X, TensorFloat O, float scale, byte zeroPoint)
         {
-            var fn = ComputeFuncSingleton.Instance.Get("DequantizeUint8");
+            var fn = ComputeFunctions.k_DequantizeUint8;
             fn.SetFloat(k_ID_scale, scale);
             fn.SetInt(k_ID_zeroPoint, (int)zeroPoint);
             fn.SetTensorAsBuffer(k_ID_XIntptr, Pin(X));
+            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
             fn.SetInt(k_ID_lengthO, O.shape.length);
-            fn.ScheduleXO(Pin(X), Pin(O), X.count);
+            fn.UnrolledDispatch(X.count);
         }
 
         /// <inheritdoc/>
         public void Reshape(Tensor X, Tensor O)
         {
             MemCopy(X, O);
+        }
+
+        /// <summary>
+        /// In place sort value tensor given key tensor either in ascending or descending order.
+        /// Both input value and key tensors will be mutated.
+        /// </summary>
+        /// <param name="Value">The input value tensor. Must be of shape (N0, ... , Nn, L). Sort is happening on the L dimension </param>
+        /// <param name="Key">The input key tensor. Must be of shape (N0, ... , Nn, L). Optional, if not given will sort Value.  </param>
+        /// <param name="descending">Whether to sort in a ascending or descending order.</param>
+        internal void BitonicSort(TensorFloat Value, TensorInt Key = null, bool descending = false)
+        {
+            // https://en.wikipedia.org/wiki/Bitonic_sorter
+            // https://stackoverflow.com/questions/73147204/can-bitonic-sort-handle-non-power-of-2-data-in-a-non-recursive-implementation
+            int N = Value.shape[-1];
+            int L = Value.shape.Length(0, -1);
+
+            ComputeFunction fn;
+            if (Key == null)
+                fn = ComputeFunctions.k_BitonicSortStep;
+            else
+            {
+                fn = ComputeFunctions.k_BitonicSortKeyStep;
+                fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(Key));
+            }
+            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(Value));
+            fn.SetInt(k_ID_lengthO, N);
+            if (descending)
+                fn.EnableKeyword("DESCENDING");
+            else
+                fn.DisableKeyword("DESCENDING");
+
+            for (int k = 1; k < N; k <<= 1)
+            {
+                fn.SetInt(k_ID_indexJ, (k << 1) - 1);
+                fn.Dispatch(N, L, 1);
+
+                for (int j = k >> 1; j > 0; j >>= 1)
+                {
+                    fn.SetInt(k_ID_indexJ, j);
+                    fn.Dispatch(N, L, 1);
+                }
+            }
         }
 
         /// <inheritdoc/>

@@ -11,9 +11,9 @@ namespace Unity.Sentis.Compiler.Passes.Cleanup
     {
         public void Run(ref Model model)
         {
-            var noopLayers = new HashSet<string>();
-            var remap = new Dictionary<string, string>();
-            var preserve = new HashSet<string>();
+            var noopLayers = new HashSet<int>();
+            var remap = new Dictionary<int, int>();
+            var preserve = new HashSet<int>();
             foreach (var o in model.outputs)
                 preserve.Add(o.index);
 

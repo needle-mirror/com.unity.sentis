@@ -11,14 +11,14 @@ Shader "Hidden/Sentis/TextureTensorDataDownload"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile Float Int
+            #pragma multi_compile TensorFloat TensorInt
             #pragma vertex vert
             #pragma fragment frag
 
             #include "CommonVertexShader.cginc"
             #include "CommonPixelShader.cginc"
 
-            #if defined(Int)
+            #if defined(TensorInt)
             DECLARE_TENSOR(X, int);
             #else
             DECLARE_TENSOR(X, float);
@@ -37,10 +37,10 @@ Shader "Hidden/Sentis/TextureTensorDataDownload"
             float4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
                 uint blockIndexO = GetBlockIndexO(screenPos);
-                #ifdef Float
+                #ifdef TensorFloat
                 uint4 index4 = UnblockAxis(blockIndexO);
                 return SampleElementsX(index4);
-                #elif Int
+                #elif TensorInt
                 uint4 index4 = UnblockAxis(blockIndexO);
                 int4 v = SampleElementsX(index4);
                 return IntToFloat(v);

@@ -6,10 +6,10 @@ namespace Unity.Sentis
     {
         protected FunctionalTensor[] m_Inputs;
         protected DataType[] m_OutputDataTypes;
-        protected string[] m_OutputNames;
+        protected int[] m_OutputIndices;
 
         public FunctionalTensor[] Inputs => m_Inputs;
-        public string[] OutputNames => m_OutputNames;
+        public int[] OutputIndices => m_OutputIndices;
 
         protected FunctionalNode(FunctionalTensor[] inputs, DataType[] outputDataTypes)
         {
@@ -19,12 +19,12 @@ namespace Unity.Sentis
             m_OutputDataTypes = new DataType[outputDataTypes.Length];
             for (var i = 0; i < m_OutputDataTypes.Length; i++)
                 m_OutputDataTypes[i] = outputDataTypes[i];
-            m_OutputNames = new string[outputDataTypes.Length];
+            m_OutputIndices = new int[outputDataTypes.Length];
         }
 
         public FunctionalTensor[] CreateOutputs()
         {
-            var outputs = new FunctionalTensor[m_OutputNames.Length];
+            var outputs = new FunctionalTensor[m_OutputIndices.Length];
             for (var i = 0; i < outputs.Length; i++)
                 outputs[i] = new FunctionalTensor(m_OutputDataTypes[i], this, i);
             return outputs;
@@ -45,11 +45,10 @@ namespace Unity.Sentis
 
         public override void AddToModel(Model model, ref int index)
         {
-            var indexString = index.ToString();
-            index++;
             var inputName = "input_" + model.inputs.Count;
-            m_OutputNames[0] = indexString;
-            model.AddInput(inputName, indexString, m_Input.dataType, m_Input.shape);
+            m_OutputIndices[0] = index;
+            model.AddInput(inputName, index, m_Input.dataType, m_Input.shape);
+            index++;
         }
     }
 
@@ -60,9 +59,8 @@ namespace Unity.Sentis
 
         public override void AddToModel(Model model, ref int index)
         {
-            var indexString = m_Inputs[0].Name;
             var outputName = "output_" + model.outputs.Count;
-            model.AddOutput(outputName, indexString);
+            model.AddOutput(outputName, m_Inputs[0].Index);
         }
     }
 
@@ -78,11 +76,10 @@ namespace Unity.Sentis
 
         public override void AddToModel(Model model, ref int index)
         {
-            var tensorIndex = index.ToString();
-            index++;
-            m_Constant.index = tensorIndex;
-            m_OutputNames[0] = tensorIndex;
+            m_Constant.index = index;
+            m_OutputIndices[0] = index;
             model.constants.Add(m_Constant);
+            index++;
         }
     }
 
@@ -99,14 +96,13 @@ namespace Unity.Sentis
         public override void AddToModel(Model model, ref int index)
         {
             for (var i = 0; i < m_Inputs.Length; i++)
-                m_Layer.inputs[i] = m_Inputs[i] is null ? string.Empty : m_Inputs[i].Name;
+                m_Layer.inputs[i] = m_Inputs[i] is null ? -1 : m_Inputs[i].Index;
 
-            for (var i = 0; i < m_OutputNames.Length; i++)
+            for (var i = 0; i < m_OutputIndices.Length; i++)
             {
-                var indexString = index.ToString();
+                m_OutputIndices[i] = index;
+                m_Layer.outputs[i] = index;
                 index++;
-                m_OutputNames[i] = indexString;
-                m_Layer.outputs[i] = indexString;
             }
 
             model.layers.Add(m_Layer);

@@ -4,7 +4,7 @@ Use the Sentis [`Functional`](xref:Unity.Sentis.Functional) API to edit a model 
 
 ## Preprocess inputs or postprocess outputs
 
-Sometimes your model expects inputs or returns outputs in a format that doesn't match your tensor data. Use the `Functional` API to prepend operations to inputs, append operations to outputs, or to easily add or remove inputs or outputs. 
+Sometimes your model expects inputs or returns outputs in a format that doesn't match your tensor data. Use the `Functional` API to prepend operations to inputs, append operations to outputs, or to easily add or remove inputs or outputs.
 
 In the following example, the [mnist-8](https://github.com/onnx/models/blob/main/validated/vision/classification/mnist/model/mnist-8.onnx) model is adjusted to return the softmax of the output.
 

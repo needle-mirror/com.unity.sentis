@@ -24,7 +24,7 @@ namespace Unity.Sentis
 
                 axis++;
             }
-            var c = FromLayer(new Layers.SliceSet(null, null, null, null, null, null, null), Functional.CommonType(this, src), new[] { this, src, Functional.Tensor(starts.ToArray()), Functional.Tensor(ends.ToArray()), Functional.Tensor(axes.ToArray()), null });
+            var c = FromLayer(new Layers.SliceSet(-1, -1, -1, -1, -1, -1, -1), Functional.CommonType(this, src), new[] { this, src, Functional.Tensor(starts.ToArray()), Functional.Tensor(ends.ToArray()), Functional.Tensor(axes.ToArray()), null });
             m_DataType = c.DataType;
             m_Source = c.Source;
             m_OutputIndex = c.m_OutputIndex;
@@ -53,7 +53,7 @@ namespace Unity.Sentis
 
             if (starts.Count == 0)
                 return this;
-            var slice = FromLayer(new Layers.Slice(null, null, null, null, null, null), DataType, new[] { this, Functional.Tensor(starts.ToArray()), Functional.Tensor(ends.ToArray()), Functional.Tensor(axes.ToArray()), null });
+            var slice = FromLayer(new Layers.Slice(-1, -1, -1, -1, -1, -1), DataType, new[] { this, Functional.Tensor(starts.ToArray()), Functional.Tensor(ends.ToArray()), Functional.Tensor(axes.ToArray()), null });
             if (squeezeAxes.Count > 0)
                 slice = slice.Squeeze(squeezeAxes.ToArray());
             return slice;

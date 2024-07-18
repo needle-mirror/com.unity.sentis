@@ -11,41 +11,41 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
         {
             using var ops = new CPUOps();
 
-            var preserve = new HashSet<string>();
+            var preserve = new HashSet<int>();
             foreach (var o in model.outputs)
                 preserve.Add(o.index);
 
-            var inputs = new HashSet<string>();
+            var inputs = new HashSet<int>();
             foreach (var input in model.inputs)
                 inputs.Add(input.index);
 
-            Dictionary<string, Tensor> constTensors = new Dictionary<string, Tensor>();
+            Dictionary<int, Tensor> constTensors = new Dictionary<int, Tensor>();
             foreach (var constant in model.constants)
                 constTensors.Add(constant.index, constant.WeightsToTensor());
 
-            var layerDownstream = new Dictionary<string, List<Layers.Layer>>();
+            var layerDownstream = new Dictionary<int, List<Layers.Layer>>();
             for (int l = 0; l < model.layers.Count; ++l)
             {
                 Layers.Layer layer = model.layers[l];
 
                 foreach (var input in layer.inputs)
                 {
-                    if (string.IsNullOrEmpty(input) || inputs.Contains(input) || constTensors.ContainsKey(input))
+                    if ((input == -1) || inputs.Contains(input) || constTensors.ContainsKey(input))
                         continue;
                     layerDownstream[input].Add(layer);
                 }
 
                 foreach (var output in layer.outputs)
                 {
-                    if (string.IsNullOrEmpty(output))
+                    if (output == -1)
                         continue;
                     if (!layerDownstream.ContainsKey(output))
                         layerDownstream.Add(output, new List<Layers.Layer>());
                 }
             }
 
-            var removeLayers = new HashSet<string>();
-            var remap = new Dictionary<string, string>();
+            var removeLayers = new HashSet<int>();
+            var remap = new Dictionary<int, int>();
 
             for (int l = 0; l < model.layers.Count - 1; ++l)
             {
@@ -54,7 +54,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     continue;
 
                 // const weights of rank 2
-                string weightsIndex = layer.inputs[1];
+                var weightsIndex = layer.inputs[1];
                 if (!(constTensors.ContainsKey(weightsIndex) && constTensors[weightsIndex].shape.rank == 2))
                     continue;
 
@@ -66,7 +66,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 bool transposeWeights = layer is Layers.MatMul2D && (layer as Layers.MatMul2D).transposeB;
 
                 Layers.Layer bias;
-                string biasIndex;
+                int biasIndex;
                 if (downStreamLayers.Any(x => x is Layers.ScalarMad))
                 {
                     bias = downStreamLayers.Find(x => x is Layers.ScalarMad);
@@ -75,9 +75,9 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                         continue;
                     var biasS = biasMad.bFloat;
                     using TensorFloat biasT = ops.ConstantOfShape(new TensorShape(constTensors[weightsIndex].shape[transposeWeights ? -2 : -1]), biasS);
-                    biasIndex = bias.outputs[0] + "_Bias";
+                    biasIndex = model.GetUniqueIndex();
                     constTensors.Add(biasIndex, biasT);
-                    model.constants.Add(new Layers.Constant(biasIndex, biasT));
+                    model.constants.Add(new Layers.Constant(biasIndex, biasT.shape, biasT.ToReadOnlyArray()));
                 }
                 else
                 {
@@ -99,8 +99,9 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
                 if (transposeWeights)
                 {
-                    weightsIndex = model.GetUniqueIndex(weightsIndex + "_t_for" + layer.outputs[0]);
-                    model.constants.Add(new Layers.Constant(weightsIndex, ops.Transpose(weightT)));
+                    weightsIndex = model.GetUniqueIndex();
+                    using var transposed = ops.Transpose(weightT);
+                    model.constants.Add(new Layers.Constant(weightsIndex, transposed.shape, transposed.ToReadOnlyArray()));
                 }
 
                 model.layers[l] = new Layers.Dense(layer.outputs[0], layer.inputs[0], weightsIndex, biasIndex);

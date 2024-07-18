@@ -16,7 +16,7 @@ namespace Unity.Sentis.Quantization
 
         public void Run(ref Model model)
         {
-            var constants = new Dictionary<string, (Constant, int)>();
+            var constants = new Dictionary<int, (Constant, int)>();
             for (var i = 0; i < model.constants.Count; i++)
             {
                 var c = model.constants[i];
@@ -27,7 +27,7 @@ namespace Unity.Sentis.Quantization
             using var min = TensorFloat.AllocZeros(new TensorShape());
             using var max = TensorFloat.AllocZeros(new TensorShape());
 
-            var quantizeTensors = new HashSet<string>();
+            var quantizeTensors = new HashSet<int>();
             for (var i = 0; i < model.layers.Count; i++)
             {
                 var layer = model.layers[i];
@@ -37,7 +37,7 @@ namespace Unity.Sentis.Quantization
 
                 foreach (var input in layer.inputs)
                 {
-                    if (string.IsNullOrEmpty(input) || quantizeTensors.Contains(input) || !constants.ContainsKey(input))
+                    if ((input == -1) || quantizeTensors.Contains(input) || !constants.ContainsKey(input))
                         continue;
 
                     quantizeTensors.Add(input);
@@ -50,7 +50,7 @@ namespace Unity.Sentis.Quantization
 
                     if (m_QuantizationType == QuantizationType.Float16)
                     {
-                        using var quantizedTensor = TensorShort.AllocZeros(constant.shape);
+                        var quantizedTensor = TensorShort.AllocZeros(constant.shape);
                         var data = BurstTensorData.Pin(quantizedTensor);
                         unsafe
                         {
@@ -63,23 +63,23 @@ namespace Unity.Sentis.Quantization
                             jobHandle.Complete();
                         }
 
-                        var newName = model.GetUniqueIndex(constant.index + "_fp16");
-                        Constant quantizedConstant = new Constant(newName, constant.shape, DataType.Short, data.array);
+                        var newIndex = model.GetUniqueIndex();
+                        Constant quantizedConstant = new Constant(newIndex, constant.shape, DataType.Short, data.array);
                         model.constants[index] = quantizedConstant;
-                        model.layers.Insert(i, new Cast(constant.index, newName, DataType.Float));
+                        model.layers.Insert(i, new Cast(constant.index, newIndex, DataType.Float));
                         i++;
                     }
                     else if (m_QuantizationType == QuantizationType.Uint8)
                     {
                         using var X = constant.WeightsToTensorWithSharedTensorData() as TensorFloat;
-                        backend.ReduceMin(X, min, null, false);
-                        backend.ReduceMax(X, max, null, false);
+                        backend.ReduceMin(X, min, null);
+                        backend.ReduceMax(X, max, null);
                         var minValue = min.GetItem<float>(0);
                         var maxValue = max.GetItem<float>(0);
                         float scale = (Mathf.Max(0, maxValue) - Mathf.Min(0, minValue)) / 255f;
                         byte zeroPoint = (byte)Mathf.RoundToInt(Mathf.Clamp(-minValue / scale, 0, 255));
 
-                        using var quantizedTensor = TensorByte.AllocZeros(constant.shape);
+                        var quantizedTensor = TensorByte.AllocZeros(constant.shape);
                         var data = BurstTensorData.Pin(quantizedTensor);
                         unsafe
                         {
@@ -94,10 +94,10 @@ namespace Unity.Sentis.Quantization
                             jobHandle.Complete();
                         }
 
-                        var newName = model.GetUniqueIndex(constant.index + "_uint8");
-                        Constant quantizedConstant = new Constant(newName, constant.shape, DataType.Byte, data.array);
+                        var newIndex = model.GetUniqueIndex();
+                        Constant quantizedConstant = new Constant(newIndex, constant.shape, DataType.Byte, data.array);
                         model.constants[index] = quantizedConstant;
-                        model.layers.Insert(i, new DequantizeUint8(constant.index, newName, scale, zeroPoint));
+                        model.layers.Insert(i, new DequantizeUint8(constant.index, newIndex, scale, zeroPoint));
                         i++;
                     }
                 }

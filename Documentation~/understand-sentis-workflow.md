@@ -9,8 +9,8 @@ To use Sentis to run a neural network in Unity, follow these steps:
 5. Run the model with the input to infer a result.
 6. Get the result.
 
-> [!TIP] 
-> Use the [Workflow example](workflow-example.md) to understand the workflow applied to a simple example. 
+> [!TIP]
+> Use the [Workflow example](workflow-example.md) to understand the workflow applied to a simple example.
 
 ## Use the Unity.Sentis namespace
 
@@ -24,7 +24,7 @@ using Unity.Sentis;
 
 Sentis can import model files in [Open Neural Network Exchange](https://onnx.ai/) (ONNX) format. To load a model, follow these steps:
 
-1. [Export a model to ONNX format from a machine learning framework](export-convert-onnx.md) or download an ONNX model from the Internet. 
+1. [Export a model to ONNX format from a machine learning framework](export-convert-onnx.md) or download an ONNX model from the Internet.
 
 2. Add the model file to the `Assets` folder of the **Project** window.
 

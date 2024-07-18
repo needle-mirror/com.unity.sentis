@@ -8,7 +8,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ScaleBias : Layer
     {
-        public ScaleBias(string output, string input, string scale, string bias)
+        public ScaleBias(int output, int input, int scale, int bias)
             : base(new[] { output }, new[] { input, scale, bias }) { }
 
         internal override void InferPartial(PartialInferenceContext ctx)
@@ -57,7 +57,7 @@ namespace Unity.Sentis.Layers
     {
         public float epsilon;
 
-        public InstanceNormalization(string output, string input, string scale, string bias, float epsilon = 1e-5f)
+        public InstanceNormalization(int output, int input, int scale, int bias, float epsilon = 1e-5f)
             : base(new[] { output }, new[] { input, scale, bias })
         {
             if (epsilon == 0)
@@ -117,7 +117,7 @@ namespace Unity.Sentis.Layers
     {
         public float epsilon;
 
-        public LayerNormalization(string output, string input, string scale, string bias = "", float epsilon = 1e-5f)
+        public LayerNormalization(int output, int input, int scale, int bias = -1, float epsilon = 1e-5f)
             : base(new[] { output }, new[] { input, scale, bias })
         {
             if (epsilon == 0)
@@ -175,7 +175,7 @@ namespace Unity.Sentis.Layers
     {
         public float epsilon;
 
-        public BatchNormalization(string output, string input, string scale, string bias, string mean, string variance, float epsilon = 1e-5f)
+        public BatchNormalization(int output, int input, int scale, int bias, int mean, int variance, float epsilon = 1e-5f)
             : base(new[] { output }, new[] { input, scale, bias, mean, variance })
         {
             this.epsilon = epsilon;
@@ -241,7 +241,7 @@ namespace Unity.Sentis.Layers
         public float bias;
         public int count;
 
-        public LRN(string output, string input, float alpha, float beta, float bias, int count)
+        public LRN(int output, int input, float alpha, float beta, float bias, int count)
             : base(new[] { output }, new[] { input })
         {
             this.alpha = alpha;

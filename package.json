@@ -1,7 +1,7 @@
 {
   "name": "com.unity.sentis",
   "displayName": "Sentis",
-  "version": "1.5.0-pre.3",
+  "version": "1.6.0-pre.1",
   "unity": "2023.2",
   "description": "Sentis is a neural network inference library. It enables you to import trained neural network models, connect the network inputs and outputs to your game code, and then run them locally in your end-user app. Use cases include capabilities like natural language processing, object recognition, automated game opponents, sensor data classification, and many more.\n\nSentis automatically optimizes your network for real-time use to speed up inference. It also allows you to tune your implementation further with tools like frame slicing, quantization, and custom backend (i.e. compute type) dispatching.\n\nVisit https://unity.com/sentis for more resources.",
   "dependencies": {
@@ -10,16 +10,16 @@
     "com.unity.modules.imageconversion": "1.0.0"
   },
   "_upm": {
-    "changelog": ""
+    "changelog": "### Added\n- SliceSet backend method for Concat and other operations.\n- Support for GridSample ONNX operator, Functional API and backend method, PaddingMode Enum for use with GridSample.\n- Methods to IModelStorage to allow retrieval of data types, tensor shapes and CPU values.\n- CPU backend to ExecutionContext for CPU fallback execution.\n- Optimization that replaces a Gather with a single index by a Split or Narrow.\n- Functional RandomChoice methods similar to numpy.\n- BitonicSort method for fast GPU sorting.\n\n### Changed\n- Model Input, Output, Layer and Constant indices are stored as integers rather than strings.\n- Min and Max no longer take more than 2 inputs in the backend, for more inputs use repeated application of the backend calls.\n- Optimized loading of compute functions for performance.\n- Reduced CPU allocations inside operations to avoid GC.\n- CPU fallback pass runs at worker instantiation rather than being serialized to the model.\n\n### Fixed\n- Many issues with Tensors of zero length and uploading/downloading data. They no longer have null backendData.\n- Issue where multiple Random layers were sometimes incorrectly collapsed to single layer by optimization pass.\n- NonMaxSuppression to have fast inference on CPU and GPUCompute backends.\n- Error messages for model deserialization.\n- Slice inference issues for slices of length 0.\n\n### Removed\n- Mean, Sum, Concat from the backend. Add, ScalarMad and SliceSet operations are used instead.\n- Unnecessary 'keepdim' argument from Reduce backend ops.\n- Constructor for Constant with a tensor argument.\n- CompleteOperationsAndDownload and similar methods from Tensor."
   },
   "upmCi": {
-    "footprint": "4db41df289c681757bd8c87694483ab7de3e9e29"
+    "footprint": "44c9da1e07094697d072e451eaf636a323a9e053"
   },
-  "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.sentis@1.5/manual/index.html",
+  "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.sentis@1.6/manual/index.html",
   "repository": {
     "url": "https://github.cds.internal.unity3d.com/unity/UnityInferenceEngine.git",
     "type": "git",
-    "revision": "4a23d4f7cfd98e560e22f27947ba326f53435865"
+    "revision": "da61bfca399647f0c789ee715f0079890dfade83"
   },
   "samples": [
     {

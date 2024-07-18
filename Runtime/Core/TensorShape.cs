@@ -713,7 +713,7 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="shape">The new shape as a span of integers.</param>
         /// <param name="allowZero">When the value is `true`, Sentis sets a dimension to zero if the new shape includes a zero. Otherwise Sentis retains the corresponding size at that axis from the original shape.</param>
-        /// <returns></returns>
+        /// <returns>The reshape tensor shape.</returns>
         public TensorShape Reshape(ReadOnlySpan<int> shape, bool allowZero = false)
         {
             Logger.AssertIsTrue(shape.Length <= maxRank, "ValueError: TensorShape are capped to rank=8, cannot create tensorshape of rank {0}", shape.Length);

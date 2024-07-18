@@ -8,10 +8,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
     {
         public void Run(ref Model model)
         {
-            var preserve = new HashSet<string>();
-            var removeLayers = new HashSet<string>();
-            var transposeReferences = new Dictionary<string, int>();
-            var layerDownstreamCounts = new Dictionary<string, int>();
+            var preserve = new HashSet<int>();
+            var removeLayers = new HashSet<int>();
+            var transposeReferences = new Dictionary<int, int>();
+            var layerDownstreamCounts = new Dictionary<int, int>();
             foreach (var o in model.outputs)
                 preserve.Add(o.index);
 
@@ -23,7 +23,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
                 foreach (var input in layer.inputs)
                 {
-                    if (string.IsNullOrEmpty(input))
+                    if (input == -1)
                         continue;
                     if (layerDownstreamCounts.ContainsKey(input))
                         layerDownstreamCounts[input] += 1;
@@ -41,7 +41,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     continue;
                 Layers.Transpose layer = model.layers[l] as Layers.Transpose;
 
-                string input = layer.inputs[0];
+                int input = layer.inputs[0];
 
                 if (!transposeReferences.ContainsKey(input))
                     continue;
@@ -57,7 +57,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     removeLayers.Add(input);
             }
 
-            Passes.PassesUtils.RemoveAndRemap(ref model, removeLayers, new Dictionary<string, string>());
+            Passes.PassesUtils.RemoveAndRemap(ref model, removeLayers, new Dictionary<int, int>());
         }
 
         int[] MergeTranspose(int[] transpose0, int[] transpose1)

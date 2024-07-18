@@ -173,7 +173,6 @@ namespace Unity.Sentis
         /// <summary>
         /// Sets a specific texture channel, for example `Channel.R`, to a specific `color`. The channel ignores input tensor values.
         /// </summary>
-        /// <returns>`TextureTransform` that you can use to chain other methods.</returns>
         /// <param name="c">The color channel to set.</param>
         /// <param name="mask">When the value is `false`, Sentis ignores `color` and uses input tensor values.</param>
         /// <param name="color">The color value to use.</param>
@@ -291,7 +290,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Sets the layout of the input tensor with a `TensorLayout` object, for example `TensorLayout.NHWC`. The default is `TensorLayout.NCHW`.
         /// </summary>
-        /// <param name="tensorLayout"></param>
+        /// <param name="tensorLayout">Selected tensor layout type.</param>
         /// <returns>`TextureTransform` that you can use to chain other methods.</returns>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if unknown `TensorLayout` is used.</exception>
         public TextureTransform SetTensorLayout(TensorLayout tensorLayout)

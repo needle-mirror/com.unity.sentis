@@ -4,20 +4,19 @@ After you [get the output from a model](get-the-output.md) as a tensor, you can 
 
 ## Convert to a flattened 1D array
 
-Use `CompleteOperationsAndDownload` to move a tensor on the GPU to the CPU before you read it. Use `ToReadOnlyArray` to convert tensor data to a flattened 1D array of floats or ints. You can also [read the tensor data asynchronously](read-output-async.md).
+Use `CompleteOperationsAndDownload` to move a tensor on the graphics processing unit (GPU) to the central processing unit (CPU) to read it. Use `ToReadOnlyArray` to convert tensor data to a flattened 1D array of floats or ints. You can also [read the tensor data asynchronously](read-output-async.md).
 
 For example:
 
 ```
 TensorFloat outputTensor = worker.Execute(inputTensor).PeekOutput() as TensorFloat;
-outputTensor.CompleteOperationsAndDownload();
 float[] outputData = outputTensor.ToReadOnlyArray();
 ```
 
-You can also avoid a mutation of the underlying tensor data with the following:
+To avoid a mutation of the underlying tensor data, use the following:
+
 ```
 TensorFloat outputTensor = worker.Execute(inputTensor).PeekOutput();
-outputTensor.CompleteOperations();
 NativeArray<float> outputData = outputTensor.dataOnBackend.Download<float>();
 ```
 
@@ -28,13 +27,13 @@ To convert a tensor to a render texture, use the following APIs:
 - `TextureConverter.ToTexture` to output tensor data to a render texture. Sentis creates a new render texture to do this.
 - `TextureConverter.RenderToTexture` to write tensor data to an existing render texture you provide.
 
-If you use `ToTexture`, Sentis uses the tensor to set the size and channels of the render texture. Sentis makes the following changes if the tensor doesn't match the render texture: 
+When you use `ToTexture`, Sentis uses the tensor shape to determine the size and channels of the render texture. If the tensor doesn't match the render texture, Sentis makes the following adjustments:
 
 - Samples the tensor linearly if the dimensions don't match.
-- Removes channels from the end, if the render texture has fewer channels than the tensor.
-- Sets values in RGB channels to 0 and values in the alpha channel to 1, if the render texture has more channels than the tensor.
+- Removes channels from the end if the render texture has fewer channels than the tensor.
+- Sets values in RGB channels to `0` and values in the alpha channel to `1` if the render texture has more channels than the tensor.
 
-Refer to the `Convert tensors to textures` example in the [sample scripts](package-samples.md) for working examples.
+For working examples, refer to the `Convert tensors to textures` example in the [sample scripts](package-samples.md).
 
 ### ToTexture example
 
@@ -45,7 +44,7 @@ public RenderTexture rt;
 void Start()
 {
     ...
-    
+
     // Get the output of the model as a tensor
     TensorFloat outputTensor = worker.Execute(inputTensor).PeekOutput() as TensorFloat;
 
@@ -54,7 +53,7 @@ void Start()
 }
 ```
 
-You can use parameters in `ToTexture` to override the width, height, and number of channels of a texture. 
+You can use the parameters in `ToTexture` to override the width, height, and number of channels of a texture.
 
 For example:
 
@@ -72,7 +71,7 @@ public RenderTexture rt;
 void Start()
 {
     ...
-    
+
     // Instantiate the render texture
     rt = new RenderTexture(24, 32, 0, RenderTextureFormat.ARGB32);
 
@@ -92,9 +91,9 @@ To copy an output tensor to the screen, follow these steps:
 2. Create a script and attach it to the Camera.
 3. In the script, use `TextureConverter.RenderToScreen` in an event function such as `OnRenderImage`.
 
-If the image is too bright, the output tensor might be using values from 0 to 255 instead of values from 0 to 1. You can use [Edit a model](edit-a-model.md) to remap the values in the output tensor before you call `RenderToScreen`.
+If the image is too bright, the output tensor might be using values from `0` to `255` instead of `0` to `1`. You can use [Edit a model](edit-a-model.md) to remap the values in the output tensor before calling `RenderToScreen`.
 
-The following script uses a model to change a texture, then copies the result to the screen. You can set `modelAsset` to one of the [style transfer models](https://github.com/onnx/models/tree/main/validated/vision/style_transfer/fast_neural_style) from ONNX and `inputImage` to a texture. [Check the Texture import settings](convert-texture-to-tensor.md) to make sure the texture matches the shape and layout the model needs.
+The following script uses a model to change a texture, then copies the result to the screen. Set `modelAsset` to one of the [style transfer models](https://github.com/onnx/models/tree/main/validated/vision/style_transfer/fast_neural_style) from ONNX and `inputImage` to a texture. [Check the Texture import settings](convert-texture-to-tensor.md) to make sure the texture matches the shape and layout the model needs.
 
 ```
 using UnityEngine;
@@ -144,14 +143,13 @@ public class StyleTransfer : MonoBehaviour
 }
 ```
 
+When using Universal Render Pipeline (URP) or the High-Definition Render Pipeline (HDRP), call `RenderToScreen` in the `RenderPipelineManager.endFrameRendering` or `RenderPipelineManager.endContextRendering` callbacks. For more information, refer to [Rendering.RenderPipelineManager](https://docs.unity3d.com/ScriptReference/Rendering.RenderPipelineManager.html).
 
-If you use the Universal Render Pipeline (URP) or the High-Definition Render Pipeline (HDRP), you must call `RenderToScreen` in the `RenderPipelineManager.endFrameRendering` or `RenderPipelineManager.endContextRendering` callbacks. Refer to [Rendering.RenderPipelineManager](https://docs.unity3d.com/ScriptReference/Rendering.RenderPipelineManager.html) for more information.
-
-Refer to the `Copy a texture tensor to the screen` example in the [sample scripts](package-samples.md) for an example.
+For an example, refer to the `Copy a texture tensor to the screen` example in the [sample scripts](package-samples.md).
 
 ## Override shape and layout
 
-You can use a `TextureTransform` object to override the properties of the texture. For example, the following code changes or "swizzles" the order of the texture channels to blue, green, red, alpha:
+Use a `TextureTransform` object to override the properties of the texture. For example, the following code changes or swizzles the order of the texture channels to blue, green, red, alpha:
 
 ```
 // Create a TextureTransform that swizzles the order of the channels of the texture
@@ -159,7 +157,7 @@ TextureTransform swizzleChannels = new TextureTransform().SetChannelSwizzle(Chan
 
 // Convert the tensor to a texture using the TextureTransform object
 TextureConverter.RenderToTexture(outputTensor, rt, swizzleChannels);
-``` 
+```
 
 You can also chain operations together.
 
@@ -171,7 +169,7 @@ TextureTransform swizzleChannelsAndChangeSize = new TextureTransform().SetChanne
 TextureConverter.RenderToTexture(outputTensor, rt, swizzleChannelsAndChangeSize);
 ```
 
-Refer to the [TextureTransform](xref:Unity.Sentis.TextureTransform) API for more information.
+For more information, refer to the [TextureTransform](xref:Unity.Sentis.TextureTransform) API.
 
 ### Read a tensor in the correct format
 
@@ -179,10 +177,9 @@ When you convert a tensor to a texture, Sentis reads the tensor with a batch siz
 
 If the tensor is a different layout, use [`TextureTransform.SetTensorLayout`](xref:Unity.Sentis.TextureTransform.SetTensorLayout(Unity.Sentis.TensorLayout)) to make sure Sentis reads the tensor correctly.
 
-Refer to [Tensor fundamentals in Sentis](tensor-fundamentals.md) for more information about tensor formats.
+For more information about tensor formats, refer to [Tensor fundamentals in Sentis](tensor-fundamentals.md).
 
 ## Additional resources
 
 - [Get output from a model](get-the-output.md)
 - [Create and modify tensors](do-basic-tensor-operations.md)
-

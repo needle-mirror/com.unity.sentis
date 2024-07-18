@@ -6,13 +6,12 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `Shape` layer. This computes the shape of an input tensor as a 1D `TensorInt`.
     /// </summary>
-    [Optimization.CPUFallback.NoDataDependencyInputs(0)]
     class Shape : Layer
     {
         public int start;
         public int end;
 
-        public Shape(string output, string input, int start = 0, int end = TensorShape.maxRank)
+        public Shape(int output, int input, int start = 0, int end = TensorShape.maxRank)
             : base(new[] { output }, new[] { input })
         {
             this.start = start;
@@ -53,7 +52,7 @@ namespace Unity.Sentis.Layers
 
         public override void Execute(ExecutionContext ctx)
         {
-            var shapeX = ctx.storage.GetTensor(inputs[0]).shape;
+            var shapeX = ctx.storage.GetTensorShape(inputs[0]);
             var startX = start < 0 ? start + shapeX.rank : start;
             var endX = end < 0 ? end + shapeX.rank : end;
             startX = Mathf.Clamp(startX, 0, shapeX.rank);
@@ -77,10 +76,9 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `Size` layer. This computes the number of elements of an input tensor as a scalar `TensorInt`.
     /// </summary>
-    [Optimization.CPUFallback.NoDataDependencyInputs(0)]
     class Size : Layer
     {
-        public Size(string output, string input)
+        public Size(int output, int input)
             : base(new[] { output }, new[] { input }) { }
 
         internal override void InferPartial(PartialInferenceContext ctx)
@@ -94,10 +92,10 @@ namespace Unity.Sentis.Layers
 
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]);
+            var shapeX = ctx.storage.GetTensorShape(inputs[0]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], new TensorShape(), DataType.Int, ctx.backend.backendType) as TensorInt;
             BurstTensorData.Pin(O);
-            O[0] = X.shape.length;
+            O[0] = shapeX.length;
         }
 
         internal override string profilerTag => "Size";

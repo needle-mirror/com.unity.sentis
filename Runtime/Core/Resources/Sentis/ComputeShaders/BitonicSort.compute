@@ -1,0 +1,78 @@
+#pragma kernel BitonicSortStep
+#pragma kernel BitonicSortKeyStep
+
+#pragma multi_compile _ DESCENDING
+
+RWStructuredBuffer<float> Xptr;
+RWStructuredBuffer<int> O_int_ptr;
+
+uint indexJ;
+uint lengthO;
+
+[numthreads(256, 1, 1)]
+void BitonicSortStep(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint3 groupId : SV_GroupID)
+{
+    // https://en.wikipedia.org/wiki/Bitonic_sorter
+    // https://stackoverflow.com/questions/73147204/can-bitonic-sort-handle-non-power-of-2-data-in-a-non-recursive-implementation
+    uint i = dispatchThreadID.x;
+    if (i > lengthO)
+        return;
+
+    uint offset = lengthO * dispatchThreadID.y;
+
+    uint ixj = i ^ indexJ;
+
+    float x_ij = Xptr[offset + ixj];
+    float x_i = Xptr[offset + i];
+
+    #ifdef DESCENDING
+    bool comparator = x_ij >= x_i;
+    #else
+    bool comparator = x_ij < x_i;
+    #endif
+
+    if (i < ixj && ixj < lengthO && comparator)
+    {
+        Xptr[offset + ixj] = x_i;
+        Xptr[offset + i] = x_ij;
+    }
+}
+
+[numthreads(256, 1, 1)]
+void BitonicSortKeyStep(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint3 groupId : SV_GroupID)
+{
+    // https://en.wikipedia.org/wiki/Bitonic_sorter
+    // https://stackoverflow.com/questions/73147204/can-bitonic-sort-handle-non-power-of-2-data-in-a-non-recursive-implementation
+    uint i = dispatchThreadID.x;
+    if (i > lengthO)
+        return;
+
+    uint offset = lengthO * dispatchThreadID.y;
+
+    uint ixj = i ^ indexJ;
+
+    float x_ij = Xptr[offset + ixj];
+    float x_i = Xptr[offset + i];
+
+    float o_ij = O_int_ptr[offset + ixj];
+    float o_i = O_int_ptr[offset + i];
+
+    #ifdef DESCENDING
+    bool comparator = x_ij >= x_i;
+    if (x_ij == x_i)
+        comparator = o_ij < O_int_ptr[offset + i];
+    #else
+    bool comparator = x_ij < x_i;
+    if (x_ij == x_i)
+        comparator = o_ij >= O_int_ptr[offset + i];
+    #endif
+
+    if (i < ixj && ixj < lengthO && comparator)
+    {
+        O_int_ptr[offset + ixj] = O_int_ptr[offset + i];
+        O_int_ptr[offset + i] = o_ij;
+
+        Xptr[offset + ixj] = x_i;
+        Xptr[offset + i] = x_ij;
+    }
+}

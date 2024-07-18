@@ -1,0 +1,179 @@
+#pragma kernel GridSample2D
+#pragma kernel GridSample3D
+
+#pragma multi_compile_local _ LINEAR
+#pragma multi_compile_local _ BORDER REFLECTION
+#pragma multi_compile_local _ ALIGN_CORNERS
+
+uint2 unrolledDispatchArgs;
+
+StructuredBuffer<float> Xptr;
+StructuredBuffer<float> Sptr;
+RWStructuredBuffer<float> Optr;
+
+uint outBatch;
+uint outChannels;
+uint outSpatialSize;
+uint outWidth;
+uint outHeight;
+uint outDepth;
+
+uint inWidth;
+uint inHeight;
+uint inDepth;
+uint inSpatialSize;
+
+[numthreads(64, 1, 1)]
+void GridSample2D(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint xy = dispatchThreadID.x;
+    uint c = dispatchThreadID.y;
+    uint n = dispatchThreadID.z;
+    if (xy >= outSpatialSize || c >= outChannels || n >= outBatch)
+        return;
+
+    uint offset = (n * outSpatialSize + xy) << 1;
+    float2 srcPos = float2(Sptr[offset + 0], Sptr[offset + 1]);
+
+    #ifdef REFLECTION
+    srcPos = abs(((srcPos - 1.0) % 4.0 + 4.0) % 4.0 - 2.0) - 1.0;
+    #endif
+    #ifdef BORDER
+    srcPos = clamp(srcPos, -1.0, 1.0);
+    #endif
+
+    #ifdef ALIGN_CORNERS
+    srcPos.x = (0.5f * (srcPos.x + 1.0)) * (inWidth - 1.0);
+    srcPos.y = (0.5f * (srcPos.y + 1.0)) * (inHeight - 1.0);
+    #else
+    srcPos.x = (0.5f * (srcPos.x + 1.0)) * inWidth - 0.5;
+    srcPos.y = (0.5f * (srcPos.y + 1.0)) * inHeight - 0.5;
+    #endif
+
+    #if defined(LINEAR)
+    int2 pos_i_0 = floor(srcPos);
+    int2 pos_i_1 = pos_i_0 + 1;
+    float2 pos_r = srcPos - pos_i_0;
+
+    bool2 oobMask_0 = true;
+    bool2 oobMask_1 = true;
+
+    #if !defined(BORDER) & !defined(REFLECTION)
+    oobMask_0.x = pos_i_0.x >= 0 && pos_i_0.x < (int)inWidth;
+    oobMask_0.y = pos_i_0.y >= 0 && pos_i_0.y < (int)inHeight;
+    oobMask_1.x = pos_i_1.x >= 0 && pos_i_1.x < (int)inWidth;
+    oobMask_1.y = pos_i_1.y >= 0 && pos_i_1.y < (int)inHeight;
+    #endif
+
+    pos_i_0.x = clamp(pos_i_0.x, 0, (int)(inWidth - 1));
+    pos_i_0.y = clamp(pos_i_0.y, 0, (int)(inHeight - 1));
+    pos_i_1.x = clamp(pos_i_1.x, 0, (int)(inWidth - 1));
+    pos_i_1.y = clamp(pos_i_1.y, 0, (int)(inHeight - 1));
+
+    float v_00 = oobMask_0.x && oobMask_0.y ? Xptr[(n * outChannels + c) * inSpatialSize + (pos_i_0.y * inWidth + pos_i_0.x)] : 0.0f;
+    float v_01 = oobMask_0.x && oobMask_1.y ? Xptr[(n * outChannels + c) * inSpatialSize + (pos_i_1.y * inWidth + pos_i_0.x)] : 0.0f;
+    float v_10 = oobMask_1.x && oobMask_0.y ? Xptr[(n * outChannels + c) * inSpatialSize + (pos_i_0.y * inWidth + pos_i_1.x)] : 0.0f;
+    float v_11 = oobMask_1.x && oobMask_1.y ? Xptr[(n * outChannels + c) * inSpatialSize + (pos_i_1.y * inWidth + pos_i_1.x)] : 0.0f;
+    float v_0 = (1 - pos_r.y) * v_00 + (pos_r.y) * v_01;
+    float v_1 = (1 - pos_r.y) * v_10 + (pos_r.y) * v_11;
+    float v = (1 - pos_r.x) * v_0 + (pos_r.x) * v_1;
+    Optr[(n * outChannels + c) * outSpatialSize + xy] = v;
+    #else
+    int2 pos_i = round(srcPos);
+
+    bool oobMask = true;
+    #if !defined(BORDER) & !defined(REFLECTION)
+    oobMask = pos_i.x >= 0 && pos_i.x < (int)inWidth && pos_i.y >= 0 && pos_i.y < (int)inHeight;
+    #endif
+    pos_i.x = clamp(pos_i.x, 0, (int)(inWidth - 1));
+    pos_i.y = clamp(pos_i.y, 0, (int)(inHeight - 1));
+
+    float v = oobMask ? Xptr[(n * outChannels + c) * inSpatialSize + (pos_i.y * inWidth + pos_i.x)] : 0.0f;
+    Optr[(n * outChannels + c) * outSpatialSize + xy] = v;
+    #endif
+}
+
+[numthreads(64, 1, 1)]
+void GridSample3D(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint xyz = dispatchThreadID.x;
+    uint c = dispatchThreadID.y;
+    uint n = dispatchThreadID.z;
+    if (xyz >= outSpatialSize || c >= outChannels || n >= outBatch)
+        return;
+
+    uint offset = (n * outSpatialSize + xyz) * 3;
+    float3 srcPos = float3(Sptr[offset + 0], Sptr[offset + 1], Sptr[offset + 2]);
+
+    #ifdef REFLECTION
+    srcPos = abs(((srcPos - 1.0) % 4.0 + 4.0) % 4.0 - 2.0) - 1.0;
+    #endif
+    #ifdef BORDER
+    srcPos = clamp(srcPos, -1.0, 1.0);
+    #endif
+
+    #ifdef ALIGN_CORNERS
+    srcPos.x = (0.5f * (srcPos.x + 1.0)) * (inWidth - 1.0);
+    srcPos.y = (0.5f * (srcPos.y + 1.0)) * (inHeight - 1.0);
+    srcPos.z = (0.5f * (srcPos.z + 1.0)) * (inDepth - 1.0);
+    #else
+    srcPos.x = (0.5f * (srcPos.x + 1.0)) * inWidth - 0.5;
+    srcPos.y = (0.5f * (srcPos.y + 1.0)) * inHeight - 0.5;
+    srcPos.z = (0.5f * (srcPos.z + 1.0)) * inDepth - 0.5;
+    #endif
+
+    #if defined(LINEAR)
+    int3 pos_i_0 = floor(srcPos);
+    int3 pos_i_1 = pos_i_0 + 1;
+    float3 pos_r = srcPos - pos_i_0;
+
+    bool3 oobMask_0 = true;
+    bool3 oobMask_1 = true;
+
+    #if !defined(BORDER) & !defined(REFLECTION)
+    oobMask_0.x = pos_i_0.x >= 0 && pos_i_0.x < (int)inWidth;
+    oobMask_0.y = pos_i_0.y >= 0 && pos_i_0.y < (int)inHeight;
+    oobMask_0.z = pos_i_0.z >= 0 && pos_i_0.z < (int)inDepth;
+    oobMask_1.x = pos_i_1.x >= 0 && pos_i_1.x < (int)inWidth;
+    oobMask_1.y = pos_i_1.y >= 0 && pos_i_1.y < (int)inHeight;
+    oobMask_1.z = pos_i_1.z >= 0 && pos_i_1.z < (int)inDepth;
+    #endif
+
+    pos_i_0.x = clamp(pos_i_0.x, 0, (int)(inWidth - 1));
+    pos_i_0.y = clamp(pos_i_0.y, 0, (int)(inHeight - 1));
+    pos_i_0.z = clamp(pos_i_0.z, 0, (int)(inDepth - 1));
+    pos_i_1.x = clamp(pos_i_1.x, 0, (int)(inWidth - 1));
+    pos_i_1.y = clamp(pos_i_1.y, 0, (int)(inHeight - 1));
+    pos_i_1.z = clamp(pos_i_1.z, 0, (int)(inDepth - 1));
+
+    float v_000 = oobMask_0.x && oobMask_0.y && oobMask_0.z ? Xptr[(n * outChannels + c) * inSpatialSize + ((pos_i_0.z * inHeight + pos_i_0.y) * inWidth + pos_i_0.x)] : 0.0f;
+    float v_001 = oobMask_0.x && oobMask_0.y && oobMask_1.z ? Xptr[(n * outChannels + c) * inSpatialSize + ((pos_i_1.z * inHeight + pos_i_0.y) * inWidth + pos_i_0.x)] : 0.0f;
+    float v_010 = oobMask_0.x && oobMask_1.y && oobMask_0.z ? Xptr[(n * outChannels + c) * inSpatialSize + ((pos_i_0.z * inHeight + pos_i_1.y) * inWidth + pos_i_0.x)] : 0.0f;
+    float v_011 = oobMask_0.x && oobMask_1.y && oobMask_1.z ? Xptr[(n * outChannels + c) * inSpatialSize + ((pos_i_1.z * inHeight + pos_i_1.y) * inWidth + pos_i_0.x)] : 0.0f;
+    float v_100 = oobMask_1.x && oobMask_0.y && oobMask_0.z ? Xptr[(n * outChannels + c) * inSpatialSize + ((pos_i_0.z * inHeight + pos_i_0.y) * inWidth + pos_i_1.x)] : 0.0f;
+    float v_101 = oobMask_1.x && oobMask_0.y && oobMask_1.z ? Xptr[(n * outChannels + c) * inSpatialSize + ((pos_i_1.z * inHeight + pos_i_0.y) * inWidth + pos_i_1.x)] : 0.0f;
+    float v_110 = oobMask_1.x && oobMask_1.y && oobMask_0.z ? Xptr[(n * outChannels + c) * inSpatialSize + ((pos_i_0.z * inHeight + pos_i_1.y) * inWidth + pos_i_1.x)] : 0.0f;
+    float v_111 = oobMask_1.x && oobMask_1.y && oobMask_1.z ? Xptr[(n * outChannels + c) * inSpatialSize + ((pos_i_1.z * inHeight + pos_i_1.y) * inWidth + pos_i_1.x)] : 0.0f;
+    float v_00 = (1 - pos_r.z) * v_000 + (pos_r.z) * v_001;
+    float v_01 = (1 - pos_r.z) * v_010 + (pos_r.z) * v_011;
+    float v_10 = (1 - pos_r.z) * v_100 + (pos_r.z) * v_101;
+    float v_11 = (1 - pos_r.z) * v_110 + (pos_r.z) * v_111;
+    float v_0 = (1 - pos_r.y) * v_00 + (pos_r.y) * v_01;
+    float v_1 = (1 - pos_r.y) * v_10 + (pos_r.y) * v_11;
+    float v = (1 - pos_r.x) * v_0 + (pos_r.x) * v_1;
+    Optr[(n * outChannels + c) * outSpatialSize + xyz] = v;
+    #else
+    int3 pos_i = round(srcPos);
+
+    bool oobMask = true;
+    #if !defined(BORDER) & !defined(REFLECTION)
+    oobMask = pos_i.x >= 0 && pos_i.x < (int)inWidth && pos_i.y >= 0 && pos_i.y < (int)inHeight && pos_i.z >= 0 && pos_i.z < (int)inDepth;
+    #endif
+    pos_i.x = clamp(pos_i.x, 0, (int)(inWidth - 1));
+    pos_i.y = clamp(pos_i.y, 0, (int)(inHeight - 1));
+    pos_i.z = clamp(pos_i.z, 0, (int)(inDepth - 1));
+
+    float v = oobMask ? Xptr[(n * outChannels + c) * inSpatialSize + ((pos_i.z * inHeight + pos_i.y) * inWidth + pos_i.x)] : 0.0f;
+    Optr[(n * outChannels + c) * outSpatialSize + xyz] = v;
+    #endif
+}

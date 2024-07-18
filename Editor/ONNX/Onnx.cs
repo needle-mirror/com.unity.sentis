@@ -132,8 +132,8 @@ namespace Onnx {
     /// <summary>
     /// The version field is always serialized and we will use it to store the
     /// version that the  graph is generated from. This helps us set up version
-    /// control. 
-    /// For the IR, we are using simple numbers starting with with 0x00000001, 
+    /// control.
+    /// For the IR, we are using simple numbers starting with with 0x00000001,
     /// which was the version we published on Oct 10, 2017.
     /// </summary>
     [pbr::OriginalName("IR_VERSION_2017_10_10")] IrVersion20171010 = 1,
@@ -996,7 +996,7 @@ namespace Onnx {
   /// Computation graphs are made up of a DAG of nodes, which represent what is
   /// commonly called a "layer" or "pipeline stage" in machine learning frameworks.
   ///
-  /// For example, it can be a node of type "Conv" that takes in an image, a filter 
+  /// For example, it can be a node of type "Conv" that takes in an image, a filter
   /// tensor and a bias tensor, and produces the convolved output.
   /// </summary>
   internal sealed partial class NodeProto : pb::IMessage<NodeProto> {
@@ -2008,7 +2008,7 @@ namespace Onnx {
   /// <summary>
   /// Graphs
   ///
-  /// A graph defines the computational logic of a model and is comprised of a parameterized 
+  /// A graph defines the computational logic of a model and is comprised of a parameterized
   /// list of nodes that form a directed acyclic graph based on their inputs and outputs.
   /// This is the equivalent of the "network" or "graph" in many deep learning
   /// frameworks.
@@ -3746,8 +3746,8 @@ namespace Onnx {
     public const int DenotationFieldNumber = 6;
     private string denotation_ = "";
     /// <summary>
-    /// An optional denotation can be used to denote the whole 
-    /// type with a standard semantic description as to what is 
+    /// An optional denotation can be used to denote the whole
+    /// type with a standard semantic description as to what is
     /// stored inside. Refer to https://github.com/onnx/onnx/blob/master/docs/TypeDenotation.md#type-denotation-definition
     /// for pre-defined type denotations.
     /// </summary>
@@ -4099,9 +4099,9 @@ namespace Onnx {
         public const int ElemTypeFieldNumber = 1;
         private int elemType_;
         /// <summary>
-        /// This field MUST NOT have the value of UNDEFINED 
+        /// This field MUST NOT have the value of UNDEFINED
         /// This field MUST have a valid TensorProto.DataType value
-        /// This field MUST be present for this version of the IR. 
+        /// This field MUST be present for this version of the IR.
         /// </summary>
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         public int ElemType {

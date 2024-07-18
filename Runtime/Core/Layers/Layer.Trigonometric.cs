@@ -7,7 +7,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Acos : Activation
     {
-        public Acos(string output, string input)
+        public Acos(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -27,7 +27,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Acosh : Activation
     {
-        public Acosh(string output, string input)
+        public Acosh(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -47,7 +47,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Asin : Activation
     {
-        public Asin(string output, string input)
+        public Asin(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -67,7 +67,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Asinh : Activation
     {
-        public Asinh(string output, string input)
+        public Asinh(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -87,7 +87,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Atan : Activation
     {
-        public Atan(string output, string input)
+        public Atan(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -107,7 +107,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Atanh : Activation
     {
-        public Atanh(string output, string input)
+        public Atanh(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -127,7 +127,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Cos : Activation
     {
-        public Cos(string output, string input)
+        public Cos(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -147,7 +147,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Cosh : Activation
     {
-        public Cosh(string output, string input)
+        public Cosh(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -167,7 +167,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Sin : Activation
     {
-        public Sin(string output, string input)
+        public Sin(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -187,7 +187,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Sinh : Activation
     {
-        public Sinh(string output, string input)
+        public Sinh(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -207,7 +207,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Tan : Activation
     {
-        public Tan(string output, string input)
+        public Tan(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)

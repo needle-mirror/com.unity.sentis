@@ -35,6 +35,7 @@ namespace Unity.Sentis.ONNX
                 return outputs;
             }
         }
+        public int OutputCount => m_ONNXNode.Output.Count;
         public string Output0 => RequiredOutput(0);
         public string Output1 => RequiredOutput(1);
         public string Output2 => RequiredOutput(2);

@@ -426,6 +426,53 @@ namespace Unity.Sentis
             tables.ClearState();
         }
 
+        /// <inheritdoc/>
+        public void GridSample(TensorFloat X, TensorFloat grid, TensorFloat O, Layers.InterpolationMode mode, Layers.PaddingMode paddingMode, bool alignCorners)
+        {
+            int n = O.shape[0]; int c = O.shape[1];
+            int oH = O.shape[-2]; int oW = O.shape[-1];
+            int xH = X.shape[-2]; int xW = X.shape[-1];
+            int oSpatialDim = oH * oW;
+            int xSpatialDim = xH * xW;
+
+            var spatialDims = O.shape.rank - 2;
+            switch (spatialDims)
+            {
+                case 2:
+                {
+                    var job = new GridSample2DJob
+                    {
+                        mode = mode, paddingMode = paddingMode, alignCorners = alignCorners,
+                        inHeight = xH, inWidth = xW,
+                        inSpatialSize = xSpatialDim,
+                        outBatch = n, outChannels = c,
+                        outSpatialSize = oSpatialDim
+                    };
+                    job.ScheduleBatchXBO(Pin(X), Pin(grid), Pin(O), O.shape.length, 1024);
+                    break;
+                }
+                case 3:
+                {
+                    int oD = O.shape[2];
+                    int xD = X.shape[2];
+                    oSpatialDim *= oD;
+                    xSpatialDim *= xD;
+                    var job = new GridSample3DJob
+                    {
+                        mode = mode, paddingMode = paddingMode, alignCorners = alignCorners,
+                        inDepth = xD, inHeight = xH, inWidth = xW,
+                        inSpatialSize = xSpatialDim,
+                        outBatch = n, outChannels = c,
+                        outSpatialSize = oSpatialDim
+                    };
+                    job.ScheduleBatchXBO(Pin(X), Pin(grid), Pin(O), O.shape.length, 1024);
+                    break;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(spatialDims));
+            }
+        }
+
         static readonly int[] permutationsDepthToSpaceDCR = new int[] { 0, 3, 4, 1, 5, 2 };
         static readonly int[] permutationsDepthToSpaceCRD = new int[] { 0, 1, 4, 2, 5, 3 };
         static readonly int[] permutationsSpaceToDepth = new int[] { 0, 3, 5, 1, 2, 4 };
@@ -863,42 +910,85 @@ namespace Unity.Sentis
             }
         }
 
-        /// <inheritdoc/>
-        public void Concat(Tensor[] inputs, Tensor O, int axis)
+        /// <summary>
+        /// Performs `NonMaxSuppression` on boxes with scores.
+        /// </summary>
+        /// <param name="boxes">The boxes input tensor containing the position and dimensions of the boxes for each batch.</param>
+        /// <param name="scores">The scores input tensor containing the score for each box per class per batch.</param>
+        /// <param name="O">The output tensor to be computed and filled (and truncated) with the batch, class and index of the boxes in decreasing order of score.</param>
+        /// <param name="maxOutputBoxesPerClass">The maximum number of output boxes per class.</param>
+        /// <param name="iouThreshold">Boxes with intersect-over-union with a selected box above this threshold are discarded.</param>
+        /// <param name="scoreThreshold">Boxes with a score below this threshold are discarded.</param>
+        /// <param name="centerPointBox">The types of the box coordinates, either [x1, y1, x2, y2] or [x, y, w, h].</param>
+        public void NonMaxSuppression(TensorFloat boxes, TensorFloat scores, TensorInt O, int maxOutputBoxesPerClass, float iouThreshold, float scoreThreshold, Layers.CenterPointBox centerPointBox)
         {
+            // based on https://github.com/pytorch/vision/blob/main/torchvision/csrc/ops/cpu/nms_kernel.cpp
+            // extended to onnx multiple class multiple batch inputs as here
+            // https://github.com/microsoft/onnxruntime/blob/main/onnxruntime/core/providers/cpu/object_detection/non_max_suppression.cc
+
+            var numBatches = scores.shape[0];
+            var numClasses = scores.shape[1];
+            var numBoxes = scores.shape[2];
+
+            Pin(boxes);
+            Pin(scores);
+            Pin(O);
+            var maxNumOutput = O.shape[0];
+
+            var selected = AllocTensorInt(new TensorShape(numBatches * numClasses * numBoxes));
+            var orderAll = AllocTensorInt(new TensorShape(numBatches * numClasses * numBoxes));
+
+            var bitmask = AllocTensorInt(new TensorShape(ComputeHelper.IDivC(numBatches * numBoxes * numBoxes, 4)));
+
+            var jobBitMask = new NMSBitmaskJob
+            {
+                numBoxes = numBoxes,
+                iouThreshold = iouThreshold,
+                centerPointBox = centerPointBox
+            };
+            jobBitMask.ScheduleBatchXO(Pin(boxes), Pin(bitmask), numBatches * numBoxes * numBoxes, 1024);
+
+            var jobSortSelect = new NMSSortSelectJob
+            {
+                numBoxes = numBoxes,
+                numClasses = numClasses,
+                maxOutputBoxesPerClass = maxOutputBoxesPerClass,
+                scoreThreshold = scoreThreshold
+            };
+            jobSortSelect.ScheduleXSBO(Pin(bitmask), Pin(scores), Pin(orderAll), Pin(selected), numBatches * numClasses, 1024);
+
+            // compaction
+            int numOutput = 0;
             unsafe
             {
-                // copy tensor data interleaved into O
-                var pinO = Pin(O);
-                int offsetO = 0;
-
-                var job = new CopyStrideJob();
-                job.strideO = O.shape.Length(axis);
-                var count = O.shape.Length(0, axis);
-
-                var outputFences = stackalloc JobHandle[inputs.Length];
-                int outputFencesCount = 0;
-
-                for (int i = 0; i < inputs.Length; ++i)
+                var jobCompact = new NMSCompactJob
                 {
-                    if (inputs[i].shape.HasZeroDims())
-                        continue;
-
-                    var pinX = Pin(inputs[i]);
-                    int lengthX = inputs[i].shape.Length(axis);
-
-                    job.strideX = lengthX;
-                    job.length = lengthX;
-                    job.offsetO = offsetO;
-
-                    var jobFence = job.ScheduleXO(pinX, pinO, count, 1024);
-                    outputFences[outputFencesCount++] = jobFence;
-
-                    offsetO += lengthX;
-                }
-
-                pinO.fence = JobHandleUnsafeUtility.CombineDependencies(outputFences, outputFencesCount);
+                    numBatches = numBatches,
+                    numBoxes = numBoxes,
+                    numClasses = numClasses,
+                    maxNumOutput = maxNumOutput,
+                    maxOutputBoxesPerClass = maxOutputBoxesPerClass,
+                    numOutputPtr = &numOutput
+                };
+                var fence = jobCompact.ScheduleXO(Pin(selected), Pin(O));
+                fence.Complete();
             }
+
+            ReleaseTensorInt(orderAll);
+            ReleaseTensorInt(selected);
+            ReleaseTensorInt(bitmask);
+
+            O.shape = new TensorShape(numOutput, 3);
+        }
+
+        /// <inheritdoc/>
+        public void SliceSet(Tensor X, Tensor O, int axis, int start, int step)
+        {
+            var strideX = X.shape.Length(axis);
+            var strideO = O.shape.Length(axis) * step;
+            var length = strideX;
+            var count = X.shape.Length(0, axis);
+            MemCopyStride(X, O, strideX, strideO, length, count, 0, O.shape.Strides(axis) * start);
         }
 
         /// <inheritdoc/>
@@ -923,7 +1013,7 @@ namespace Unity.Sentis
         public void Split(Tensor X, Tensor O, int axis, int start)
         {
             var job = new SliceJob();
-            job.sliceParams.PrepareSplit(X.shape, O.shape, axis, start);
+            job.sliceParams.Prepare(X.shape, O.shape, axis, start);
 
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
@@ -1337,10 +1427,15 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void MemCopy(Tensor X, Tensor O)
         {
+            MemCopy(X, O, X.shape.length, 0, 0);
+        }
+
+        void MemCopy(Tensor X, Tensor O, int count, int offsetX, int offsetO)
+        {
             var job = new CopyJob();
-            job.offsetX = 0;
-            job.offsetO = 0;
-            job.length = X.shape.length;
+            job.offsetX = offsetX;
+            job.offsetO = offsetO;
+            job.length = count;
             job.ScheduleXO(Pin(X), Pin(O));
         }
 
@@ -1349,6 +1444,12 @@ namespace Unity.Sentis
         {
             if (length == 0 || count == 0)
                 return;
+            if (count == 1 || (strideX == length && strideO == length))
+            {
+                // contiguous memory can be copied together
+                MemCopy(X, O, length * count, offsetX, offsetO);
+                return;
+            }
             Logger.AssertIsTrue(length > 0, "MemCopy.InputError: copy stride length must be greater than 0");
             Logger.AssertIsTrue(count > 0, "MemCopy.InputError: copy stride count must be greater than 0");
             Logger.AssertIsTrue(offsetX >= 0, "MemCopy.BoundsError: copy stride out of bounds for tensor X");

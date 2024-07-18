@@ -48,6 +48,7 @@ namespace Unity.Sentis
         /// index   0, 1, 2
         ///        -3,-2,-1
         /// </summary>
+        /// <param name="axis">The axis to get or set.</param>
         public SymbolicTensorDim this[int axis]
         {
             get

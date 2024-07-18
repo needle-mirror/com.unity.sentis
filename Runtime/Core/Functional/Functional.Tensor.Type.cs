@@ -14,7 +14,7 @@ namespace Unity.Sentis
         {
             if (input.DataType == dataType)
                 return input;
-            return FunctionalTensor.FromLayer(new Layers.Cast(null, null, dataType), dataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Cast(-1, -1, dataType), dataType, input);
         }
 
         /// <summary>

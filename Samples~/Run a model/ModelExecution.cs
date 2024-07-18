@@ -23,11 +23,12 @@ public class ModelExecution : MonoBehaviour
         m_Engine.Execute(m_Input);
 
         // model has a single output, so no ambiguity due to its name
-        var outputTensor = m_Engine.PeekOutput();
-        outputTensor.CompleteOperationsAndDownload();
+        var outputTensor = m_Engine.PeekOutput() as TensorFloat;
 
-        // Data is now ready to read.
+        // If you wish to read from the tensor, download it to cpu.
+        var cpuTensor = outputTensor.ReadbackAndClone();
         // See async examples for non-blocking readback.
+        cpuTensor.Dispose();
     }
 
     void OnDisable()

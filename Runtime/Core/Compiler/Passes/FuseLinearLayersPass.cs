@@ -11,12 +11,12 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
         public void Run(ref Model model)
         {
             using LinearLayerFusing linearLayerFusing = new LinearLayerFusing();
-            Dictionary<string, Layers.Constant> constTensors = new Dictionary<string, Layers.Constant>();
-            Dictionary<string, bool> sharedConstants = new Dictionary<string, bool>();
+            Dictionary<int, Layers.Constant> constTensors = new Dictionary<int, Layers.Constant>();
+            Dictionary<int, bool> sharedConstants = new Dictionary<int, bool>();
             foreach (var constant in model.constants)
                 constTensors.Add(constant.index, constant);
 
-            var indexToLayerIndex = new Dictionary<string, int>();
+            var indexToLayerIndex = new Dictionary<int, int>();
             int idx = 0;
             foreach (var l in model.layers)
             {
@@ -35,9 +35,9 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 idx++;
             }
 
-            var preserve = new HashSet<string>();
-            var remap = new Dictionary<string, string>();
-            var mergedLayers = new HashSet<string>();
+            var preserve = new HashSet<int>();
+            var remap = new Dictionary<int, int>();
+            var mergedLayers = new HashSet<int>();
             foreach (var o in model.outputs)
                 preserve.Add(o.index);
 
@@ -94,7 +94,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 {
                     // cannot merge layer into input:
                     // remove input, no need to remap as inputs == input.inputs
-                    fusedLayer.outputs = (string[])layer.outputs.Clone();
+                    fusedLayer.outputs = (int[])layer.outputs.Clone();
                     model.layers[l] = fusedLayer;
 
                     if (!preserve.Contains(inputLayer.outputs[0]))
@@ -128,7 +128,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             return false;
         }
 
-        static bool AreLayersFusable(Layers.Layer l0, Layers.Layer l1, Dictionary<string, Layers.Constant> constTensors, Dictionary<string, bool> sharedConstants, LinearLayerFusing linearLayerFuser)
+        static bool AreLayersFusable(Layers.Layer l0, Layers.Layer l1, Dictionary<int, Layers.Constant> constTensors, Dictionary<int, bool> sharedConstants, LinearLayerFusing linearLayerFuser)
         {
             if (l0.inputs.Any(i => sharedConstants.ContainsKey(i) && sharedConstants[i]))
                 return false;

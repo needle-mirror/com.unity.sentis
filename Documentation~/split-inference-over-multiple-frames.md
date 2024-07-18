@@ -2,7 +2,7 @@
 
 To run a model one layer at a time, use the [`StartManualSchedule`](xref:Unity.Sentis.GenericWorker.StartManualSchedule) method of the worker. This method creates an `IEnumerator` object.
 
-For example, a model may take 50 milliseconds to execute. Executing it within a single frame could result in low or stuttering framerates in gameplay. Alternatively, splitting the model to run across 10 frames would ideally allocate 5 milliseconds of execution per frame, ensuring smoother framerates.
+For example, if a model takes 50 milliseconds to execute, running it in one frame might cause stuttering or low frame rates in gameplay. Instead, by spreading the execution over 10 frames, you can allocate 5 milliseconds per frame, ensuring smoother performance.
 
 The following code sample runs the model one layer per frame and executes the rest of the `Update` method only after the model finishes.
 
@@ -50,10 +50,12 @@ public class ModelExecutionInParts : MonoBehaviour
         }
 
         var outputTensor = m_Engine.PeekOutput() as TensorFloat;
-        outputTensor.CompleteOperationsAndDownload();
+        var cpuCopyTensor = outputTensor.ReadbackAndClone();
+        // cpuCopyTensor is a CPU copy of the output tensor, you can access it and modify it
 
         // Set this flag to false if we want to run the network again
         m_Started = false;
+        cpuCopyTensor.Dispose();
     }
 
     void OnDisable()
@@ -65,7 +67,7 @@ public class ModelExecutionInParts : MonoBehaviour
 }
 ```
 
-Refer to the `Run a model a layer at a time` example in the [sample scripts](package-samples.md) for an example.
+For an example, refer to the `Run a model a layer at a time` example in the [sample scripts](package-samples.md).
 
 ## Additional resources
 

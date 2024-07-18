@@ -48,16 +48,12 @@ public class TextureToTensor : MonoBehaviour
         // swizzle color channels of texture using preset
         using TensorFloat tensorTBGRA = TextureConverter.ToTensor(texture, new TextureTransform().SetChannelSwizzle(ChannelSwizzle.BGRA));
         // make the tensors readable (move to CPU) before accessing with indices
-        tensor.CompleteOperationsAndDownload();
-        tensorTBGRA.CompleteOperationsAndDownload();
-        Assert.AreEqual(tensorTBGRA[0, 2, 0, 0], tensor[0, 0, 0, 0]);
+        Assert.AreEqual(tensorTBGRA.ReadbackAndClone()[0, 2, 0, 0], tensor.ReadbackAndClone()[0, 0, 0, 0]);
 
         // swizzle color channels of texture explicitly to all sample from Red channel in texture
         using TensorFloat tensorTRRRR = TextureConverter.ToTensor(texture, new TextureTransform().SetChannelSwizzle(0, 0, 0, 0));
         // make the tensors readable (move to CPU) before accessing with indices
-        tensor.CompleteOperationsAndDownload();
-        tensorTRRRR.CompleteOperationsAndDownload();
-        Assert.AreEqual(tensorTRRRR[0, 3, 0, 0], tensor[0, 0, 0, 0]);
+        Assert.AreEqual(tensorTRRRR.ReadbackAndClone()[0, 3, 0, 0], tensor.ReadbackAndClone()[0, 0, 0, 0]);
 
         // chain transform settings together
         using TensorFloat tensorTChained = TextureConverter.ToTensor(texture, new TextureTransform().SetDimensions(channels: 3).SetCoordOrigin(CoordOrigin.BottomLeft).SetChannelSwizzle(ChannelSwizzle.BGRA));

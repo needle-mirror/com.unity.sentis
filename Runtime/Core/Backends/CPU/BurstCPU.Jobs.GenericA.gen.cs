@@ -22,7 +22,7 @@ public partial class CPUBackend
 [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
 internal unsafe struct InstanceNormalizationTailJob : IJobParallelFor, IJobResourceDeclarationXSBWO
 {
-    
+
     public float epsilon;
     public int channels;
     public int spatialDims;

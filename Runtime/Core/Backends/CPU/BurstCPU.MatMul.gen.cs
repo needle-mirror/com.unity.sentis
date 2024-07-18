@@ -199,7 +199,7 @@ public partial class CPUBackend
                 StrideAddress(Cnp, nstrideC, 0)[13] = accum13_0;
                 StrideAddress(Cnp, nstrideC, 0)[14] = accum14_0;
                 StrideAddress(Cnp, nstrideC, 0)[15] = accum15_0;
-                
+
                 StrideAddress(Cnp, nstrideC, 1)[0] = accum0_1;
                 StrideAddress(Cnp, nstrideC, 1)[1] = accum1_1;
                 StrideAddress(Cnp, nstrideC, 1)[2] = accum2_1;
@@ -216,7 +216,7 @@ public partial class CPUBackend
                 StrideAddress(Cnp, nstrideC, 1)[13] = accum13_1;
                 StrideAddress(Cnp, nstrideC, 1)[14] = accum14_1;
                 StrideAddress(Cnp, nstrideC, 1)[15] = accum15_1;
-                
+
                 n -= 16;
                 Bnp += 16;
                 Cnp += 16;
@@ -309,7 +309,7 @@ public partial class CPUBackend
                 StrideAddress(Cnp, nstrideC, 0)[5] = accum5_0;
                 StrideAddress(Cnp, nstrideC, 0)[6] = accum6_0;
                 StrideAddress(Cnp, nstrideC, 0)[7] = accum7_0;
-                
+
                 StrideAddress(Cnp, nstrideC, 1)[0] = accum0_1;
                 StrideAddress(Cnp, nstrideC, 1)[1] = accum1_1;
                 StrideAddress(Cnp, nstrideC, 1)[2] = accum2_1;
@@ -318,7 +318,7 @@ public partial class CPUBackend
                 StrideAddress(Cnp, nstrideC, 1)[5] = accum5_1;
                 StrideAddress(Cnp, nstrideC, 1)[6] = accum6_1;
                 StrideAddress(Cnp, nstrideC, 1)[7] = accum7_1;
-                
+
                 n -= 8;
                 Bnp += 8;
                 Cnp += 8;
@@ -434,7 +434,7 @@ public partial class CPUBackend
                 StrideAddress(Cnp, nstrideC, 0)[13] = accum13_0;
                 StrideAddress(Cnp, nstrideC, 0)[14] = accum14_0;
                 StrideAddress(Cnp, nstrideC, 0)[15] = accum15_0;
-                
+
                 n -= 16;
                 Bnp += 16;
                 Cnp += 16;
@@ -499,7 +499,7 @@ public partial class CPUBackend
                 StrideAddress(Cnp, nstrideC, 0)[5] = accum5_0;
                 StrideAddress(Cnp, nstrideC, 0)[6] = accum6_0;
                 StrideAddress(Cnp, nstrideC, 0)[7] = accum7_0;
-                
+
                 n -= 8;
                 Bnp += 8;
                 Cnp += 8;

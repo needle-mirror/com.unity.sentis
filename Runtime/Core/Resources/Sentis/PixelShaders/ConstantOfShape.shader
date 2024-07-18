@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/ConstantOfShape"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile Float Int
+            #pragma multi_compile TensorFloat TensorInt
 
             #pragma vertex vert
             #pragma fragment frag
@@ -19,7 +19,7 @@ Shader "Hidden/Sentis/ConstantOfShape"
             #include "CommonVertexShader.cginc"
             #include "CommonPixelShader.cginc"
 
-            #if defined(Int)
+            #if defined(TensorInt)
             DECLARE_TENSOR(A, int);
             DECLARE_TENSOR(B, int);
             int memValueInt;

@@ -1,6 +1,6 @@
 ## Create and modify tensors
 
-Tensor methods in Sentis are similar to methods found in frameworks like NumPy, TensorFlow, and PyTorch. 
+Tensor methods in Sentis are similar to methods found in frameworks like NumPy, TensorFlow, and PyTorch.
 
 ## Create a basic tensor
 
@@ -19,7 +19,7 @@ tensor.Reshape(new TensorShape(5, 2));
 
 The shape of the tensor and the new shape must have the same number of elements. You can use the `length` property of a tensor shape to check the number of elements.
 
-> [!NOTE] 
+> [!NOTE]
 > If you use `BackendType.GPUPixel`, tensors aren't stored in a linear format. Consequently, you will not be able to reshape a tensor if the data is on the GPU.
 
 ## Additional resources

@@ -21,7 +21,7 @@
 | x ^ y      | Xor               |
 | ~x         | Not               |
 
-Binary operators may also be used between functional tensors and scalar float, integer, and boolean values, for example, 'x + 1', 'x % 2.5f', 'False ^ x'. 
+Binary operators may also be used between functional tensors and scalar float, integer, and boolean values, for example, 'x + 1', 'x % 2.5f', 'False ^ x'.
 
 ### Indexers
 

@@ -1,18 +1,15 @@
 # Read output from a model asynchronously
 
-If you want the output tensor data from your model execution in a readable format, you can directly use the [`CompleteOperationsAndDownload`](xref:Unity.Sentis.Tensor.CompleteOperationsAndDownload) method.
-
-However, the following might be true when Sentis returns the tensor from `PeekOutput`:
+After you execute a model and access an output tensor from `PeekOutput`, the following are true:
 - Sentis might not have finished calculating the final tensor data, so there's pending scheduled work.
-- If you use a GPU back end, the calculated tensor data might be on the GPU. This requires a read back to copy the data to the CPU in a readable format.
+- If you use a graphics processing unit (GPU) backend, the calculated tensor data might be on the GPU. This requires a read back to copy the data to the central processing unit (CPU) in a readable format.
 
-If either of the above are true, `CompleteOperationsAndDownload` blocks the main thread until the steps complete. To avoid this, you can follow these steps to use asynchronous readback:
+If either of these conditions is true, `ReadbackAndClone` or `CompleteAllPendingOperations` blocks the main thread until the steps complete.
 
-1. Use the [`Tensor.ReadbackRequest`](xref:Unity.Sentis.Tensor.ReadbackRequest(Action{System.Boolean})) method and provide a callback.
-2. Sentis invokes the callback when the readback is complete. The boolean argument is `true` when readback was successful.
-3. Use [`CompleteOperationsAndDownload`](xref:Unity.Sentis.Tensor.CompleteOperationsAndDownload) to put the downloaded data into a readable state.
+To avoid this, follow these two methods to use asynchronous readback:
 
-You can also use `ReadbackRequestAsync` to await the completion of readback request.
+1. Use the awaitable [`Tensor.ReadbackAndCloneAsync`](xref:Unity.Sentis.Tensor.ReadbackAndCloneAsync()) method. Sentis returns a CPU copy of the input tensor in a non blocking way.
+
 ```
 using Unity.Sentis;
 using UnityEngine;
@@ -22,18 +19,10 @@ public class AsyncReadbackCompute : MonoBehaviour
     [SerializeField]
     ModelAsset modelAsset;
 
-    Tensor m_Input;
+    TensorFloat m_Input;
     IWorker m_Engine;
-    TensorFloat m_OutputTensor;
 
-    void ReadbackCallback(bool completed)
-    {
-        // The call to `CompleteOperationsAndDownload` will no longer block with a readback as the data is already on the CPU
-        m_OutputTensor.CompleteOperationsAndDownload();
-        // The output tensor is now in a readable state on the CPU
-    }
-
-    void OnEnable()
+    async void OnEnable()
     {
         var model = ModelLoader.Load(modelAsset);
         m_Input = new TensorFloat(new TensorShape(1, 1), new[] { 43.0f });
@@ -41,10 +30,12 @@ public class AsyncReadbackCompute : MonoBehaviour
         m_Engine.Execute(m_Input);
 
         // Peek the value from Sentis, without taking ownership of the tensor
-        m_OutputTensor = m_Engine.PeekOutput() as TensorFloat;
-        m_OutputTensor.ReadbackRequest(ReadbackCallback);
+        var outputTensor = m_Engine.PeekOutput() as TensorFloat;
+        var cpuCopyTensor = await outputTensor.ReadbackAndCloneAsync();
 
-        // Continue to run code on the main thread while waiting for the tensor readback
+        Debug.Assert(m_Output[0] == 42);
+        Debug.Log($"Output tensor value {m_Output[0]}");
+        cpuCopyTensor.Dispose();
     }
 
     void OnDisable()
@@ -53,15 +44,67 @@ public class AsyncReadbackCompute : MonoBehaviour
         m_Engine.Dispose();
     }
 }
-
 ```
 
-!!! note "Note"
+2. Use a polling mechanism with [`Tensor.ReadbackRequest`](xref:Unity.Sentis.Tensor.ReadbackRequest()) and [`Tensor.IsReadbackRequestDone`](xref:Unity.Sentis.Tensor.IsReadbackRequestDone()) methods.
 
-    You can also avoid a Tensor data mutation to a CPU tensor that `CompleteOperationsAndDownload` does. For that, simply call `tensor.dataOnBackend.Download<T>()` to get the data directly. This will keep the `tensor.dataOnDevice` on the given backend but you will have a CPU copy of it.
-Be careful with synchronization issues if you re-run a worker, you will need to issue a new download request.
+```
+using Unity.Sentis;
+using UnityEngine;
 
-Refer to the `Read output asynchronously` example in the [sample scripts](package-samples.md) for an example.
+public class AsyncReadbackCompute : MonoBehaviour
+{
+    [SerializeField]
+    ModelAsset modelAsset;
+
+    TensorFloat m_Input, m_Output;
+    IWorker m_Engine;
+
+    void OnEnable()
+    {
+        var model = ModelLoader.Load(modelAsset);
+        m_Input = new TensorFloat(new TensorShape(1, 1), new[] { 43.0f });
+        m_Engine = WorkerFactory.CreateWorker(BackendType.GPUCompute, model);
+    }
+
+    bool inferencePending = false;
+
+    void OnUpdate()
+    {
+        if (!inferencePending)
+        {
+            m_Engine.Execute(m_Input);
+
+            // Peek the value from Sentis, without taking ownership of the tensor
+            m_Output = m_Engine.PeekOutput() as TensorFloat;
+
+            // Trigger a non blocking readback request
+            m_Output.ReadbackRequest();
+            inferencePending = true;
+        }
+        else if (inferencePending && m_Output.IsReadbackRequestDone())
+        {
+            // m_Output is now downloaded to the cpu. Using ReadbackAndClone or ToReadOnlyArray will not be blocking
+            var array = outputTensor.ToReadOnlyArray();
+            Debug.Assert(array[0] == 42);
+            Debug.Log($"Output tensor value {m_Output[0]}");
+            inferencePending = false;
+        }
+    }
+
+    void OnDisable()
+    {
+        m_Input.Dispose();
+        TensorFloat.Dispose();
+        m_Engine.Dispose();
+    }
+}
+```
+
+> [!NOTE]
+> To avoid a Tensor data mutation to a CPU tensor that `ReadbackAndClone` does, call `tensor.dataOnBackend.Download<T>()` to get the data directly. This keeps the `tensor.dataOnDevice` on the given backend while providing a CPU copy. Be cautious with synchronization issues: if you re-run a worker, issue a new download request.
+
+For an example, refer to the `Read output asynchronously` example in the [sample scripts](package-samples.md).
 
 ## Additional resources
 

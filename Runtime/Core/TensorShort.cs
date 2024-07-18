@@ -1,4 +1,6 @@
 using System;
+using Unity.Collections;
+using UnityEngine;
 
 namespace Unity.Sentis
 {
@@ -30,19 +32,11 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="shape">The shape of the tensor.</param>
         /// <returns>The instantiated zero tensor.</returns>
-        public static TensorByte AllocZeros(TensorShape shape)
+        public static TensorShort AllocZeros(TensorShape shape)
         {
-            int lengthPacked32Bit = ((shape.length * sizeof(short) + sizeof(int) - 1) / sizeof(int));
+            int lengthPacked32Bit = ((shape.length * sizeof(ushort) + sizeof(int) - 1) / sizeof(int));
             var burstTensorData = new BurstTensorData(lengthPacked32Bit, clearOnInit: true);
-            return new TensorByte(shape, data: burstTensorData);
-        }
-
-        /// <inheritdoc/>
-        public override void UploadToDevice(ITensorData destination)
-        {
-            var data = m_DataOnBackend.Download<int>(count);
-            destination.Upload(data, count); data.Dispose();
-            PinToDevice(destination, disposeUnpinned: true);
+            return new TensorShort(shape, data: burstTensorData);
         }
     }
 }

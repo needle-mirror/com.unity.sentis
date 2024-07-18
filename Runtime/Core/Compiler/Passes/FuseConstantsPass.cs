@@ -20,11 +20,12 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             var executionContext = new ExecutionContext
             {
                 backend = backend,
+                cpuBackend = backend,
                 storage = vars
             };
 
-            var constantTensors = new Dictionary<string, Tensor>();
-            var calculatedTensors = new Dictionary<string, Tensor>();
+            var constantTensors = new Dictionary<int, Tensor>();
+            var calculatedTensors = new Dictionary<int, Tensor>();
 
             // model constants
             foreach (var constant in model.constants)
@@ -43,10 +44,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             // iterate through layers executing if layer inputs are all known
             foreach (var layer in model.layers)
             {
-                var isDeterministic = !layer.GetType().IsDefined(typeof(NonDeterministicOutput));
+                var isDeterministic = layer is not Layers.RandomLayer;
                 for (var i = 0; i < layer.inputs.Length && isDeterministic; i++)
                 {
-                    isDeterministic &= string.IsNullOrEmpty(layer.inputs[i]) || calculatedTensors.ContainsKey(layer.inputs[i]) || constantTensors.ContainsKey(layer.inputs[i]);
+                    isDeterministic &= (layer.inputs[i] == -1) || calculatedTensors.ContainsKey(layer.inputs[i]) || constantTensors.ContainsKey(layer.inputs[i]);
                 }
 
                 if (!isDeterministic)
@@ -65,7 +66,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 for (var i = 0; i < layer.inputs.Length; i++)
                 {
                     Tensor tensor = null;
-                    if (string.IsNullOrEmpty(layer.inputs[i]))
+                    if (layer.inputs[i] == -1)
                         continue;
                     if (calculatedTensors.TryGetValue(layer.inputs[i], out var calculatedInputTensor))
                         tensor = calculatedInputTensor;
@@ -92,7 +93,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 var isLayerCalculated = true;
                 foreach (var output in x.outputs)
                 {
-                    if (string.IsNullOrEmpty(output))
+                    if (output == -1)
                         continue;
                     isLayerCalculated &= calculatedTensors.ContainsKey(output);
                 }
@@ -102,8 +103,11 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             // add precalculated constants
             foreach (var kvp in calculatedTensors)
             {
-                model.constants.Add(new Layers.Constant(kvp.Key, kvp.Value));
-                kvp.Value.Dispose();
+                var tensor = kvp.Value;
+                if (tensor.shape.HasZeroDims())
+                    model.constants.Add(new Layers.Constant(kvp.Key, tensor.shape, tensor.dataType, 0));
+                else
+                    model.constants.Add(new Layers.Constant(kvp.Key, tensor.shape, tensor.dataType, (tensor.dataOnBackend as BurstTensorData).array));
             }
 
             // remove unused constants

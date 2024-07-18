@@ -31,7 +31,7 @@ namespace Unity.Sentis.Layers
         public bool keepdims;
         public bool selectLastIndex;
 
-        protected ArgReduce(string output, string input, int axis, bool keepdims = true, bool selectLastIndex = false)
+        protected ArgReduce(int output, int input, int axis, bool keepdims = true, bool selectLastIndex = false)
             : base(new[] { output }, new[] { input })
         {
             this.axis = axis;
@@ -66,7 +66,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ArgMax : ArgReduce
     {
-        public ArgMax(string output, string input, int axis, bool keepdims = true, bool selectLastIndex = false)
+        public ArgMax(int output, int input, int axis, bool keepdims = true, bool selectLastIndex = false)
             : base(output, input, axis, keepdims, selectLastIndex) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -77,9 +77,9 @@ namespace Unity.Sentis.Layers
             if (O.shape.HasZeroDims())
                 return;
             if (X is TensorInt)
-                ctx.backend.ArgMax(X as TensorInt, O, axis, keepdims, selectLastIndex);
+                ctx.backend.ArgMax(X as TensorInt, O, axis, selectLastIndex);
             else
-                ctx.backend.ArgMax(X as TensorFloat, O, axis, keepdims, selectLastIndex);
+                ctx.backend.ArgMax(X as TensorFloat, O, axis, selectLastIndex);
         }
 
         public override string ToString()
@@ -95,7 +95,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ArgMin : ArgReduce
     {
-        public ArgMin(string output, string input, int axis, bool keepdims = true, bool selectLastIndex = false)
+        public ArgMin(int output, int input, int axis, bool keepdims = true, bool selectLastIndex = false)
             : base(output, input, axis, keepdims, selectLastIndex) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -106,9 +106,9 @@ namespace Unity.Sentis.Layers
             if (O.shape.HasZeroDims())
                 return;
             if (X is TensorInt)
-                ctx.backend.ArgMin(X as TensorInt, O, axis, keepdims, selectLastIndex);
+                ctx.backend.ArgMin(X as TensorInt, O, axis, selectLastIndex);
             else
-                ctx.backend.ArgMin(X as TensorFloat, O, axis, keepdims, selectLastIndex);
+                ctx.backend.ArgMin(X as TensorFloat, O, axis, selectLastIndex);
         }
 
         public override string ToString()
@@ -126,7 +126,7 @@ namespace Unity.Sentis.Layers
     {
         public int axis;
 
-        public Gather(string output, string input, string indices, int axis)
+        public Gather(int output, int input, int indices, int axis)
             : base(new[] { output }, new[] { input, indices })
         {
             this.axis = axis;
@@ -209,7 +209,7 @@ namespace Unity.Sentis.Layers
     {
         public int axis;
 
-        public GatherElements(string output, string input, string indices, int axis)
+        public GatherElements(int output, int input, int indices, int axis)
             : base(new[] { output }, new[] { input, indices })
         {
             this.axis = axis;
@@ -256,7 +256,7 @@ namespace Unity.Sentis.Layers
     {
         public int batchDims;
 
-        public GatherND(string output, string input, string indices, int batchDims)
+        public GatherND(int output, int input, int indices, int batchDims)
             : base(new[] { output }, new[] { input, indices })
         {
             this.batchDims = batchDims;
@@ -312,7 +312,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class NonZero : Layer
     {
-        public NonZero(string output, string input)
+        public NonZero(int output, int input)
             : base(new[] { output }, new[] { input }) { }
 
         internal override void InferPartial(PartialInferenceContext ctx)
@@ -394,7 +394,7 @@ namespace Unity.Sentis.Layers
         public int axis;
         public ScatterReductionMode reduction;
 
-        public ScatterElements(string output, string input, string indices, string updates, int axis, ScatterReductionMode reduction)
+        public ScatterElements(int output, int input, int indices, int updates, int axis, ScatterReductionMode reduction)
             : base(new[] { output }, new[] { input, indices, updates })
         {
             this.axis = axis;
@@ -470,7 +470,7 @@ namespace Unity.Sentis.Layers
     {
         public ScatterReductionMode reduction;
 
-        public ScatterND(string output, string input, string indices, string updates, ScatterReductionMode reduction)
+        public ScatterND(int output, int input, int indices, int updates, ScatterReductionMode reduction)
             : base(new[] { output }, new[] { input, indices, updates })
         {
             this.reduction = reduction;
@@ -526,14 +526,13 @@ namespace Unity.Sentis.Layers
     ///
     /// This layer calculates both the values tensor of the top-K elements and the indices tensor of the top-K elements as outputs.
     /// </summary>
-    [Optimization.CPUFallback.CPUReadInputs(1)]
     class TopK : Layer
     {
         public int axis;
         public bool largest;
         public bool sorted;
 
-        public TopK(string values, string indices, string input, string k, int axis, bool largest, bool sorted)
+        public TopK(int values, int indices, int input, int k, int axis, bool largest, bool sorted)
             : base(new[] { values, indices }, new[] { input, k })
         {
             this.axis = axis;
@@ -571,7 +570,7 @@ namespace Unity.Sentis.Layers
         public override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
-            var k = ctx.storage.GetTensor(inputs[1]).ToReadOnlySpan<int>()[0];
+            var k = ctx.storage.GetInt(inputs[1]);
             var outputShape = new TensorShape(X.shape);
             outputShape[axis] = k;
 

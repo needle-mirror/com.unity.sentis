@@ -10,16 +10,22 @@ namespace Unity.Sentis.Layers
     public abstract class Layer
     {
         /// <summary>
-        /// The names to use for the input tensors for a layer.
+        /// The indices to use for the input tensors for a layer.
         /// </summary>
-        public string[] inputs;
+        public int[] inputs;
 
         /// <summary>
-        /// The names to use for all of the output tensors for a layer. This is `null` if a layer has only one output.
+        /// The indices to use for all of the output tensors for a layer.
         /// </summary>
-        public string[] outputs;
+        public int[] outputs;
 
-        protected Layer(string[] outputs, string[] inputs)
+
+        /// <summary>
+        /// Initializes and returns a `Layer` from given arrays of input and output indices
+        /// </summary>
+        /// <param name="outputs">The indices array representing the outputs of this layer.</param>
+        /// <param name="inputs">The indices array representing the inputs of this layer.</param>
+        protected Layer(int[] outputs, int[] inputs)
         {
             this.outputs = outputs;
             this.inputs = inputs;
@@ -72,7 +78,7 @@ namespace Unity.Sentis.Layers
     {
         public FusableActivation fusedActivation;
 
-        protected FusedActivation(string[] outputs, string[] inputs)
+        protected FusedActivation(int[] outputs, int[] inputs)
             : base(outputs, inputs) { }
 
         public override string ToString()
@@ -86,7 +92,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     abstract class Broadcast : Layer
     {
-        protected Broadcast(string output, params string[] inputs)
+        protected Broadcast(int output, params int[] inputs)
             : base(new[] { output }, inputs) { }
 
         internal override void InferPartial(PartialInferenceContext ctx)

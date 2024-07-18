@@ -11,11 +11,11 @@ Shader "Hidden/Sentis/TextureTensorDataUpload"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile Float Int
+            #pragma multi_compile TensorFloat TensorInt
             #pragma vertex vert
             #pragma fragment frag
 
-            #if defined(Int)
+            #if defined(TensorInt)
             #define O_INT
             #endif
 
@@ -25,7 +25,7 @@ Shader "Hidden/Sentis/TextureTensorDataUpload"
             DECLARE_TENSOR_BLOCK_STRIDE_O;
             DECLARE_TENSOR(X, float);
 
-            #if defined(Int)
+            #if defined(TensorInt)
             inline int4 IntFromFloat(float4 a)
             {
                 uint4 n = asuint(a);

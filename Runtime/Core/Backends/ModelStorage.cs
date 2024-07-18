@@ -52,21 +52,84 @@ namespace Unity.Sentis
     /// </summary>
     class ModelStorage : IModelStorage
     {
-        Dictionary<string, Tensor> m_InUseTensorsPool = new Dictionary<string, Tensor>(); // in-use layer.index -> tensor pool
-        HashSet<string> m_TensorsNotOwned = new HashSet<string>(); // model.inputs + outputs which user has taken ownership
-        Dictionary<string, List<string>> m_TensorsToDisposeWhenLayerDone = new Dictionary<string, List<string>>();
-        HashSet<string> m_UnconnectedTensors = new HashSet<string>(); // model.outputs + unconnected layer.outputs
+        Dictionary<int, Tensor> m_InUseTensorsPool = new Dictionary<int, Tensor>(); // in-use layer.index -> tensor pool
+        HashSet<int> m_TensorsNotOwned = new HashSet<int>(); // model.inputs + outputs which user has taken ownership
+        Dictionary<int, List<int>> m_TensorsToDisposeWhenLayerDone = new Dictionary<int, List<int>>();
+        HashSet<int> m_UnconnectedTensors = new HashSet<int>(); // model.outputs + unconnected layer.outputs
 
         TensorPool m_TensorPool = new TensorPool(); // re-use tensor pool
 
         public ModelStorage() { }
 
         /// <inheritdoc/>
-        public Tensor GetTensor(string index)
+        public Tensor GetTensor(int index)
         {
-            if (string.IsNullOrEmpty(index))
+            if (index == -1)
                 return null;
             return m_InUseTensorsPool[index];
+        }
+
+        public TensorShape GetTensorShape(int tensorIndex)
+        {
+            return m_InUseTensorsPool[tensorIndex].shape;
+        }
+
+        public DataType GetDataType(int tensorIndex)
+        {
+            return m_InUseTensorsPool[tensorIndex].dataType;
+        }
+
+        /// <inheritdoc/>
+        public int GetInt(int tensorIndex, int defaultValue)
+        {
+            var tensor = GetTensor(tensorIndex) as TensorInt;
+            if (tensor is null)
+                return defaultValue;
+
+            if (tensor.dataOnBackend is IReadableTensorData readableTensorData)
+                return readableTensorData.Get<int>(0);
+
+            D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Sentis will download the tensor data which may be slow.");
+            return tensor.dataOnBackend.Download<int>(1)[0];
+        }
+
+        /// <inheritdoc/>
+        public float GetFloat(int tensorIndex, float defaultValue)
+        {
+            var tensor = GetTensor(tensorIndex) as TensorFloat;
+            if (tensor is null)
+                return defaultValue;
+            if (tensor.dataOnBackend is IReadableTensorData readableTensorData)
+                return readableTensorData.Get<float>(0);
+
+            D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Sentis will download the tensor data which may be slow.");
+            return tensor.dataOnBackend.Download<float>(1)[0];
+        }
+
+        /// <inheritdoc/>
+        public ReadOnlySpan<int> GetInts(int tensorIndex, ReadOnlySpan<int> defaultValue)
+        {
+            var tensor = GetTensor(tensorIndex) as TensorInt;
+            if (tensor is null)
+                return defaultValue;
+            if (tensor.dataOnBackend is IReadableTensorData readableTensorData)
+                return readableTensorData.ToReadOnlySpan<int>(tensor.shape.length);
+
+            D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Sentis will download the tensor data which may be slow.");
+            return tensor.dataOnBackend.Download<int>(tensor.shape.length).AsReadOnlySpan();
+        }
+
+        /// <inheritdoc/>
+        public ReadOnlySpan<float> GetFloats(int tensorIndex, ReadOnlySpan<float> defaultValue)
+        {
+            var tensor = GetTensor(tensorIndex) as TensorFloat;
+            if (tensor is null)
+                return defaultValue;
+            if (tensor.dataOnBackend is IReadableTensorData readableTensorData)
+                return readableTensorData.ToReadOnlySpan<float>(tensor.shape.length);
+
+            D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Sentis will download the tensor data which may be slow.");
+            return tensor.dataOnBackend.Download<float>(tensor.shape.length).AsReadOnlySpan();
         }
 
         /// <inheritdoc/>
@@ -76,17 +139,17 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Store(string index, Tensor result)
+        public void Store(int index, Tensor result)
         {
-            if (string.IsNullOrEmpty(index))
+            if (index == -1)
                 return;
             m_InUseTensorsPool[index] = result;
         }
 
         /// <inheritdoc/>
-        public Tensor AllocateTensorAndStore(string index, TensorShape shape, DataType dataType, BackendType backendType)
+        public Tensor AllocateTensorAndStore(int index, TensorShape shape, DataType dataType, BackendType backendType)
         {
-            if (string.IsNullOrEmpty(index))
+            if (index == -1)
                 return null;
             var tensor = AllocateTensor(shape, dataType, backendType);
             Store(index, tensor);
@@ -114,7 +177,7 @@ namespace Unity.Sentis
             m_TensorsToDisposeWhenLayerDone.Clear();
         }
 
-        protected bool ValidateInputShapes(Model model, IDictionary<string, TensorShape> inputShapes)
+        protected bool ValidateInputShapes(Model model, IDictionary<int, TensorShape> inputShapes)
         {
             var valid = true;
             foreach (var input in model.inputs)
@@ -140,7 +203,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void SetInput(string index, Tensor X)
+        public void SetInput(int index, Tensor X)
         {
             m_InUseTensorsPool[index] = X;
         }
@@ -152,15 +215,15 @@ namespace Unity.Sentis
             m_InUseTensorsPool.Clear();
             m_TensorsNotOwned.Clear();
             m_UnconnectedTensors.Clear();
-            m_TensorsNotOwned = new HashSet<string>(model.inputs.Select(i => i.index));
+            m_TensorsNotOwned = new HashSet<int>(model.inputs.Select(i => i.index));
 
             // TODO<Allocator dynamic load constants from disk
-            HashSet<string> constants = new HashSet<string>();
+            HashSet<int> constants = new HashSet<int>();
             for(var i = 0; i < model.constants.Count; i++)
             {
                 // TODO<Allocator> consider moving constants in memory pool to get disposed
                 var constant = model.constants[i];
-                Tensor tensor = AllocatorUtils.AllocTensor(constant.dataType, constant.shape, constant.shape.length == 0 ? null : new BurstTensorData(constant.weights));
+                Tensor tensor = AllocatorUtils.AllocTensor(constant.dataType, constant.shape, new BurstTensorData(constant.weights));
 
                 m_InUseTensorsPool[constant.index] = tensor;
                 constants.Add(constant.index);
@@ -168,7 +231,7 @@ namespace Unity.Sentis
                     constant.weights = null;
             }
 
-            m_UnconnectedTensors = new HashSet<string>(model.inputs.Select(i => i.index));
+            m_UnconnectedTensors = new HashSet<int>(model.inputs.Select(i => i.index));
 
             // For each layer we find the latest downstream layer that has said layer as input
             // ex:
@@ -177,12 +240,12 @@ namespace Unity.Sentis
             //   -> 7 ------------/
             // latestDownstreamLayer:
             //  0 -> 7, 1 -> 4, 2 -> 3, 4 -> 5, 5 -> 8, 7 -> 8
-            Dictionary<string, string> latestDownstreamLayer = new Dictionary<string, string>();
+            Dictionary<int, int> latestDownstreamLayer = new Dictionary<int, int>();
             foreach (var layer in model.layers)
             {
                 foreach (var input in layer.inputs)
                 {
-                    if (string.IsNullOrEmpty(input) || constants.Contains(input)) // constants are kept around until dispose
+                    if ((input == -1) || constants.Contains(input)) // constants are kept around until dispose
                         continue;
                     m_UnconnectedTensors.Remove(input);
                     latestDownstreamLayer[input] = layer.outputs[0];
@@ -203,15 +266,15 @@ namespace Unity.Sentis
             // 3 -> [2], 4 -> [1], 5 -> [4,3] , 7 -> [0], 8 -> [5,7]
             foreach (var entry in latestDownstreamLayer)
             {
-                string layerIndex = entry.Key;
-                string downstreamLayer = entry.Value;
+                int layerIndex = entry.Key;
+                int downstreamLayer = entry.Value;
                 if (m_UnconnectedTensors.Contains(layerIndex) || m_TensorsNotOwned.Contains(layerIndex))
                     continue;
 
                 if (m_TensorsToDisposeWhenLayerDone.ContainsKey(downstreamLayer))
                     m_TensorsToDisposeWhenLayerDone[downstreamLayer].Add(layerIndex);
                 else
-                    m_TensorsToDisposeWhenLayerDone[downstreamLayer] = new List<string>() { layerIndex };
+                    m_TensorsToDisposeWhenLayerDone[downstreamLayer] = new List<int>() { layerIndex };
             }
 
             // Remove inputs from m_UnconnectedTensors so they don't get disposed
@@ -258,7 +321,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public Tensor PeekTensor(string index)
+        public Tensor PeekTensor(int index)
         {
             Tensor tensor;
             if (!m_InUseTensorsPool.TryGetValue(index, out tensor))
@@ -268,7 +331,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public Tensor TakeTensorOwnership(string index)
+        public Tensor TakeTensorOwnership(int index)
         {
             Tensor tensor;
             if (!m_InUseTensorsPool.Remove(index, out tensor))

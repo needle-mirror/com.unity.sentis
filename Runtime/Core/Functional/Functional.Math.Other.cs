@@ -51,7 +51,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor BroadcastTo(this FunctionalTensor input, int[] shape)
         {
-            return FunctionalTensor.FromLayer(new Layers.Expand(null, null, null), input.DataType, new[] { input, Tensor(shape) });
+            return FunctionalTensor.FromLayer(new Layers.Expand(-1, -1, -1), input.DataType, new[] { input, Tensor(shape) });
         }
 
         /// <summary>
@@ -61,7 +61,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Clone(this FunctionalTensor input)
         {
-            return FunctionalTensor.FromLayer(new Layers.Identity(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Identity(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -72,7 +72,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor CumSum(FunctionalTensor input, int dim)
         {
-            return FunctionalTensor.FromLayer(new Layers.CumSum(null, null, null, false, false), input.DataType, new[] { input, Tensor(dim) });
+            return FunctionalTensor.FromLayer(new Layers.CumSum(-1, -1, -1, false, false), input.DataType, new[] { input, Tensor(dim) });
         }
 
         /// <summary>
@@ -83,7 +83,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Einsum(string equation, params FunctionalTensor[] operands)
         {
-            return FunctionalTensor.FromLayer(new Layers.Einsum(null, new string[operands.Length], equation), CommonType(operands), operands);
+            return FunctionalTensor.FromLayer(new Layers.Einsum(-1, new int[operands.Length], equation), CommonType(operands), operands);
         }
 
         /// <summary>
@@ -105,7 +105,7 @@ namespace Unity.Sentis
                 steps[i] = -1;
             }
 
-            return FunctionalTensor.FromLayer(new Layers.Slice(null, null, null, null, null, null), input.DataType, new[] { input, Tensor(starts), Tensor(ends), Tensor(dims), Tensor(steps) });
+            return FunctionalTensor.FromLayer(new Layers.Slice(-1, -1, -1, -1, -1, -1), input.DataType, new[] { input, Tensor(starts), Tensor(ends), Tensor(dims), Tensor(steps) });
         }
 
         /// <summary>
@@ -146,7 +146,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor TriL(FunctionalTensor input, int diagonal = 0)
         {
-            return FunctionalTensor.FromLayer(new Layers.Trilu(null, null, null, Layers.TriluMode.Lower), input.DataType, new[] { input, Tensor(diagonal) });
+            return FunctionalTensor.FromLayer(new Layers.Trilu(-1, -1, -1, Layers.TriluMode.Lower), input.DataType, new[] { input, Tensor(diagonal) });
         }
 
         /// <summary>
@@ -157,7 +157,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor TriU(FunctionalTensor input, int diagonal = 0)
         {
-            return FunctionalTensor.FromLayer(new Layers.Trilu(null, null, null, Layers.TriluMode.Upper), input.DataType, new[] { input, Tensor(diagonal) });
+            return FunctionalTensor.FromLayer(new Layers.Trilu(-1, -1, -1, Layers.TriluMode.Upper), input.DataType, new[] { input, Tensor(diagonal) });
         }
     }
 }

@@ -7,9 +7,9 @@ namespace Unity.Sentis
 {
     class LinearLayerFusing : IDisposable
     {
-        public static bool IsLayerLinear(Layers.Layer layer, Dictionary<string, Layers.Constant> constTensors)
+        public static bool IsLayerLinear(Layers.Layer layer, Dictionary<int, Layers.Constant> constTensors)
         {
-            var constInputs = layer.inputs.Count(x => string.IsNullOrEmpty(x) || constTensors.ContainsKey(x));
+            var constInputs = layer.inputs.Count(x => x == -1 || constTensors.ContainsKey(x));
             bool allConstInputsButOne = (layer.inputs.Length - constInputs) == 1;
 
             return layer is Layers.Dense ||
@@ -26,7 +26,7 @@ namespace Unity.Sentis
                    layer is Layers.Mul;
         }
 
-        public bool AreLayersFusable(Layers.Layer l0, Layers.Layer l1, Dictionary<string, Layers.Constant> constTensors)
+        public bool AreLayersFusable(Layers.Layer l0, Layers.Layer l1, Dictionary<int, Layers.Constant> constTensors)
         {
             bool conditions = true;
 
@@ -106,15 +106,15 @@ namespace Unity.Sentis
 
         readonly CPUOps m_Ops = new CPUOps();
 
-        readonly Dictionary<(Type, Type), Func<Layers.Layer, Layers.Layer, Dictionary<string, Layers.Constant>, Layers.Layer>> m_LayerFusers =
-            new Dictionary<(Type, Type), Func<Layers.Layer, Layers.Layer, Dictionary<string, Layers.Constant>, Layers.Layer>>();
+        readonly Dictionary<(Type, Type), Func<Layers.Layer, Layers.Layer, Dictionary<int, Layers.Constant>, Layers.Layer>> m_LayerFusers =
+            new Dictionary<(Type, Type), Func<Layers.Layer, Layers.Layer, Dictionary<int, Layers.Constant>, Layers.Layer>>();
 
         public void Dispose()
         {
             m_Ops.Dispose();
         }
 
-        void Add((Type, Type) layersType, Func<Layers.Layer, Layers.Layer, Dictionary<string, Layers.Constant>, Layers.Layer> opFuseAction)
+        void Add((Type, Type) layersType, Func<Layers.Layer, Layers.Layer, Dictionary<int, Layers.Constant>, Layers.Layer> opFuseAction)
         {
             m_LayerFusers.Add(layersType, opFuseAction);
         }
@@ -276,7 +276,7 @@ namespace Unity.Sentis
                 using TensorFloat scale0 = constTensors.ContainsKey(l0.inputs[0]) ? constTensors[l0.inputs[0]].WeightsToTensor() as TensorFloat : constTensors[l0.inputs[1]].WeightsToTensor() as TensorFloat;
 
                 using TensorFloat kernel1 = constTensors[l1.inputs[1]].WeightsToTensor() as TensorFloat;
-                using TensorFloat bias1 = !string.IsNullOrEmpty(l1.inputs[2]) ? constTensors[l1.inputs[2]].WeightsToTensor() as TensorFloat : TensorFloat.AllocZeros(new TensorShape(kernel1.shape[0]));
+                using TensorFloat bias1 = (l1.inputs[2] != -1) ? constTensors[l1.inputs[2]].WeightsToTensor() as TensorFloat : TensorFloat.AllocZeros(new TensorShape(kernel1.shape[0]));
 
                 Layers.Layer lmerged = new Layers.Conv(l0.outputs[0], l0.inputs[0], l0.inputs[1], l0.inputs[2], (l1 as Layers.Conv).group, (l1 as Layers.Conv).strides, (l1 as Layers.Conv).pads, (l1 as Layers.Conv).dilations, (l1 as Layers.Conv).autoPad);
                 // k = k * s
@@ -290,13 +290,13 @@ namespace Unity.Sentis
             Add((typeof(Layers.Conv), typeof(Layers.Mul)), (l0, l1, constTensors) =>
             {
                 using TensorFloat kernel0 = constTensors[l0.inputs[1]].WeightsToTensor() as TensorFloat;
-                bool convHasBias = !string.IsNullOrEmpty(l0.inputs[2]);
+                bool convHasBias = (l0.inputs[2] != -1);
                 using TensorFloat bias0 = convHasBias ? constTensors[l0.inputs[2]].WeightsToTensor() as TensorFloat : TensorFloat.AllocZeros(new TensorShape(kernel0.shape[0]));
 
                 using TensorFloat scale1 = constTensors.ContainsKey(l1.inputs[0]) ? constTensors[l1.inputs[0]].WeightsToTensor() as TensorFloat : constTensors[l1.inputs[1]].WeightsToTensor() as TensorFloat;
-                string biasName = convHasBias ? l0.inputs[2] : constTensors.ContainsKey(l1.inputs[0]) ? l1.inputs[0] : l1.inputs[1];
+                int biasIndex = convHasBias ? l0.inputs[2] : constTensors.ContainsKey(l1.inputs[0]) ? l1.inputs[0] : l1.inputs[1];
 
-                Layers.Layer lmerged = new Layers.Conv(l0.outputs[0], l0.inputs[0], l0.inputs[1], biasName, (l0 as Layers.Conv).group, (l0 as Layers.Conv).strides, (l0 as Layers.Conv).pads, (l0 as Layers.Conv).dilations, (l0 as Layers.Conv).autoPad);
+                Layers.Layer lmerged = new Layers.Conv(l0.outputs[0], l0.inputs[0], l0.inputs[1], biasIndex, (l0 as Layers.Conv).group, (l0 as Layers.Conv).strides, (l0 as Layers.Conv).pads, (l0 as Layers.Conv).dilations, (l0 as Layers.Conv).autoPad);
 
                 // k = s1*k0
                 using TensorFloat kernel = m_Ops.Mul(scale1, kernel0);
@@ -318,7 +318,7 @@ namespace Unity.Sentis
 
                 // k = k
                 // b = Sum_k[wk * beta] + b
-                using TensorFloat bias = !string.IsNullOrEmpty(l1.inputs[2]) ? constTensors[l1.inputs[2]].WeightsToTensor() as TensorFloat : TensorFloat.AllocZeros(new TensorShape(kernel1.shape[0]));
+                using TensorFloat bias = (l1.inputs[2] != -1) ? constTensors[l1.inputs[2]].WeightsToTensor() as TensorFloat : TensorFloat.AllocZeros(new TensorShape(kernel1.shape[0]));
                 var itK = new TensorNDIterator(kernel1.shape);
                 itK = itK.RemoveDim(0);
                 itK = itK.RemoveDim(0);
@@ -347,12 +347,12 @@ namespace Unity.Sentis
             {
                 using TensorFloat kernel0 = constTensors[l0.inputs[1]].WeightsToTensor() as TensorFloat;
 
-                bool convHasBias = !string.IsNullOrEmpty(l0.inputs[2]);
+                bool convHasBias = (l0.inputs[2] != -1);
                 using TensorFloat bias0 = convHasBias ? constTensors[l0.inputs[2]].WeightsToTensor() as TensorFloat : TensorFloat.AllocZeros(new TensorShape(kernel0.shape[0]));
 
                 using TensorFloat bias1 = constTensors.ContainsKey(l1.inputs[0]) ? constTensors[l1.inputs[0]].WeightsToTensor() as TensorFloat : constTensors[l1.inputs[1]].WeightsToTensor() as TensorFloat;
-                string biasName = convHasBias ? l0.inputs[2] : constTensors.ContainsKey(l1.inputs[0]) ? l1.inputs[0] : l1.inputs[1];
-                Layers.Layer lmerged = new Layers.Conv(l0.outputs[0], l0.inputs[0], l0.inputs[1], biasName, (l0 as Layers.Conv).group, (l0 as Layers.Conv).strides, (l0 as Layers.Conv).pads, (l0 as Layers.Conv).dilations, (l0 as Layers.Conv).autoPad);
+                var biasIndex = convHasBias ? l0.inputs[2] : constTensors.ContainsKey(l1.inputs[0]) ? l1.inputs[0] : l1.inputs[1];
+                Layers.Layer lmerged = new Layers.Conv(l0.outputs[0], l0.inputs[0], l0.inputs[1], biasIndex, (l0 as Layers.Conv).group, (l0 as Layers.Conv).strides, (l0 as Layers.Conv).pads, (l0 as Layers.Conv).dilations, (l0 as Layers.Conv).autoPad);
 
                 // b = b0+b1
                 using TensorFloat bias = m_Ops.Add(bias0, bias1);
@@ -365,7 +365,7 @@ namespace Unity.Sentis
             Add((typeof(Layers.Conv), typeof(Layers.ScaleBias)), (l0, l1, constTensors) =>
             {
                 using TensorFloat kernel0 = constTensors[l0.inputs[1]].WeightsToTensor() as TensorFloat;
-                bool convHasBias = !string.IsNullOrEmpty(l0.inputs[2]);
+                bool convHasBias = (l0.inputs[2] != -1);
                 using TensorFloat bias0 = convHasBias ? constTensors[l0.inputs[2]].WeightsToTensor() as TensorFloat : TensorFloat.AllocZeros(new TensorShape(kernel0.shape[0]));
 
                 using TensorFloat scale1 = constTensors[l1.inputs[1]].WeightsToTensor() as TensorFloat;
@@ -382,8 +382,8 @@ namespace Unity.Sentis
                 using TensorFloat bias = m_Ops.Add(mul, bias1);
                 bias.shape = new TensorShape(bias.shape.length);
 
-                string nameBias = convHasBias ? l0.inputs[2] : l1.inputs[2];
-                Layers.Layer lmerged = new Layers.Conv(l0.outputs[0], l0.inputs[0], l0.inputs[1], nameBias, (l0 as Layers.Conv).group, (l0 as Layers.Conv).strides, (l0 as Layers.Conv).pads, (l0 as Layers.Conv).dilations, (l0 as Layers.Conv).autoPad);
+                var nameIndex = convHasBias ? l0.inputs[2] : l1.inputs[2];
+                Layers.Layer lmerged = new Layers.Conv(l0.outputs[0], l0.inputs[0], l0.inputs[1], nameIndex, (l0 as Layers.Conv).group, (l0 as Layers.Conv).strides, (l0 as Layers.Conv).pads, (l0 as Layers.Conv).dilations, (l0 as Layers.Conv).autoPad);
 
                 constTensors[lmerged.inputs[1]].TensorToDataSet(kernel);
                 constTensors[lmerged.inputs[2]].TensorToDataSet(bias);
@@ -402,7 +402,7 @@ namespace Unity.Sentis
                 // k = k * s
                 using TensorFloat kernel = new TensorFloat(kernel1.shape, new float[kernel1.shape.length]);
                 // b = Sum_k[wk * beta] + b
-                using TensorFloat bias = !string.IsNullOrEmpty(l1.inputs[2]) ? constTensors[l1.inputs[2]].WeightsToTensor() as TensorFloat : TensorFloat.AllocZeros(new TensorShape(kernel1.shape[0]));
+                using TensorFloat bias = (l1.inputs[2] != -1) ? constTensors[l1.inputs[2]].WeightsToTensor() as TensorFloat : TensorFloat.AllocZeros(new TensorShape(kernel1.shape[0]));
 
                 var itK = new TensorNDIterator(kernel1.shape);
                 itK = itK.RemoveDim(0);
@@ -580,7 +580,7 @@ namespace Unity.Sentis
             });
         }
 
-        public Layers.Layer FuseLayers(Layers.Layer l0, Layers.Layer l1, Dictionary<string, Layers.Constant> constTensors)
+        public Layers.Layer FuseLayers(Layers.Layer l0, Layers.Layer l1, Dictionary<int, Layers.Constant> constTensors)
         {
             var fnFuse = m_LayerFusers[(l0.GetType(), l1.GetType())];
             return fnFuse(l0, l1, constTensors);

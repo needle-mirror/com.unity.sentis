@@ -1,6 +1,6 @@
 # Supported models
 
-You can import open-source models into your Sentis project. Explore the following sections to understand the models Sentis supports, and find an appropriate model for your project. 
+You can import open-source models into your Sentis project. Explore the following sections to understand the models Sentis supports, and find an appropriate model for your project.
 
 ## Pre-trained models
 

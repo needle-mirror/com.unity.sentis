@@ -28,13 +28,13 @@ public class ModelExecutionMultipleInputsOutputs : MonoBehaviour
         m_Engine.Execute(m_Inputs);
 
         // model has multiple output, so to know which output to get we need to specify which one we are referring to
-        var outputTensor0 = m_Engine.PeekOutput("output0");
-        var outputTensor1 = m_Engine.PeekOutput("output1");
-        outputTensor0.CompleteOperationsAndDownload();
-        outputTensor1.CompleteOperationsAndDownload();
+        var outputTensor0 = m_Engine.PeekOutput("output0") as TensorFloat;
+        var outputTensor1 = m_Engine.PeekOutput("output1") as TensorFloat;
 
-        // Data is now ready to read.
+        // If you wish to read from the tensor, download it to cpu.
         // See async examples for non-blocking readback.
+        var cpuTensor0 = outputTensor0.ReadbackAndClone();
+        var cpuTensor1 = outputTensor1.ReadbackAndClone();
     }
 
     void OnDisable()

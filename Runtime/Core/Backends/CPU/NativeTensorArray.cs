@@ -16,9 +16,6 @@ namespace Unity.Sentis
         public unsafe NativeMemorySafeHandle(long size, bool clearOnInit, Allocator allocator) : base(IntPtr.Zero, true)
         {
             m_AllocatorLabel = allocator;
-            if (size <= 0)
-                return;
-
             SetHandle((IntPtr)UnsafeUtility.Malloc(size, k_Alignment, allocator));
             if (clearOnInit)
                 UnsafeUtility.MemClear((void*)handle, size);
@@ -174,8 +171,8 @@ namespace Unity.Sentis
         {
             if (!UnsafeUtility.IsValidAllocator(allocator))
                 throw new InvalidOperationException("The NativeTensorArray should use a valid allocator.");
-            if (length < 0)
-                throw new ArgumentOutOfRangeException(nameof (length), "Length must be >= 0");
+            if (length <= 0)
+                throw new ArgumentOutOfRangeException(nameof (length), "Length must be > 0");
 
             m_Length = length;
             m_SafeHandle = new NativeMemorySafeHandle(m_Length * k_DataItemSize, clearOnInit, allocator);

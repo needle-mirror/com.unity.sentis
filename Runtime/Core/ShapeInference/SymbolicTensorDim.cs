@@ -249,10 +249,10 @@ namespace Unity.Sentis
             return Unknown;
         }
 
-        ///   | 0   1   A   ?
-        /// --|-----------------
-        /// 0 | 0   4   A   ?
-        /// 3 | 3   4   ?   ?
+        //   | 0   1   A   ?
+        // --|-----------------
+        // 0 | 0   4   A   ?
+        // 3 | 3   4   ?   ?
         /// <summary>
         /// Adds a `SymbolicTensorDim` to an `int`.
         /// </summary>
@@ -268,12 +268,12 @@ namespace Unity.Sentis
             return Unknown;
         }
 
-        ///   | 0   1
-        /// --|--------
-        /// 0 | 0   1
-        /// 3 | 3   4
-        /// A | A   ?
-        /// ? | ?   ?
+        //   | 0   1
+        // --|--------
+        // 0 | 0   1
+        // 3 | 3   4
+        // A | A   ?
+        // ? | ?   ?
         /// <summary>
         /// Adds an `int` to a `SymbolicTensorDim`.
         /// </summary>
@@ -285,11 +285,11 @@ namespace Unity.Sentis
             return b + a;
         }
 
-        ///   | 0   1   A   B   ?
-        /// --|---------------------
-        /// 3 | 3   2   ?   ?   ?
-        /// A | A   ?   0   ?   ?
-        /// ? | ?   ?   ?   ?   ?
+        //   | 0   1   A   B   ?
+        // --|---------------------
+        // 3 | 3   2   ?   ?   ?
+        // A | A   ?   0   ?   ?
+        // ? | ?   ?   ?   ?   ?
         /// <summary>
         /// Subtracts a `SymbolicTensorDim` from another `SymbolicTensorDim`.
         /// </summary>
@@ -307,9 +307,9 @@ namespace Unity.Sentis
             return Unknown;
         }
 
-        ///   | 0   1   A   B   ?
-        /// --|---------------------
-        /// 3 | 3   2   ?   ?   ?
+        //   | 0   1   A   B   ?
+        // --|---------------------
+        // 3 | 3   2   ?   ?   ?
         /// <summary>
         /// Subtracts a `SymbolicTensorDim` from an `int`.
         /// </summary>
@@ -323,11 +323,11 @@ namespace Unity.Sentis
             return Unknown;
         }
 
-        ///   | 0   1
-        /// --|---------
-        /// 3 | 3   2
-        /// A | A   ?
-        /// ? | ?   ?
+        //   | 0   1
+        // --|---------
+        // 3 | 3   2
+        // A | A   ?
+        // ? | ?   ?
         /// <summary>
         /// Subtracts an `int` from a `SymbolicTensorDim`.
         /// </summary>
@@ -343,12 +343,12 @@ namespace Unity.Sentis
             return Unknown;
         }
 
-        ///   | 0   1   3   A   B   ?
-        /// --|-----------------------
-        /// 0 | 0   0   0   0   0   0
-        /// 2 | 0   2   6   ?   ?   ?
-        /// A | 0   A   ?   ?   ?   ?
-        /// ? | 0   ?   ?   ?   ?   ?
+        //   | 0   1   3   A   B   ?
+        // --|-----------------------
+        // 0 | 0   0   0   0   0   0
+        // 2 | 0   2   6   ?   ?   ?
+        // A | 0   A   ?   ?   ?   ?
+        // ? | 0   ?   ?   ?   ?   ?
         /// <summary>
         /// Multiplies two `SymbolicTensorDim` dimensions.
         /// </summary>
@@ -364,10 +364,10 @@ namespace Unity.Sentis
             return Unknown;
         }
 
-        ///   | 1   3   A   B   ?
-        /// --|--------------------
-        /// 0 | 0   0   0   0   0
-        /// 2 | 2   6   ?   ?   ?
+        //   | 1   3   A   B   ?
+        // --|--------------------
+        // 0 | 0   0   0   0   0
+        // 2 | 2   6   ?   ?   ?
         /// <summary>
         /// Multiplies an `int` by a `SymbolicTensorDim`.
         /// </summary>
@@ -385,11 +385,11 @@ namespace Unity.Sentis
             return Unknown;
         }
 
-        ///   | 0   1   3
-        /// --|-----------
-        /// 2 | 0   2   6
-        /// A | 0   A   ?
-        /// ? | 0   ?   ?
+        //   | 0   1   3
+        // --|-----------
+        // 2 | 0   2   6
+        // A | 0   A   ?
+        // ? | 0   ?   ?
         /// <summary>
         /// Multiplies a `SymbolicTensorDim` by an `int`.
         /// </summary>
@@ -401,12 +401,12 @@ namespace Unity.Sentis
             return b * a;
         }
 
-        ///   | 1   2   3   A   B   ?
-        /// --|-----------------------
-        /// 0 | 0   0   0   0   0   0
-        /// 2 | 2   1  Err  ?   ?   ?
-        /// A | A   3   ?   1   ?   ?
-        /// ? | ?   ?   ?   ?   ?   ?
+        //   | 1   2   3   A   B   ?
+        // --|-----------------------
+        // 0 | 0   0   0   0   0   0
+        // 2 | 2   1  Err  ?   ?   ?
+        // A | A   3   ?   1   ?   ?
+        // ? | ?   ?   ?   ?   ?   ?
         /// <summary>
         /// Divides two `SymbolicTensorDim` dimensions a whole number of times. The method throws an error if the result has a remainder.
         /// </summary>
@@ -424,10 +424,10 @@ namespace Unity.Sentis
             return Unknown;
         }
 
-        ///   | 1   2   3   A   ?
-        /// --|--------------------
-        /// 0 | 0   0   0   0   0
-        /// 2 | 2   1  Err  ?   ?
+        //   | 1   2   3   A   ?
+        // --|--------------------
+        // 0 | 0   0   0   0   0
+        // 2 | 2   1  Err  ?   ?
         /// <summary>
         /// Divides an `int` by a `SymbolicTensorDim` a whole number of times. The method throws an error if the result has a remainder.
         /// </summary>
@@ -448,11 +448,11 @@ namespace Unity.Sentis
             return Unknown;
         }
 
-        ///   | 1   2   3
-        /// --|------------
-        /// 2 | 2   1  Err
-        /// A | A   3   ?
-        /// ? | ?   ?   ?
+        //   | 1   2   3
+        // --|------------
+        // 2 | 2   1  Err
+        // A | A   3   ?
+        // ? | ?   ?   ?
         /// <summary>
         /// Divides a `SymbolicTensorDim` by an `int` a whole number of times. The method throws an error if the result has a remainder.
         /// </summary>
@@ -472,14 +472,14 @@ namespace Unity.Sentis
             return Unknown;
         }
 
-        /// with rounding direction = 1
-        ///   |  0   1   2
-        /// --|-------------
-        /// 0 | Err  0   0
-        /// 1 | Err  1   1
-        /// 2 | Err  2   1
-        /// A | Err  A   ?
-        /// ? | Err  ?   ?
+        // with rounding direction = 1
+        //   |  0   1   2
+        // --|-------------
+        // 0 | Err  0   0
+        // 1 | Err  1   1
+        // 2 | Err  2   1
+        // A | Err  A   ?
+        // ? | Err  ?   ?
         /// <summary>
         /// Divides a `SymbolicTensorDim` by a `float` to return a rounded `SymbolicTensorDim`.
         /// rounding direction greater than 0 = ceiling
@@ -548,12 +548,12 @@ namespace Unity.Sentis
             return d.m_DimType == DimType.Value && d.m_Value >= v;
         }
 
-        ///   | 2   3   A   B   ?
-        /// --|-------------------
-        /// 2 | 2  Err  2   2   2
-        /// A | 2   3   A   A   A
-        /// ? | 2   3   A   B   ?
-        /// <summary>
+        //   | 2   3   A   B   ?
+        // --|-------------------
+        // 2 | 2  Err  2   2   2
+        // A | 2   3   A   A   A
+        // ? | 2   3   A   B   ?
+        // <summary>
         /// Returns the better known of two `SymbolicTensorDim` dimensions known to be equal. The method throws an error if both dimensions are values and not equal.
         /// </summary>
         /// <param name="a">The first `SymbolicTensorDim`.</param>
@@ -574,12 +574,12 @@ namespace Unity.Sentis
             return a;
         }
 
-        ///   | 1   3   A   B   ?
-        /// --|-----------------
-        /// 1 | 1   3   A   B   ?
-        /// 2 | 2  Err  2   2   2
-        /// A | A   3   A   ?   ?
-        /// ? | ?   3   ?   ?   ?
+        //   | 1   3   A   B   ?
+        // --|-----------------
+        // 1 | 1   3   A   B   ?
+        // 2 | 2  Err  2   2   2
+        // A | A   3   A   ?   ?
+        // ? | ?   3   ?   ?   ?
         /// <summary>
         /// Broadcasts two `SymbolicTensorDim` dimensions using a broadcast rule where a dimension of size 1 can broadcast with any other dimension.
         /// </summary>
@@ -600,12 +600,12 @@ namespace Unity.Sentis
             return Unknown;
         }
 
-        ///   | 1   3   B   ?
-        /// --|-----------------
-        /// 1 | 1   3   B   ?
-        /// 2 | 2  Err  2   2
-        /// A | A   3   ?   ?
-        /// ? | ?   3   ?   ?
+        //   | 1   3   B   ?
+        // --|-----------------
+        // 1 | 1   3   B   ?
+        // 2 | 2  Err  2   2
+        // A | A   3   ?   ?
+        // ? | ?   3   ?   ?
         /// <summary>
         /// Broadcasts the `SymbolicTensorDim` with another `SymbolicTensorDim` using a broadcast rule where a dimension of size 1 can broadcast with any other dimension.
         /// </summary>

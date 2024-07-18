@@ -348,7 +348,7 @@ public partial class CPUBackend
 
         public float Opperation(float v)
         {
-            
+
             float vv = v / sqrt(2);
             // Abramowitz/Stegun approximations
             // erf(x) = -erf(-x)
@@ -404,7 +404,7 @@ public partial class CPUBackend
 
         public float Opperation(float v)
         {
-            
+
             // Abramowitz/Stegun approximations
             // erf(x) = -erf(-x)
             float x = abs(v);
@@ -494,7 +494,7 @@ public partial class CPUBackend
 
         public float Opperation(float v)
         {
-            
+
             float y = 0.0f;
             if (v < -beta)
                 y = v + alpha;
@@ -538,7 +538,7 @@ public partial class CPUBackend
 
         public float Opperation(float v)
         {
-            
+
             float y = 0.0f;
             if (v > alpha)
                 y = v;

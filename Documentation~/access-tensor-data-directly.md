@@ -1,6 +1,6 @@
 # Access tensor data directly
 
-To avoid having to do a slow readback of a tensor from a device when accessing or passing it between multiple models, opt to directly read from and write to the tensor's underlying native data.
+To avoid a slow readback of a tensor from a device when accessing or passing it between multiple models, opt to directly read from and write to the tensor's underlying native data.
 
 Refer to [Tensor fundamentals in Sentis](tensor-fundamentals.md#memory-location) for more information about how Sentis stores tensor data.
 
@@ -18,7 +18,7 @@ public class CheckTensorLocation : MonoBehaviour
 {
 
     public Texture2D inputTexture;
-    
+
     void Start()
     {
         // Create input data as a tensor

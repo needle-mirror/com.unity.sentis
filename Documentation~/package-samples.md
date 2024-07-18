@@ -25,11 +25,11 @@ To find the sample scripts:
 
 To import a sample folder into your project, select **Import**. Unity creates a `Samples` folder in your project, and imports the sample folder you selected.
 
-The following table describes the available samples: 
+The following table describes the available samples:
 
 | Sample folder                           | Description                                                                                                                                                                                      |
 |-----------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| |
-| **Convert tensors to textures**         | Examples of converting tensors to textures. Refer to [Use output data](use-model-output.md) for more information.                                                                                | 
+| **Convert tensors to textures**         | Examples of converting tensors to textures. Refer to [Use output data](use-model-output.md) for more information.                                                                                |
 | **Convert textures to tensors**         | Examples of converting textures to tensors. Refer to [Create input for a model](create-an-input-tensor.md) for more information.                                                                 |
 | **Copy a texture tensor to the screen** | An example of using `TextureConverter.RenderToScreen` to copy a texture tensor to the screen. Refer to [Use output data](use-model-output.md) for more information.                              |
 | **Do an operation on a tensor**         | An example of using `IBackend` to do an operation on a tensor.                                          |

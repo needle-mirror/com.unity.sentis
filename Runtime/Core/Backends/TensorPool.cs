@@ -32,6 +32,7 @@ namespace Unity.Sentis
                     throw new NotImplementedException();
             }
             tensor.shape = shape;
+
             ITensorData data; // alloc here or in ops?
             switch (backendType)
             {

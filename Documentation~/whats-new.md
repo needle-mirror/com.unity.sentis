@@ -1,3 +1,22 @@
+# What's new in Sentis 1.6.0-pre.1
+
+This is a summary of the changes from Sentis Sentis 1.5.0-pre.3 to 1.6.0-pre.1.
+
+### Added
+- Support for GridSample ONNX operator along with functional API method.
+- Functional API method for numpy-style RandomChoice.
+- BitonicSort backend method on GPUCompute for a fast GPU sort.
+- Improved error handling when loading unsupported legacy .sentis models.
+
+### Updated
+- Fully rewritten NonMaxSuppression operator, with fast inference on CPU and GPUCompute backends.
+- Reduced CPU allocation in some operators, resulting in less garbage collection.
+- Fixed inference errors in for some operators such as Slice and Multinomial.
+- Optimized inference for some Gather operations with a single index.
+- Optimized loading of compute functions for better performance on GPU.
+- Unified how tensors of zero length are handled reducing potential errors.
+- New methods for downloading and cloning tensors to the CPU.
+
 # What's new in Sentis 1.5.0-pre.3
 
 This is a summary of the changes from Sentis 1.4.0-pre.3 to Sentis 1.5.0-pre.3.
@@ -8,7 +27,7 @@ This is a summary of the changes from Sentis 1.4.0-pre.3 to Sentis 1.5.0-pre.3.
 - Model serialization and import speed has been improved
 - Project dependencies has been reworked to reduce build size
 - Unconnected model input tensors are handled properly
-- Better ONNX opset 18 support 
+- Better ONNX opset 18 support
 - Multinomial randomness is coherent across frames
 - Shader compilation errors on XBOX and Switch have been resolved
 
@@ -21,7 +40,7 @@ This is a summary of the changes from Sentis 1.3.0-pre.3 to Sentis 1.4.0-pre.3.
 - Functional API for building and editing models using PyTorch style syntax. This includes operator overloads, sliced indexing with ranges, and automatic type promotion.
 - Quantization API for compressing model weights by up to a factor of 4. Quantized models take up less space on disk and use less memory during inference.
 - Fast path for ScatterElements and GatherElements operations.
-- All back ends support the resize operator for all tensor shapes, and it includes support for the axes parameter.
+- All backends support the resize operator for all tensor shapes, and it includes support for the axes parameter.
 - Pad operator supports integer tensors and wrap mode, and supports axes input tensor.
 - Docs pages and package samples for new features.
 
@@ -34,7 +53,7 @@ This is a summary of the changes from Sentis 1.3.0-pre.3 to Sentis 1.4.0-pre.3.
 
 ## Removed
 
-- Model API where inputs, constants, and layers can be edited directly on a model. See the new functional API where you can build new models as well as adapt and extend existing models. 
+- Model API where inputs, constants, and layers can be edited directly on a model. See the new functional API where you can build new models as well as adapt and extend existing models.
 - Ops for direct operations on tensors. See the new functional API where you can create models to perform optimized operations on tensors.
 - Users can no longer define custom Open Neural Network Exchange (ONNX) layers due to their incompatibility with the new model serialization scheme. The custom import functionality will be reworked for an upcoming release.
 
@@ -85,15 +104,15 @@ This is a summary of the changes from Sentis 1.0 to Sentis 1.1.
 
 ## Added
 
-- GPUPixel back end now supports TensorInts and many more operators.
+- GPUPixel backend now supports TensorInts and many more operators.
 - Models can now be exported to `StreamingAssets`.
 - Interface for asynchronous readback of GPU tensors with callback.
-- Ops utility methods for float mathematics and getting and setting slices of tensors. 
+- Ops utility methods for float mathematics and getting and setting slices of tensors.
 
 ## Updated
 
 - Improved compatibility for many operators including Conv, ConvTranspose, and BatchNormalization.
-- Improved performance of many operators on GPUCompute and GPUCommandBuffer back ends.
+- Improved performance of many operators on GPUCompute and GPUCommandBuffer backends.
 - Reduced allocation when executing worker.
 - Improved import times.
 - Improved shape and data type inference to optimize models better.
@@ -114,8 +133,8 @@ For information on how to upgrade, refer to the [Upgrade Guide](upgrade-guide.md
 
 ## Updated
 
-- All the back end types have been optimized and improved so Sentis as a whole has better performance on both the GPU and the CPU.
+- All the backend types have been optimized and improved so Sentis as a whole has better performance on both the GPU and the CPU.
 - The way Sentis represents tensors has changed to make Sentis compatible with more models and make it easier to convert Python preprocessing code into C#. Refer to [Tensor fundamentals](tensor-fundamentals.md) and [Do operations on tensors](do-operations-on-tensors.md) for more information.
-- Sentis supports more ONNX operators. Refer to [Supported ONNX operators](supported-operators.md) for more information. 
+- Sentis supports more ONNX operators. Refer to [Supported ONNX operators](supported-operators.md) for more information.
 - You can now import models larger than two gigabytes.
 - The [Model Asset Import Settings](onnx-model-importer-properties.md) window no longer has the options for `Force Arbitrary Batch Size` and `Treat Errors as Warnings` settings. Additionally, the `Open imported NN model as temp file` button is no longer available, simply use the `Open` button.

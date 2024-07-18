@@ -8,13 +8,13 @@ namespace Unity.Sentis.Compiler.Analyser
     {
         public static HashSet<Layers.Layer> FindLayersThatRequireStorage(Model model)
         {
-            var allInputsExceptFromPreviousLayer = new HashSet<string>();
+            var allInputsExceptFromPreviousLayer = new HashSet<int>();
             Layers.Layer prevLayer = null;
             foreach (var layer in model.layers)
             {
                 foreach (var input in layer.inputs)
                 {
-                    if (string.IsNullOrEmpty(input))
+                    if (input == -1)
                         continue;
                     if (prevLayer != null && input != prevLayer.outputs[0])
                         allInputsExceptFromPreviousLayer.Add(input);
@@ -22,7 +22,7 @@ namespace Unity.Sentis.Compiler.Analyser
                 prevLayer = layer;
             }
 
-            var allOutputs = new HashSet<string>();
+            var allOutputs = new HashSet<int>();
             foreach (var output in model.outputs)
                 allOutputs.Add(output.index);
 

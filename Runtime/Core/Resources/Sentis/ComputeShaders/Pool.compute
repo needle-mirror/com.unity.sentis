@@ -227,7 +227,7 @@ void SUFFIX_ARGMAXVAR(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupT
     int i1 = s + 1 * POOL_SIZE;
     int i2 = s + 2 * POOL_SIZE;
     int i3 = s + 3 * POOL_SIZE;
-    
+
     if (IsFirstDispatch != 1)
     {
         i0 = s + 0 * POOL_SIZE >= SpatialDims ? -1 : XIndices[nc * SpatialDims + s + 0 * POOL_SIZE];

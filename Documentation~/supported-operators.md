@@ -6,7 +6,7 @@ If you use a GPU Worker and the model has a layer that isn't supported, Sentis d
 
 ## Supported ONNX operators
 
-The table below shows which ONNX operators Sentis supports, and which data types Sentis supports for each [back end type](create-an-engine.md#back-end-types).
+The table below shows which ONNX operators Sentis supports, and which data types Sentis supports for each [backend type](create-an-engine.md#back-end-types).
 
 |Name|Supported data types with `BackendType.CPU`|Supported data types with `BackendType.GPUCompute`|Supported data types with `BackendType.GPUPixel`|Notes|
 |-|-|-|-|-|
@@ -57,6 +57,7 @@ The table below shows which ONNX operators Sentis supports, and which data types
 |[GlobalMaxPool](https://github.com/onnx/onnx/blob/main/docs/Operators.md#GlobalMaxPool) | float | float | float | |
 |[Greater](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Greater) | float, int | float, int | float, int | |
 |[GreaterOrEqual](https://github.com/onnx/onnx/blob/main/docs/Operators.md#GreaterOrEqual) | float, int | float, int | float, int | |
+|[GridSample](https://github.com/onnx/onnx/blob/main/docs/Operators.md#GridSample) | float | float | float | |
 |[Hardmax](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Hardmax) | float | float | float | |
 |[HardSigmoid](https://github.com/onnx/onnx/blob/main/docs/Operators.md#HardSigmoid) | float | float | float | |
 |[HardSwish](https://github.com/onnx/onnx/blob/main/docs/Operators.md#HardSwish) | float | float | float | |
@@ -75,13 +76,13 @@ The table below shows which ONNX operators Sentis supports, and which data types
 |[MatMul](https://github.com/onnx/onnx/blob/main/docs/Operators.md#MatMul) | float | float | float | |
 |[Max](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Max) | float, int | float, int | float, int | |
 |[MaxPool](https://github.com/onnx/onnx/blob/main/docs/Operators.md#MaxPool) | float | float (1D and 2D only) | float (1D and 2D only) | The `ceil_mode`, `dilations` and `storage_order` parameters aren't supported. |
-|[Mean](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Mean) | float | float | float | |
+|[Mean](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Mean) | float | float | float | The operator maps to the Sentis layers `Add` and `ScalarMad`. |
 |[Min](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Min) | float, int | float, int | float, int | |
 |[Mod](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Mod) | float, int | float, int | float, int | |
 |[Mul](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Mul) | float, int | float, int | float, int | |
 |[Multinomial](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Multinomial) | float | Not supported | Not supported | |
 |[Neg](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Neg) | float, int | float, int | float, int | |
-|[NonMaxSuppression](https://github.com/onnx/onnx/blob/main/docs/Operators.md#NonMaxSuppression) | float | Not supported | Not supported | |
+|[NonMaxSuppression](https://github.com/onnx/onnx/blob/main/docs/Operators.md#NonMaxSuppression) | float | float | Not supported | |
 |[NonZero](https://github.com/onnx/onnx/blob/main/docs/Operators.md#NonZero) | float, int | Not supported | Not supported | |
 |[Not](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Not) | int | int | int | |
 |[OneHot](https://github.com/onnx/onnx/blob/main/docs/Operators.md#OneHot) | float, int | float, int | float, int | |
@@ -130,7 +131,7 @@ The table below shows which ONNX operators Sentis supports, and which data types
 |[Sqrt](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Sqrt) | float | float | float | |
 |[Squeeze](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Squeeze) | float, int | float, int | float, int | |
 |[Sub](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Sub) | float, int | float, int | float, int | |
-|[Sum](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Sum) | float, int | float, int | float, int | |
+|[Sum](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Sum) | float, int | float, int | float, int | The operator maps to the Sentis layer `Add`. |
 |[Tan](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Tan) | float | float | float | |
 |[Tanh](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Tanh) | float | float | float | |
 |[ThresholdedRelu](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ThresholdedRelu) | float | float | float | |

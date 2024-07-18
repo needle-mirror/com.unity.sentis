@@ -1,4 +1,6 @@
 using System;
+using Unity.Collections;
+using UnityEngine;
 
 namespace Unity.Sentis
 {
@@ -35,14 +37,6 @@ namespace Unity.Sentis
             int countPacked32Bit = ((shape.length * sizeof(byte) + sizeof(int) - 1) / sizeof(int));
             var burstTensorData = new BurstTensorData(countPacked32Bit, clearOnInit: true);
             return new TensorByte(shape, data: burstTensorData);
-        }
-
-        /// <inheritdoc/>
-        public override void UploadToDevice(ITensorData destination)
-        {
-            var data = m_DataOnBackend.Download<int>(count);
-            destination.Upload(data, count); data.Dispose();
-            PinToDevice(destination, disposeUnpinned: true);
         }
     }
 }

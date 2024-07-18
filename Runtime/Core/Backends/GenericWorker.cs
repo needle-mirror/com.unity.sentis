@@ -16,13 +16,13 @@ namespace Unity.Sentis
     {
         Model m_Model;
         Dictionary<string, TensorShape> m_InputShapes = new Dictionary<string, TensorShape>();
-        Dictionary<string, string> m_InputIndexes = new Dictionary<string, string>();
-        Dictionary<string, string> m_OutputIndexes = new Dictionary<string, string>();
+        Dictionary<string, int> m_InputIndexes = new Dictionary<string, int>();
+        Dictionary<string, int> m_OutputIndexes = new Dictionary<string, int>();
 
         IBackend m_Backend;
         IModelStorage m_Storage;
         CPUBackend m_FallbackBackend;
-        HashSet<string> m_LayerCPUFallback;
+        HashSet<int> m_LayerCPUFallback;
 
         float m_Progress = 0f;
 
@@ -36,6 +36,7 @@ namespace Unity.Sentis
         public GenericWorker(Model model, IBackend backend, IModelStorage storage, bool takeoverWeights = false)
         {
             m_Model = model;
+
             foreach (var input in model.inputs)
                 m_InputIndexes[input.name] = input.index;
             foreach (var output in model.outputs)
@@ -47,7 +48,7 @@ namespace Unity.Sentis
             else
                 m_FallbackBackend = new CPUBackend();
 
-            m_LayerCPUFallback = model.LayerCPUFallback;
+            m_LayerCPUFallback = CPUFallbackCalculator.Calculate(model, backend.backendType);
 
             m_Storage.PrepareStorage(m_Model, takeoverWeights);
         }
@@ -91,9 +92,9 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public IWorker Execute(IDictionary<string, Tensor> inputs)
         {
-            foreach (var input in inputs)
+            foreach (var i in m_Model.inputs)
             {
-                SetInput(input.Key, input.Value);
+                m_Storage.SetInput(i.index, inputs[i.name]);
             }
             return Execute();
         }
@@ -112,8 +113,11 @@ namespace Unity.Sentis
 
             m_Storage.DisposeOnExecute();
 
-            ExecutionContext ctx = new ExecutionContext();
-            ctx.storage = m_Storage;
+            ExecutionContext ctx = new ExecutionContext
+            {
+                storage = m_Storage,
+                cpuBackend = m_FallbackBackend,
+            };
 
             int idx = 0;
             foreach (var l in m_Model.layers)
@@ -168,8 +172,11 @@ namespace Unity.Sentis
 
             m_Storage.DisposeOnExecute();
 
-            ExecutionContext ctx = new ExecutionContext();
-            ctx.storage = m_Storage;
+            ExecutionContext ctx = new ExecutionContext
+            {
+                storage = m_Storage,
+                cpuBackend = m_FallbackBackend
+            };
 
             int idx = 0;
             foreach (var l in m_Model.layers)
@@ -186,11 +193,11 @@ namespace Unity.Sentis
                 var markerType = ProfilerMarkers.LayerTypeProfilerMarker(l.profilerTag);
                 markerType.Begin();
 #if SENTIS_DEBUG
-            Profiler.BeginSample(l.index);
+                Profiler.BeginSample(l.index);
 #endif
                 l.Execute(ctx);
 #if SENTIS_DEBUG
-            Profiler.EndSample();
+                Profiler.EndSample();
 #endif
                 markerType.End();
 
@@ -200,6 +207,7 @@ namespace Unity.Sentis
                 {
                     ProfilerMarkers.Execute.End();
                     yield return null;
+                    ProfilerMarkers.Execute.Begin();
                 }
             }
 

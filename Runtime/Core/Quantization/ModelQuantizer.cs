@@ -23,8 +23,8 @@ namespace Unity.Sentis.Quantization
         /// <summary>
         /// Quantize the weights of a model to a
         /// </summary>
-        /// <param name="quantizationType"></param>
-        /// <param name="model"></param>
+        /// <param name="quantizationType">Data type to quantize to.</param>
+        /// <param name="model">The model to quantize.</param>
         public static void QuantizeWeights(QuantizationType quantizationType, ref Model model)
         {
             var pass = new QuantizeConstantsPass(quantizationType);

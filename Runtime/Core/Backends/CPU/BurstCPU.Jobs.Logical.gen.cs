@@ -22,7 +22,7 @@ public partial class CPUBackend
 [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
 internal unsafe struct WhereJob : IJobParallelFor, IJobResourceDeclarationXSBO
 {
-    
+
     public int rank;
     public fixed int shapeO[8];
     public fixed int stridesO[8];

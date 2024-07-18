@@ -13,7 +13,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Equals(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FunctionalTensor.FromLayer(new Layers.Equal(null, null, null), DataType.Int, new[] { input, other });
+            return FunctionalTensor.FromLayer(new Layers.Equal(-1, -1, -1), DataType.Int, new[] { input, other });
         }
 
         /// <summary>
@@ -47,7 +47,7 @@ namespace Unity.Sentis
         public static FunctionalTensor GreaterEqual(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FunctionalTensor.FromLayer(new Layers.GreaterOrEqual(null, null, null), DataType.Int, new[] { input, other });
+            return FunctionalTensor.FromLayer(new Layers.GreaterOrEqual(-1, -1, -1), DataType.Int, new[] { input, other });
         }
 
         /// <summary>
@@ -59,7 +59,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Greater(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FunctionalTensor.FromLayer(new Layers.Greater(null, null, null), DataType.Int, new[] { input, other });
+            return FunctionalTensor.FromLayer(new Layers.Greater(-1, -1, -1), DataType.Int, new[] { input, other });
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace Unity.Sentis
         {
             if (input.DataType == DataType.Int)
                 return ZerosLike(input);
-            return FunctionalTensor.FromLayer(new Layers.IsInf(null, null, true, true), DataType.Int, input);
+            return FunctionalTensor.FromLayer(new Layers.IsInf(-1, -1, true, true), DataType.Int, input);
         }
 
         /// <summary>
@@ -96,7 +96,7 @@ namespace Unity.Sentis
         {
             if (input.DataType == DataType.Int)
                 return ZerosLike(input);
-            return FunctionalTensor.FromLayer(new Layers.IsNaN(null, null), DataType.Int, input);
+            return FunctionalTensor.FromLayer(new Layers.IsNaN(-1, -1), DataType.Int, input);
         }
 
         /// <summary>
@@ -108,7 +108,7 @@ namespace Unity.Sentis
         public static FunctionalTensor LessEqual(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FunctionalTensor.FromLayer(new Layers.LessOrEqual(null, null, null), DataType.Int, new[] { input, other });
+            return FunctionalTensor.FromLayer(new Layers.LessOrEqual(-1, -1, -1), DataType.Int, new[] { input, other });
         }
 
         /// <summary>
@@ -120,7 +120,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Less(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FunctionalTensor.FromLayer(new Layers.Less(null, null, null), DataType.Int, new[] { input, other });
+            return FunctionalTensor.FromLayer(new Layers.Less(-1, -1, -1), DataType.Int, new[] { input, other });
         }
 
         /// <summary>
@@ -132,7 +132,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Max(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FunctionalTensor.FromLayer(new Layers.Max(null, new string[2]), CommonType(input, other), new[] { input, other });
+            return FunctionalTensor.FromLayer(new Layers.Max(-1, -1, -1), CommonType(input, other), new[] { input, other });
         }
 
         /// <summary>
@@ -144,7 +144,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Min(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FunctionalTensor.FromLayer(new Layers.Min(null, new string[2]), CommonType(input, other), new[] { input, other });
+            return FunctionalTensor.FromLayer(new Layers.Min(-1, -1, -1), CommonType(input, other), new[] { input, other });
         }
 
         /// <summary>
@@ -171,7 +171,7 @@ namespace Unity.Sentis
         /// <returns>The output values and indices tensors in an array.</returns>
         public static FunctionalTensor[] TopK(FunctionalTensor input, int k, int dim = -1, bool largest = true, bool sorted = true)
         {
-            return FunctionalTensor.FromLayerMultiOutputs(new Layers.TopK(null, null, null, null, dim, largest, sorted), new[] { DataType.Float, DataType.Int }, new[] { input, Tensor(new[] { k }) });
+            return FunctionalTensor.FromLayerMultiOutputs(new Layers.TopK(-1, -1, -1, -1, dim, largest, sorted), new[] { DataType.Float, DataType.Int }, new[] { input, Tensor(new[] { k }) });
         }
     }
 }

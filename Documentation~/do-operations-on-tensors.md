@@ -1,6 +1,6 @@
 # Do operations on tensors
 
-Use the `IBackend` object to perform individual tensor operations on a given back end. This approach can be simpler to set up as compared to writing a full model, and it enables dynamic handling of input and output tensors at runtime.
+Use the `IBackend` object to perform individual tensor operations on a given backend. As compared to writing a full model, this approach is simple to set up and enables dynamic handling of input and output tensors at runtime.
 
 ## Using IBackend
 
@@ -11,7 +11,7 @@ To do operations on tensors, follow these steps:
 
 The following example uses the `ArgMax` operation. `ArgMax` returns the index of the maximum value in a tensor, for example the prediction with the highest probability in a classification model.
 
-``` 
+```
 using UnityEngine;
 using Unity.Sentis;
 
@@ -24,7 +24,7 @@ public class RunOperatorOnTensor : MonoBehaviour
         // Create an GPUComputeBackend object. The object uses Sentis compute shaders to do operations on the GPU.
         backend = WorkerFactory.CreateBackend(BackendType.GPUCompute);
     }
-    
+
     void Update()
     {
         // Create a one-dimensional input tensor with four values.
@@ -50,7 +50,7 @@ public class RunOperatorOnTensor : MonoBehaviour
 
 Refer to the `Do an operation on a tensor` example in the [sample scripts](package-samples.md) for an example.
 
-Refer to [Create an engine to run a model](create-an-engine.md) for more information about back end types.
+Refer to [Create an engine to run a model](create-an-engine.md) for more information about backend types.
 
 ## Supported operations
 
@@ -58,7 +58,7 @@ Almost all of the [supported ONNX operators](supported-operators.md) have corres
 
 The following example calculates a series of tensors by applying `IBackend` methods.
 
-``` 
+```
 using UnityEngine;
 using Unity.Sentis;
 using Unity.Sentis.Layers;

@@ -5,11 +5,11 @@ namespace Unity.Sentis.Compiler.Passes.Cleanup
 {
     class RemoveUnusedPass : IModelPass
     {
-        bool IsOutputUsed(Layers.Layer layer, HashSet<string> outputsUsed)
+        bool IsOutputUsed(Layers.Layer layer, HashSet<int> outputsUsed)
         {
             foreach (var lo in layer.outputs)
             {
-                if (string.IsNullOrEmpty(lo))
+                if (lo == -1)
                     continue;
                 if (outputsUsed.Contains(lo))
                     return true;
@@ -26,8 +26,8 @@ namespace Unity.Sentis.Compiler.Passes.Cleanup
             //  check if previous layers uses l or any of its outputs
             //  if keep and add l.inputs as used outputs
             //  else remove
-            var layersToRemove = new HashSet<string>();
-            var outputsUsed = new HashSet<string>();
+            var layersToRemove = new HashSet<int>();
+            var outputsUsed = new HashSet<int>();
             foreach (var o in model.outputs)
                 outputsUsed.Add(o.index);
             for (var i = model.layers.Count - 1; i >= 0; i--)
@@ -40,7 +40,7 @@ namespace Unity.Sentis.Compiler.Passes.Cleanup
                 {
                     foreach (var input in layer.inputs)
                     {
-                        if (string.IsNullOrEmpty(input))
+                        if (input == -1)
                             continue;
                         outputsUsed.Add(input);
                     }

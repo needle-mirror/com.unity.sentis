@@ -55,28 +55,28 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
         static private void FuseActivation(ref Model model, Layers.Layer mainLayer, Layers.Layer activationToFuse)
         {
-            //patch `mainLayer`
+            // patch `mainLayer`
             if (mainLayer is Layers.FusedActivation)
                 (mainLayer as Layers.FusedActivation).fusedActivation = LayerToActivation(activationToFuse);
 
-            //patch all layers depending on `activationToFuse`
+            // patch all layers depending on `activationToFuse`
             foreach (var l in model.layers)
             {
-                for (int i = 0; i < l.inputs.Length; ++i)
+                for (var i = 0; i < l.inputs.Length; ++i)
                 {
                     if (l.inputs[i] == activationToFuse.outputs[0])
                         l.inputs[i] = mainLayer.outputs[0];
                 }
             }
 
-            //remove `activationToFuse` if not an output, if an output make it an identity layer instead.
-            if (model.outputs.Aggregate(false, (current, o) => current | o.index == activationToFuse.outputs[0]))
+            // patch outputs
+            for (var i = 0; i < model.outputs.Count; i++)
             {
-                int activationToFuseIndex = model.layers.FindIndex(x => x == activationToFuse);
-                model.layers[activationToFuseIndex] = new Layers.Identity(activationToFuse.outputs[0], activationToFuse.inputs[0]);
+                if (model.outputs[i].index == activationToFuse.outputs[0])
+                    model.outputs[i] = new Model.Output { name = model.outputs[i].name, index = mainLayer.outputs[0] };
             }
-            else
-                model.layers.Remove(activationToFuse);
+
+            model.layers.Remove(activationToFuse);
         }
     }
 }

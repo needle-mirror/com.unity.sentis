@@ -24,7 +24,7 @@ By default, the tensor has the following properties:
 - It follows the tensor layout of batch, channels, height, width (NCHW), for example 1 × 3 × 24 × 32 for a single RGB texture with a height of 24 and a width of 32.
 - It uses mipmap level 0 if there's a mipmap. Refer to [Mipmaps introduction](https://docs.unity3d.com/Documentation/Manual/texture-mipmaps-introduction.html) for more information.
 
-Make sure the format of the texture matches what your model needs. If you need to change the format of the texture, for example to change the number of channels, you can use the settings in [Texture Import Settings window](https://docs.unity3d.com/Documentation/Manual/class-TextureImporter.html).
+Make sure the format of the texture matches the requirements of your model. To change the format of the texture, such as adjusting the number of channels, use the settings in [Texture Import Settings window](https://docs.unity3d.com/Documentation/Manual/class-TextureImporter.html).
 
 Depending on the input tensor your model needs, you might also need to scale the values in the tensor before you run the model. For example, if your model needs values from 0 to 255 instead of from 0 to 1. You can edit the model using the functional API to scale a tensor input. Refer to [Edit a model](edit-a-model.md) for more information.
 
@@ -47,7 +47,7 @@ TextureTransform swizzleChannels = new TextureTransform().SetChannelSwizzle(Chan
 
 // Convert the texture to a tensor using the TextureTransform object
 TensorFloat inputTensor = TextureConverter.ToTensor(inputTexture, swizzleChannels);
-``` 
+```
 
 You can also chain operations together.
 

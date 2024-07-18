@@ -91,9 +91,11 @@ namespace Unity.Sentis
         public static readonly int k_ID__MinValue = Shader.PropertyToID("_MinValue");
         public static readonly int k_ID_outChannels = Shader.PropertyToID("outChannels");
         public static readonly int k_ID_outHeight = Shader.PropertyToID("outHeight");
+        public static readonly int k_ID_outSpatialSize = Shader.PropertyToID("outSpatialSize");
         public static readonly int k_ID_outWidth = Shader.PropertyToID("outWidth");
         public static readonly int k_ID_inHeight = Shader.PropertyToID("inHeight");
         public static readonly int k_ID_inWidth = Shader.PropertyToID("inWidth");
+        public static readonly int k_ID_inSpatialSize = Shader.PropertyToID("inSpatialSize");
         public static readonly int k_ID_kernelHeight = Shader.PropertyToID("kernelHeight");
         public static readonly int k_ID_kernelWidth = Shader.PropertyToID("kernelWidth");
         public static readonly int k_ID_kernelLength = Shader.PropertyToID("kernelLength");
@@ -172,6 +174,14 @@ namespace Unity.Sentis
         public static readonly int k_ID_startLength = Shader.PropertyToID("startLength");
         public static readonly int k_ID_axisDimIndices = Shader.PropertyToID("axisDimIndices");
         public static readonly int k_ID_reduction = Shader.PropertyToID("reduction");
+        public static readonly int k_ID_numBatches = Shader.PropertyToID("numBatches");
+        public static readonly int k_ID_numBoxes = Shader.PropertyToID("numBoxes");
+        public static readonly int k_ID_numClasses = Shader.PropertyToID("numClasses");
+        public static readonly int k_ID_iouThreshold = Shader.PropertyToID("iouThreshold");
+        public static readonly int k_ID_scoreThreshold = Shader.PropertyToID("scoreThreshold");
+        public static readonly int k_ID_maxOutputBoxesPerClass = Shader.PropertyToID("maxOutputBoxesPerClass");
+        public static readonly int k_ID_maxNumOutput = Shader.PropertyToID("maxNumOutput");
+        public static readonly int k_ID_indexJ = Shader.PropertyToID("indexJ");
         // TODO: cleanup above once using the more descriptive names:
         public static readonly int k_ID_reductionType = Shader.PropertyToID("reductionType");
         public static readonly int k_ID_outAxisSize = Shader.PropertyToID("outAxisSize");

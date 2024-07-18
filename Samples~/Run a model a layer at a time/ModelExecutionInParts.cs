@@ -38,14 +38,16 @@ public class ModelExecutionInParts : MonoBehaviour
                 return;
         }
 
-        var outputTensor = m_Engine.PeekOutput();
-        outputTensor.CompleteOperationsAndDownload();
+        var outputTensor = m_Engine.PeekOutput() as TensorFloat;
 
-        // Data is now ready to read.
+        // If you wish to read from the tensor, download it to cpu.
+        var cpuTensor = outputTensor.ReadbackAndClone();
         // See async examples for non-blocking readback.
 
+        cpuTensor.Dispose();
+
         // To run the network again just set:
-        // m_Started = false;
+        m_Started = false;
     }
 
     void OnDisable()

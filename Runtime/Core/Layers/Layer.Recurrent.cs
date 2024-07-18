@@ -102,7 +102,7 @@ namespace Unity.Sentis.Layers
         public RnnLayout layout;
         public int NumDirections => direction == RnnDirection.Bidirectional ? 2 : 1;
 
-        public LSTM(string Y, string X, string W, string R, int hiddenSize, string Y_h = "", string Y_c = "", string B = "", string sequenceLens = "", string initialH = "", string initialC = "", string P = "", RnnDirection direction = RnnDirection.Forward, RnnActivation[] activations = null, float[] activationAlpha = null, float[] activationBeta = null, float clip = float.MaxValue, bool inputForget = false, RnnLayout layout = RnnLayout.SequenceFirst)
+        public LSTM(int Y, int X, int W, int R, int hiddenSize, int Y_h = -1, int Y_c = -1, int B = -1, int sequenceLens = -1, int initialH = -1, int initialC = -1, int P = -1, RnnDirection direction = RnnDirection.Forward, RnnActivation[] activations = null, float[] activationAlpha = null, float[] activationBeta = null, float clip = float.MaxValue, bool inputForget = false, RnnLayout layout = RnnLayout.SequenceFirst)
             : base(new[] { Y, Y_h, Y_c }, new[] { X, W, R, B, sequenceLens, initialH, initialC, P })
         {
             this.hiddenSize = hiddenSize;

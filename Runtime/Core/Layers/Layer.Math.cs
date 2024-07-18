@@ -8,7 +8,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Abs : Activation
     {
-        public Abs(string output, string input)
+        public Abs(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -33,7 +33,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Add : Broadcast
     {
-        public Add(string output, string a, string b)
+        public Add(int output, int a, int b)
             : base(output, a, b) { }
 
         internal override Func<PartialTensorElement, PartialTensorElement, PartialTensorElement> InferPartialOp => (a, b) => a + b;
@@ -59,7 +59,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Ceil : Activation
     {
-        public Ceil(string output, string input)
+        public Ceil(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -77,10 +77,9 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents an element-wise `Clip` math layer: f(x, xmin, xmax) = min(max(x, xmin), xmax)
     /// </summary>
-    [Optimization.CPUFallback.CPUReadInputs(1, 2)]
     class Clip : Layer
     {
-        public Clip(string output, string input, string min = "", string max = "")
+        public Clip(int output, int input, int min = -1, int max = -1)
             : base(new[] { output }, new[] { input, min, max }) { }
 
         internal override void InferPartial(PartialInferenceContext ctx)
@@ -95,16 +94,17 @@ namespace Unity.Sentis.Layers
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
+            // TODO don't switch data type at runtime
             if (X is TensorInt)
             {
-                var min = ctx.storage.GetTensor(inputs[1])?.ToReadOnlySpan<int>()[0] ?? int.MinValue;
-                var max = ctx.storage.GetTensor(inputs[2])?.ToReadOnlySpan<int>()[0] ?? int.MaxValue;
+                var min = ctx.storage.GetInt(inputs[1], int.MinValue);
+                var max = ctx.storage.GetInt(inputs[2], int.MaxValue);
                 ctx.backend.Clip(X as TensorInt, O as TensorInt, min, max);
             }
             else
             {
-                var min = ctx.storage.GetTensor(inputs[1])?.ToReadOnlySpan<float>()[0] ?? float.MinValue;
-                var max = ctx.storage.GetTensor(inputs[2])?.ToReadOnlySpan<float>()[0] ?? float.MaxValue;
+                var min = ctx.storage.GetFloat(inputs[1], float.MinValue);
+                var max = ctx.storage.GetFloat(inputs[2], float.MaxValue);
                 ctx.backend.Clip(X as TensorFloat, O as TensorFloat, min, max);
             }
         }
@@ -115,13 +115,12 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `CumSum` math layer that performs the cumulative sum along a given axis.
     /// </summary>
-    [Optimization.CPUFallback.CPUReadInputs(1)]
     class CumSum : Layer
     {
         public bool reverse;
         public bool exclusive;
 
-        public CumSum(string output, string input, string axis, bool reverse, bool exclusive)
+        public CumSum(int output, int input, int axis, bool reverse, bool exclusive)
             : base(new[] { output }, new[] { input, axis })
         {
             this.reverse = reverse;
@@ -140,7 +139,7 @@ namespace Unity.Sentis.Layers
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            var axis = ctx.storage.GetTensor(inputs[1]).ToReadOnlySpan<int>()[0];
+            var axis = ctx.storage.GetInt(inputs[1]);
             if (X is TensorInt)
                 ctx.backend.CumSum(X as TensorInt, O as TensorInt, axis, reverse, exclusive);
             else
@@ -162,7 +161,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Dense : FusedActivation
     {
-        public Dense(string output, string input, string weights, string bias, FusableActivation fusedActivation = FusableActivation.None)
+        public Dense(int output, int input, int weights, int bias, FusableActivation fusedActivation = FusableActivation.None)
             : base(new[] { output }, new[] { input, weights, bias })
         {
             this.fusedActivation = fusedActivation;
@@ -199,7 +198,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Div : Broadcast
     {
-        public Div(string output, string a, string b)
+        public Div(int output, int a, int b)
             : base(output, a, b) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -233,13 +232,15 @@ namespace Unity.Sentis.Layers
 
         TensorShape[] operandShapes;
         TensorIndex[] operandIndices;
+        TensorFloat[] operandTensors;
 
-        public Einsum(string output, string[] inputs, string equation)
+        public Einsum(int output, int[] inputs, string equation)
             : base(new[] { output }, inputs)
         {
             this.equation = equation;
             operandShapes = new TensorShape[inputs.Length];
             operandIndices = new TensorIndex[inputs.Length];
+            operandTensors = new TensorFloat[inputs.Length];
         }
 
         internal override void InferPartial(PartialInferenceContext ctx)
@@ -252,21 +253,19 @@ namespace Unity.Sentis.Layers
 
         public override void Execute(ExecutionContext ctx)
         {
-            TensorFloat[] tensors = new TensorFloat[inputs.Length];
-            for (var i = 0; i < inputs.Length; i++)
+            for (int i = 0; i < inputs.Length; i++)
             {
-                var tensor = ctx.storage.GetTensor(inputs[i]) as TensorFloat;
-                tensors[i] = tensor;
-                operandShapes[i] = tensor.shape;
+                operandTensors[i] = ctx.storage.GetTensor(inputs[i]) as TensorFloat;
+                operandShapes[i] = operandTensors[i].shape;
             }
             EinsumHelper.ParseEquationString(equation, operandShapes, ref operandIndices, out var outputIndices, out var outputShape, out var sumIndices, out var sumShape, out var numIndices);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], outputShape, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
                 return;
-            if (tensors.Length > 2)
-                CPUBackend.EinsumND(tensors, O, operandShapes, operandIndices, outputIndices, outputShape, sumIndices, sumShape, numIndices);
+            if (inputs.Length > 2)
+                CPUBackend.EinsumND(operandTensors, O, operandShapes, operandIndices, outputIndices, outputShape, sumIndices, sumShape, numIndices);
             else
-                ctx.backend.Einsum(tensors, O, operandIndices, outputIndices, sumIndices, sumShape);
+                ctx.backend.Einsum(operandTensors, O, operandIndices, outputIndices, sumIndices, sumShape);
         }
 
         public override string ToString()
@@ -282,7 +281,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Exp : Activation
     {
-        public Exp(string output, string input)
+        public Exp(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -302,7 +301,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Floor : Activation
     {
-        public Floor(string output, string input)
+        public Floor(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -322,7 +321,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Log : Activation
     {
-        public Log(string output, string input)
+        public Log(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -342,7 +341,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class MatMul : Layer
     {
-        public MatMul(string output, string input0, string input1)
+        public MatMul(int output, int input0, int input1)
             : base(new[] { output }, new[] { input0, input1 }) { }
 
         internal override void InferPartial(PartialInferenceContext ctx)
@@ -376,7 +375,7 @@ namespace Unity.Sentis.Layers
         public bool transposeA;
         public bool transposeB;
 
-        public MatMul2D(string output, string input0, bool transpose0, string input1, bool transpose1)
+        public MatMul2D(int output, int input0, bool transpose0, int input1, bool transpose1)
             : base(new[] { output }, new[] { input0, input1 })
         {
             this.transposeA = transpose0;
@@ -424,87 +423,55 @@ namespace Unity.Sentis.Layers
     }
 
     /// <summary>
-    /// Represents an element-wise `Max` math operation layer: f(x1, x2 ... xn) = max(x1, x2 ... xn).
-    ///
-    /// This supports numpy-style broadcasting of input tensors.
-    /// </summary>
-    class Max : Broadcast
-    {
-        public Max(string output, string[] inputs)
-            : base(output, inputs) { }
-
-        public override void Execute(ExecutionContext ctx)
-        {
-            Tensor[] tensors = new Tensor[inputs.Length];
-            for (int i = 0; i < inputs.Length; i++)
-            {
-                tensors[i] = ctx.storage.GetTensor(inputs[i]);
-            }
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(tensors), ctx.storage.GetTensor(inputs[0]).dataType, ctx.backend.backendType);
-            if (O.shape.HasZeroDims())
-                return;
-            if (ctx.storage.GetTensor(inputs[0]) is TensorInt)
-                ctx.backend.Max(Array.ConvertAll(tensors, i => i as TensorInt), O as TensorInt);
-            else
-                ctx.backend.Max(Array.ConvertAll(tensors, i => i as TensorFloat), O as TensorFloat);
-        }
-
-        internal override string profilerTag => "Max";
-    }
-
-    /// <summary>
-    /// Represents an element-wise `Mean` math operation layer: f(x1, x2 ... xn) = (x1 + x2 ... xn) / n.
-    ///
-    /// This supports numpy-style broadcasting of input tensors.
-    /// </summary>
-    class Mean : Broadcast
-    {
-        public Mean(string output, string[] inputs)
-            : base(output, inputs) { }
-
-        public override void Execute(ExecutionContext ctx)
-        {
-            TensorFloat[] tensors = new TensorFloat[inputs.Length];
-            for (int i = 0; i < inputs.Length; i++)
-            {
-                tensors[i] = ctx.storage.GetTensor(inputs[i]) as TensorFloat;
-            }
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(tensors), DataType.Float, ctx.backend.backendType) as TensorFloat;
-            if (O.shape.HasZeroDims())
-                return;
-            ctx.backend.Mean(tensors, O);
-        }
-
-        internal override string profilerTag => "Mean";
-    }
-
-    /// <summary>
-    /// Represents an element-wise `Min` math operation layer: f(x1, x2 ... xn) = min(x1, x2 ... xn).
+    /// Represents an element-wise `Min` math operation layer: f(a, b) = min(a, b).
     ///
     /// This supports numpy-style broadcasting of input tensors.
     /// </summary>
     class Min : Broadcast
     {
-        public Min(string output, string[] inputs)
-            : base(output, inputs) { }
+        public Min(int output, int a, int b)
+            : base(output, a, b) { }
 
         public override void Execute(ExecutionContext ctx)
         {
-            Tensor[] tensors = new Tensor[inputs.Length];
-            for (int i = 0; i < inputs.Length; i++)
-            {
-                tensors[i] = ctx.storage.GetTensor(inputs[i]);
-            }
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(tensors), ctx.storage.GetTensor(inputs[0]).dataType, ctx.backend.backendType);
+            var A = ctx.storage.GetTensor(inputs[0]);
+            var B = ctx.storage.GetTensor(inputs[1]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(A, B), A.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (ctx.storage.GetTensor(inputs[0]) is TensorInt)
-                ctx.backend.Min(Array.ConvertAll(tensors, i => i as TensorInt), O as TensorInt);
+            if (A is TensorInt)
+                ctx.backend.Min(A as TensorInt, B as TensorInt, O as TensorInt);
             else
-                ctx.backend.Min(Array.ConvertAll(tensors, i => i as TensorFloat), O as TensorFloat);
+                ctx.backend.Min(A as TensorFloat, B as TensorFloat, O as TensorFloat);
         }
 
         internal override string profilerTag => "Min";
+    }
+
+    /// <summary>
+    /// Represents an element-wise `Max` math operation layer: f(a, b) = max(a, b).
+    ///
+    /// This supports numpy-style broadcasting of input tensors.
+    /// </summary>
+    class Max : Broadcast
+    {
+        public Max(int output, int a, int b)
+            : base(output, a, b) { }
+
+        public override void Execute(ExecutionContext ctx)
+        {
+            var A = ctx.storage.GetTensor(inputs[0]);
+            var B = ctx.storage.GetTensor(inputs[1]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(A, B), A.dataType, ctx.backend.backendType);
+            if (O.shape.HasZeroDims())
+                return;
+            if (A is TensorInt)
+                ctx.backend.Max(A as TensorInt, B as TensorInt, O as TensorInt);
+            else
+                ctx.backend.Max(A as TensorFloat, B as TensorFloat, O as TensorFloat);
+        }
+
+        internal override string profilerTag => "Max";
     }
 
     /// <summary>
@@ -520,7 +487,7 @@ namespace Unity.Sentis.Layers
     {
         public bool fmod;
 
-        public Mod(string output, string a, string b, bool fmod = false)
+        public Mod(int output, int a, int b, bool fmod = false)
             : base(output, a, b)
         {
             this.fmod = fmod;
@@ -564,7 +531,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Mul : Broadcast
     {
-        public Mul(string output, string a, string b)
+        public Mul(int output, int a, int b)
             : base(output, a, b) { }
 
         internal override Func<PartialTensorElement, PartialTensorElement, PartialTensorElement> InferPartialOp => (a, b) => a * b;
@@ -590,7 +557,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Neg : Activation
     {
-        public Neg(string output, string input)
+        public Neg(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -615,7 +582,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Pow : Broadcast
     {
-        public Pow(string output, string a, string b)
+        public Pow(int output, int a, int b)
             : base(output, a, b) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -639,7 +606,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Reciprocal : Activation
     {
-        public Reciprocal(string output, string input)
+        public Reciprocal(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -659,7 +626,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Round : Activation
     {
-        public Round(string output, string input)
+        public Round(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -685,7 +652,7 @@ namespace Unity.Sentis.Layers
         public int sInt;
         public int bInt;
 
-        public ScalarMad(string output, string input, float s, float b)
+        public ScalarMad(int output, int input, float s, float b)
             : base(output, input)
         {
             dataType = DataType.Float;
@@ -693,7 +660,7 @@ namespace Unity.Sentis.Layers
             bFloat = b;
         }
 
-        public ScalarMad(string output, string input, int s, int b)
+        public ScalarMad(int output, int input, int s, int b)
             : base(output, input)
         {
             dataType = DataType.Int;
@@ -729,7 +696,7 @@ namespace Unity.Sentis.Layers
         public float bias;
         public float lambd;
 
-        public Shrink(string output, string input, float bias, float lambd)
+        public Shrink(int output, int input, float bias, float lambd)
             : base(new[] { output }, new[] { input })
         {
             this.bias = bias;
@@ -764,7 +731,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Sign : Layer
     {
-        public Sign(string output, string input)
+        public Sign(int output, int input)
             : base(new[] { output }, new[] { input }) { }
 
         internal override void InferPartial(PartialInferenceContext ctx)
@@ -793,7 +760,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Sqrt : Activation
     {
-        public Sqrt(string output, string input)
+        public Sqrt(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -813,7 +780,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Square : Activation
     {
-        public Square(string output, string input)
+        public Square(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -838,7 +805,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Sub : Broadcast
     {
-        public Sub(string output, string a, string b)
+        public Sub(int output, int a, int b)
             : base(output, a, b) { }
 
         internal override Func<PartialTensorElement, PartialTensorElement, PartialTensorElement> InferPartialOp => (a, b) => a - b;
@@ -857,31 +824,5 @@ namespace Unity.Sentis.Layers
         }
 
         internal override string profilerTag => "Sub";
-    }
-
-    /// <summary>
-    /// Represents an element-wise `Sum` math operation layer: f(x1, x2 ... xn) = x1 + x2 ... xn.
-    ///
-    /// This supports numpy-style broadcasting of input tensors.
-    /// </summary>
-    class Sum : Broadcast
-    {
-        public Sum(string output, string[] inputs)
-            : base(output, inputs) { }
-
-        public override void Execute(ExecutionContext ctx)
-        {
-            TensorFloat[] tensors = new TensorFloat[inputs.Length];
-            for (int i = 0; i < inputs.Length; i++)
-            {
-                tensors[i] = ctx.storage.GetTensor(inputs[i]) as TensorFloat;
-            }
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(tensors), DataType.Float, ctx.backend.backendType) as TensorFloat;
-            if (O.shape.HasZeroDims())
-                return;
-            ctx.backend.Sum(tensors, O);
-        }
-
-        internal override string profilerTag => "Sum";
     }
 }

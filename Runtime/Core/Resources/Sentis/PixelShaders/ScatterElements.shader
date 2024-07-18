@@ -42,8 +42,8 @@ Shader "Hidden/Sentis/ScatterElements"
             // (confusingly called axis in CommonPixelShader.cginc, not to be confused with the scatter axis here!)
             // and the blocked dimension is NOT the scatter axis (as when accessing the indices tensor B we wont have to
             // handle potential blocked conversion from the indices specified) otherwise the code below will not work.
-            // 
-            // Also, all quantities here are from the *blocked* shape of the tensors 
+            //
+            // Also, all quantities here are from the *blocked* shape of the tensors
             // but outAxisSize and NumIndices (which is the indices axis dimension size) are equal to the non blocked shape
             // since like just noted, we don't block/chunk along the scatter axis.
             //
@@ -131,7 +131,7 @@ Shader "Hidden/Sentis/ScatterElements"
                 // Note: contrary to when going from outermost to innermost, we need shapeOfSrc[] instead of stridesOfSrc[]
                 // and the modulo (div remainder) gives the multi-index part while the dividend is further used to continue
                 // the conversion
-                // ie instead of 
+                // ie instead of
                 //  idxOnCurDim = remainder / stridesO[curDim];
                 //  remainder = remainder % stridesO[curDim];
                 // we do
@@ -164,7 +164,7 @@ Shader "Hidden/Sentis/ScatterElements"
                     //indicesLinearIdx += (instead of posIndex we have 0 here) * StridesB[curDim];
                     curDim++;
 
-                    // For the axis, we don't need to check (idxOnCurDim < ShapeB[curDim]) since we will scan from 0 to NumIndices, 
+                    // For the axis, we don't need to check (idxOnCurDim < ShapeB[curDim]) since we will scan from 0 to NumIndices,
                     // so never overflowing
 
                     // To join common non fast path/fastpath code:
@@ -220,7 +220,7 @@ Shader "Hidden/Sentis/ScatterElements"
 
                             // Indices shape can be smaller than the input/output.
                             //
-                            // (For fast path, in particular from dimension 0 to the axis (inclusive) dimension, 
+                            // (For fast path, in particular from dimension 0 to the axis (inclusive) dimension,
                             // can be 1 or, for the scatter axis-1 and scatter axis dimension, can be anything smaller than the corresponding shape
                             // in the input/output tensors).
                             //
@@ -256,7 +256,7 @@ Shader "Hidden/Sentis/ScatterElements"
                                 uint3 multiIdx_lowerBlockedAxisUpperB = Unravel(uint2(blockedAxisElementStrideB, blockedAxisSizeB), indicesLinearIdxAtAxisElement0);
                                 uint blockedAxisIndexB = multiIdx_lowerBlockedAxisUpperB[1];
 
-                                int4 div4RemainderGarbageMask = (int4)indicesDiv4RemainderMask;
+                                uint4 div4RemainderGarbageMask = uint4(indicesDiv4RemainderMask[0], indicesDiv4RemainderMask[1], indicesDiv4RemainderMask[2], indicesDiv4RemainderMask[3]);
                                 div4RemainderGarbageMask = (blockedAxisIndexB == (blockedAxisSizeB - 1)) ? div4RemainderGarbageMask : int4(1,1,1,1);
                                 #endif
 
@@ -266,14 +266,15 @@ Shader "Hidden/Sentis/ScatterElements"
                                 for (uint j = 0; j < NumIndices; j++)
                                 {
                                     int4 indicesJ = SampleBlockB(indicesLinearIdxAtAxisElementJ);
-                                    int4 mask = (indicesJ == outAxisElement || (indicesJ + outAxisSize) == outAxisElement) ? 1 : 0;
+                                    int4 outAxisElement4 = int4(outAxisElement, outAxisElement, outAxisElement, outAxisElement);
+                                    int4 mask = (indicesJ == outAxisElement4 || (indicesJ + int4(outAxisSize, outAxisSize, outAxisSize, outAxisSize)) == outAxisElement4) ? 1 : 0;
                                     //int4 mask = ((indicesJ + saturate(-sign(indicesJ))*outAxisSize) == outAxisElement) ? 1 : 0;
                                     DTYPE4 updates = SampleBlockW(indicesLinearIdxAtAxisElementJ);
 
                                     #ifdef UseDiv4Mask
                                     mask *= div4RemainderGarbageMask;
                                     #endif
-                     
+
                                     #ifdef ReduceNone
                                     v = v * (1 - mask) + updates * mask;
                                     #elif ReduceAdd

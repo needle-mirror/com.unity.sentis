@@ -462,7 +462,7 @@ namespace Unity.Sentis
         static FunctionalTensor ScalarMad(FunctionalTensor input, float s, float b)
         {
             input = input.Float();
-            return FromLayer(new Layers.ScalarMad(null, null, s, b), DataType.Float, new[] { input });
+            return FromLayer(new Layers.ScalarMad(-1, -1, s, b), DataType.Float, new[] { input });
         }
 
         // helper for operators with int values, type promotion to floats if needed
@@ -470,7 +470,7 @@ namespace Unity.Sentis
         {
             if (input.DataType == DataType.Float)
                 return ScalarMad(input, (float)s, b);
-            return FromLayer(new Layers.ScalarMad(null, null, s, b), DataType.Int, new[] { input });
+            return FromLayer(new Layers.ScalarMad(-1, -1, s, b), DataType.Int, new[] { input });
         }
     }
 }

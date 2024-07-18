@@ -1,6 +1,6 @@
 # Workflow example
 
-The following example includes a simple script that takes an image of a handwritten digit and predicts the likelihood of the image representing a digit. 
+The following example includes a simple script that takes an image of a handwritten digit and predicts the likelihood of the image representing a digit.
 
 Use this example to [Understand the sentis workflow](understand-sentis-workflow.md).
 
@@ -67,14 +67,14 @@ public class ClassifyHandwrittenDigit : MonoBehaviour
 3. Drag the downloaded model file into the `Assets` folder of the **Project** window.
 4. Open the **Inspector** window of the GameObject and drag the model asset into the **Model Asset** field.
 5. Download the `digit.png` image below and drag it into the `Assets` folder of the **Project** window.
-   
+
    ![A handwritten number 7](images/digit.png)
 
-6. Open the **Inspector** window of the imported image. 
+6. Open the **Inspector** window of the imported image.
 7. In **Import Settings**, expand the **Advanced** section to reveal more settings.
 8. Set **Non-Power of 2** to `None` and click **Apply**.
 9. Open the **Inspector** window of the GameObject and drag the **digit** asset into the **Input Texture** field.
-10. Click **Play** to run the project. 
+10. Click **Play** to run the project.
 
 In the **Inspector** window of the GameObject, each item of the **Results** array shows how highly the model predicts the image to be a digit. For example, item 0 of the array represents how highly the model predicts the image being a handwritten zero.
 
@@ -82,4 +82,4 @@ In the **Inspector** window of the GameObject, each item of the **Results** arra
 - [Samples](package-samples.md)
 - [Understand the sentis workflow](understand-sentis-workflow.md)
 - [Create a model](create-a-model.md)
-  
+

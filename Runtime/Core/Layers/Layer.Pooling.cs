@@ -13,7 +13,7 @@ namespace Unity.Sentis.Layers
         public int[] pads;
         public AutoPad autopad;
 
-        protected LocalPool(string output, string input, int[] kernelShape, int[] strides, int[] pads, AutoPad autopad = AutoPad.NotSet)
+        protected LocalPool(int output, int input, int[] kernelShape, int[] strides, int[] pads, AutoPad autopad = AutoPad.NotSet)
             : base(new[] { output }, new[] { input })
         {
             this.kernelShape = kernelShape;
@@ -64,7 +64,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     abstract class GlobalPool : Layer
     {
-        protected GlobalPool(string output, string input)
+        protected GlobalPool(int output, int input)
             : base(new[] { output }, new[] { input }) { }
 
         internal override void InferPartial(PartialInferenceContext ctx)
@@ -96,7 +96,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class AveragePool : LocalPool
     {
-        public AveragePool(string output, string input, int[] kernelShape, int[] strides, int[] pads, AutoPad autopad = AutoPad.NotSet)
+        public AveragePool(int output, int input, int[] kernelShape, int[] strides, int[] pads, AutoPad autopad = AutoPad.NotSet)
             : base(output, input, kernelShape, strides, pads, autopad) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -117,7 +117,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class GlobalAveragePool : GlobalPool
     {
-        public GlobalAveragePool(string output, string input)
+        public GlobalAveragePool(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -137,7 +137,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class GlobalMaxPool : GlobalPool
     {
-        public GlobalMaxPool(string output, string input)
+        public GlobalMaxPool(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -157,7 +157,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class MaxPool : LocalPool
     {
-        public MaxPool(string output, string input, int[] kernelShape, int[] strides, int[] pads, AutoPad autopad = AutoPad.NotSet)
+        public MaxPool(int output, int input, int[] kernelShape, int[] strides, int[] pads, AutoPad autopad = AutoPad.NotSet)
             : base(output, input, kernelShape, strides, pads, autopad) { }
 
         public override void Execute(ExecutionContext ctx)

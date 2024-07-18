@@ -12,7 +12,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Abs(FunctionalTensor input)
         {
-            return FunctionalTensor.FromLayer(new Layers.Abs(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Abs(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -23,7 +23,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Acos(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Acos(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Acos(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -34,7 +34,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Acosh(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Acosh(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Acosh(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Add(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FunctionalTensor.FromLayer(new Layers.Add(null, null, null), input.DataType, new[] { input, other });
+            return FunctionalTensor.FromLayer(new Layers.Add(-1, -1, -1), input.DataType, new[] { input, other });
         }
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Asin(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Asin(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Asin(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -68,7 +68,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Asinh(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Asinh(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Asinh(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -79,7 +79,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Atan(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Atan(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Atan(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -90,7 +90,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Atanh(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Atanh(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Atanh(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -102,7 +102,7 @@ namespace Unity.Sentis
         {
             if (input.DataType == DataType.Int)
                 return input;
-            return FunctionalTensor.FromLayer(new Layers.Ceil(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Ceil(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -115,7 +115,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Clamp(FunctionalTensor input, float min, float max)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Clip(null, null, null, null), DataType.Float, new[] { input, Tensor(min), Tensor(max) });
+            return FunctionalTensor.FromLayer(new Layers.Clip(-1, -1, -1, -1), DataType.Float, new[] { input, Tensor(min), Tensor(max) });
         }
 
         /// <summary>
@@ -129,7 +129,7 @@ namespace Unity.Sentis
         {
             if (input.DataType == DataType.Float)
                 return Clamp(input, (float)min, max);
-            return FunctionalTensor.FromLayer(new Layers.Clip(null, null, null, null), DataType.Int, new[] { input, Tensor(min), Tensor(max) });
+            return FunctionalTensor.FromLayer(new Layers.Clip(-1, -1, -1, -1), DataType.Int, new[] { input, Tensor(min), Tensor(max) });
         }
 
         /// <summary>
@@ -140,7 +140,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Cos(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Cos(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Cos(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -151,7 +151,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Cosh(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Cosh(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Cosh(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -174,7 +174,7 @@ namespace Unity.Sentis
         {
             // TODO support rounding mode: string roundingMode
             (input, other) = PromoteTypes(input, other);
-            return FunctionalTensor.FromLayer(new Layers.Div(null, null, null), input.DataType, new[] { input, other });
+            return FunctionalTensor.FromLayer(new Layers.Div(-1, -1, -1), input.DataType, new[] { input, other });
         }
 
         /// <summary>
@@ -185,7 +185,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Erf(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Erf(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Erf(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -196,7 +196,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Exp(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Exp(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Exp(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -209,7 +209,7 @@ namespace Unity.Sentis
         {
             input = input.Float();
             exponent = exponent.Float();
-            return FunctionalTensor.FromLayer(new Layers.Pow(null, null, null), DataType.Float, new[] { input, exponent });
+            return FunctionalTensor.FromLayer(new Layers.Pow(-1, -1, -1), DataType.Float, new[] { input, exponent });
         }
 
         /// <summary>
@@ -221,7 +221,7 @@ namespace Unity.Sentis
         {
             if (input.DataType == DataType.Int)
                 return input;
-            return FunctionalTensor.FromLayer(new Layers.Floor(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Floor(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -244,7 +244,7 @@ namespace Unity.Sentis
         public static FunctionalTensor FMod(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FunctionalTensor.FromLayer(new Layers.Mod(null, null, null, true), input.DataType, new[] { input, other });
+            return FunctionalTensor.FromLayer(new Layers.Mod(-1, -1, -1, true), input.DataType, new[] { input, other });
         }
 
         /// <summary>
@@ -282,7 +282,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Log(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Log(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Log(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -335,7 +335,7 @@ namespace Unity.Sentis
         public static FunctionalTensor LogicalAnd(FunctionalTensor input, FunctionalTensor other)
         {
             DeclareType(DataType.Int, input, other);
-            return FunctionalTensor.FromLayer(new Layers.And(null, null, null), DataType.Int, new[] { input, other });
+            return FunctionalTensor.FromLayer(new Layers.And(-1, -1, -1), DataType.Int, new[] { input, other });
         }
 
         /// <summary>
@@ -346,7 +346,7 @@ namespace Unity.Sentis
         public static FunctionalTensor LogicalNot(FunctionalTensor input)
         {
             DeclareType(DataType.Int, input);
-            return FunctionalTensor.FromLayer(new Layers.Not(null, null), DataType.Int, input);
+            return FunctionalTensor.FromLayer(new Layers.Not(-1, -1), DataType.Int, input);
         }
 
         /// <summary>
@@ -358,7 +358,7 @@ namespace Unity.Sentis
         public static FunctionalTensor LogicalOr(FunctionalTensor input, FunctionalTensor other)
         {
             DeclareType(DataType.Int, input, other);
-            return FunctionalTensor.FromLayer(new Layers.Or(null, null, null), DataType.Int, new[] { input, other });
+            return FunctionalTensor.FromLayer(new Layers.Or(-1, -1, -1), DataType.Int, new[] { input, other });
         }
 
         /// <summary>
@@ -370,7 +370,7 @@ namespace Unity.Sentis
         public static FunctionalTensor LogicalXor(FunctionalTensor input, FunctionalTensor other)
         {
             DeclareType(DataType.Int, input, other);
-            return FunctionalTensor.FromLayer(new Layers.Xor(null, null, null), DataType.Int, new[] { input, other });
+            return FunctionalTensor.FromLayer(new Layers.Xor(-1, -1, -1), DataType.Int, new[] { input, other });
         }
 
         /// <summary>
@@ -382,7 +382,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Mul(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FunctionalTensor.FromLayer(new Layers.Mul(null, null, null), input.DataType, new[] { input, other });
+            return FunctionalTensor.FromLayer(new Layers.Mul(-1, -1, -1), input.DataType, new[] { input, other });
         }
 
         /// <summary>
@@ -392,7 +392,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Neg(FunctionalTensor input)
         {
-            return FunctionalTensor.FromLayer(new Layers.Neg(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Neg(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -414,7 +414,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Pow(FunctionalTensor input, FunctionalTensor exponent)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Pow(null, null, null), DataType.Float, new[] { input, exponent });
+            return FunctionalTensor.FromLayer(new Layers.Pow(-1, -1, -1), DataType.Float, new[] { input, exponent });
         }
 
         /// <summary>
@@ -426,7 +426,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Pow(FunctionalTensor input, float exponent)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Pow(null, null, null), DataType.Float, new[] { input, Tensor(exponent) });
+            return FunctionalTensor.FromLayer(new Layers.Pow(-1, -1, -1), DataType.Float, new[] { input, Tensor(exponent) });
         }
 
         /// <summary>
@@ -447,7 +447,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Reciprocal(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Reciprocal(null, null), DataType.Float, input);
+            return FunctionalTensor.FromLayer(new Layers.Reciprocal(-1, -1), DataType.Float, input);
         }
 
         /// <summary>
@@ -459,7 +459,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Remainder(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FunctionalTensor.FromLayer(new Layers.Mod(null, null, null), input.DataType, new[] { input, other });
+            return FunctionalTensor.FromLayer(new Layers.Mod(-1, -1, -1), input.DataType, new[] { input, other });
         }
 
         /// <summary>
@@ -472,7 +472,7 @@ namespace Unity.Sentis
             // TODO implement 'decimals' arg
             if (input.DataType == DataType.Int)
                 return input;
-            return FunctionalTensor.FromLayer(new Layers.Round(null, null), DataType.Float, input);
+            return FunctionalTensor.FromLayer(new Layers.Round(-1, -1), DataType.Float, input);
         }
 
         /// <summary>
@@ -492,7 +492,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Sign(FunctionalTensor input)
         {
-            return FunctionalTensor.FromLayer(new Layers.Sign(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Sign(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -503,7 +503,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Sin(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Sin(null, null), DataType.Float, input);
+            return FunctionalTensor.FromLayer(new Layers.Sin(-1, -1), DataType.Float, input);
         }
 
         /// <summary>
@@ -514,7 +514,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Sinh(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Sinh(null, null), DataType.Float, input);
+            return FunctionalTensor.FromLayer(new Layers.Sinh(-1, -1), DataType.Float, input);
         }
 
         /// <summary>
@@ -525,7 +525,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Sqrt(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Sqrt(null, null), DataType.Float, input);
+            return FunctionalTensor.FromLayer(new Layers.Sqrt(-1, -1), DataType.Float, input);
         }
 
         /// <summary>
@@ -535,7 +535,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Square(FunctionalTensor input)
         {
-            return FunctionalTensor.FromLayer(new Layers.Square(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Square(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -547,7 +547,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Sub(FunctionalTensor input, FunctionalTensor other)
         {
             (input, other) = PromoteTypes(input, other);
-            return FunctionalTensor.FromLayer(new Layers.Sub(null, null, null), input.DataType, new[] { input, other });
+            return FunctionalTensor.FromLayer(new Layers.Sub(-1, -1, -1), input.DataType, new[] { input, other });
         }
 
         /// <summary>
@@ -558,7 +558,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Tan(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Tan(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Tan(-1, -1), input.DataType, input);
         }
 
         /// <summary>
@@ -569,7 +569,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Tanh(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Tanh(null, null), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Tanh(-1, -1), input.DataType, input);
         }
 
         /// <summary>

@@ -12,7 +12,7 @@ namespace Unity.Sentis.Layers
         public float scale;
         public byte zeroPoint;
 
-        public DequantizeUint8(string output, string input, float scale, byte zeroPoint)
+        public DequantizeUint8(int output, int input, float scale, byte zeroPoint)
             : base(new[] { output }, new[] { input })
         {
             this.scale = scale;

@@ -373,7 +373,7 @@ namespace Unity.Sentis
                     sb.Append(", ");
                 sb.Append(this[i]);
             }
-            sb.Append(") <");
+            sb.Append(") of <");
             sb.Append(shape);
             sb.Append(">");
             return sb.ToString();

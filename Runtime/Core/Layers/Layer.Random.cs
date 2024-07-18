@@ -6,7 +6,6 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents the abstract base class for layers which generate random values in the output tensor.
     /// </summary>
-    [NonDeterministicOutput]
     abstract class RandomLayer : Layer
     {
         public bool hasSeed;
@@ -21,7 +20,7 @@ namespace Unity.Sentis.Layers
             m_Random = hasSeed ? new Random(seed) : new Random();
         }
 
-        protected RandomLayer(string[] outputs, string[] inputs, int? seed)
+        protected RandomLayer(int[] outputs, int[] inputs, int? seed)
             : base(outputs, inputs)
         {
             hasSeed = seed.HasValue;
@@ -39,8 +38,8 @@ namespace Unity.Sentis.Layers
         public float scale;
         public int[] shape;
 
-        public RandomNormal(string output, int[] shape, float mean, float scale, int? seed)
-            : base(new[] { output }, Array.Empty<string>(), seed)
+        public RandomNormal(int output, int[] shape, float mean, float scale, int? seed)
+            : base(new[] { output }, Array.Empty<int>(), seed)
         {
             this.mean = mean;
             this.scale = scale;
@@ -71,13 +70,12 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `RandomNormalLike` random layer. This generates an output tensor with the same shape as the input tensor with random values in a normal distribution, with given `mean` and `scale`, and an optional `seed` value.
     /// </summary>
-    [Optimization.CPUFallback.NoDataDependencyInputs(0)]
     class RandomNormalLike : RandomLayer
     {
         public float mean;
         public float scale;
 
-        public RandomNormalLike(string output, string input, float mean, float scale, int? seed)
+        public RandomNormalLike(int output, int input, float mean, float scale, int? seed)
             : base(new[] { output }, new[] { input }, seed)
         {
             this.mean = mean;
@@ -91,8 +89,8 @@ namespace Unity.Sentis.Layers
 
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var shapeX = ctx.storage.GetTensorShape(inputs[0]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shapeX, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.RandomNormal(O, mean, scale, NextSeed);
@@ -115,8 +113,8 @@ namespace Unity.Sentis.Layers
         public float high;
         public int[] shape;
 
-        public RandomUniform(string output, int[] shape, float low, float high, int? seed)
-            : base(new[] { output }, Array.Empty<string>(), seed)
+        public RandomUniform(int output, int[] shape, float low, float high, int? seed)
+            : base(new[] { output }, Array.Empty<int>(), seed)
         {
             this.low = low;
             this.high = high;
@@ -147,13 +145,12 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `RandomUniformLike` random layer. This generates an output tensor with the same shape as the input tensor random values in a uniform distribution between a given `low` and `high`, from an optional `seed` value.
     /// </summary>
-    [Optimization.CPUFallback.NoDataDependencyInputs(0)]
     class RandomUniformLike : RandomLayer
     {
         public float low;
         public float high;
 
-        public RandomUniformLike(string output, string input, float low, float high, int? seed)
+        public RandomUniformLike(int output, int input, float low, float high, int? seed)
             : base(new[] { output }, new[] { input }, seed)
         {
             this.low = low;
@@ -167,8 +164,8 @@ namespace Unity.Sentis.Layers
 
         public override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var shapeX = ctx.storage.GetTensorShape(inputs[0]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shapeX, DataType.Float, ctx.backend.backendType) as TensorFloat;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.RandomUniform(O, low, high, NextSeed);
@@ -189,7 +186,7 @@ namespace Unity.Sentis.Layers
     {
         public DataType dataType;
 
-        public Bernoulli(string output, string input, DataType dataType, int? seed)
+        public Bernoulli(int output, int input, DataType dataType, int? seed)
             : base(new[] { output }, new[] { input }, seed)
         {
             this.dataType = dataType;
@@ -224,7 +221,7 @@ namespace Unity.Sentis.Layers
     {
         public int count;
 
-        public Multinomial(string output, string input, int count, int? seed)
+        public Multinomial(int output, int input, int count, int? seed)
             : base(new[] { output }, new[] { input }, seed)
         {
             this.count = count;
@@ -246,7 +243,6 @@ namespace Unity.Sentis.Layers
 
             ctx.backend.RandomUniform(random, 0, 1, NextSeed);
             ctx.backend.Softmax(X, Xtmp, -1);
-
             ctx.backend.TopP(Xtmp, random, O);
 
             ctx.storage.Dispose(Xtmp);

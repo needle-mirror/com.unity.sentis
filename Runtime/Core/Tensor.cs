@@ -1,7 +1,7 @@
 using UnityEngine.Assertions;
 using System;
 using Unity.Collections;
-using System.Threading.Tasks;
+using UnityEngine;
 
 namespace Unity.Sentis
 {
@@ -18,12 +18,9 @@ namespace Unity.Sentis
     /// * Data is stored in a flattened row major format
     /// * Data can be pending (ie computation is being done in parallel)
     ///      - call CompleteAllPendingOperations for a blocking call to finish computing the tensor's data
-    ///      - call CompleteOperationsAndDownloadAsync/ReadbackRequest for a non blocking call to finish computing the tensor's data
     ///   Data can be in a non readable type (GPU/NPU)
-    ///      - Call CompleteOperationsAndDownload to make the tensor readable (this will fetch the data on the backend and convert it to a readable format)
-    ///      - CompleteOperationsAndDownload is a blocking call if called on its own.
-    ///        for a non blocking call, make sure that CompleteOperationsAndDownloadAsync/ReadbackRequest have been called previously
-    ///        you can check that with IsReadbackRequestDone
+    ///      - Call CompleteAllPendingOperations to finish computing the tensor's data
+    ///      - Call ReadbackAndClone or ReadBackAndCloneAsync to allow reading the tensor's data
     ///
     /// Data manipulation
     /// * ToReadOnlyArray returns a copy of the tensor's data
@@ -69,7 +66,10 @@ namespace Unity.Sentis
         /// </summary>
         public BackendType backendType
         {
-            get => m_DataOnBackend.backendType;
+            get {
+                Logger.AssertIsTrue(m_DataOnBackend != null, "Tensor is empty and has no data on any backend");
+                return m_DataOnBackend.backendType;
+            }
         }
 
         internal bool disposed => m_Disposed;
@@ -120,12 +120,6 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Uploads the tensor data to the destination data location on device.
-        /// </summary>
-        /// <param name="destination">The data on device to upload the tensor data to.</param>
-        public abstract void UploadToDevice(ITensorData destination);
-
-        /// <summary>
         /// Synchronizes the tensor data with the data on the device, then remove the tensor from the device.
         /// </summary>
         /// <param name="disposeDeviceData">Whether to free the space on device after detaching.</param>
@@ -135,32 +129,6 @@ namespace Unity.Sentis
             ITensorData unpinned = (disposeDeviceData) ? null : m_DataOnBackend;
             PinToDevice(null, disposeDeviceData);
             return unpinned;
-        }
-
-        /// <summary>
-        /// Blocking call to make tensor data read/write.
-        ///
-        /// Issues a blocking download of the internal data. And converts tensorData to BurstTensorData
-        /// </summary>
-        public void CompleteOperationsAndDownload()
-        {
-            m_DataOnBackend?.CompleteAllPendingOperations();
-            if (m_DataOnBackend is IReadableTensorData)
-                return;
-            BurstTensorData.Pin(this);
-        }
-
-        /// <summary>
-        /// Non blocking call to make tensor data read/write.
-        ///
-        /// Issues a non blocking download of the internal data. And converts tensorData to BurstTensorData
-        /// </summary>
-        /// <returns>The async task.</returns>
-        public async Task<bool> CompleteOperationsAndDownloadAsync()
-        {
-            await ReadbackRequestAsync();
-            CompleteOperationsAndDownload();
-            return true;
         }
 
         /// <summary>
@@ -180,27 +148,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Schedules asynchronous download of the internal data.
         /// </summary>
-        /// <param name="callback">Callback invoked when async readback is finished. Return value indicates if async readback is successful.</param>
-        public void ReadbackRequest(Action<bool> callback = null)
+        public void ReadbackRequest()
         {
-            if (m_DataOnBackend == null)
-            {
-                callback?.Invoke(false);
-                return;
-            }
-
-            m_DataOnBackend.ReadbackRequest(callback);
-        }
-
-        /// <summary>
-        /// Schedules asynchronous download task of the internal data.
-        ///
-        /// Boolean indicates if async readback is successful.
-        /// </summary>
-        /// <returns>awaitable task for when the readback request is successful.</returns>
-        public async Task<bool> ReadbackRequestAsync()
-        {
-            return await m_DataOnBackend.ReadbackRequestAsync();
+            m_DataOnBackend?.ReadbackRequest();
         }
 
         /// <summary>
@@ -208,7 +158,7 @@ namespace Unity.Sentis
         /// </summary>
         public void CompleteAllPendingOperations()
         {
-            m_DataOnBackend.CompleteAllPendingOperations();
+            m_DataOnBackend?.CompleteAllPendingOperations();
         }
 
         /// puts Tensor in the ready for reuse state.
@@ -226,11 +176,7 @@ namespace Unity.Sentis
         /// </summary>
         public void Dispose()
         {
-            if (m_DataOnBackend != null)
-            {
-                m_DataOnBackend.Dispose();
-            }
-
+            m_DataOnBackend?.Dispose();
             m_DataOnBackend = null;
             m_Disposed = true;
         }
@@ -244,46 +190,52 @@ namespace Unity.Sentis
             return $"Tensor{dataType}{shape}";
         }
 
+        #if UNITY_2023_2_OR_NEWER
+        internal async Awaitable<NativeArray<T>> DownloadToNativeArrayAsync<T>() where T : unmanaged
+        {
+            return await m_DataOnBackend.DownloadAsync<T>(count);
+        }
+        #endif
+        internal NativeArray<T> DownloadToNativeArray<T>() where T : unmanaged
+        {
+            return m_DataOnBackend.Download<T>(count);
+        }
         internal T[] ToReadOnlyArray<T>() where T : unmanaged
         {
-            if (shape.length == 0)
+            if (count == 0)
                 return Array.Empty<T>();
             if (m_DataOnBackend is IReadableTensorData rwData)
-                return rwData.ToArray<T>(count);
+                return rwData.GetReadOnlyNativeArrayHandle<T>(count).ToArray();
             else
-                throw new InvalidOperationException("Tensor data cannot be read from, use .CompleteOperationsAndDownload() to allow reading from tensor.");
+                return m_DataOnBackend.Download<T>(count).ToArray();
         }
         internal NativeArray<T>.ReadOnly ToReadOnlyNativeArray<T>() where T : unmanaged
         {
-            if (shape.length == 0)
-                return new NativeArray<T>.ReadOnly();
             if (m_DataOnBackend is IReadableTensorData rwData)
                 return rwData.GetReadOnlyNativeArrayHandle<T>(count);
             else
-                throw new InvalidOperationException("Tensor data cannot be read from, use .CompleteOperationsAndDownload() to allow reading from tensor.");
+                return m_DataOnBackend.Download<T>(count).AsReadOnly();
         }
         internal ReadOnlySpan<T> ToReadOnlySpan<T>() where T : unmanaged
         {
-            if (shape.length == 0)
-                return ReadOnlySpan<T>.Empty;
             if (m_DataOnBackend is IReadableTensorData rwData)
-                return rwData.ToReadOnlySpan<T>(count);
+                return rwData.GetReadOnlyNativeArrayHandle<T>(count).AsReadOnlySpan();
             else
-                throw new InvalidOperationException("Tensor data cannot be read from, use .CompleteOperationsAndDownload() to allow reading from tensor.");
+                return m_DataOnBackend.Download<T>(count).AsReadOnlySpan();
         }
         internal T GetItem<T>(int d0) where T : unmanaged
         {
             if (m_DataOnBackend is IReadableTensorData rwData)
                 return rwData.Get<T>(d0);
             else
-                throw new InvalidOperationException("Tensor data cannot be read from, use .CompleteOperationsAndDownload() to allow reading from tensor.");
+                throw new InvalidOperationException("Tensor data cannot be read from, use .ReadbackAndClone() to allow reading from tensor.");
         }
         internal void SetItem<T>(int d0, T value) where T : unmanaged
         {
             if (m_DataOnBackend is IReadableTensorData rwData)
                 rwData.Set<T>(d0, value);
             else
-                throw new InvalidOperationException("Tensor data cannot be written to, use .CompleteOperationsAndDownload() to allow writing to tensor.");
+                throw new InvalidOperationException("Tensor data cannot be written to, use .ReadbackAndClone() to allow writing to tensor.");
         }
     }
 }

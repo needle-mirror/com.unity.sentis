@@ -17,7 +17,7 @@ namespace Unity.Sentis
             // TODO add auto padding, ceil_mode, count_include_pad
             input = input.Float();
             var s = stride ?? kernelSize;
-            return FunctionalTensor.FromLayer(new Layers.AveragePool(null, null, new[] { kernelSize }, new[] { s }, new[] { padding, padding }), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.AveragePool(-1, -1, new[] { kernelSize }, new[] { s }, new[] { padding, padding }), input.DataType, input);
         }
 
         /// <summary>
@@ -33,7 +33,7 @@ namespace Unity.Sentis
             // TODO add auto padding, ceil_mode, count_include_pad
             input = input.Float();
             var s = stride ?? kernelSize;
-            return FunctionalTensor.FromLayer(new Layers.AveragePool(null, null, new[] { kernelSize, kernelSize }, new[] { s, s }, new[] { padding, padding, padding, padding }), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.AveragePool(-1, -1, new[] { kernelSize, kernelSize }, new[] { s, s }, new[] { padding, padding, padding, padding }), input.DataType, input);
         }
 
         /// <summary>
@@ -50,7 +50,7 @@ namespace Unity.Sentis
             input = input.Float();
             var strideArray = new[] { stride?.Item1 ?? kernelSize.Item1, stride?.Item2 ?? kernelSize.Item2 };
             var paddingArray = new[] { padding?.Item1 ?? 0, padding?.Item2 ?? 0, padding?.Item1 ?? 0, padding?.Item2 ?? 0 };
-            return FunctionalTensor.FromLayer(new Layers.AveragePool(null, null, new[] { kernelSize.Item1, kernelSize.Item2 }, strideArray, paddingArray), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.AveragePool(-1, -1, new[] { kernelSize.Item1, kernelSize.Item2 }, strideArray, paddingArray), input.DataType, input);
         }
 
         /// <summary>
@@ -66,7 +66,7 @@ namespace Unity.Sentis
             // TODO add auto padding, ceil_mode, count_include_pad
             input = input.Float();
             var s = stride ?? kernelSize;
-            return FunctionalTensor.FromLayer(new Layers.AveragePool(null, null, new[] { kernelSize, kernelSize, kernelSize }, new[] { s, s, s }, new[] { padding, padding, padding, padding, padding, padding }), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.AveragePool(-1, -1, new[] { kernelSize, kernelSize, kernelSize }, new[] { s, s, s }, new[] { padding, padding, padding, padding, padding, padding }), input.DataType, input);
         }
 
         /// <summary>
@@ -83,7 +83,7 @@ namespace Unity.Sentis
             input = input.Float();
             var strideArray = new[] { stride?.Item1 ?? kernelSize.Item1, stride?.Item2 ?? kernelSize.Item2, stride?.Item3 ?? kernelSize.Item3 };
             var paddingArray = new[] { padding?.Item1 ?? 0, padding?.Item2 ?? 0, padding?.Item3 ?? 0, padding?.Item1 ?? 0, padding?.Item2 ?? 0, padding?.Item3 ?? 0 };
-            return FunctionalTensor.FromLayer(new Layers.AveragePool(null, null, new[] { kernelSize.Item1, kernelSize.Item2, kernelSize.Item3 }, strideArray, paddingArray), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.AveragePool(-1, -1, new[] { kernelSize.Item1, kernelSize.Item2, kernelSize.Item3 }, strideArray, paddingArray), input.DataType, input);
         }
 
         /// <summary>
@@ -99,7 +99,7 @@ namespace Unity.Sentis
             // TODO add auto padding, ceil_mode, count_include_pad
             input = input.Float();
             var s = stride ?? kernelSize;
-            return FunctionalTensor.FromLayer(new Layers.MaxPool(null, null, new[] { kernelSize }, new[] { s }, new[] { padding, padding }), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.MaxPool(-1, -1, new[] { kernelSize }, new[] { s }, new[] { padding, padding }), input.DataType, input);
         }
 
         /// <summary>
@@ -115,7 +115,7 @@ namespace Unity.Sentis
             // TODO add auto padding, ceil_mode, count_include_pad
             input = input.Float();
             var s = stride ?? kernelSize;
-            return FunctionalTensor.FromLayer(new Layers.MaxPool(null, null, new[] { kernelSize, kernelSize }, new[] { s, s }, new[] { padding, padding, padding, padding }), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.MaxPool(-1, -1, new[] { kernelSize, kernelSize }, new[] { s, s }, new[] { padding, padding, padding, padding }), input.DataType, input);
         }
 
         /// <summary>
@@ -132,7 +132,7 @@ namespace Unity.Sentis
             input = input.Float();
             var strideArray = new[] { stride?.Item1 ?? kernelSize.Item1, stride?.Item2 ?? kernelSize.Item2 };
             var paddingArray = new[] { padding?.Item1 ?? 0, padding?.Item2 ?? 0, padding?.Item1 ?? 0, padding?.Item2 ?? 0 };
-            return FunctionalTensor.FromLayer(new Layers.MaxPool(null, null, new[] { kernelSize.Item1, kernelSize.Item2 }, strideArray, paddingArray), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.MaxPool(-1, -1, new[] { kernelSize.Item1, kernelSize.Item2 }, strideArray, paddingArray), input.DataType, input);
         }
 
         /// <summary>
@@ -148,7 +148,7 @@ namespace Unity.Sentis
             // TODO add auto padding, ceil_mode, count_include_pad
             input = input.Float();
             var s = stride ?? kernelSize;
-            return FunctionalTensor.FromLayer(new Layers.MaxPool(null, null, new[] { kernelSize, kernelSize, kernelSize }, new[] { s, s, s }, new[] { padding, padding, padding, padding, padding, padding }), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.MaxPool(-1, -1, new[] { kernelSize, kernelSize, kernelSize }, new[] { s, s, s }, new[] { padding, padding, padding, padding, padding, padding }), input.DataType, input);
         }
 
         /// <summary>
@@ -165,7 +165,7 @@ namespace Unity.Sentis
             input = input.Float();
             var strideArray = new[] { stride?.Item1 ?? kernelSize.Item1, stride?.Item2 ?? kernelSize.Item2, stride?.Item3 ?? kernelSize.Item3 };
             var paddingArray = new[] { padding?.Item1 ?? 0, padding?.Item2 ?? 0, padding?.Item3 ?? 0, padding?.Item1 ?? 0, padding?.Item2 ?? 0, padding?.Item3 ?? 0 };
-            return FunctionalTensor.FromLayer(new Layers.MaxPool(null, null, new[] { kernelSize.Item1, kernelSize.Item2, kernelSize.Item3 }, strideArray, paddingArray), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.MaxPool(-1, -1, new[] { kernelSize.Item1, kernelSize.Item2, kernelSize.Item3 }, strideArray, paddingArray), input.DataType, input);
         }
     }
 }

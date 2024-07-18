@@ -13,7 +13,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Bernoulli(FunctionalTensor input, DataType dataType = DataType.Int, int? seed = null)
         {
-            return FunctionalTensor.FromLayer(new Layers.Bernoulli(null, null, dataType, seed), dataType, input);
+            return FunctionalTensor.FromLayer(new Layers.Bernoulli(-1, -1, dataType, seed), dataType, input);
         }
 
         /// <summary>
@@ -27,7 +27,32 @@ namespace Unity.Sentis
         {
             // TODO add replacement arg
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Multinomial(null, null, numSamples, seed), DataType.Int, input);
+            return FunctionalTensor.FromLayer(new Layers.Multinomial(-1, -1, numSamples, seed), DataType.Int, input);
+        }
+
+        /// <summary>
+        /// Returns a randomly selected value from a 1D input tensor.
+        /// </summary>
+        /// <param name="input">The input tensor to select random values from.</param>
+        /// <param name="seed">The optional seed value for the random number generator.</param>
+        /// <returns>The output tensor.</returns>
+        public static FunctionalTensor RandomChoice(FunctionalTensor input, int? seed = null)
+        {
+            var index = Int(Floor(FunctionalTensor.FromLayer(new Layers.Size(-1, -1), DataType.Int, input) * Rand(new[] { 1 }, seed)));
+            return Gather(input, 0, index).Squeeze();
+        }
+
+        /// <summary>
+        /// Returns a randomly selected value from a 1D input tensor with probabilities given by the tensor p.
+        /// </summary>
+        /// <param name="input">The input tensor to select random values from.</param>
+        /// <param name="p">The probabilities tensor corresponding to the values.</param>
+        /// <param name="seed">The optional seed value for the random number generator.</param>
+        /// <returns>The output tensor.</returns>
+        public static FunctionalTensor RandomChoice(FunctionalTensor input, FunctionalTensor p, int? seed = null)
+        {
+            var index = Multinomial(p.Unsqueeze(0), 1, seed).Squeeze(new[] { 0 });
+            return Gather(input, 0, index).Squeeze();
         }
 
         /// <summary>
@@ -40,7 +65,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Normal(float mean, float std, int[] size, int? seed = null)
         {
-            return FunctionalTensor.FromLayer(new Layers.RandomNormal(null, size, mean, std, seed), DataType.Float, Array.Empty<FunctionalTensor>());
+            return FunctionalTensor.FromLayer(new Layers.RandomNormal(-1, size, mean, std, seed), DataType.Float, Array.Empty<FunctionalTensor>());
         }
 
         /// <summary>
@@ -51,7 +76,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Rand(int[] size, int? seed = null)
         {
-            return FunctionalTensor.FromLayer(new Layers.RandomUniform(null, size, 0, 1, seed), DataType.Float, Array.Empty<FunctionalTensor>());
+            return FunctionalTensor.FromLayer(new Layers.RandomUniform(-1, size, 0, 1, seed), DataType.Float, Array.Empty<FunctionalTensor>());
         }
 
         /// <summary>
@@ -62,7 +87,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor RandLike(FunctionalTensor input, int? seed = null)
         {
-            return FunctionalTensor.FromLayer(new Layers.RandomUniformLike(null, null, 0, 1, seed), DataType.Float, input);
+            return FunctionalTensor.FromLayer(new Layers.RandomUniformLike(-1, -1, 0, 1, seed), DataType.Float, input);
         }
 
         /// <summary>
@@ -75,7 +100,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor RandInt(int[] size, int low, int high, int? seed = null)
         {
-            return Floor(FunctionalTensor.FromLayer(new Layers.RandomUniform(null, size, low, high, seed), DataType.Float, Array.Empty<FunctionalTensor>())).Int();
+            return Floor(FunctionalTensor.FromLayer(new Layers.RandomUniform(-1, size, low, high, seed), DataType.Float, Array.Empty<FunctionalTensor>())).Int();
         }
 
         /// <summary>
@@ -88,7 +113,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor RandIntLike(FunctionalTensor input, int low, int high, int? seed = null)
         {
-            return Floor(FunctionalTensor.FromLayer(new Layers.RandomUniformLike(null, null, low, high, seed), DataType.Float, input)).Int();
+            return Floor(FunctionalTensor.FromLayer(new Layers.RandomUniformLike(-1, -1, low, high, seed), DataType.Float, input)).Int();
         }
 
         /// <summary>
@@ -99,7 +124,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor RandN(int[] size, int? seed = null)
         {
-            return FunctionalTensor.FromLayer(new Layers.RandomNormal(null, size, 0, 1, seed), DataType.Float, Array.Empty<FunctionalTensor>());
+            return FunctionalTensor.FromLayer(new Layers.RandomNormal(-1, size, 0, 1, seed), DataType.Float, Array.Empty<FunctionalTensor>());
         }
 
         /// <summary>
@@ -110,7 +135,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor RandNLike(FunctionalTensor input, int? seed = null)
         {
-            return FunctionalTensor.FromLayer(new Layers.RandomNormalLike(null, null, 0, 1, seed), DataType.Float, input);
+            return FunctionalTensor.FromLayer(new Layers.RandomNormalLike(-1, -1, 0, 1, seed), DataType.Float, input);
         }
     }
 }

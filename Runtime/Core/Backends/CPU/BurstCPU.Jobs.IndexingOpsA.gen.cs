@@ -22,7 +22,7 @@ public partial class CPUBackend
 [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
 internal unsafe struct TileJob : IJobParallelFor, IJobResourceDeclarationXO
 {
-    
+
     public int rank;
     public fixed int shapeO[8];
     public fixed int stridesO[8];
@@ -48,7 +48,7 @@ internal unsafe struct TileJob : IJobParallelFor, IJobResourceDeclarationXO
 [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
 internal unsafe struct GatherElementsFastJob : IJobParallelFor, IJobResourceDeclarationXBO
 {
-    
+
     public int inputAxisSize;
     public int inputAxisElementStride;
     public int indicesAxisElementStride;
@@ -82,7 +82,7 @@ internal unsafe struct GatherElementsFastJob : IJobParallelFor, IJobResourceDecl
 [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
 internal unsafe struct GatherElementsJob : IJobParallelFor, IJobResourceDeclarationXBO
 {
-    
+
     public int inputAxisSize;
     public int posAxis;
     public int rank;
@@ -149,7 +149,7 @@ internal unsafe struct GatherElementsJob : IJobParallelFor, IJobResourceDeclarat
 [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
 internal unsafe struct ScatterElementsFastJob : IJobParallelFor, IJobResourceDeclarationXBO
 {
-    
+
     public int outAxisSize;
     public int indicesAxisElementStride;
     public int outAxisElementStride;
@@ -254,7 +254,7 @@ internal unsafe struct ScatterElementsFastJob : IJobParallelFor, IJobResourceDec
 [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
 internal unsafe struct ScatterElementsJob : IJobParallelFor, IJobResourceDeclarationXBO
 {
-    
+
     public int outAxisSize;
     public int posAxis;
     public int rank;
@@ -325,7 +325,7 @@ internal unsafe struct ScatterElementsJob : IJobParallelFor, IJobResourceDeclara
 [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
 internal unsafe struct ExpandJob : IJobParallelFor, IJobResourceDeclarationXO
 {
-    
+
     public int rank;
     public fixed int shapeO[8];
     public fixed int stridesO[8];

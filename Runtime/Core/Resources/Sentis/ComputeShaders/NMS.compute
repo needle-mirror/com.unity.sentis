@@ -1,0 +1,165 @@
+#pragma kernel NMSBitmaskCorners BITMASK CORNERS SUFFIX_BITMAX=NMSBitmaskCorners
+#pragma kernel NMSBitmaskCenter BITMASK CENTER SUFFIX_BITMAX=NMSBitmaskCenter
+#pragma kernel NMSSelect
+#pragma kernel NMSCompact
+
+#include "Tensor.cginc"
+
+#ifdef BITMASK
+StructuredBuffer<float> Xptr;
+#else
+StructuredBuffer<int> Xptr;
+#endif
+
+StructuredBuffer<float> Sptr;
+StructuredBuffer<int> Bptr;
+RWStructuredBuffer<int> Optr;
+RWStructuredBuffer<int> Iptr;
+
+uint numBatches;
+uint numBoxes;
+uint numClasses;
+float iouThreshold;
+float scoreThreshold;
+uint maxOutputBoxesPerClass;
+uint maxNumOutput;
+
+[numthreads(4, 8, 8)]
+void SUFFIX_BITMAX(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint batchIndex = dispatchThreadID.x;
+    uint iIndex = dispatchThreadID.y;
+    uint jIndex = dispatchThreadID.z;
+
+    if (iIndex >= numBoxes || jIndex >= numBoxes || batchIndex >= numBatches)
+        return;
+
+    uint oIndex = (batchIndex * numBoxes + jIndex) * numBoxes + iIndex;
+    Optr[oIndex] = 0;
+
+    float xi_0 = Xptr[4 * (batchIndex * numBoxes + iIndex) + 0];
+    float yi_0 = Xptr[4 * (batchIndex * numBoxes + iIndex) + 1];
+    float xi_1 = Xptr[4 * (batchIndex * numBoxes + iIndex) + 2];
+    float yi_1 = Xptr[4 * (batchIndex * numBoxes + iIndex) + 3];
+
+    float xj_0 = Xptr[4 * (batchIndex * numBoxes + jIndex) + 0];
+    float yj_0 = Xptr[4 * (batchIndex * numBoxes + jIndex) + 1];
+    float xj_1 = Xptr[4 * (batchIndex * numBoxes + jIndex) + 2];
+    float yj_1 = Xptr[4 * (batchIndex * numBoxes + jIndex) + 3];
+
+    #ifdef CORNERS
+    float xi_min = min(xi_0, xi_1);
+    float xi_max = max(xi_0, xi_1);
+    float yi_min = min(yi_0, yi_1);
+    float yi_max = max(yi_0, yi_1);
+    float areai = (xi_max - xi_min) * (yi_max - yi_min);
+    float xj_min = min(xj_0, xj_1);
+    float xj_max = max(xj_0, xj_1);
+    float yj_min = min(yj_0, yj_1);
+    float yj_max = max(yj_0, yj_1);
+    float areaj = (xj_max - xj_min) * (yj_max - yj_min);
+    #else
+    float xi_min = xi_0 - 0.5f * xi_1;
+    float xi_max = xi_0 + 0.5f * xi_1;
+    float yi_min = yi_0 - 0.5f * yi_1;
+    float yi_max = yi_0 + 0.5f * yi_1;
+    float areai = xi_1 * yi_1;
+    float xj_min = xj_0 - 0.5f * xj_1;
+    float xj_max = xj_0 + 0.5f * xj_1;
+    float yj_min = yj_0 - 0.5f * yj_1;
+    float yj_max = yj_0 + 0.5f * yj_1;
+    float areaj = xj_1 * yj_1;
+    #endif
+
+    float intersectionMinX = max(xi_min, xj_min);
+    float intersectionMaxX = min(xi_max, xj_max);
+    if (intersectionMinX > intersectionMaxX)
+        return;
+    float intersectionMinY = max(yi_min, yj_min);
+    float intersectionMaxY = min(yi_max, yj_max);
+    if (intersectionMinY > intersectionMaxY)
+        return;
+    float intersection = (intersectionMaxX - intersectionMinX) * (intersectionMaxY - intersectionMinY);
+    float iou = intersection / (areai + areaj - intersection);
+    if (iou > iouThreshold)
+        Optr[oIndex] = 1;
+}
+
+
+groupshared uint LDS_numSelected;
+RWStructuredBuffer<float> Wptr;
+
+#define BLOCKSIZE 256
+
+[numthreads(BLOCKSIZE, 1, 1)]
+void NMSSelect(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID, uint3 groupId : SV_GroupID)
+{
+    uint batchIndex = dispatchThreadID.z;
+    uint classIndex = dispatchThreadID.y;
+
+    uint offset = (batchIndex * numClasses + classIndex) * numBoxes;
+    uint xOffset = batchIndex * numBoxes * numBoxes;
+
+    uint tID = groupThreadID.x;
+
+    for (uint k = 0; k < numBoxes; k += BLOCKSIZE)
+        Wptr[offset + min(tID + k, numBoxes - 1)] = (Sptr[offset + min(tID + k, numBoxes - 1)] >= scoreThreshold);
+
+    if (tID == 0)
+        LDS_numSelected = 0;
+
+    for (uint jj = 0; jj < numBoxes; jj++)
+    {
+        GroupMemoryBarrierWithGroupSync();
+        bool isSelected = Wptr[offset + jj];
+        uint i2 = Bptr[offset + jj];
+        for (uint k = 0; k < numBoxes; k += BLOCKSIZE)
+        {
+            if (isSelected)
+            {
+                if (tID + k == jj)
+                {
+                    uint i1 = Bptr[offset + jj];
+                    Optr[offset + LDS_numSelected] = i1;
+                    LDS_numSelected++;
+                }
+                int tID_K = min(tID + k, numBoxes - 1);
+                uint i1 = Bptr[offset + tID_K];
+                uint intersection = Xptr[xOffset + i1 * numBoxes + i2];
+                Wptr[offset + tID_K] = Wptr[offset + tID_K] && (intersection != 1);
+            }
+            GroupMemoryBarrierWithGroupSync();
+        }
+    }
+    if (tID == 0 && LDS_numSelected < numBoxes)
+    {
+        Optr[offset + LDS_numSelected] = -1;
+    }
+}
+
+[numthreads(1, 1, 1)]
+void NMSCompact(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint numOutput = 0;
+    for (uint batchIdx = 0; batchIdx < numBatches; batchIdx++)
+    {
+        uint xBatchOffset = batchIdx * numClasses * numBoxes;
+        for (uint classIdx = 0; classIdx < numClasses; classIdx++)
+        {
+            if (numOutput >= maxNumOutput)
+                break;
+            uint xOffset = xBatchOffset + classIdx * numBoxes;
+            for (uint i = 0; i < maxOutputBoxesPerClass; i++)
+            {
+                int selectedIndex = Xptr[xOffset + i];
+                if (selectedIndex == -1)
+                    break;
+                Optr[numOutput * 3 + 0] = batchIdx;
+                Optr[numOutput * 3 + 1] = classIdx;
+                Optr[numOutput * 3 + 2] = selectedIndex;
+                numOutput++;
+            }
+        }
+    }
+    Iptr[0] = numOutput;
+}

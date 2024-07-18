@@ -51,10 +51,11 @@ public class UseTheFunctionalAPI : MonoBehaviour
         // Get the output and download onto the CPU to view it.
         // The outputs are automatically named as output_0, output_1, etc.
         var output = m_Worker.PeekOutput("output_0") as TensorFloat;
-        output.CompleteOperationsAndDownload();
-
         Debug.Log($"output shape = {output.shape}");
-        Debug.Log($"average values = {output[0, 0]}, {output[0, 1]}, {output[0, 2]}");
+
+        var outputCPU = output.ReadbackAndClone();
+        Debug.Log($"average values = {outputCPU[0, 0]}, {outputCPU[0, 1]}, {outputCPU[0, 2]}");
+        outputCPU.Dispose();
     }
 
     void OnDisable()

@@ -1,12 +1,10 @@
 # Create input for a model
 
-A model requires input tensors with certain shapes and data types. Use this information for guidance on finding model inputs and creating input tensors for your model.
+A model requires input tensors with certain shapes and data types. Use this information to find model inputs and create input tensors for your model.
 
 ## Understand the required input
 
-Before you can create input tensors for a model, you must first understand the shape and data types of the model inputs. 
-
-To understand model inputs and the types of input shapes, refer to [Model inputs](models-concept.md#model-inputs).
+Before you can create input tensors for a model, you must first understand the shape and data types of the model inputs. For more information, refer to [Model inputs](models-concept.md#model-inputs).
 
 The [`TensorShape`](xref:Unity.Sentis.TensorShape) of the `[`Tensor`](xref:Unity.Sentis.Tensor)` you create must be compatible with the [`SymbolicTensorShape`](xref:Unity.Sentis.SymbolicTensorShape), which defines the shape of the model input.
 
@@ -41,7 +39,9 @@ public class ConvertArrayToTensor : MonoBehaviour
 
 ## Create multiple inputs
 
-If a model needs multiple input tensors, you can create a dictionary that contains the inputs. For example:
+If a model needs multiple input tensors, create a dictionary that contains the inputs.
+
+For example:
 
 ```
 Dictionary<string, Tensor> inputTensors = new Dictionary<string, Tensor>()
@@ -51,9 +51,18 @@ Dictionary<string, Tensor> inputTensors = new Dictionary<string, Tensor>()
 };
 ```
 
+To avoid handling a dictionary, set inputs manually with `SetInput`.
+
+For example:
+
+```
+worker.SetInput("x", xTensor);
+worker.SetInput("y", yTensor);
+```
+
 ## Edit a model
 
-Use the functional API if you need to add operations to your model inputs. Refer to [Edit a model](edit-a-model.md) for more information.
+Use the functional API to add operations to your model inputs. For more information, refer to [Edit a model](edit-a-model.md).
 
 ## Additional resources
 

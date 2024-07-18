@@ -8,12 +8,12 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 {
     class ContractSubExpressionPass : IModelPass
     {
-        Dictionary<string, Constant> modelConstants = new Dictionary<string, Constant>();
-        Dictionary<string, Layer> indexToLayer = new Dictionary<string, Layer>();
-        Dictionary<string, int> indexToLayerIndex = new Dictionary<string, int>();
-        Dictionary<string, List<Layer>> downstreamLayers = new Dictionary<string, List<Layer>>();
+        Dictionary<int, Constant> modelConstants = new Dictionary<int, Constant>();
+        Dictionary<int, Layer> indexToLayer = new Dictionary<int, Layer>();
+        Dictionary<int, int> indexToLayerIndex = new Dictionary<int, int>();
+        Dictionary<int, List<Layer>> downstreamLayers = new Dictionary<int, List<Layer>>();
         List<Layer> layersInPattern = new List<Layer>();
-        List<string> inputLayers = new List<string>();
+        List<int> inputLayers = new List<int>();
         List<Constant> inputConstants = new List<Constant>();
 
         // Automatic Chain rule CAS
@@ -172,6 +172,17 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             }
         }
 
+        class VariableScalarInt : IConstantNode
+        {
+            public override bool Validate(Constant constant)
+            {
+                if (constant.dataType != DataType.Int)
+                    return false;
+
+                return constant.shape.length == 1 && constant.shape.rank <= 1;
+            }
+        }
+
         class VectorInt : IConstantNode
         {
             int[] m_Value;
@@ -240,7 +251,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
         // remapping rules:
         // key: expression to test against
         // value: layer to spawn, layersInPattern is all the layers that match the expression
-        Dictionary<Func<InputNode, INode>, Func<Layer, List<string>, List<Constant>, Layer>> remappingRules = new Dictionary<Func<InputNode, INode>, Func<Layer, List<string>, List<Constant>, Layer>>()
+        Dictionary<Func<InputNode, INode>, Func<Layer, List<int>, List<Constant>, Layer>> remappingRules = new Dictionary<Func<InputNode, INode>, Func<Layer, List<int>, List<Constant>, Layer>>()
         {
             { x => INode.Pow(x, -1.0f),                                      (y, iLayers, iConstants) => new Reciprocal(y.outputs[0], iLayers[0]) },
             { x => INode.Pow(x, 0.5f),                                       (y, iLayers, iConstants) => new Sqrt(y.outputs[0], iLayers[0]) },
@@ -267,14 +278,20 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             { x => new VariableScalarFloat() + x, (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1.0f, iConstants[0].weights.Get<float>(0)) },
             { x => x - new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1.0f, -iConstants[0].weights.Get<float>(0)) },
             { x => new VariableScalarFloat() - x, (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], -1.0f, iConstants[0].weights.Get<float>(0)) },
-            { x => x * new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], iConstants[0].weights.Get<float>(0), 0) },
-            { x => new VariableScalarFloat() * x, (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], iConstants[0].weights.Get<float>(0), 0) },
-            { x => x / new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1.0f / iConstants[0].weights.Get<float>(0), 0) },
+            { x => x * new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], iConstants[0].weights.Get<float>(0), 0.0f) },
+            { x => new VariableScalarFloat() * x, (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], iConstants[0].weights.Get<float>(0), 0.0f) },
+            { x => x / new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1.0f / iConstants[0].weights.Get<float>(0), 0.0f) },
+            { x => x + new VariableScalarInt(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1, iConstants[0].weights.Get<int>(0)) },
+            { x => new VariableScalarInt() + x, (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1, iConstants[0].weights.Get<int>(0)) },
+            { x => x - new VariableScalarInt(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1, -iConstants[0].weights.Get<int>(0)) },
+            { x => new VariableScalarInt() - x, (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], -1, iConstants[0].weights.Get<int>(0)) },
+            { x => x * new VariableScalarInt(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], iConstants[0].weights.Get<int>(0), 0) },
+            { x => new VariableScalarInt() * x, (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], iConstants[0].weights.Get<int>(0), 0) },
         };
 
         bool Validate(INode root, Layer input)
         {
-            Stack<string> layerStack = new Stack<string>();
+            Stack<int> layerStack = new Stack<int>();
             Stack<INode> nodeStack = new Stack<INode>();
 
             nodeStack.Push(root);
@@ -282,7 +299,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             while (nodeStack.Count != 0)
             {
                 INode node = nodeStack.Pop();
-                string index = layerStack.Pop();
+                int index = layerStack.Pop();
 
                 if (node is IConstantNode cNode)
                 {
@@ -322,10 +339,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
         // foreach layer in subgraph
         // * all input are in the subGraph or inputs of root layer
         // * all downstream layers are in the subGraph or downstream of root layer
-        bool CheckGraphFullInclusion(Layer root, List<Layer> subGraph, out string patternInput)
+        bool CheckGraphFullInclusion(Layer root, List<Layer> subGraph, out int patternInput)
         {
-            patternInput = null;
-            HashSet<string> layersInSubGraph = new HashSet<string>();
+            patternInput = -1;
+            HashSet<int> layersInSubGraph = new HashSet<int>();
             foreach (var layer in subGraph)
             {
                 layersInSubGraph.Add(layer.outputs[0]);
@@ -369,19 +386,19 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
         public void Run(ref Model model)
         {
-            HashSet<string> layersToRemove = new HashSet<string>();
+            HashSet<int> layersToRemove = new HashSet<int>();
 
             // build static helpers:
             // - index -> constant
             // - index -> layer index int
-            modelConstants = new Dictionary<string, Constant>();
+            modelConstants = new Dictionary<int, Constant>();
             foreach (var c in model.constants)
                 modelConstants.Add(c.index, c);
 
-            indexToLayer = new Dictionary<string, Layer>();
-            indexToLayerIndex = new Dictionary<string, int>();
-            downstreamLayers = new Dictionary<string, List<Layer>>();
-            var outputs = new HashSet<string>();
+            indexToLayer = new Dictionary<int, Layer>();
+            indexToLayerIndex = new Dictionary<int, int>();
+            downstreamLayers = new Dictionary<int, List<Layer>>();
+            var outputs = new HashSet<int>();
             foreach (var o in model.outputs)
                 outputs.Add(o.index);
             for (int l = 0; l < model.layers.Count; ++l)
@@ -406,7 +423,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
             var x = new InputNode();
             layersInPattern = new List<Layer>();
-            inputLayers = new List<string>();
+            inputLayers = new List<int>();
             inputConstants = new List<Constant>();
 
             // Algorithm:
@@ -429,7 +446,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     if (!Validate(pattern, layer))
                         continue;
 
-                    if (!CheckGraphFullInclusion(layer, layersInPattern, out string input))
+                    if (!CheckGraphFullInclusion(layer, layersInPattern, out int input))
                         continue;
 
                     var remapping = item.Value;

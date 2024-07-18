@@ -5,21 +5,20 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `ConstantOfShape` layer. This generates a tensor with the shape given by the `input` tensor and filled with a given value.
     /// </summary>
-    [Optimization.CPUFallback.CPUReadInputs(0)]
     class ConstantOfShape : Layer
     {
         public DataType dataType;
         public float floatValue;
         public int intValue;
 
-        public ConstantOfShape(string output, string input, int value)
+        public ConstantOfShape(int output, int input, int value)
             : base(new[] { output }, new[] { input })
         {
             dataType = DataType.Int;
             intValue = value;
         }
 
-        public ConstantOfShape(string output, string input, float value)
+        public ConstantOfShape(int output, int input, float value)
             : base(new[] { output }, new[] { input })
         {
             dataType = DataType.Float;
@@ -46,7 +45,7 @@ namespace Unity.Sentis.Layers
 
         public override void Execute(ExecutionContext ctx)
         {
-            TensorShape shape = new TensorShape(ctx.storage.GetTensor(inputs[0]).ToReadOnlySpan<int>());
+            TensorShape shape = new TensorShape(ctx.storage.GetInts(inputs[0]));
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], shape, dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
@@ -68,12 +67,11 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `OneHot` layer. This generates a one-hot tensor with a given `depth`, `indices` and `values`.
     /// </summary>
-    [Optimization.CPUFallback.CPUReadInputs(1, 2)]
     class OneHot : Layer
     {
         public int axis;
 
-        public OneHot(string output, string indices, string depth, string values, int axis)
+        public OneHot(int output, int indices, int depth, int values, int axis)
             : base(new[] { output }, new[] { indices, depth, values })
         {
             this.axis = axis;
@@ -100,19 +98,19 @@ namespace Unity.Sentis.Layers
         public override void Execute(ExecutionContext ctx)
         {
             var indices = ctx.storage.GetTensor(inputs[0]) as TensorInt;
-            var depth = ctx.storage.GetTensor(inputs[1]).ToReadOnlySpan<int>()[0];
-            var values = ctx.storage.GetTensor(inputs[2]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.OneHot(indices.shape, axis, depth), values.dataType, ctx.backend.backendType);
+            var depth = ctx.storage.GetInt(inputs[1]);
+            var dataType = ctx.storage.GetDataType(inputs[2]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.OneHot(indices.shape, axis, depth), dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (values.dataType == DataType.Int)
+            if (dataType == DataType.Int)
             {
-                var valuesi = values.ToReadOnlySpan<int>();
+                var valuesi = ctx.storage.GetInts(inputs[2]);
                 ctx.backend.OneHot(indices, O as TensorInt, axis, depth, valuesi[0], valuesi[1]);
             }
             else
             {
-                var valuesf = values.ToReadOnlySpan<float>();
+                var valuesf = ctx.storage.GetFloats(inputs[2]);
                 ctx.backend.OneHot(indices, O as TensorFloat, axis, depth, valuesf[0], valuesf[1]);
             }
         }
@@ -128,10 +126,9 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Represents a `Range` layer. This generates a 1D output tensor where the values form an arithmetic progression defined by the `start`, `limit` and `delta` scalar input tensors.
     /// </summary>
-    [Optimization.CPUFallback.CPUReadInputs(0, 1, 2)]
     class Range : Layer
     {
-        public Range(string output, string start, string limit, string delta)
+        public Range(int output, int start, int limit, int delta)
             : base(new[] { output }, new[] { start, limit, delta }) { }
 
         internal override void InferPartial(PartialInferenceContext ctx)
@@ -154,15 +151,11 @@ namespace Unity.Sentis.Layers
 
         public override void Execute(ExecutionContext ctx)
         {
-            var start = ctx.storage.GetTensor(inputs[0]);
-            var limit = ctx.storage.GetTensor(inputs[1]);
-            var delta = ctx.storage.GetTensor(inputs[2]);
-
-            if (start is TensorInt)
+            if (ctx.storage.GetDataType(inputs[0]) == DataType.Int)
             {
-                int starti = start.ToReadOnlySpan<int>()[0];
-                int limiti = limit.ToReadOnlySpan<int>()[0];
-                int deltai = delta.ToReadOnlySpan<int>()[0];
+                int starti = ctx.storage.GetInt(inputs[0]);
+                int limiti = ctx.storage.GetInt(inputs[1]);
+                int deltai = ctx.storage.GetInt(inputs[2]);
                 var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.Range(starti, limiti, deltai), DataType.Int, ctx.backend.backendType) as TensorInt;
                 if (O.shape.HasZeroDims())
                     return;
@@ -170,9 +163,9 @@ namespace Unity.Sentis.Layers
             }
             else
             {
-                float startf = start.ToReadOnlySpan<float>()[0];
-                float limitf = limit.ToReadOnlySpan<float>()[0];
-                float deltaf = delta.ToReadOnlySpan<float>()[0];
+                float startf = ctx.storage.GetFloat(inputs[0]);
+                float limitf = ctx.storage.GetFloat(inputs[1]);
+                float deltaf = ctx.storage.GetFloat(inputs[2]);
                 var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.Range(startf, limitf, deltaf), DataType.Float, ctx.backend.backendType) as TensorFloat;
                 if (O.shape.HasZeroDims())
                     return;

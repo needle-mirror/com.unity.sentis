@@ -163,15 +163,6 @@ namespace Unity.Sentis
             return ApplyConvKernel(shape, kernel, stride, pad, dilation);
         }
 
-        public static void NonMaxSuppression(TensorShape boxes, TensorShape scores, float iouThreshold)
-        {
-            Logger.AssertIsTrue(boxes.rank == 3, "NonMaxSuppression.InputError: box data needs to be rank 3, got {0}", boxes.rank);
-            Logger.AssertIsTrue(scores.rank == 3, "NonMaxSuppression.InputError: score data needs to be rank 3, got {0}", scores.rank);
-            Logger.AssertIsTrue(boxes[2] == 4, "NonMaxSuppression.InputError: box data needs to have 4 values per box, got {0}", boxes[2]);
-            Logger.AssertIsTrue(iouThreshold <= 1f, "NonMaxSuppression.InputError: iou threshold must be lower that 1, got {0}", iouThreshold);
-            Logger.AssertIsTrue(iouThreshold >= 0f, "NonMaxSuppression.InputError: iou threshold must be higher that 0, got {0}", iouThreshold);
-        }
-
         /// <summary>
         /// Infer if ScatterElements or GatherElements tensors support fast path kernels or need the generic ones based on the two shapes
         /// that could be different
@@ -329,30 +320,6 @@ namespace Unity.Sentis
         public static TensorShape Unsqueeze(TensorShape shape, int[] axes)
         {
             return shape.Unsqueeze(axes);
-        }
-
-        public static TensorShape Concat(TensorShape[] shapes, int axis)
-        {
-            TensorShape output = shapes[0];
-            axis = output.Axis(axis);
-
-            for (int i = 1; i < shapes.Length; ++i)
-            {
-                if (shapes[i].HasZeroDims())
-                    continue;
-
-                #if (UNITY_ASSERTIONS)
-                for (int r = 0; r < Math.Max(shapes[i].rank, shapes[0].rank); r++)
-                {
-                    if (r == axis)
-                        continue;
-                    Logger.AssertAreEqual(shapes[i][r], shapes[0][r], "ValueError: all input shapes for Concat must be equal {0}, {1} except on axis ({2}) dim", shapes[0], shapes[i], axis);
-                }
-                #endif
-                output[axis] += shapes[i][axis];
-            }
-
-            return output;
         }
 
         public static TensorShape Resize(TensorShape shape, ReadOnlySpan<float> scale)
@@ -529,6 +496,9 @@ namespace Unity.Sentis
 
         public static int SliceDim(int dim, int start, int end, int step)
         {
+            if (dim == 0)
+                return 0;
+
             int clampAdjustDirection = step < 0 ? -1 : 0;
 
             start = start < 0 ? dim + start : start;

@@ -44,15 +44,5 @@ namespace Unity.Sentis
 
             RunPasses(ref model, optimizationPasses);
         }
-
-        internal static void RunCPUFallbackPass(ref Model model)
-        {
-            var optimizationPasses = new IModelPass[]
-            {
-                new CPUFallbackPass(),
-            };
-
-            RunPasses(ref model, optimizationPasses);
-        }
     }
 }

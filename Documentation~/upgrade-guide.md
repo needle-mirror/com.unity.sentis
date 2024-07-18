@@ -1,6 +1,19 @@
-# Upgrade from Sentis 1.3 to Sentis 1.5
+# Upgrade from Sentis Sentis 1.4 or 1.5 to Sentis 1.6
 
-To upgrade from Sentis 1.3 to Sentis 1.5, do the following:
+To upgrade from Sentis 1.4 or 1.5 to Sentis 1.6, do the following:
+
+- Replace uses of `IBackend.Concat` with calls to `IBackend.SliceSet`.
+- Rewrite calls to `IBackend.Min` and `IBackend.Max` to not use tensor arrays as inputs.
+- Rewrite calls to `IBackend.Sum` and `IBackend.Mean` to use `IBackend.Add` and `IBackend.ScalarMad` instead.
+- Remove `keepdim` argument from calls to backend reduction methods such as `IBackend.ReduceMin`. 
+- Replace strings with ints for tensor indexing internal to models, e.g. when referencing `Output.index`.
+- Replace uses of `CompleteOperationsAndDownload` with `ReadbackAndClone`, this will create a new tensor object which you are responsible for disposing.
+- Rewrite any code that assumes that a zero-length tensor will have a null `Tensor.dataOnBackend`.
+
+
+# Upgrade from Sentis 1.3 to Sentis 1.4 or 1.5
+
+To upgrade from Sentis 1.3 to Sentis 1.4 or 1.5, do the following:
 
 - Reimport models that were previously imported in an earlier version of Sentis.
 - Reexport serialized .sentis files and encrypted serialized models using Sentis 1.4.
@@ -18,10 +31,10 @@ To upgrade from Sentis 1.3 to Sentis 1.5, do the following:
 - Edit `Model.AddOuput` parameters to include both the output name and output index (from the inspector).
 - When calling `Model.outputs`, use `Model.Output.name` to get the name of the output.
 - Replace uses of `Layer.name` and `Constant.name` with `Layer.index` and `Constant.index`.
-- Remove uses of the `Ops` API, use the functional API to build models to operate on tensors, or use `IBackend` to operate on allocated tensors. 
+- Remove uses of the `Ops` API, use the functional API to build models to operate on tensors, or use `IBackend` to operate on allocated tensors.
 - Replace uses of `ArrayTensorData` and `SharedArrayTensorData` with `BurstTensorData`.
 - Remove `CustomLayer` custom ONNX layer importers as these are not compatible with Sentis 1.4 serialization. These will be reimplemented in an upcoming release.
-- Replace uses of `IBackend.deviceType` with `IBackend.backendType` to get the back end type.
+- Replace uses of `IBackend.deviceType` with `IBackend.backendType` to get the backend type.
 - Remove allocation of tensors using `IBackend` methods, either allocate tensors with `Tensor` or `IModelStorage`.
 - Remove offset from constructors of `BurstTensorData`, if the offset needs to be greater than zero use a `NativeTensorArrayFromManagedArray` in the `BurstTensorData` constructor.
 - Replace uses of `IWorker.StartManualSchedule` with `IWorker.ExecuteLayerByLayer`.
@@ -61,7 +74,7 @@ To upgrade from Barracuda 3.0 to Sentis 1.0, do the following:
 - Use `TensorFloat` or `TensorInt` for input and output tensors.
 - Update methods that convert between tensors and textures.
 - Convert the model asset type.
-- Convert back end types.
+- Convert backend types.
 - Update getting output from intermediate layers.
 - Replace `asFloats` and `asInts`.
 
@@ -115,7 +128,7 @@ public class CreateRuntimeModel : MonoBehaviour
 {
 
     ModelAsset modelAsset;
-    
+
     void Start()
     {
         Model runtimeModel = ModelLoader.Load(modelAsset);
@@ -125,11 +138,11 @@ public class CreateRuntimeModel : MonoBehaviour
 
 Refer to [Import a model](import-a-model-file.md) for more information.
 
-## Convert back end types
+## Convert backend types
 
-Update your code to reflect the following changes to back end type names:
+Update your code to reflect the following changes to backend type names:
 
-- Use `BackendType.GPUCompute` instead of `WorkerFactory.Type.Compute`, `WorkerFactory.Type.ComputeRef` or `WorkerFactory.Type.ComputeRefPrecompiled`. 
+- Use `BackendType.GPUCompute` instead of `WorkerFactory.Type.Compute`, `WorkerFactory.Type.ComputeRef` or `WorkerFactory.Type.ComputeRefPrecompiled`.
 - Use `BackendType.CPU` instead of `WorkerFactory.Type.CSharpBurst`, `WorkerFactory.Type.CSharpRef` or `WorkerFactory.Type.CSharp`.
 
 For example, use the following to create a worker that runs on the GPU with Sentis compute shaders:
@@ -140,7 +153,7 @@ IWorker worker = WorkerFactory.CreateWorker(BackendType.GPUCompute, runtimeModel
 
 ## Update getting output from intermediate layers
 
-To get output from layers other than the output layers from the model, you now need to use `AddOutput` before you create the worker and use `PeekOutput`. 
+To get output from layers other than the output layers from the model, you now need to use `AddOutput` before you create the worker and use `PeekOutput`.
 For example:
 
 ```

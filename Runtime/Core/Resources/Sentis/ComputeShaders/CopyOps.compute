@@ -183,7 +183,7 @@ void CastHalfToFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
     uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
     if (threadIdx >= unrolledDispatchArgs.y)
         return;
-    
+
     uint v = XIntptr[threadIdx];
     float v0 = f16tof32(v & 0x0000FFFF);
     float v1 = f16tof32((v & 0xFFFF0000) >> 16);

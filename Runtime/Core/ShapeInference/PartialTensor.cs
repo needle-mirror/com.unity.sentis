@@ -1,3 +1,5 @@
+using System;
+
 namespace Unity.Sentis
 {
     /// <summary>
@@ -232,6 +234,31 @@ namespace Unity.Sentis
                 for (var i = 0; i < length; i++)
                     values[i] = m_Elements[i].intValue;
                 return new TensorInt(shape.ToTensorShape(), values);
+            }
+        }
+
+        /// <summary>
+        /// Returns a array represented by this partial tensor.
+        /// If this partial tensor is not fully known returns 'null'.
+        /// </summary>
+        public T[] ToArray<T>() where T : unmanaged
+        {
+            if (!IsFullyKnown())
+                return null;
+
+            if (dataType == DataType.Float)
+            {
+                var values = new T[length];
+                for (var i = 0; i < length; i++)
+                    values[i] = (T)Convert.ChangeType(m_Elements[i].floatValue, typeof(T));
+                return values;
+            }
+            else
+            {
+                var values = new T[length];
+                for (var i = 0; i < length; i++)
+                    values[i] = (T)Convert.ChangeType(m_Elements[i].intValue, typeof(T));
+                return values;
             }
         }
 

@@ -8,7 +8,7 @@ You can create a new runtime model without an ONNX file using Sentis. For exampl
 2. Define an `InputDef` for each input to the model with the data type and shape.
 3. Compile the model using the `Compile` method.
 
-In this example a simple model is created to calculate the dot product of two vectors.
+The following example shows the creation of a simple model to calculate the dot product of two vectors.
 
 ```
 using System;

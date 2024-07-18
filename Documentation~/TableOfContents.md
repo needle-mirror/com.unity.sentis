@@ -1,6 +1,6 @@
 * [Sentis package](index.md)
-    * [What's new in Sentis 1.5](whats-new.md)
-    * [Upgrade to Sentis 1.5](upgrade-guide.md)
+    * [What's new in Sentis 1.6](whats-new.md)
+    * [Upgrade to Sentis 1.6](upgrade-guide.md)
 * [Get started](get-started.md)
     * [Install Sentis](install.md)
     * [Understand the Sentis workflow](understand-sentis-workflow.md)
@@ -36,6 +36,6 @@
     * [Tensor fundamentals in Sentis](tensor-fundamentals.md)
     * [Create and modify tensors](do-basic-tensor-operations.md)
     * [Access tensor data directly](access-tensor-data-directly.md)
-    * [Use a backend to call native tensor opeators](do-operations-on-tensors.md)
+    * [Do operations on tensors](do-operations-on-tensors.md)
 * [Profile and optimize](profile-a-model.md)
 

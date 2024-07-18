@@ -14,9 +14,9 @@ To get performance information when you run a model, you can use the following:
 - [The Profiler window](https://docs.unity3d.com/Documentation/Manual/Profiler.html).
 - [RenderDoc](https://docs.unity3d.com/Documentation/Manual/RenderDocIntegration.html), a third-party graphics debugger.
 
-The **Profiler** window displays each Sentis layer as a dropdown item in the **Module Details** panel. Open a layer to get a detailed timeline of the execution of the layer. 
+The **Profiler** window displays each Sentis layer as a dropdown item in the **Module Details** panel. Open a layer to get a detailed timeline of the execution of the layer.
 
-When a layer executes methods that include **Download** or **Upload**, Sentis transfers data to or from the CPU or the GPU. This might slow down the model. 
+When a layer executes methods that include **Download** or **Upload**, Sentis transfers data to or from the CPU or the GPU. This might slow down the model.
 
 If your model runs slower than you expect, refer to:
 
@@ -25,7 +25,7 @@ If your model runs slower than you expect, refer to:
 
 ## Get output from any layer
 
-To help you profile a model, you can get the output from any layer in a model. Follow these steps: 
+To help you profile a model, you can get the output from any layer in a model. Follow these steps:
 
 1. Get the index of the layer that you want to output from the model inspector.
 2. Use [`Model.AddOutput("layer-name", index)`](xref:Unity.Sentis.Model.AddOutput(System.String)) to add the layer to the model outputs before you create the worker.

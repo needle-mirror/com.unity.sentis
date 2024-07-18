@@ -42,7 +42,7 @@ void SaveModelAesEncrypted(Model model, string path, byte[] key)
     // Write the initialization vector to the file
     fileStream.Write(iv, 0, iv.Length);
 
-    // Create a `CryptoStream` that writes to the `FileStream` 
+    // Create a `CryptoStream` that writes to the `FileStream`
     using CryptoStream cryptoStream = new CryptoStream(fileStream, aes.CreateEncryptor(), CryptoStreamMode.Write);
 
     // Serialize the model to the `CryptoStream`

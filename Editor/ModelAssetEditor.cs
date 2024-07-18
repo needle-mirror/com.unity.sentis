@@ -61,7 +61,7 @@ public class ModelAssetEditor : UnityEditor.Editor
         catch (Exception)
         {
             foreach (var output in outputs)
-                items.Add($"<b>{output.name}</b>");
+                items.Add($"<b>{output.name}</b> index: {output.index}");
         }
         var inputMenu = CreateFoldoutListView(items, $"<b>Outputs ({outputs.Count})</b>");
         rootElement.Add(inputMenu);

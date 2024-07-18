@@ -1,6 +1,6 @@
-#pragma kernel Or OR SUFFIX=Or
-#pragma kernel And AND SUFFIX=And
-#pragma kernel Xor XOR SUFFIX=Xor
+#pragma kernel OrInt OR SUFFIX=OrInt
+#pragma kernel AndInt AND SUFFIX=AndInt
+#pragma kernel XorInt XOR SUFFIX=XorInt
 
 #pragma kernel IsInf
 

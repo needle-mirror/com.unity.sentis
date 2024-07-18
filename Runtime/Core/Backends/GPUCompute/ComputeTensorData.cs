@@ -15,17 +15,17 @@ namespace Unity.Sentis
         /// <summary>
         /// Implement this method to convert to `ComputeTensorData`.
         /// </summary>
-        /// <param name="count"></param>
+        /// <param name="dstCount">The number of elements.</param>
         /// <returns>Converted `ComputeTensorData`.</returns>
-        ComputeTensorData ConvertToComputeTensorData(int count);
+        ComputeTensorData ConvertToComputeTensorData(int dstCount);
     }
 
     /// <summary>
     /// Represents data storage for a `Tensor` as a compute buffer, for GPUCompute backend.
     /// </summary>
-    public class ComputeTensorData : ITensorData
+    public class ComputeTensorData : ITensorData, IConvertibleToBurstTensorData
     {
-        bool m_DisposeBufferAfterUse;
+        bool m_IsDisposed;
         ComputeBuffer m_Buffer;
         int m_Count;
 
@@ -47,11 +47,14 @@ namespace Unity.Sentis
         /// <param name="clearOnInit">Whether to zero the data on allocation. The default value is `false`.</param>
         public ComputeTensorData(int count, bool clearOnInit = false)
         {
-            ProfilerMarkers.ComputeTensorDataNewEmpty.Begin();
             m_Count = count;
+            m_IsDisposed = false;
 
-            // Minimum size of 1 to handle 0-dim tensors.
-            m_Buffer = new ComputeBuffer(Math.Max(1, count), sizeof(float));
+            if (m_Count == 0)
+                return;
+
+            ProfilerMarkers.ComputeTensorDataNewEmpty.Begin();
+            m_Buffer = new ComputeBuffer(count, sizeof(float));
 
             // @TODO: consider zero initialization only for "debug" mode
             if (clearOnInit)
@@ -61,7 +64,6 @@ namespace Unity.Sentis
                 empty.Dispose();
             }
 
-            m_DisposeBufferAfterUse = true;
             ProfilerMarkers.ComputeTensorDataNewEmpty.End();
         }
 
@@ -72,7 +74,7 @@ namespace Unity.Sentis
 
             int length = m_Buffer.count;
 
-            var fn = ComputeFuncSingleton.Instance.Get("MemCopy");
+            var fn = ComputeFunctions.k_MemCopy;
             fn.SetTensorAsBuffer(ShaderPropertyID.k_ID_Xptr, this);
             fn.SetTensorAsBuffer(ShaderPropertyID.k_ID_Optr, copy);
             fn.SetInt(ShaderPropertyID.k_ID_offsetX, 0);
@@ -84,33 +86,13 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `ComputeTensorData` with given data and offset.
-        /// </summary>
-        /// <param name="count">The number of elements.</param>
-        /// <param name="array">The allocated data to use as backing data.</param>
-        /// <param name="offset">The integer offset from the start of the backing array. The default value is 0.</param>
-        public ComputeTensorData(int count, NativeTensorArray array, int offset = 0)
-        {
-            ProfilerMarkers.ComputeTensorDataNewArray.Begin();
-            m_Count = count;
-
-            // Minimum size of 1 to handle 0-dim tensors.
-            m_Buffer = new ComputeBuffer(Math.Max(1, count), sizeof(float));
-            if (count != 0)
-                m_Buffer.SetData(array.GetNativeArrayHandle<float>(), offset, 0, count);
-
-            m_DisposeBufferAfterUse = true;
-            ProfilerMarkers.ComputeTensorDataNewArray.End();
-        }
-
-        /// <summary>
         /// Finalizes the `ComputeTensorData`.
         /// </summary>
         ~ComputeTensorData()
         {
             if (m_Buffer == null)
                 return;
-            if (!m_DisposeBufferAfterUse)
+            if (m_IsDisposed)
                 return;
 
             D.LogWarning($"Found unreferenced, but undisposed ComputeTensorData which might lead to GPU resource leak");
@@ -121,24 +103,23 @@ namespace Unity.Sentis
         /// </summary>
         public void Dispose()
         {
-            if (m_DisposeBufferAfterUse)
+            if (!m_IsDisposed)
             {
-                m_Buffer.Dispose();
+                m_Buffer?.Dispose();
                 m_Buffer = null;
             }
 
-            m_DisposeBufferAfterUse = false;
+            m_IsDisposed = true;
         }
 
         /// <inheritdoc/>
-        public void Upload<T>(NativeArray<T> data, int srcCount, int srcOffset = 0) where T : unmanaged
+        public void Upload<T>(NativeArray<T> data, int srcCount) where T : unmanaged
         {
             var numItemToCopy = srcCount;
-            var numItemAvailableInData = data.Length - srcOffset;
+            var numItemAvailableInData = data.Length;
 
-            Assert.IsTrue(srcOffset >= 0);
             Assert.IsTrue(numItemToCopy <= numItemAvailableInData);
-            m_Buffer.SetData(data, srcOffset, 0, numItemToCopy);
+            m_Buffer.SetData(data, 0, 0, numItemToCopy);
 
             m_AsyncDownloadRequested = false;
         }
@@ -149,48 +130,57 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public bool IsReadbackRequestDone()
         {
-            if (m_AsyncDownloadRequested)
-            {
-                if (m_AsyncDownloadRequest.hasError)
-                    m_AsyncDownloadRequested = false;
-                else
-                    m_AsyncDownloadRequest.Update();
-            }
-
             return m_AsyncDownloadRequest.done;
         }
 
         /// <inheritdoc/>
-        public void ReadbackRequest(Action<bool> callback = null)
+        public void ReadbackRequest()
         {
-            if (!SystemInfo.supportsAsyncGPUReadback)
-            {
-                callback?.Invoke(false);
+            if (m_Count == 0)
                 return;
-            }
-
-            Action<AsyncGPUReadbackRequest> task = request =>
-            {
-                callback?.Invoke(!request.hasError);
-            };
-            m_AsyncDownloadRequest = AsyncGPUReadback.Request(m_Buffer, m_Buffer.count * sizeof(float), 0 * sizeof(float), task);
+            m_AsyncDownloadRequest = AsyncGPUReadback.Request(m_Buffer, m_Buffer.count * sizeof(float), 0 * sizeof(float));
             m_AsyncDownloadRequested = true;
         }
 
+        #if UNITY_2023_2_OR_NEWER
         /// <inheritdoc/>
-        public async Task<bool> ReadbackRequestAsync()
+        public async Awaitable<NativeArray<T>> DownloadAsync<T>(int dstCount) where T : unmanaged
         {
-            var task = new TaskCompletionSource<bool>();
-            Action<bool> callback = (bool success) =>
+            if (m_Count == 0)
+                return new NativeArray<T>();
+            var request = await AsyncGPUReadback.RequestAsync(m_Buffer, dstCount * sizeof(float), 0);
+            return request.GetData<T>().GetSubArray(0, dstCount);
+        }
+        #endif
+
+        /// <inheritdoc/>
+        public BurstTensorData ConvertToBurstTensorData(int dstCount)
+        {
+            BurstTensorData output = new BurstTensorData(dstCount);
+            if (dstCount == 0)
+                return output;
+
+            var array = output.array.GetNativeArrayHandle<float>();
+
+            if (m_AsyncDownloadRequested)
             {
-                task.TrySetResult(success);
-            };
-            ReadbackRequest(callback);
-            return await task.Task;
+                m_AsyncDownloadRequested = false;
+                if (!m_AsyncDownloadRequest.done)
+                    m_AsyncDownloadRequest.WaitForCompletion();
+
+                var reqData = m_AsyncDownloadRequest.GetData<float>();
+                ProfilerMarkers.ComputeTensorDataDownload.End();
+                NativeArray<float>.Copy(reqData, 0, array, 0, dstCount);
+                return output;
+            }
+
+            m_AsyncDownloadRequest = AsyncGPUReadback.RequestIntoNativeArray<float>(ref array, m_Buffer, dstCount * sizeof(float), 0);
+            m_AsyncDownloadRequest.WaitForCompletion();
+            return output;
         }
 
         /// <inheritdoc/>
-        public NativeArray<T> Download<T>(int dstCount, int srcOffset = 0) where T : unmanaged
+        public NativeArray<T> Download<T>(int dstCount) where T : unmanaged
         {
             var count = dstCount;
 
@@ -198,7 +188,7 @@ namespace Unity.Sentis
             count = Math.Min(maxCapacity, count);
 
             if (count == 0)
-                return new NativeArray<T>(0, Allocator.Temp);
+                return new NativeArray<T>();
 
             ProfilerMarkers.ComputeTensorDataDownload.Begin();
 
@@ -213,14 +203,7 @@ namespace Unity.Sentis
                 return reqData.GetSubArray(0, dstCount);
             }
 
-            if (!SystemInfo.supportsAsyncGPUReadback)
-            {
-                var dataArray = new T[count];
-                m_Buffer.GetData(dataArray, 0, srcOffset, count);
-                return new NativeArray<T>(dataArray, Allocator.Temp);
-            }
-
-            m_AsyncDownloadRequest = AsyncGPUReadback.Request(m_Buffer, dstCount * sizeof(float), srcOffset * sizeof(float));
+            m_AsyncDownloadRequest = AsyncGPUReadback.Request(m_Buffer, dstCount * sizeof(float), 0);
             m_AsyncDownloadRequest.WaitForCompletion();
 
             var data = m_AsyncDownloadRequest.GetData<T>();
@@ -272,10 +255,17 @@ namespace Unity.Sentis
             if (onDevice is ComputeTensorData)
                 return onDevice as ComputeTensorData;
 
+            ComputeTensorData dataOnBackend;
             if (onDevice is IConvertibleToComputeTensorData asConvertible)
-                X.AttachToDevice(asConvertible.ConvertToComputeTensorData(X.count));
+            {
+                dataOnBackend = asConvertible.ConvertToComputeTensorData(X.count);
+            }
             else
-                X.UploadToDevice(new ComputeTensorData(X.count, clearOnInit: false)); // device is not compatible, create new array and upload
+            {
+                dataOnBackend = new ComputeTensorData(X.count, clearOnInit: false);
+                dataOnBackend.Upload<int>(onDevice.Download<int>(X.count), X.count);
+            }
+            X.AttachToDevice(dataOnBackend);
 
             return X.dataOnBackend as ComputeTensorData;
         }

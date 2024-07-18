@@ -37,7 +37,7 @@ namespace Unity.Sentis.Layers
         public int[] strides;
         public int[] kernelShape;
 
-        public Conv(string output, string X, string W, string B = "", int group = 1, int[] strides = null, int[] pads = null, int[] dilations = null, AutoPad autoPad = AutoPad.NotSet, int[] kernelShape = null, FusableActivation fusedActivation = FusableActivation.None)
+        public Conv(int output, int X, int W, int B = -1, int group = 1, int[] strides = null, int[] pads = null, int[] dilations = null, AutoPad autoPad = AutoPad.NotSet, int[] kernelShape = null, FusableActivation fusedActivation = FusableActivation.None)
             : base(new[] { output }, new[] { X, W, B })
         {
             this.dilations = dilations ?? new[] { 1, 1, 1, 1, 1, 1 };
@@ -134,7 +134,7 @@ namespace Unity.Sentis.Layers
         public int[] strides;
         public int[] kernelShape;
 
-        public ConvTranspose(string output, string input, string kernel, string bias = "", int[] strides = null, int[] pads = null, AutoPad autoPad = AutoPad.NotSet, int[] outputPadding = null, int[] kernelShape = null, FusableActivation fusedActivation = FusableActivation.None)
+        public ConvTranspose(int output, int input, int kernel, int bias = -1, int[] strides = null, int[] pads = null, AutoPad autoPad = AutoPad.NotSet, int[] outputPadding = null, int[] kernelShape = null, FusableActivation fusedActivation = FusableActivation.None)
             : base(new[] { output }, new[] { input, kernel, bias })
         {
             this.autoPad = autoPad;

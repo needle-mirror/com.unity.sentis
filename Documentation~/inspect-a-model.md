@@ -44,7 +44,7 @@ For example:
 
 ```
         List<Model.Output> outputs = runtimeModel.outputs;
-        
+
         // Loop through each output
         foreach (var output in outputs)
         {

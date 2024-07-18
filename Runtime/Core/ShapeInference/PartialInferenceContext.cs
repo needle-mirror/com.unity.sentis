@@ -8,22 +8,22 @@ namespace Unity.Sentis
     /// </summary>
     class PartialInferenceContext
     {
-        Dictionary<string, PartialTensor> m_PartialTensors;
+        Dictionary<int, PartialTensor> m_PartialTensors;
 
         /// <summary>
         /// Instantiates and returns an empty partial inference context.
         /// </summary>
         public PartialInferenceContext()
         {
-            m_PartialTensors = new Dictionary<string, PartialTensor>();
+            m_PartialTensors = new Dictionary<int, PartialTensor>();
         }
 
         /// <summary>
         /// Add partial tensor with a given index to context.
         /// </summary>
-        public void AddPartialTensor(string index, PartialTensor partialTensor)
+        public void AddPartialTensor(int index, PartialTensor partialTensor)
         {
-            if (string.IsNullOrEmpty(index))
+            if (index == -1)
                 return;
             if (m_PartialTensors.TryGetValue(index, out var prevTensor))
                 partialTensor = PartialTensor.MaxDefinedPartialTensor(partialTensor, prevTensor);
@@ -31,15 +31,15 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Returns array of partial tensors from array of indexes.
+        /// Returns array of partial tensors from array of indices.
         /// </summary>
-        public PartialTensor[] GetPartialTensors(string[] indexes)
+        public PartialTensor[] GetPartialTensors(int[] indices)
         {
-            var partialTensors = new PartialTensor[indexes.Length];
+            var partialTensors = new PartialTensor[indices.Length];
 
-            for (var i = 0; i < indexes.Length; i++)
+            for (var i = 0; i < indices.Length; i++)
             {
-                partialTensors[i] = GetPartialTensor(indexes[i]);
+                partialTensors[i] = GetPartialTensor(indices[i]);
             }
 
             return partialTensors;
@@ -48,9 +48,9 @@ namespace Unity.Sentis
         /// <summary>
         /// Returns partial tensor from index.
         /// </summary>
-        public PartialTensor GetPartialTensor(string index)
+        public PartialTensor GetPartialTensor(int index)
         {
-            if (string.IsNullOrEmpty(index))
+            if (index == -1)
                 return null;
 
             return m_PartialTensors[index];

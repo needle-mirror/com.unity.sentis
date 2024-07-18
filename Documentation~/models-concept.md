@@ -1,6 +1,6 @@
 # Understand models in Sentis
 
-Sentis can import and run trained machine learning model files in Open Neural Network Exchange (ONNX) format. 
+Sentis can import and run trained machine learning model files in Open Neural Network Exchange (ONNX) format.
 
 To get a model that's compatible with Sentis, you can do one of the following:
 
@@ -28,7 +28,7 @@ You can get the shape of your model inputs in one of two ways:
 - [Inspect a model](inspect-a-model.md) to use the `inputs` property of the runtime model.
 - Select your model from the **Project** window to open the [**Model Asset Import Settings**](onnx-model-importer-properties.md) and view the **Inputs** section.
 
-The shape of a model input consists of multiple dimensions, defined as a [`SymbolicTensorShape`](xref:Unity.Sentis.SymbolicTensorShape). 
+The shape of a model input consists of multiple dimensions, defined as a [`SymbolicTensorShape`](xref:Unity.Sentis.SymbolicTensorShape).
 
  The dimensions of a model input are either fixed or dynamic:
 - An `int` denotes a fixed dimension.

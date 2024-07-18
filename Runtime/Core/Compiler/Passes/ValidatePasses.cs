@@ -11,11 +11,11 @@ namespace Unity.Sentis.Compiler.Passes
     {
         public void Run(Model model)
         {
-            var knownInputs = new HashSet<string>();
+            var knownInputs = new HashSet<int>();
             foreach (var i in model.inputs)
                 knownInputs.Add(i.index);
 
-            var globalOutputs = new Dictionary<string, bool>();
+            var globalOutputs = new Dictionary<int, bool>();
             foreach (var o in model.outputs)
                 globalOutputs.Add(o.index, false);
 
@@ -26,12 +26,12 @@ namespace Unity.Sentis.Compiler.Passes
                     globalOutputs[c.index] = true;
             }
 
-            List<string> unconnectedLinks = new List<string>();
+            List<int> unconnectedLinks = new List<int>();
             foreach (var layer in model.layers)
             {
                 foreach (var input in layer.inputs)
                 {
-                    if (!string.IsNullOrEmpty(input) && !knownInputs.Contains(input))
+                    if ((input != -1) && !knownInputs.Contains(input))
                     {
                         unconnectedLinks.Add(layer.outputs[0]);
                         break;
@@ -40,7 +40,7 @@ namespace Unity.Sentis.Compiler.Passes
 
                 foreach (var output in layer.outputs)
                 {
-                    if (string.IsNullOrEmpty(output))
+                    if (output == -1)
                         continue;
                     if (globalOutputs.ContainsKey(output))
                         globalOutputs[output] = true;
@@ -50,7 +50,7 @@ namespace Unity.Sentis.Compiler.Passes
 
             Logger.AssertAreEqual(unconnectedLinks.Count, 0, "unexpected broken links: {0}", unconnectedLinks);
 
-            List<string> unconnectedOutput = new List<string>();
+            List<int> unconnectedOutput = new List<int>();
             foreach (var gO in globalOutputs)
             {
                 if (!gO.Value)
@@ -78,7 +78,7 @@ namespace Unity.Sentis.Compiler.Passes
     {
         public void Run(Model model)
         {
-            var globalOutputs = new Dictionary<string, bool>();
+            var globalOutputs = new Dictionary<int, bool>();
             foreach (var o in model.outputs)
                 globalOutputs.Add(o.index, false);
 
@@ -97,7 +97,7 @@ namespace Unity.Sentis.Compiler.Passes
                 }
             }
 
-            List<string> unconnectedOutput = new List<string>();
+            List<int> unconnectedOutput = new List<int>();
             foreach (var gO in globalOutputs)
             {
                 if (!gO.Value)

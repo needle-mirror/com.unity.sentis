@@ -12,7 +12,7 @@ namespace Unity.Sentis
     /// <summary>
     /// Represents an importer for serialized Sentis model files.
     /// </summary>
-    [ScriptedImporter(1, new[] { "sentis" })]
+    [ScriptedImporter(2, new[] { "sentis" })]
     class SentisModelImporter : ScriptedImporter
     {
         /// <summary>

@@ -9,7 +9,7 @@ namespace Unity.Sentis
         /// <returns>The tensor.</returns>
         public static FunctionalTensor Tensor(int value)
         {
-            return FunctionalTensor.FromConstant(new Layers.Constant(null, new TensorInt(value)));
+            return FunctionalTensor.FromConstant(new Layers.Constant(-1, new TensorShape(), new[] { value }));
         }
 
         /// <summary>
@@ -19,7 +19,7 @@ namespace Unity.Sentis
         /// <returns>The tensor.</returns>
         public static FunctionalTensor Tensor(int[] values)
         {
-            return FunctionalTensor.FromConstant(new Layers.Constant(null, values));
+            return FunctionalTensor.FromConstant(new Layers.Constant(-1, new TensorShape(values.Length), values));
         }
 
         /// <summary>
@@ -29,7 +29,7 @@ namespace Unity.Sentis
         /// <returns>The tensor.</returns>
         public static FunctionalTensor Tensor(float value)
         {
-            return FunctionalTensor.FromConstant(new Layers.Constant(null, new TensorFloat(value)));
+            return FunctionalTensor.FromConstant(new Layers.Constant(-1, new TensorShape(), new[] { value }));
         }
 
         /// <summary>
@@ -39,7 +39,7 @@ namespace Unity.Sentis
         /// <returns>The tensor.</returns>
         public static FunctionalTensor Tensor(float[] values)
         {
-            return FunctionalTensor.FromConstant(new Layers.Constant(null, values));
+            return FunctionalTensor.FromConstant(new Layers.Constant(-1, new TensorShape(values.Length), values));
         }
     }
 }

@@ -14,7 +14,7 @@ namespace Unity.Sentis
         {
             input = input.Float();
             other = other.Float();
-            return FunctionalTensor.FromLayer(new Layers.MatMul(null, null, null), CommonType(input, other), new[] { input, other });
+            return FunctionalTensor.FromLayer(new Layers.MatMul(-1, -1, -1), CommonType(input, other), new[] { input, other });
         }
     }
 }

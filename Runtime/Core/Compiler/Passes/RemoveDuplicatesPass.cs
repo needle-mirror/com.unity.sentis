@@ -8,12 +8,15 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 {
     class RemoveDuplicateLayersPass : IModelPass
     {
-        long GetHashCode(Layer layer)
+        long GetHashCode(Layer layer, Dictionary<int, int> duplicateConstants)
         {
             long seed = 0;
             HashHelper.HashCombine(ref seed, layer.GetType());
             foreach (var input in layer.inputs)
-                HashHelper.HashCombine(ref seed, input);
+            {
+                var remappedInput = duplicateConstants.GetValueOrDefault(input, input);
+                HashHelper.HashCombine(ref seed, remappedInput);
+            }
 
             return seed;
         }
@@ -25,7 +28,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             foreach (var field in fields)
             {
                 var name = field.Name;
-                if (name == "index" || name == "outputs")
+                if (name == "outputs" || name == "inputs")
                     continue;
                 infos.Add(field.GetValue(layer));
             }
@@ -61,7 +64,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             return true;
         }
 
-        List<object> GetComparableFields(ref Dictionary<string, List<object>> comparableFieldsByLayer, Layer layer)
+        List<object> GetComparableFields(ref Dictionary<int, List<object>> comparableFieldsByLayer, Layer layer)
         {
             if (!comparableFieldsByLayer.TryGetValue(layer.outputs[0], out var layerFields))
             {
@@ -74,16 +77,18 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
         public void Run(ref Model model)
         {
+            var duplicateConstants = DuplicateConstantCalculator.CalculateDuplicateConstants(model);
+
             // Algorithm: remove same layers
             // a layer is the same if it has the same types and all fields and inputs are the same
             // foreach layer:
             //  compute soft hash on layer inputs + type
             //  foreach collision:
             //    remove layer if equal (full param check) to collision
-            var remapRemovedIndexes = new Dictionary<string, string>();
-            var layersToRemove = new HashSet<string>();
+            var remapRemovedIndexes = new Dictionary<int, int>();
+            var layersToRemove = new HashSet<int>();
             var layerByInput = new Dictionary<long, List<Layer>>();
-            var comparableFieldsByLayer = new Dictionary<string, List<object>>();
+            var comparableFieldsByLayer = new Dictionary<int, List<object>>();
             foreach (var layer in model.layers)
             {
                 // in place input rename, to propagate removal stat mid traversal
@@ -94,7 +99,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                         layer.inputs[i] = remapRemovedIndexes[input];
                 }
 
-                long hash = GetHashCode(layer);
+                long hash = GetHashCode(layer, duplicateConstants);
                 if (!layerByInput.TryGetValue(hash, out var collisionLayers))
                 {
                     layerByInput.Add(hash, new List<Layer>() { layer });
@@ -108,6 +113,15 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     List<object> fields = GetComparableFields(ref comparableFieldsByLayer, similarLayer);
 
                     if (!AllEqual(layerFields, fields))
+                        continue;
+
+                    if (layer is RandomLayer { hasSeed: false })
+                        continue;
+
+                    var inputsAllEqual = true;
+                    for (int i = 0; i < layer.inputs.Length && inputsAllEqual; i++)
+                        inputsAllEqual &= duplicateConstants.GetValueOrDefault(layer.inputs[i], layer.inputs[i]) == duplicateConstants.GetValueOrDefault(similarLayer.inputs[i], similarLayer.inputs[i]);
+                    if (!inputsAllEqual)
                         continue;
 
                     remapRemovedIndexes.Add(layer.outputs[0], similarLayer.outputs[0]);
@@ -135,19 +149,22 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
             // all inputs have been remapped in place, no need to update layers
 
-            // if output was removed, insert copy op
-            foreach (var output in model.outputs)
+            for (var i = 0; i < model.outputs.Count; i++)
             {
-                if (!layersToRemove.Contains(output.index))
-                    continue;
-                model.layers.Add(new Identity(output.index, remapRemovedIndexes[output.index]));
+                if (remapRemovedIndexes.TryGetValue(model.outputs[i].index, out var remappedIndex))
+                {
+                    model.outputs[i] = new Model.Output{
+                        name = model.outputs[i].name,
+                        index = remappedIndex
+                    };
+                }
             }
         }
     }
 
-    class RemoveDuplicateConstantPass : IModelPass
+    static class DuplicateConstantCalculator
     {
-        long GetHashCode(Constant constant)
+        static long GetHashCode(Constant constant)
         {
             long seed = 0;
             HashHelper.HashCombine(ref seed, constant.shape);
@@ -161,7 +178,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             return seed;
         }
 
-        bool AreEqual(Constant c0, Constant c1)
+        static bool AreEqual(Constant c0, Constant c1)
         {
             if (c0.shape != c1.shape)
                 return false;
@@ -180,7 +197,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             return true;
         }
 
-        public void Run(ref Model model)
+        public static Dictionary<int, int> CalculateDuplicateConstants(Model model)
         {
             // Algorithm: remove same constant
             // a constant is the same if it's length/shape/weights are all identical
@@ -190,27 +207,19 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             //     check secondary hashmap on weight.hash
             //     if collision, hard comparison
             // N.B: no handling of potential wrong collision on weight.hash
-            var constantsToRemove = new Dictionary<string, string>();
-            var shapeToConstantsByHash = new Dictionary<TensorShape, Dictionary<long, List<Constant>>>();
+            var constantsToRemove = new Dictionary<int, int>();
+            var shapeHashTupleToConstants = new Dictionary<Tuple<TensorShape, long>, List<Constant>>();
             foreach (var constant in model.constants)
             {
                 if (constant.dataType != DataType.Int)
                     continue;
 
-                var shape = constant.shape;
-                if (!shapeToConstantsByHash.TryGetValue(shape, out var constantsByHash))
+                var key = new Tuple<TensorShape, long>(constant.shape, GetHashCode(constant));
+                if (!shapeHashTupleToConstants.TryGetValue(key, out var potentialSimilarConstants))
                 {
-                    long softHash = GetHashCode(constant);
-                    var entry = new Dictionary<long, List<Constant>>();
-                    entry.Add(softHash, new List<Constant>() { constant });
-                    shapeToConstantsByHash.Add(shape, entry);
+                    shapeHashTupleToConstants.Add(key, new List<Constant> { constant });
                     continue;
                 }
-
-                // shape collision, hash on weights
-                long hash = GetHashCode(constant);
-                if(!constantsByHash.TryGetValue(hash, out var potentialSimilarConstants))
-                    continue;
 
                 bool removed = false;
                 foreach (var similarConstant in potentialSimilarConstants)
@@ -228,21 +237,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     potentialSimilarConstants.Add(constant);
             }
 
-            model.constants.RemoveAll(c => constantsToRemove.ContainsKey(c.index));
-            foreach (var layer in model.layers)
-            {
-                for (int i = 0; i < layer.inputs.Length; i++)
-                {
-                    var input = layer.inputs[i];
-                    if (constantsToRemove.ContainsKey(input))
-                        layer.inputs[i] = constantsToRemove[input];
-                }
-            }
-            foreach (var output in model.outputs)
-            {
-                if (constantsToRemove.ContainsKey(output.index))
-                    model.AddLayer(new Identity(output.index, constantsToRemove[output.index]));
-            }
+            return constantsToRemove;
         }
     }
 
@@ -250,10 +245,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
     {
         public void Run(ref Model model)
         {
-            var removeConstants = new RemoveDuplicateConstantPass();
             var removeLayers = new RemoveDuplicateLayersPass();
-
-            removeConstants.Run(ref model);
             removeLayers.Run(ref model);
         }
     }

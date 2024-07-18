@@ -10,7 +10,7 @@ namespace Unity.Sentis.Layers
         /// <summary>
         /// The index of the constant.
         /// </summary>
-        public string index;
+        public int index;
         /// <summary>
         /// The shape of the constant as a `TensorShape`.
         /// </summary>
@@ -26,9 +26,16 @@ namespace Unity.Sentis.Layers
         /// <summary>
         /// The elements of the constant as a `NativeTensorArray`.
         /// </summary>
-        internal NativeTensorArray weights;
+        public NativeTensorArray weights;
 
-        internal Constant(string index, TensorShape shape, DataType dataType, NativeTensorArray array)
+        /// <summary>
+        /// Initializes and returns a vector `Constant` from a given index, shape and `NativeTensorArray` array.
+        /// </summary>
+        /// <param name="index">The index to use for the constant.</param>
+        /// <param name="shape">The shape to use for the constant.</param>
+        /// <param name="dataType">The dataType to use for the constant.</param>
+        /// <param name="array">The array of values.</param>
+        public Constant(int index, TensorShape shape, DataType dataType, NativeTensorArray array)
         {
             this.index = index;
             this.shape = shape;
@@ -37,7 +44,7 @@ namespace Unity.Sentis.Layers
             this.weights = array;
         }
 
-        internal Constant(string index, TensorShape shape, DataType dataType, int lengthBytes)
+        internal Constant(int index, TensorShape shape, DataType dataType, int lengthBytes)
         {
             this.index = index;
             this.shape = shape;
@@ -46,70 +53,52 @@ namespace Unity.Sentis.Layers
         }
 
         /// <summary>
-        /// Initializes and returns a vector `Constant` from a given index and tensor.
+        /// Initializes and returns a vector `Constant` from a given index, shape and float array.
         /// </summary>
         /// <param name="index">The index to use for the constant.</param>
-        /// <param name="tensor">The tensor to take the shape, dataType and weights of the constant from.</param>
-        public Constant(string index, Tensor tensor)
+        /// <param name="shape">The shape to use for the constant.</param>
+        /// <param name="value">The float array of values.</param>
+        public Constant(int index, TensorShape shape, float[] value)
         {
             this.index = index;
-            this.shape = tensor.shape;
-            this.lengthBytes = 0;
-            this.dataType = tensor.dataType;
-            if (tensor.shape.length == 0)
+            this.shape = shape;
+            this.lengthBytes = value.Length * sizeof(float);
+            this.dataType = DataType.Float;
+            if (value.Length == 0)
                 return;
+            weights = new NativeTensorArray(value.Length);
+            NativeTensorArray.Copy(value, weights);
+        }
 
+        /// <summary>
+        /// Initializes and returns a vector `Constant` from a given index, shape and int array.
+        /// </summary>
+        /// <param name="index">The index to use for the constant.</param>
+        /// <param name="shape">The shape to use for the constant.</param>
+        /// <param name="value">The int array of values.</param>
+        internal Constant(int index, TensorShape shape, int[] value)
+        {
+            this.index = index;
+            this.shape = shape;
+            this.lengthBytes = value.Length * sizeof(int);
+            this.dataType = DataType.Int;
+            if (value.Length == 0)
+                return;
+            weights = new NativeTensorArray(value.Length);
+            NativeTensorArray.Copy(value, weights);
+        }
+
+        internal static Constant AllocNoData(int index, DataType dataType, TensorShape shape)
+        {
             switch (dataType)
             {
                 case DataType.Float:
-                {
-                    var data = tensor.ToReadOnlyNativeArray<float>();
-                    this.weights = new NativeTensorArray(data.Length);
-                    this.lengthBytes = this.weights.Length * sizeof(float);
-                    NativeTensorArray.Copy(data, 0, weights, 0, weights.Length);
-                    break;
-                }
+                    return new Constant(index, shape, DataType.Float, shape.length * sizeof(float));
                 case DataType.Int:
-                {
-                    var data = tensor.ToReadOnlyNativeArray<int>();
-                    this.weights = new NativeTensorArray(data.Length);
-                    this.lengthBytes = this.weights.Length * sizeof(int);
-                    NativeTensorArray.Copy(data, 0, weights, 0, weights.Length);
-                    break;
-                }
+                    return new Constant(index, shape, DataType.Int, shape.length * sizeof(int));
                 default:
                     throw new NotImplementedException();
             }
-        }
-
-        /// <summary>
-        /// Initializes and returns a vector `Constant` from a given index and float array.
-        /// </summary>
-        /// <param name="index">The index to use for the constant.</param>
-        /// <param name="value">The float array of values.</param>
-        public Constant(string index, float[] value)
-        {
-            this.index = index;
-            this.shape = new TensorShape(value.Length);
-            this.lengthBytes = value.Length * sizeof(float);
-            this.dataType = DataType.Float;
-            weights = new NativeTensorArray(value.Length);
-            NativeTensorArray.Copy(value, weights);
-        }
-
-        /// <summary>
-        /// Initializes and returns a vector `Constant` from a given index and int array.
-        /// </summary>
-        /// <param name="index">The index to use for the constant.</param>
-        /// <param name="value">The int array of values.</param>
-        public Constant(string index, int[] value)
-        {
-            this.index = index;
-            this.shape = new TensorShape(value.Length);
-            this.lengthBytes = value.Length * sizeof(int);
-            this.dataType = DataType.Int;
-            weights = new NativeTensorArray(value.Length);
-            NativeTensorArray.Copy(value, weights);
         }
 
         /// <summary>
@@ -166,11 +155,7 @@ namespace Unity.Sentis.Layers
                     throw new NotImplementedException();
             }
 
-            if (output.shape.HasZeroDims())
-                return output;
-
-            var array = new BurstTensorData(weights);
-            output.dataOnBackend = array;
+            output.dataOnBackend = new BurstTensorData(weights);
             return output;
         }
 
@@ -183,6 +168,8 @@ namespace Unity.Sentis.Layers
         {
             this.shape = X.shape;
             this.dataType = X.dataType;
+            if (X.shape.HasZeroDims())
+                return;
             weights = new NativeTensorArray(X.shape.length);
             switch (dataType)
             {

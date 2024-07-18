@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/LayoutSwitchBlockedAxis"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile FLOAT INT
+            #pragma multi_compile TENSORFLOAT TENSORINT
             #pragma vertex vert
             #pragma fragment frag
 
@@ -20,7 +20,7 @@ Shader "Hidden/Sentis/LayoutSwitchBlockedAxis"
 
             DECLARE_TENSOR_BLOCK_STRIDE_O;
 
-            #ifdef FLOAT
+            #ifdef TENSORFLOAT
             DECLARE_TENSOR(X, float);
             DECLARE_TENSOR_BLOCK_STRIDE(X);
             float4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target

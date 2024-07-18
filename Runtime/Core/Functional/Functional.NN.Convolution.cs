@@ -21,7 +21,7 @@ namespace Unity.Sentis
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.Conv(null, null, null, null, groups, new[] { stride }, new[] { padding, padding }, new[] { dilation }), DataType.Float, new[] { input, weight, bias });
+            return FunctionalTensor.FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, new[] { stride }, new[] { padding, padding }, new[] { dilation }), DataType.Float, new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -41,7 +41,7 @@ namespace Unity.Sentis
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.Conv(null, null, null, null, groups, new[] { stride, stride }, new[] { padding, padding, padding, padding }, new[] { dilation, dilation }), DataType.Float, new[] { input, weight, bias });
+            return FunctionalTensor.FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, new[] { stride, stride }, new[] { padding, padding, padding, padding }, new[] { dilation, dilation }), DataType.Float, new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -64,7 +64,7 @@ namespace Unity.Sentis
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.Conv(null, null, null, null, groups, strideArray, paddingArray, dilationArray), DataType.Float, new[] { input, weight, bias });
+            return FunctionalTensor.FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, strideArray, paddingArray, dilationArray), DataType.Float, new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace Unity.Sentis
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.Conv(null, null, null, null, groups, new[] { stride, stride, stride }, new[] { padding, padding, padding, padding, padding, padding }, new[] { dilation, dilation, dilation }), DataType.Float, new[] { input, weight, bias });
+            return FunctionalTensor.FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, new[] { stride, stride, stride }, new[] { padding, padding, padding, padding, padding, padding }, new[] { dilation, dilation, dilation }), DataType.Float, new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -107,7 +107,7 @@ namespace Unity.Sentis
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.Conv(null, null, null, null, groups, strideArray, paddingArray, dilationArray), DataType.Float, new[] { input, weight, bias });
+            return FunctionalTensor.FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, strideArray, paddingArray, dilationArray), DataType.Float, new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -127,7 +127,7 @@ namespace Unity.Sentis
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.ConvTranspose(null, null, null, null, new[] { stride }, new[] { padding, padding }, Layers.AutoPad.NotSet, new[] { outputPadding }), DataType.Float, new[] { input, weight, bias });
+            return FunctionalTensor.FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, new[] { stride }, new[] { padding, padding }, Layers.AutoPad.NotSet, new[] { outputPadding }), DataType.Float, new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -147,7 +147,7 @@ namespace Unity.Sentis
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.ConvTranspose(null, null, null, null, new[] { stride, stride }, new[] { padding, padding, padding, padding }, Layers.AutoPad.NotSet, new[] { outputPadding, outputPadding }), DataType.Float, new[] { input, weight, bias });
+            return FunctionalTensor.FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, new[] { stride, stride }, new[] { padding, padding, padding, padding }, Layers.AutoPad.NotSet, new[] { outputPadding, outputPadding }), DataType.Float, new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -170,7 +170,7 @@ namespace Unity.Sentis
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.ConvTranspose(null, null, null, null, strideArray, paddingArray, Layers.AutoPad.NotSet, outputPaddingArray), DataType.Float, new[] { input, weight, bias });
+            return FunctionalTensor.FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, strideArray, paddingArray, Layers.AutoPad.NotSet, outputPaddingArray), DataType.Float, new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -190,7 +190,7 @@ namespace Unity.Sentis
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.ConvTranspose(null, null, null, null, new[] { stride, stride, stride }, new[] { padding, padding, padding, padding, padding, padding }, Layers.AutoPad.NotSet, new[] { outputPadding, outputPadding, outputPadding }), DataType.Float, new[] { input, weight, bias });
+            return FunctionalTensor.FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, new[] { stride, stride, stride }, new[] { padding, padding, padding, padding, padding, padding }, Layers.AutoPad.NotSet, new[] { outputPadding, outputPadding, outputPadding }), DataType.Float, new[] { input, weight, bias });
         }
 
         /// <summary>
@@ -213,7 +213,7 @@ namespace Unity.Sentis
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.ConvTranspose(null, null, null, null, strideArray, paddingArray, Layers.AutoPad.NotSet, outputPaddingArray), DataType.Float, new[] { input, weight, bias });
+            return FunctionalTensor.FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, strideArray, paddingArray, Layers.AutoPad.NotSet, outputPaddingArray), DataType.Float, new[] { input, weight, bias });
         }
     }
 }

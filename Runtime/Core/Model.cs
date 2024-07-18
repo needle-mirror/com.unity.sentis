@@ -28,7 +28,7 @@ namespace Unity.Sentis
             /// <summary>
             /// The index of the input.
             /// </summary>
-            public string index;
+            public int index;
 
             /// <summary>
             /// The data type of the input data.
@@ -54,7 +54,7 @@ namespace Unity.Sentis
             /// <summary>
             /// The index of the output.
             /// </summary>
-            public string index;
+            public int index;
         }
 
         /// <summary>
@@ -83,11 +83,6 @@ namespace Unity.Sentis
         public string ProducerName = "Script";
 
         /// <summary>
-        /// stores which layers should fallback to CPU for execution
-        /// </summary>
-        internal HashSet<string> LayerCPUFallback = new HashSet<string>();
-
-        /// <summary>
         /// Returns a string that represents the `Model`.
         /// </summary>
         /// <returns>String representation of model.</returns>
@@ -102,46 +97,22 @@ namespace Unity.Sentis
 
         /// <summary>
         /// Returns a string index not yet used in the model inputs, constants or layer outputs
-        /// based on a given index, the index may be suffixed with "_0", "_1" etc. if required
         /// </summary>
-        internal string GetUniqueIndex(string index)
+        internal int GetUniqueIndex()
         {
-            if (!ContainsIndex(index))
-                return index;
+            var maxIndex = 0;
 
-            for (var i = 0;; i++)
-            {
-                var currentIndex = index + "_" + i;
-                if (!ContainsIndex(currentIndex))
-                    return currentIndex;
-            }
-        }
+            foreach (var input in inputs)
+                maxIndex = Math.Max(maxIndex, input.index);
 
-        /// <summary>
-        /// Checks if `index` is used in any model inputs, constants or layer outputs.
-        /// </summary>
-        bool ContainsIndex(string index)
-        {
-            if (constants.Any(constant => constant.index == index))
-                return true;
-            if (inputs.Any(input => input.index == index))
-                return true;
+            foreach (var constant in constants)
+                maxIndex = Math.Max(maxIndex, constant.index);
+
             foreach (var layer in layers)
-            {
-                foreach (var output in layer.outputs)
-                {
-                    if (output == index)
-                        return true;
-                }
-            }
+            foreach (var output in layer.outputs)
+                maxIndex = Math.Max(maxIndex, output);
 
-            foreach (var output in outputs)
-            {
-                if (output.index == index)
-                    return true;
-            }
-
-            return false;
+            return maxIndex + 1;
         }
 
         internal void ValidateInputTensorShape(Input input, TensorShape shape)
@@ -166,20 +137,9 @@ namespace Unity.Sentis
         /// <param name="index">The index of the input.</param>
         /// <param name="dataType">The data type of the input.</param>
         /// <param name="shape">The `SymbolicTensorShape` of the input.</param>
-        internal void AddInput(string name, string index, DataType dataType, SymbolicTensorShape shape)
+        internal void AddInput(string name, int index, DataType dataType, SymbolicTensorShape shape)
         {
             inputs.Add(new Input { name = name, index = index, dataType = dataType, shape = shape });
-        }
-
-        /// <summary>
-        /// Adds an input to the model with a symbolic tensor shape.
-        /// </summary>
-        /// <param name="name">The name of the input.</param>
-        /// <param name="dataType">The data type of the input.</param>
-        /// <param name="shape">The `SymbolicTensorShape` of the input.</param>
-        internal void AddInput(string name, DataType dataType, SymbolicTensorShape shape)
-        {
-            inputs.Add(new Input { name = name, index = name, dataType = dataType, shape = shape });
         }
 
         /// <summary>
@@ -188,9 +148,9 @@ namespace Unity.Sentis
         /// <param name="name">The name of the input.</param>
         /// <param name="dataType">The data type of the input.</param>
         /// <param name="shape">The `TensorShape` of the input.</param>
-        internal void AddInput(string name, DataType dataType, TensorShape shape)
+        internal void AddInput(string name, int index, DataType dataType, TensorShape shape)
         {
-            inputs.Add(new Input { name = name, index = name, dataType = dataType, shape = new SymbolicTensorShape(shape) });
+            inputs.Add(new Input { name = name, index = index, dataType = dataType, shape = new SymbolicTensorShape(shape) });
         }
 
         /// <summary>
@@ -198,18 +158,9 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="name">The name of the input.</param>
         /// <param name="index">The index of the output.</param>
-        public void AddOutput(string name, string index)
+        public void AddOutput(string name, int index)
         {
             outputs.Add(new Output { name = name, index = index });
-        }
-
-        /// <summary>
-        /// Adds an output called `name` to the model.
-        /// </summary>
-        /// <param name="name">The name of the input.</param>
-        internal void AddOutput(string name)
-        {
-            outputs.Add(new Output { name = name, index = name });
         }
 
         /// <summary>

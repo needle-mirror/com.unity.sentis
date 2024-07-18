@@ -77,9 +77,10 @@ public class UsingComputeBuffers : MonoBehaviour
 
         // Calling MakeReadable will trigger a blocking download of the data to the CPU cache.
         // See the AsyncReadback sample for how to access the data in a non-blocking way.
-        outputTensor.CompleteOperationsAndDownload();
+        var tensorCPU = outputTensor.ReadbackAndClone();
         // Use -1 index to read the last value in the tensor.
-        Debug.Assert(outputTensor[0, 2, textureInput.height - 1, textureInput.width - 1] == 42f);
-        Debug.Log(outputTensor[outputTensor.shape.length - 1]);
+        Debug.Assert(tensorCPU[0, 2, textureInput.height - 1, textureInput.width - 1] == 42f);
+        Debug.Log(tensorCPU[outputTensor.shape.length - 1]);
+        tensorCPU.Dispose();
     }
 }

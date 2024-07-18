@@ -230,7 +230,7 @@ void HardSigmoid(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThread
 
 inline float OpperationGelu(float v)
 {
-    
+
             float vv = v / sqrt(2);
             // Abramowitz/Stegun approximations
             // erf(x) = -erf(-x)
@@ -269,7 +269,7 @@ void Gelu(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV
 
 inline float OpperationErf(float v)
 {
-    
+
             // Abramowitz/Stegun approximations
             // erf(x) = -erf(-x)
             float x = abs(v);
@@ -325,7 +325,7 @@ void Celu(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV
 
 inline float OpperationShrink(float v)
 {
-    
+
             float y = 0.0f;
             if (v < -beta)
                 y = v + alpha;
@@ -352,7 +352,7 @@ void Shrink(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : 
 
 inline float OpperationThresholdedRelu(float v)
 {
-    
+
             float y = 0.0f;
             if (v > alpha)
                 y = v;

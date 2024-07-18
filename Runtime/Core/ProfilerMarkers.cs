@@ -134,6 +134,7 @@ namespace Unity.Sentis
             {"DepthToSpace", new ProfilerMarker("Sentis.Layer.DepthToSpace") },
             {"Expand", new ProfilerMarker("Sentis.Layer.Expand") },
             {"Flatten", new ProfilerMarker("Sentis.Layer.Flatten") },
+            {"GridSample", new ProfilerMarker("Sentis.Layer.GridSample") },
             {"Identity", new ProfilerMarker("Sentis.Layer.Identity") },
             {"Pad", new ProfilerMarker("Sentis.Layer.Pad") },
             {"Reshape", new ProfilerMarker("Sentis.Layer.Reshape") },

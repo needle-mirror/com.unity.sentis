@@ -22,7 +22,7 @@ public partial class CPUBackend
 [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
 internal unsafe struct EinsumOneJob : IJobParallelFor, IJobResourceDeclarationXO
 {
-    
+
     public int sumRank;
     public int sumSize;
     public int outRank;
@@ -70,7 +70,7 @@ internal unsafe struct EinsumOneJob : IJobParallelFor, IJobResourceDeclarationXO
 [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
 internal unsafe struct EinsumTwoJob : IJobParallelFor, IJobResourceDeclarationXBO
 {
-    
+
     public int sumRank;
     public int sumSize;
     public int outRank;

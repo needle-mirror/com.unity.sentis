@@ -2508,7 +2508,7 @@ public partial class CPUBackend
             if (math.asint(accVal) != math.asint(reduceVal))
                 accValIndex = index;
             accVal = reduceVal;
-            
+
         }
     }
 
@@ -2626,7 +2626,7 @@ public partial class CPUBackend
             if (math.asint(accVal) != math.asint(reduceVal))
                 accValIndex = index;
             accVal = reduceVal;
-            
+
         }
     }
 
@@ -2744,7 +2744,7 @@ public partial class CPUBackend
             if (math.asint(accVal) != math.asint(reduceVal))
                 accValIndex = index;
             accVal = reduceVal;
-            
+
         }
     }
 
@@ -2862,7 +2862,7 @@ public partial class CPUBackend
             if (math.asint(accVal) != math.asint(reduceVal))
                 accValIndex = index;
             accVal = reduceVal;
-            
+
         }
     }
 
@@ -2977,7 +2977,7 @@ public partial class CPUBackend
                 accVal = v;
                 accValIndex = index;
             }
-            
+
         }
     }
 
@@ -3092,7 +3092,7 @@ public partial class CPUBackend
                 accVal = v;
                 accValIndex = index;
             }
-            
+
         }
     }
 
@@ -3207,7 +3207,7 @@ public partial class CPUBackend
                 accVal = v;
                 accValIndex = index;
             }
-            
+
         }
     }
 
@@ -3322,7 +3322,7 @@ public partial class CPUBackend
                 accVal = v;
                 accValIndex = index;
             }
-            
+
         }
     }
 

@@ -216,158 +216,38 @@ public partial class CPUBackend
         job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
-
     /// <inheritdoc/>
-    public void Min(TensorFloat[] tensors, TensorFloat O)
+    public void Min(TensorFloat A, TensorFloat B, TensorFloat O)
     {
-        var Otmp = (tensors.Length > 2) ? AllocTensorFloat(O.shape) : null;
-
-        var A = tensors[0];
-        var shapeA = A.shape;
-        var curO = tensors.Length % 2 == 0 ? O : Otmp;
-        for (int t = 1; t < tensors.Length; t++)
-        {
-            var job = new MinFloatJob();
-            var B = tensors[t];
-
-            var outputLength = job.broadcast.Prepare(shapeA, B.shape);
-            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO), outputLength, 1024);
-
-            A = curO;
-            shapeA = shapeA.Broadcast(B.shape);
-            curO = curO == O ? Otmp : O;
-        }
-
-        ReleaseTensorFloat(Otmp);
-        Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
+        var job = new MinFloatJob();
+        var outputLength = job.broadcast.Prepare(A.shape, B.shape);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
-    public void Max(TensorFloat[] tensors, TensorFloat O)
+    public void Max(TensorFloat A, TensorFloat B, TensorFloat O)
     {
-        var Otmp = (tensors.Length > 2) ? AllocTensorFloat(O.shape) : null;
-
-        var A = tensors[0];
-        var shapeA = A.shape;
-        var curO = tensors.Length % 2 == 0 ? O : Otmp;
-        for (int t = 1; t < tensors.Length; t++)
-        {
-            var job = new MaxFloatJob();
-            var B = tensors[t];
-
-            var outputLength = job.broadcast.Prepare(shapeA, B.shape);
-            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO), outputLength, 1024);
-
-            A = curO;
-            shapeA = shapeA.Broadcast(B.shape);
-            curO = curO == O ? Otmp : O;
-        }
-
-        ReleaseTensorFloat(Otmp);
-        Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
+        var job = new MaxFloatJob();
+        var outputLength = job.broadcast.Prepare(A.shape, B.shape);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
-    public void Mean(TensorFloat[] tensors, TensorFloat O)
+    public void Min(TensorInt A, TensorInt B, TensorInt O)
     {
-        var Otmp = (tensors.Length > 2) ? AllocTensorFloat(O.shape) : null;
-
-        var A = tensors[0];
-        var shapeA = A.shape;
-        var curO = tensors.Length % 2 == 0 ? O : Otmp;
-        for (int t = 1; t < tensors.Length; t++)
-        {
-            var job = new MeanFloatJob();
-            job.beta = 1.0f / tensors.Length;
-            job.alpha = t == 1 ? job.beta : 1.0f;
-            var B = tensors[t];
-
-            var outputLength = job.broadcast.Prepare(shapeA, B.shape);
-            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO), outputLength, 1024);
-
-            A = curO;
-            shapeA = shapeA.Broadcast(B.shape);
-            curO = curO == O ? Otmp : O;
-        }
-
-        ReleaseTensorFloat(Otmp);
-        Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
+        var job = new MinIntJob();
+        var outputLength = job.broadcast.Prepare(A.shape, B.shape);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
     /// <inheritdoc/>
-    public void Sum(TensorFloat[] tensors, TensorFloat O)
+    public void Max(TensorInt A, TensorInt B, TensorInt O)
     {
-        var Otmp = (tensors.Length > 2) ? AllocTensorFloat(O.shape) : null;
-
-        var A = tensors[0];
-        var shapeA = A.shape;
-        var curO = tensors.Length % 2 == 0 ? O : Otmp;
-        for (int t = 1; t < tensors.Length; t++)
-        {
-            var job = new AddFloatJob();
-            var B = tensors[t];
-
-            var outputLength = job.broadcast.Prepare(shapeA, B.shape);
-            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO), outputLength, 1024);
-
-            A = curO;
-            shapeA = shapeA.Broadcast(B.shape);
-            curO = curO == O ? Otmp : O;
-        }
-
-        ReleaseTensorFloat(Otmp);
-        Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
+        var job = new MaxIntJob();
+        var outputLength = job.broadcast.Prepare(A.shape, B.shape);
+        job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
     }
 
-    /// <inheritdoc/>
-    public void Min(TensorInt[] tensors, TensorInt O)
-    {
-        var Otmp = (tensors.Length > 2) ? AllocTensorInt(O.shape) : null;
-
-        var A = tensors[0];
-        var shapeA = A.shape;
-        var curO = tensors.Length % 2 == 0 ? O : Otmp;
-        for (int t = 1; t < tensors.Length; t++)
-        {
-            var job = new MinIntJob();
-            var B = tensors[t];
-
-            var outputLength = job.broadcast.Prepare(shapeA, B.shape);
-            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO), outputLength, 1024);
-
-            A = curO;
-            shapeA = shapeA.Broadcast(B.shape);
-            curO = curO == O ? Otmp : O;
-        }
-
-        ReleaseTensorInt(Otmp);
-        Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
-    }
-
-    /// <inheritdoc/>
-    public void Max(TensorInt[] tensors, TensorInt O)
-    {
-        var Otmp = (tensors.Length > 2) ? AllocTensorInt(O.shape) : null;
-
-        var A = tensors[0];
-        var shapeA = A.shape;
-        var curO = tensors.Length % 2 == 0 ? O : Otmp;
-        for (int t = 1; t < tensors.Length; t++)
-        {
-            var job = new MaxIntJob();
-            var B = tensors[t];
-
-            var outputLength = job.broadcast.Prepare(shapeA, B.shape);
-            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(curO), outputLength, 1024);
-
-            A = curO;
-            shapeA = shapeA.Broadcast(B.shape);
-            curO = curO == O ? Otmp : O;
-        }
-
-        ReleaseTensorInt(Otmp);
-        Logger.AssertIsTrue(curO != O, "Output tensor should have been the persistent one.");
-    }
 
     /// <inheritdoc/>
     public void Abs(TensorFloat X, TensorFloat O)
@@ -666,7 +546,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ReduceMin(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+    public void ReduceMin(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
         {
@@ -733,7 +613,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ReduceMin(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+    public void ReduceMin(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
         {
@@ -800,7 +680,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ReduceMax(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+    public void ReduceMax(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
         {
@@ -867,7 +747,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ReduceMax(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+    public void ReduceMax(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
         {
@@ -934,7 +814,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ReduceSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+    public void ReduceSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
         {
@@ -1001,7 +881,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ReduceSum(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+    public void ReduceSum(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
         {
@@ -1068,7 +948,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ReduceSumSquare(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+    public void ReduceSumSquare(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
         {
@@ -1160,7 +1040,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ReduceSumSquare(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+    public void ReduceSumSquare(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
         {
@@ -1252,7 +1132,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ReduceMean(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+    public void ReduceMean(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
         {
@@ -1319,7 +1199,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ReduceProd(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+    public void ReduceProd(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
         {
@@ -1386,7 +1266,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ReduceProd(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+    public void ReduceProd(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
         {
@@ -1453,7 +1333,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ReduceL1(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+    public void ReduceL1(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
         {
@@ -1545,7 +1425,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ReduceL1(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim)
+    public void ReduceL1(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
         {
@@ -1637,7 +1517,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ReduceL2(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+    public void ReduceL2(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
         {
@@ -1729,7 +1609,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ReduceLogSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+    public void ReduceLogSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
         {
@@ -1796,7 +1676,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ReduceLogSumExp(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim)
+    public void ReduceLogSumExp(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
     {
         if (axes == null || axes.Length == 0)
         {
@@ -1863,7 +1743,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ArgMax(TensorFloat X, TensorInt O, int axis, bool keepdim, bool selectLastIndex)
+    public void ArgMax(TensorFloat X, TensorInt O, int axis, bool selectLastIndex)
     {
         Assert.AreNotEqual(0, X.shape[axis], "ValueError: zero-size array to reduction operation maximum which has no identity.");
 
@@ -1884,7 +1764,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ArgMax(TensorInt X, TensorInt O, int axis, bool keepdim, bool selectLastIndex)
+    public void ArgMax(TensorInt X, TensorInt O, int axis, bool selectLastIndex)
     {
         Assert.AreNotEqual(0, X.shape[axis], "ValueError: zero-size array to reduction operation maximum which has no identity.");
 
@@ -1905,7 +1785,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ArgMin(TensorFloat X, TensorInt O, int axis, bool keepdim, bool selectLastIndex)
+    public void ArgMin(TensorFloat X, TensorInt O, int axis, bool selectLastIndex)
     {
         Assert.AreNotEqual(0, X.shape[axis], "ValueError: zero-size array to reduction operation maximum which has no identity.");
 
@@ -1926,7 +1806,7 @@ public partial class CPUBackend
     }
 
     /// <inheritdoc/>
-    public void ArgMin(TensorInt X, TensorInt O, int axis, bool keepdim, bool selectLastIndex)
+    public void ArgMin(TensorInt X, TensorInt O, int axis, bool selectLastIndex)
     {
         Assert.AreNotEqual(0, X.shape[axis], "ValueError: zero-size array to reduction operation maximum which has no identity.");
 

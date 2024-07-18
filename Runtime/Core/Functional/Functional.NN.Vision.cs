@@ -13,7 +13,7 @@ namespace Unity.Sentis
         public static FunctionalTensor PixelShuffle(FunctionalTensor input, int upscaleFactor)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.DepthToSpace(null, null, upscaleFactor, Layers.DepthToSpaceMode.DepthColumnRow), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.DepthToSpace(-1, -1, upscaleFactor, Layers.DepthToSpaceMode.DepthColumnRow), input.DataType, input);
         }
 
         /// <summary>
@@ -25,7 +25,7 @@ namespace Unity.Sentis
         public static FunctionalTensor PixelUnshuffle(FunctionalTensor input, int downscaleFactor)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.SpaceToDepth(null, null, downscaleFactor), input.DataType, input);
+            return FunctionalTensor.FromLayer(new Layers.SpaceToDepth(-1, -1, downscaleFactor), input.DataType, input);
         }
 
         /// <summary>
@@ -52,8 +52,38 @@ namespace Unity.Sentis
             for (var i = 0; i < numAxes; i++)
                 axes[i] = 2 + i;
             if (size != null)
-                return FunctionalTensor.FromLayer(new Layers.Resize(null, null, null, Layers.ScaleMode.Sizes, interpolationMode, Layers.CoordTransformMode.PytorchHalfPixel, Layers.NearestMode.RoundPreferFloor, axes), input.DataType, new[] { input, Tensor(size) });
-            return FunctionalTensor.FromLayer(new Layers.Resize(null, null, null, Layers.ScaleMode.Scales, interpolationMode, Layers.CoordTransformMode.PytorchHalfPixel, Layers.NearestMode.RoundPreferFloor, axes), input.DataType, new[] { input, Tensor(scaleFactor) });
+                return FunctionalTensor.FromLayer(new Layers.Resize(-1, -1, -1, Layers.ScaleMode.Sizes, interpolationMode, Layers.CoordTransformMode.PytorchHalfPixel, Layers.NearestMode.RoundPreferFloor, axes), input.DataType, new[] { input, Tensor(size) });
+            return FunctionalTensor.FromLayer(new Layers.Resize(-1, -1, -1, Layers.ScaleMode.Scales, interpolationMode, Layers.CoordTransformMode.PytorchHalfPixel, Layers.NearestMode.RoundPreferFloor, axes), input.DataType, new[] { input, Tensor(scaleFactor) });
+        }
+
+        /// <summary>
+        /// Returns the input tensor by sampled by coordinates given by the grid tensor.
+        /// </summary>
+        /// <param name="input">The input tensor.</param>
+        /// <param name="grid">The grid tensor containing the spatial coordinates per output pixel.</param>
+        /// <param name="mode">The mode used for interpolating, can be 'nearest', 'bilinear', or 'bicubic'.</param>
+        /// <param name="paddingMode">The mode to use for sampling out-of-bounds coordinates, can be 'zeros', 'border', or 'reflection'.</param>
+        /// <param name="alignCorners">Whether to map the extreme values in the coordinates 0 and 1 to the centre of the corner pixels rather than the outer corners.</param>
+        /// <returns>The output tensor.</returns>
+        public static FunctionalTensor GridSample(FunctionalTensor input, FunctionalTensor grid, string mode = "bilinear", string paddingMode = "zeros", bool alignCorners = false)
+        {
+            input = input.Float();
+            grid = grid.Float();
+            var interpolationMode = mode switch
+            {
+                "nearest" => Layers.InterpolationMode.Nearest,
+                "bilinear" => Layers.InterpolationMode.Linear,
+                "bicubic" => Layers.InterpolationMode.Cubic,
+                _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
+            };
+            var padMode = paddingMode switch
+            {
+                "zeros" => Layers.PaddingMode.Zeros,
+                "border" => Layers.PaddingMode.Border,
+                "reflection" => Layers.PaddingMode.Reflection,
+                _ => throw new ArgumentOutOfRangeException(nameof(paddingMode), paddingMode, null)
+            };
+            return FunctionalTensor.FromLayer(new Layers.GridSample(-1, -1, -1, interpolationMode, padMode, alignCorners), input.DataType, new[] { input, grid });
         }
     }
 }

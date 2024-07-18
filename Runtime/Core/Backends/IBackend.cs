@@ -92,6 +92,17 @@ namespace Unity.Sentis
         void Resize(TensorFloat X, TensorFloat O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode);
 
         /// <summary>
+        /// Calculates an output tensor by sampling the input tensor by coordinates given by the grid tensor.
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="grid">The grid tensor containing the spatial coordinates per output pixel.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="mode">The `InterpolationMode` to use for the operation.</param>
+        /// <param name="paddingMode">The `PaddingMode` to use for the operation.</param>
+        /// <param name="alignCorners">Whether to map the extreme values in the coordinates 0 and 1 to the centre of the corner pixels rather than the outer corners.</param>
+        void GridSample(TensorFloat X, TensorFloat grid, TensorFloat O, Layers.InterpolationMode mode, Layers.PaddingMode paddingMode, bool alignCorners);
+
+        /// <summary>
         /// Computes the output tensor by permuting data from depth into blocks of spatial data.
         /// </summary>
         /// <param name="X">The input tensor.</param>
@@ -684,15 +695,6 @@ namespace Unity.Sentis
         void ThresholdedRelu(TensorFloat X, TensorFloat O, float alpha);
 
         /// <summary>
-        /// Performs an element-wise `Sum` math operation: f(x1, x2 ... xn) = x1 + x2 ... xn.
-        ///
-        /// This supports numpy-style broadcasting of input tensors.
-        /// </summary>
-        /// <param name="inputs">The input tensors.</param>
-        /// <param name="O">The output tensor to be computed and filled.</param>
-        void Sum(TensorFloat[] inputs, TensorFloat O);
-
-        /// <summary>
         /// Performs an element-wise `Add` math operation: f(a, b) = a + b.
         ///
         /// This supports numpy-style broadcasting of input tensors.
@@ -841,49 +843,44 @@ namespace Unity.Sentis
         void Pow(TensorFloat A, TensorInt B, TensorFloat O);
 
         /// <summary>
-        /// Performs an element-wise `Min` math operation: f(x1, x2 ... xn) = min(x1, x2 ... xn).
+        /// Performs an element-wise `Min` math operation: f(a, b) = min(a, b).
         ///
         /// This supports numpy-style broadcasting of input tensors.
         /// </summary>
-        /// <param name="inputs">The input tensors.</param>
+        /// <param name="A">The first input tensor.</param>
+        /// <param name="B">The second input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
-        void Min(TensorFloat[] inputs, TensorFloat O);
+        void Min(TensorFloat A, TensorFloat B, TensorFloat O);
 
         /// <summary>
-        /// Performs an element-wise `Min` math operation: f(x1, x2 ... xn) = min(x1, x2 ... xn).
+        /// Performs an element-wise `Min` math operation: f(a, b) = min(a, b).
         ///
         /// This supports numpy-style broadcasting of input tensors.
         /// </summary>
-        /// <param name="inputs">The input tensors.</param>
+        /// <param name="A">The first input tensor.</param>
+        /// <param name="B">The second input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
-        void Min(TensorInt[] inputs, TensorInt O);
+        void Min(TensorInt A, TensorInt B, TensorInt O);
 
         /// <summary>
-        /// Performs an element-wise `Max` math operation: f(x1, x2 ... xn) = max(x1, x2 ... xn).
+        /// Performs an element-wise `Max` math operation: f(a, b) = max(a, b).
         ///
         /// This supports numpy-style broadcasting of input tensors.
         /// </summary>
-        /// <param name="inputs">The input tensors.</param>
+        /// <param name="A">The first input tensor.</param>
+        /// <param name="B">The second input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
-        void Max(TensorFloat[] inputs, TensorFloat O);
+        void Max(TensorFloat A, TensorFloat B, TensorFloat O);
 
         /// <summary>
-        /// Performs an element-wise `Max` math operation: f(x1, x2 ... xn) = max(x1, x2 ... xn).
+        /// Performs an element-wise `Max` math operation: f(a, b) = max(a, b).
         ///
         /// This supports numpy-style broadcasting of input tensors.
         /// </summary>
-        /// <param name="inputs">The input tensors.</param>
+        /// <param name="A">The first input tensor.</param>
+        /// <param name="B">The second input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
-        void Max(TensorInt[] inputs, TensorInt O);
-
-        /// <summary>
-        /// Performs an element-wise `Mean` math operation: f(x1, x2 ... xn) = (x1 + x2 ... xn) / n.
-        ///
-        /// This supports numpy-style broadcasting of input tensors.
-        /// </summary>
-        /// <param name="inputs">The input tensors.</param>
-        /// <param name="O">The output tensor to be computed and filled.</param>
-        void Mean(TensorFloat[] inputs, TensorFloat O);
+        void Max(TensorInt A, TensorInt B, TensorInt O);
 
         /// <summary>
         /// Reduces an input tensor along the given axes using the `ReduceMax` operation: f(x1, x2 ... xn) = max(x1, x2, ... , xn).
@@ -891,8 +888,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axes">The axes along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
-        void ReduceMax(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim);
+        void ReduceMax(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes);
 
         /// <summary>
         /// Reduces an input tensor along the given axes using the `ReduceMean` operation: f(x1, x2 ... xn) = max(x1, x2, ... , xn).
@@ -900,8 +896,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axes">The axes along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
-        void ReduceMax(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim);
+        void ReduceMax(TensorInt X, TensorInt O, ReadOnlySpan<int> axes);
 
         /// <summary>
         /// Reduces an input tensor along the given axes using the `ReduceMean` operation: f(x1, x2 ... xn) = (x1 + x2 + ... + xn) / n.
@@ -909,8 +904,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axes">The axes along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
-        void ReduceMean(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim);
+        void ReduceMean(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes);
 
         /// <summary>
         /// Reduces an input tensor along the given axes using the `ReduceMin` operation: f(x1, x2 ... xn) = min(x1, x2, ... , xn).
@@ -918,8 +912,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axes">The axes along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
-        void ReduceMin(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim);
+        void ReduceMin(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes);
 
         /// <summary>
         /// Reduces an input tensor along the given axes using the `ReduceMin` operation: f(x1, x2 ... xn) = min(x1, x2, ... , xn).
@@ -927,8 +920,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axes">The axes along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
-        void ReduceMin(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim);
+        void ReduceMin(TensorInt X, TensorInt O, ReadOnlySpan<int> axes);
 
         /// <summary>
         /// Reduces an input tensor along the given axes using the `ReduceProd` operation: f(x1, x2 ... xn) = x1 * x2 * ... * xn.
@@ -936,8 +928,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axes">The axes along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
-        void ReduceProd(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim);
+        void ReduceProd(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes);
 
         /// <summary>
         /// Reduces an input tensor along the given axes using the `ReduceProd` operation: f(x1, x2 ... xn) = x1 * x2 * ... * xn.
@@ -945,8 +936,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axes">The axes along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
-        void ReduceProd(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim);
+        void ReduceProd(TensorInt X, TensorInt O, ReadOnlySpan<int> axes);
 
         /// <summary>
         /// Reduces an input tensor along the given axes using the `ReduceSum` operation: f(x1, x2 ... xn) = x1 + x2 + ... + xn.
@@ -954,8 +944,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axes">The axes along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
-        void ReduceSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim);
+        void ReduceSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes);
 
         /// <summary>
         /// Reduces an input tensor along the given axes using the `ReduceSum` operation: f(x1, x2 ... xn) = x1 + x2 + ... + xn.
@@ -963,8 +952,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axes">The axes along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
-        void ReduceSum(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim);
+        void ReduceSum(TensorInt X, TensorInt O, ReadOnlySpan<int> axes);
 
         /// <summary>
         /// Reduces an input tensor along the given axes using the `ReduceSumSquare` operation: f(x1, x2 ... xn) = x1² + x2² + ... + xn².
@@ -972,8 +960,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axes">The axes along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
-        void ReduceSumSquare(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim);
+        void ReduceSumSquare(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes);
 
         /// <summary>
         /// Reduces an input tensor along the given axes using the `ReduceSumSquare` operation: f(x1, x2 ... xn) = x1² + x2² + ... + xn².
@@ -981,8 +968,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axes">The axes along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
-        void ReduceSumSquare(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim);
+        void ReduceSumSquare(TensorInt X, TensorInt O, ReadOnlySpan<int> axes);
 
         /// <summary>
         /// Reduces an input tensor along the given axes using the `ReduceL1` operation: f(x1, x2 ... xn) = |x1| + |x2| + ... + |xn|.
@@ -990,8 +976,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axes">The axes along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
-        void ReduceL1(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim);
+        void ReduceL1(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes);
 
         /// <summary>
         /// Reduces an input tensor along the given axes using the `ReduceL1` operation: f(x1, x2 ... xn) = |x1| + |x2| + ... + |xn|.
@@ -999,8 +984,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axes">The axes along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
-        void ReduceL1(TensorInt X, TensorInt O, ReadOnlySpan<int> axes, bool keepdim);
+        void ReduceL1(TensorInt X, TensorInt O, ReadOnlySpan<int> axes);
 
         /// <summary>
         /// Reduces an input tensor along the given axes using the `ReduceL2` operation: f(x1, x2 ... xn) = sqrt(x1² + x2² + ... + xn²).
@@ -1008,8 +992,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axes">The axes along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
-        void ReduceL2(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim);
+        void ReduceL2(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes);
 
         /// <summary>
         /// Reduces an input tensor along the given axes using the `ReduceLogSum` operation: f(x1, x2 ... xn) = log(x1 + x2 + ... + xn).
@@ -1017,8 +1000,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axes">The axes along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
-        void ReduceLogSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim);
+        void ReduceLogSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes);
 
         /// <summary>
         /// Reduces an input tensor along the given axes using the `ReduceLogSumExp` operation: f(x1, x2 ... xn) = log(e^x1 + e^x2 + ... + e^xn).
@@ -1026,8 +1008,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axes">The axes along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
-        void ReduceLogSumExp(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes, bool keepdim);
+        void ReduceLogSumExp(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes);
 
         /// <summary>
         /// Computes the indices of the maximum elements of the input tensor along a given axis.
@@ -1035,9 +1016,8 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axis">The axis along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
         /// <param name="selectLastIndex">Whether to perform the operation from the back of the axis.</param>
-        void ArgMax(TensorFloat X, TensorInt O, int axis, bool keepdim, bool selectLastIndex);
+        void ArgMax(TensorFloat X, TensorInt O, int axis, bool selectLastIndex);
 
         /// <summary>
         /// Computes the indices of the maximum elements of the input tensor along a given axis.
@@ -1045,9 +1025,8 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axis">The axis along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
         /// <param name="selectLastIndex">Whether to perform the operation from the back of the axis.</param>
-        void ArgMax(TensorInt X, TensorInt O, int axis, bool keepdim, bool selectLastIndex);
+        void ArgMax(TensorInt X, TensorInt O, int axis, bool selectLastIndex);
 
         /// <summary>
         /// Computes the indices of the minimum elements of the input tensor along a given axis.
@@ -1055,9 +1034,8 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axis">The axis along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
         /// <param name="selectLastIndex">Whether to perform the operation from the back of the axis.</param>
-        void ArgMin(TensorFloat X, TensorInt O, int axis, bool keepdim, bool selectLastIndex);
+        void ArgMin(TensorFloat X, TensorInt O, int axis, bool selectLastIndex);
 
         /// <summary>
         /// Computes the indices of the minimum elements of the input tensor along a given axis.
@@ -1065,9 +1043,8 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axis">The axis along which to reduce.</param>
-        /// <param name="keepdim">Whether to keep the reduced axes in the output tensor.</param>
         /// <param name="selectLastIndex">Whether to perform the operation from the back of the axis.</param>
-        void ArgMin(TensorInt X, TensorInt O, int axis, bool keepdim, bool selectLastIndex);
+        void ArgMin(TensorInt X, TensorInt O, int axis, bool selectLastIndex);
 
         /// <summary>
         /// Performs an element-wise `Greater` logical comparison operation: f(a, b) = 1 if a > b, otherwise f(x) = 0.
@@ -1273,14 +1250,6 @@ namespace Unity.Sentis
         void Transpose(Tensor X, Tensor O, ReadOnlySpan<int> permutations);
 
         /// <summary>
-        /// Calculates an output tensor by concatenating the input tensors along a given axis.
-        /// </summary>
-        /// <param name="inputs">The input tensors.</param>
-        /// <param name="O">The output tensor to be computed and filled.</param>
-        /// <param name="axis">The axis along which to concatenate the input tensors.</param>
-        void Concat(Tensor[] inputs, Tensor O, int axis);
-
-        /// <summary>
         /// Calculates an output tensor by splitting the input tensor along a given axis between start and end.
         /// </summary>
         /// <param name="X">The input tensor.</param>
@@ -1309,6 +1278,16 @@ namespace Unity.Sentis
         /// <param name="axes">The axes along which to slice. If this is `null`, the layer slices all axes.</param>
         /// <param name="steps">The step values for slicing. If this is `null`, the layer uses step size 1 throughout.</param>
         void SliceSet(Tensor X, Tensor values, Tensor O, ReadOnlySpan<int> starts, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps);
+
+        /// <summary>
+        /// Updates values at indexes specified by the slices defined by axis, start and step.
+        /// </summary>
+        /// <param name="values">The values tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="axis">The axes along which to slice.</param>
+        /// <param name="start">The start index along the axis.</param>
+        /// <param name="step">The step value for slicing.</param>
+        void SliceSet(Tensor values, Tensor O, int axis, int start, int step);
 
         /// <summary>
         /// Calculates an output tensor by repeating the input layer a given number of times along each axis.
@@ -1418,13 +1397,11 @@ namespace Unity.Sentis
 
         /// <summary>
         /// Performs an `Einsum` math operation.
-        /// </summary>
-        /// <description>
         /// The Einsum operator evaluates algebraic tensor operations on a sequence of tensors, using the Einstein summation convention. The equation string contains a comma-separated sequence of lower case letters. Each term corresponds to an operand tensor, and the characters within the terms correspond to operands dimensions.
         /// This sequence may be followed by "->" to separate the left and right hand side of the equation. If the equation contains "->" followed by the right-hand side, the explicit (not classical) form of the Einstein summation is performed, and the right-hand side indices indicate output tensor dimensions. In other cases, output indices are (implicitly) set to the alphabetically sorted sequence of indices appearing exactly once in the equation.
         /// When a dimension character is repeated in the left-hand side, it represents summation along the dimension.
         /// The equation may contain ellipsis ("...") to enable broadcasting. Ellipsis must indicate a fixed number of dimensions. Specifically, every occurrence of ellipsis in the equation must represent the same number of dimensions. The right-hand side may contain exactly one ellipsis. In implicit mode, the ellipsis dimensions are set to the beginning of the output. The equation string may contain space (U+0020) character.
-        /// </description>
+        /// </summary>
         /// <param name="inputTensors">The input tensors.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="operandIndices">The operand indices for each input tensor.</param>
@@ -1538,7 +1515,7 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="index">The name of the input.</param>
         /// <param name="X">The tensor for the input.</param>
-        void SetInput(string index, Tensor X);
+        void SetInput(int index, Tensor X);
 
         /// <summary>
         /// Prepares storage for a given model.
@@ -1552,7 +1529,53 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="index">The index for which to retrieve its underlying Tensor.</param>
         /// <returns>The retrieved tensor.</returns>
-        Tensor GetTensor(string index);
+        Tensor GetTensor(int index);
+
+        /// <summary>
+        /// Retrieves shape of tensor for given index.
+        /// </summary>
+        /// <param name="tensorIndex">The tensor index.</param>
+        /// <returns>The retrieved tensor shape.</returns>
+        TensorShape GetTensorShape(int tensorIndex);
+
+        /// <summary>
+        /// Retrieves data type of tensor for given index.
+        /// </summary>
+        /// <param name="tensorIndex">The tensor index.</param>
+        /// <returns>The retrieved data type.</returns>
+        DataType GetDataType(int tensorIndex);
+
+        /// <summary>
+        /// Reads single value of integer tensor.
+        /// </summary>
+        /// <param name="tensorIndex">The tensor index.</param>
+        /// <param name="defaultValue">The default value to return if the tensor is null.</param>
+        /// <returns>The retrieved integer value.</returns>
+        int GetInt(int tensorIndex, int defaultValue = 0);
+
+        /// <summary>
+        /// Reads single value of float tensor.
+        /// </summary>
+        /// <param name="tensorIndex">The tensor index.</param>
+        /// <param name="defaultValue">The default value to return if the tensor is null.</param>
+        /// <returns>The retrieved float value.</returns>
+        float GetFloat(int tensorIndex, float defaultValue = 0f);
+
+        /// <summary>
+        /// Reads values of 1D integer tensor.
+        /// </summary>
+        /// <param name="tensorIndex">The tensor index.</param>
+        /// <param name="defaultValue">The default value to return if the tensor is null.</param>
+        /// <returns>The retrieved integer values as a read only span.</returns>
+        ReadOnlySpan<int> GetInts(int tensorIndex, ReadOnlySpan<int> defaultValue = default);
+
+        /// <summary>
+        /// Reads values of 1D float tensor.
+        /// </summary>
+        /// <param name="tensorIndex">The tensor index.</param>
+        /// <param name="defaultValue">The default value to return if the tensor is null.</param>
+        /// <returns>The retrieved float values as a read only span.</returns>
+        ReadOnlySpan<float> GetFloats(int tensorIndex, ReadOnlySpan<float> defaultValue = default);
 
         /// <summary>
         /// Allocates a new Tensor and stores the result of execution for a given tensor index.
@@ -1563,7 +1586,7 @@ namespace Unity.Sentis
         /// <param name="dataType">The desired DataType.</param>
         /// <param name="backendType">The desired BackendType.</param>
         /// <returns>The allocated tensor.</returns>
-        Tensor AllocateTensorAndStore(string index, TensorShape shape, DataType dataType, BackendType backendType);
+        Tensor AllocateTensorAndStore(int index, TensorShape shape, DataType dataType, BackendType backendType);
 
         /// <summary>
         /// Allocates a new Tensor.
@@ -1597,7 +1620,7 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="index">The index of the tensor to store.</param>
         /// <param name="result">The tensor result of execution.</param>
-        void Store(string index, Tensor result);
+        void Store(int index, Tensor result);
 
         /// <summary>
         /// Returns a reference to default output tensor of a given index.
@@ -1607,7 +1630,7 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="index">The index of the tensor to peek.</param>
         /// <returns>The output tensor.</returns>
-        Tensor PeekTensor(string index);
+        Tensor PeekTensor(int index);
 
         /// <summary>
         /// Take ownership the output tensor of a given index.
@@ -1617,7 +1640,7 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="index">The index of the tensor to gain ownership.</param>
         /// <returns>The tensor.</returns>
-        Tensor TakeTensorOwnership(string index);
+        Tensor TakeTensorOwnership(int index);
     }
 
     /// <summary>
@@ -1629,6 +1652,11 @@ namespace Unity.Sentis
         /// The `IBackend` used for execution.
         /// </summary>
         public IBackend backend;
+
+        /// <summary>
+        /// The CPU backend used for fallback cpu execution.
+        /// </summary>
+        public CPUBackend cpuBackend;
 
         /// <summary>
         /// The `IModelStorage` used for execution

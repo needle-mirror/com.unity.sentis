@@ -7,7 +7,7 @@ namespace Unity.Sentis.Compiler.Passes
         /// <summary>
         /// removes specified layers and remap inputs accordingly
         /// </summary>
-        public static void RemoveAndRemap(ref Model model, HashSet<string> removeLayers, Dictionary<string, string> remap)
+        public static void RemoveAndRemap(ref Model model, HashSet<int> removeLayers, Dictionary<int, int> remap)
         {
             model.layers.RemoveAll(l => removeLayers.Contains(l.outputs[0]));
             for (int l = 0; l < model.layers.Count; ++l)

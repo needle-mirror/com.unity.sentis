@@ -177,24 +177,6 @@ namespace Unity.Sentis
     public static class WorkerExtensions
     {
         /// <summary>
-        /// Execute model and returns a CPU copy of all outputs. This is a non blocking call.
-        /// </summary>
-        /// <param name="worker">The worker to execute.</param>
-        /// <param name="inputs">The input tensors as a dictionary.</param>
-        /// <param name="outputs">The output names as a list.</param>
-        /// <returns>The async task.</returns>
-        public static async Task<bool[]> ExecuteAndDownloadOutputsAsync(this IWorker worker, Dictionary<string, Tensor> inputs, List<string> outputs)
-        {
-            worker.Execute(inputs);
-            Task<bool>[] tasks = new Task<bool>[outputs.Count];
-            for (int i = 0; i < outputs.Count; i++)
-            {
-                tasks[i] = worker.PeekOutput(outputs[i]).CompleteOperationsAndDownloadAsync();
-            }
-            return await Task.WhenAll(tasks);
-        }
-
-        /// <summary>
         /// Non-blocking API that schedules network execution on CommandBuffer in one go.
         /// </summary>
         /// <param name="cb">The command buffer to schedule execution on.</param>

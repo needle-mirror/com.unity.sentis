@@ -16,13 +16,7 @@ namespace Unity.Sentis
             Done
         }
 
-        /// <summary>
-        /// Compiles a forward method into a model.
-        /// </summary>
-        /// <param name="forward">The forward method to compile.</param>
-        /// <param name="inputDefs">The input definitions to compile.</param>
-        /// <returns>The compiled model.</returns>
-        public static Model Compile(this Func<FunctionalTensor[], FunctionalTensor[]> forward, InputDef[] inputDefs)
+        internal static Model Build(this Func<FunctionalTensor[], FunctionalTensor[]> forward, InputDef[] inputDefs)
         {
             // setup input expressions from inputDefs, to feed to forward method
             var inputExpressions = new FunctionalTensor[inputDefs.Length];
@@ -103,9 +97,19 @@ namespace Unity.Sentis
                 }
             }
 
-            ModelOptimizer.OptimizeModel(ref model);
-            ModelOptimizer.RunCPUFallbackPass(ref model);
+            return model;
+        }
 
+        /// <summary>
+        /// Compiles a forward method into a model.
+        /// </summary>
+        /// <param name="forward">The forward method to compile.</param>
+        /// <param name="inputDefs">The input definitions to compile.</param>
+        /// <returns>The compiled model.</returns>
+        public static Model Compile(this Func<FunctionalTensor[], FunctionalTensor[]> forward, InputDef[] inputDefs)
+        {
+            var model = Build(forward, inputDefs);
+            ModelOptimizer.OptimizeModel(ref model);
             return model;
         }
 

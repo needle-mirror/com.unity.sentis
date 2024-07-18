@@ -10,6 +10,8 @@ using static Unity.Burst.Intrinsics.X86.Fma;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
+using System.Collections.Generic;
+using Unity.Collections;
 
 namespace Unity.Sentis
 {
@@ -1215,6 +1217,417 @@ namespace Unity.Sentis
         }
 
         [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        unsafe struct GridSample2DJob : IParallelForBatch, IJobResourceDeclarationXBO
+        {
+            public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+            public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
+            public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+            public Layers.PaddingMode paddingMode;
+            public Layers.CoordTransformMode coordMode;
+            public Layers.InterpolationMode mode;
+            public bool alignCorners;
+
+            public int inHeight, inWidth;
+            public int inSpatialSize;
+            public int outBatch, outChannels;
+            public int outSpatialSize;
+
+            public void Execute(int i, int count)
+            {
+                if (mode == Layers.InterpolationMode.Nearest)
+                    GridSampleNearest(i, count);
+                else
+                    GridSampleLinear(i, count);
+            }
+
+            void GridSampleNearest(int i, int count)
+            {
+                float* Op = Optr + i;
+
+                int ohw = i % outSpatialSize;
+                i = i / outSpatialSize;
+                int oc = i % outChannels;
+                i = i / outChannels;
+                int on = i;
+
+                float* Bp = Bptr + (on * outSpatialSize + ohw) * 2;
+                float* Xp = Xptr + (on * outChannels + oc) * inSpatialSize;
+
+                int outputHWRemaining = outSpatialSize - ohw;
+
+                while (count > 0)
+                {
+                    int outputCountHW = math.min(count, outputHWRemaining);
+                    count -= outputCountHW;
+
+                    for (; outputCountHW > 0; outputCountHW -= 1)
+                    {
+                        var srcPos = new float2(Bp[0], Bp[1]);
+
+                        if (paddingMode == Layers.PaddingMode.Reflection)
+                            srcPos = math.abs(((srcPos - 1.0f) % 4.0f + 4.0f) % 4.0f - 2.0f) - 1.0f;
+                        if (paddingMode == Layers.PaddingMode.Border)
+                            srcPos = math.clamp(srcPos, -1.0f, 1.0f);
+
+                        if (alignCorners)
+                        {
+                            srcPos.x = (0.5f * (srcPos.x + 1.0f)) * (inWidth - 1.0f);
+                            srcPos.y = (0.5f * (srcPos.y + 1.0f)) * (inHeight - 1.0f);
+                        }
+                        else
+                        {
+                            srcPos.x = (0.5f * (srcPos.x + 1.0f)) * inWidth - 0.5f;
+                            srcPos.y = (0.5f * (srcPos.y + 1.0f)) * inHeight - 0.5f;
+                        }
+
+                        var pos_i = (int2)math.round(srcPos);
+                        var oobMask = true;
+                        if (paddingMode == Layers.PaddingMode.Zeros)
+                            oobMask = !(pos_i.x < 0 || pos_i.x >= inWidth || pos_i.y < 0 || pos_i.y >= inHeight);
+                        pos_i.x = math.clamp(pos_i.x, 0, inWidth - 1);
+                        pos_i.y = math.clamp(pos_i.y, 0, inHeight - 1);
+
+                        var v = oobMask ? Xp[pos_i.y * inWidth + pos_i.x] : 0f;
+
+                        *Op++ = v;
+                        Bp += 2;
+                        ohw++;
+                    }
+
+                    if (count > 0)
+                    {
+                        // Output is now always aligned to the start of a row.
+                        ohw = 0;
+                        outputHWRemaining = outSpatialSize;
+                        oc++;
+                        Bp = Bptr + on * outSpatialSize * 2;
+                        Xp += inSpatialSize;
+
+                        if (oc == outChannels)
+                        {
+                            // Advance to the next output batch.
+                            oc = 0;
+                            on++;
+                            Bp += outSpatialSize * 2;
+                            Xp = Xptr + on * outChannels * inSpatialSize;
+                        }
+                    }
+                }
+            }
+
+            void GridSampleLinear(int i, int count)
+            {
+                float* Op = Optr + i;
+
+                int ohw = i % outSpatialSize;
+                i = i / outSpatialSize;
+                int oc = i % outChannels;
+                i = i / outChannels;
+                int on = i;
+
+                float* Bp = Bptr + (on * outSpatialSize + ohw) * 2;
+                float* Xp = Xptr + (on * outChannels + oc) * inSpatialSize;
+
+                int outputHWRemaining = outSpatialSize - ohw;
+
+                while (count > 0)
+                {
+                    int outputCountHW = math.min(count, outputHWRemaining);
+                    count -= outputCountHW;
+
+                    for (; outputCountHW > 0; outputCountHW -= 1)
+                    {
+                        var srcPos = new float2(Bp[0], Bp[1]);
+
+                        if (paddingMode == Layers.PaddingMode.Reflection)
+                            srcPos = math.abs(((srcPos - 1.0f) % 4.0f + 4.0f) % 4.0f - 2.0f) - 1.0f;
+                        if (paddingMode == Layers.PaddingMode.Border)
+                            srcPos = math.clamp(srcPos, -1.0f, 1.0f);
+
+                        if (alignCorners)
+                        {
+                            srcPos.x = (0.5f * (srcPos.x + 1.0f)) * (inWidth - 1.0f);
+                            srcPos.y = (0.5f * (srcPos.y + 1.0f)) * (inHeight - 1.0f);
+                        }
+                        else
+                        {
+                            srcPos.x = (0.5f * (srcPos.x + 1.0f)) * inWidth - 0.5f;
+                            srcPos.y = (0.5f * (srcPos.y + 1.0f)) * inHeight - 0.5f;
+                        }
+
+                        var pos_i_0 = (int2)math.floor(srcPos);
+                        var pos_i_1 = pos_i_0 + 1;
+                        var pos_r = srcPos - pos_i_0;
+
+                        var oobMask_0 = new bool2(true);
+                        var oobMask_1 = new bool2(true);
+
+                        if (paddingMode == Layers.PaddingMode.Zeros)
+                        {
+                            oobMask_0.x = pos_i_0.x >= 0 & pos_i_0.x < inWidth;
+                            oobMask_0.y = pos_i_0.y >= 0 & pos_i_0.y < inHeight;
+
+                            oobMask_1.x = pos_i_1.x >= 0 & pos_i_1.x < inWidth;
+                            oobMask_1.y = pos_i_1.y >= 0 & pos_i_1.y < inHeight;
+                        }
+
+                        pos_i_0.x = math.clamp(pos_i_0.x, 0, inWidth - 1);
+                        pos_i_0.y = math.clamp(pos_i_0.y, 0, inHeight - 1);
+
+                        pos_i_1.x = math.clamp(pos_i_1.x, 0, inWidth - 1);
+                        pos_i_1.y = math.clamp(pos_i_1.y, 0, inHeight - 1);
+
+                        var v_00 = (oobMask_0.x && oobMask_0.y) ? Xp[pos_i_0.y * inWidth + pos_i_0.x] : 0f;
+                        var v_01 = (oobMask_0.x && oobMask_1.y) ? Xp[pos_i_1.y * inWidth + pos_i_0.x] : 0f;
+                        var v_10 = (oobMask_1.x && oobMask_0.y) ? Xp[pos_i_0.y * inWidth + pos_i_1.x] : 0f;
+                        var v_11 = (oobMask_1.x && oobMask_1.y) ? Xp[pos_i_1.y * inWidth + pos_i_1.x] : 0f;
+                        var v_0 = (1 - pos_r.y) * v_00 + (pos_r.y) * v_01;
+                        var v_1 = (1 - pos_r.y) * v_10 + (pos_r.y) * v_11;
+                        var v = (1 - pos_r.x) * v_0 + (pos_r.x) * v_1;
+
+                        *Op++ = v;
+                        Bp += 2;
+                        ohw++;
+                    }
+
+                    if (count > 0)
+                    {
+                        // Output is now always aligned to the start of a row.
+                        ohw = 0;
+                        outputHWRemaining = outSpatialSize;
+                        oc++;
+                        Bp = Bptr + on * outSpatialSize * 2;
+                        Xp += inSpatialSize;
+
+                        if (oc == outChannels)
+                        {
+                            // Advance to the next output batch.
+                            oc = 0;
+                            on++;
+                            Bp += outSpatialSize * 2;
+                            Xp = Xptr + on * outChannels * inSpatialSize;
+                        }
+                    }
+                }
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        unsafe struct GridSample3DJob : IParallelForBatch, IJobResourceDeclarationXBO
+        {
+            public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+            public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
+            public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+            public Layers.PaddingMode paddingMode;
+            public Layers.CoordTransformMode coordMode;
+            public Layers.InterpolationMode mode;
+            public bool alignCorners;
+
+            public int inDepth, inHeight, inWidth;
+            public int inSpatialSize;
+            public int outBatch, outChannels;
+            public int outSpatialSize;
+
+            public void Execute(int i, int count)
+            {
+                if (mode == Layers.InterpolationMode.Nearest)
+                    GridSampleNearest(i, count);
+                else
+                    GridSampleLinear(i, count);
+            }
+
+            void GridSampleNearest(int i, int count)
+            {
+                float* Op = Optr + i;
+
+                int odhw = i % outSpatialSize;
+                i = i / outSpatialSize;
+                int oc = i % outChannels;
+                i = i / outChannels;
+                int on = i;
+
+                float* Bp = Bptr + (on * outSpatialSize + odhw) * 3;
+                float* Xp = Xptr + (on * outChannels + oc) * inSpatialSize;
+
+                int outputDHWRemaining = outSpatialSize - odhw;
+
+                while (count > 0)
+                {
+                    int outputCountDHW = math.min(count, outputDHWRemaining);
+                    count -= outputCountDHW;
+
+                    for (; outputCountDHW > 0; outputCountDHW -= 1)
+                    {
+                        var srcPos = new float3(Bp[0], Bp[1], Bp[2]);
+
+                        if (paddingMode == Layers.PaddingMode.Reflection)
+                            srcPos = math.abs(((srcPos - 1.0f) % 4.0f + 4.0f) % 4.0f - 2.0f) - 1.0f;
+                        if (paddingMode == Layers.PaddingMode.Border)
+                            srcPos = math.clamp(srcPos, -1.0f, 1.0f);
+
+                        if (alignCorners)
+                        {
+                            srcPos.x = (0.5f * (srcPos.x + 1.0f)) * (inWidth - 1.0f);
+                            srcPos.y = (0.5f * (srcPos.y + 1.0f)) * (inHeight - 1.0f);
+                            srcPos.z = (0.5f * (srcPos.z + 1.0f)) * (inDepth - 1.0f);
+                        }
+                        else
+                        {
+                            srcPos.x = (0.5f * (srcPos.x + 1.0f)) * inWidth - 0.5f;
+                            srcPos.y = (0.5f * (srcPos.y + 1.0f)) * inHeight - 0.5f;
+                            srcPos.z = (0.5f * (srcPos.z + 1.0f)) * inDepth - 0.5f;
+                        }
+
+                        var pos_i = (int3)math.round(srcPos);
+                        var oobMask = true;
+                        if (paddingMode == Layers.PaddingMode.Zeros)
+                            oobMask = !(pos_i.x < 0 || pos_i.x >= inWidth || pos_i.y < 0 || pos_i.y >= inHeight || pos_i.z < 0 || pos_i.z >= inDepth);
+                        pos_i.x = math.clamp(pos_i.x, 0, inWidth - 1);
+                        pos_i.y = math.clamp(pos_i.y, 0, inHeight - 1);
+                        pos_i.z = math.clamp(pos_i.z, 0, inDepth - 1);
+
+                        var v = oobMask ? Xp[(pos_i.z * inHeight + pos_i.y) * inWidth + pos_i.x] : 0f;
+
+                        *Op++ = v;
+                        Bp += 3;
+                        odhw++;
+                    }
+
+                    if (count > 0)
+                    {
+                        // Output is now always aligned to the start of a row.
+                        odhw = 0;
+                        outputDHWRemaining = outSpatialSize;
+                        oc++;
+                        Bp = Bptr + on * outSpatialSize * 3;
+                        Xp += inSpatialSize;
+
+                        if (oc == outChannels)
+                        {
+                            // Advance to the next output batch.
+                            oc = 0;
+                            on++;
+                            Bp += outSpatialSize * 3;
+                            Xp = Xptr + on * outChannels * inSpatialSize;
+                        }
+                    }
+                }
+            }
+
+            void GridSampleLinear(int i, int count)
+            {
+                float* Op = Optr + i;
+
+                int odhw = i % outSpatialSize;
+                i = i / outSpatialSize;
+                int oc = i % outChannels;
+                i = i / outChannels;
+                int on = i;
+
+                float* Bp = Bptr + (on * outSpatialSize + odhw) * 3;
+                float* Xp = Xptr + (on * outChannels + oc) * inSpatialSize;
+
+                int outputDHWRemaining = outSpatialSize - odhw;
+
+                while (count > 0)
+                {
+                    int outputCountDHW = math.min(count, outputDHWRemaining);
+                    count -= outputCountDHW;
+
+                    for (; outputCountDHW > 0; outputCountDHW -= 1)
+                    {
+                        var srcPos = new float3(Bp[0], Bp[1], Bp[2]);
+
+                        if (paddingMode == Layers.PaddingMode.Reflection)
+                            srcPos = math.abs(((srcPos - 1.0f) % 4.0f + 4.0f) % 4.0f - 2.0f) - 1.0f;
+                        if (paddingMode == Layers.PaddingMode.Border)
+                            srcPos = math.clamp(srcPos, -1.0f, 1.0f);
+
+                        if (alignCorners)
+                        {
+                            srcPos.x = (0.5f * (srcPos.x + 1.0f)) * (inWidth - 1.0f);
+                            srcPos.y = (0.5f * (srcPos.y + 1.0f)) * (inHeight - 1.0f);
+                            srcPos.z = (0.5f * (srcPos.z + 1.0f)) * (inDepth - 1.0f);
+                        }
+                        else
+                        {
+                            srcPos.x = (0.5f * (srcPos.x + 1.0f)) * inWidth - 0.5f;
+                            srcPos.y = (0.5f * (srcPos.y + 1.0f)) * inHeight - 0.5f;
+                            srcPos.z = (0.5f * (srcPos.z + 1.0f)) * inDepth - 0.5f;
+                        }
+
+                        var pos_i_0 = (int3)math.floor(srcPos);
+                        var pos_i_1 = pos_i_0 + 1;
+                        var pos_r = srcPos - pos_i_0;
+
+                        var oobMask_0 = new bool3(true, true, true);
+                        var oobMask_1 = new bool3(true, true, true);
+
+                        if (paddingMode == Layers.PaddingMode.Zeros)
+                        {
+                            oobMask_0.x = pos_i_0.x >= 0 & pos_i_0.x < inWidth;
+                            oobMask_0.y = pos_i_0.y >= 0 & pos_i_0.y < inHeight;
+                            oobMask_0.z = pos_i_0.z >= 0 & pos_i_0.z < inDepth;
+
+                            oobMask_1.x = pos_i_1.x >= 0 & pos_i_1.x < inWidth;
+                            oobMask_1.y = pos_i_1.y >= 0 & pos_i_1.y < inHeight;
+                            oobMask_1.z = pos_i_1.z >= 0 & pos_i_1.z < inDepth;
+                        }
+
+                        pos_i_0.x = math.clamp(pos_i_0.x, 0, inWidth - 1);
+                        pos_i_0.y = math.clamp(pos_i_0.y, 0, inHeight - 1);
+                        pos_i_0.z = math.clamp(pos_i_0.z, 0, inDepth - 1);
+
+                        pos_i_1.x = math.clamp(pos_i_1.x, 0, inWidth - 1);
+                        pos_i_1.y = math.clamp(pos_i_1.y, 0, inHeight - 1);
+                        pos_i_1.z = math.clamp(pos_i_1.z, 0, inDepth - 1);
+
+                        var v_000 = (oobMask_0.x && oobMask_0.y && oobMask_0.z) ? Xp[(pos_i_0.z * inHeight + pos_i_0.y) * inWidth + pos_i_0.x] : 0f;
+                        var v_001 = (oobMask_0.x && oobMask_0.y && oobMask_1.z) ? Xp[(pos_i_1.z * inHeight + pos_i_0.y) * inWidth + pos_i_0.x] : 0f;
+                        var v_010 = (oobMask_0.x && oobMask_1.y && oobMask_0.z) ? Xp[(pos_i_0.z * inHeight + pos_i_1.y) * inWidth + pos_i_0.x] : 0f;
+                        var v_011 = (oobMask_0.x && oobMask_1.y && oobMask_1.z) ? Xp[(pos_i_1.z * inHeight + pos_i_1.y) * inWidth + pos_i_0.x] : 0f;
+                        var v_100 = (oobMask_1.x && oobMask_0.y && oobMask_0.z) ? Xp[(pos_i_0.z * inHeight + pos_i_0.y) * inWidth + pos_i_1.x] : 0f;
+                        var v_101 = (oobMask_1.x && oobMask_0.y && oobMask_1.z) ? Xp[(pos_i_1.z * inHeight + pos_i_0.y) * inWidth + pos_i_1.x] : 0f;
+                        var v_110 = (oobMask_1.x && oobMask_1.y && oobMask_0.z) ? Xp[(pos_i_0.z * inHeight + pos_i_1.y) * inWidth + pos_i_1.x] : 0f;
+                        var v_111 = (oobMask_1.x && oobMask_1.y && oobMask_1.z) ? Xp[(pos_i_1.z * inHeight + pos_i_1.y) * inWidth + pos_i_1.x] : 0f;
+                        var v_00 = (1 - pos_r.z) * v_000 + (pos_r.z) * v_001;
+                        var v_01 = (1 - pos_r.z) * v_010 + (pos_r.z) * v_011;
+                        var v_10 = (1 - pos_r.z) * v_100 + (pos_r.z) * v_101;
+                        var v_11 = (1 - pos_r.z) * v_110 + (pos_r.z) * v_111;
+                        var v_0 = (1 - pos_r.y) * v_00 + (pos_r.y) * v_01;
+                        var v_1 = (1 - pos_r.y) * v_10 + (pos_r.y) * v_11;
+                        var v = (1 - pos_r.x) * v_0 + (pos_r.x) * v_1;
+
+                        *Op++ = v;
+                        Bp += 3;
+                        odhw++;
+                    }
+
+                    if (count > 0)
+                    {
+                        // Output is now always aligned to the start of a row.
+                        odhw = 0;
+                        outputDHWRemaining = outSpatialSize;
+                        oc++;
+                        Bp = Bptr + on * outSpatialSize * 3;
+                        Xp += inSpatialSize;
+
+                        if (oc == outChannels)
+                        {
+                            // Advance to the next output batch.
+                            oc = 0;
+                            on++;
+                            Bp += outSpatialSize * 3;
+                            Xp = Xptr + on * outChannels * inSpatialSize;
+                        }
+                    }
+                }
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
         unsafe struct ConvTransposeJob : IJobParallelFor, IJobResourceDeclarationXBO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -1490,6 +1903,270 @@ namespace Unity.Sentis
             public void Execute(int index)
             {
                 Optr[index] = (Xptr[index] - zeroPoint) * scale;
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        unsafe struct NMSBitmaskJob : IParallelForBatch, IJobResourceDeclarationXO
+        {
+            public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+            public ReadWriteMemResource O { get; set; } bool* Optr => (bool*)O.ptr;
+
+            public int numBoxes;
+            public float iouThreshold;
+            public Layers.CenterPointBox centerPointBox;
+
+            public void Execute(int i, int count)
+            {
+                switch (centerPointBox)
+                {
+                    case Layers.CenterPointBox.Center:
+                        ExecuteCenter(i, count);
+                        break;
+                    case Layers.CenterPointBox.Corners:
+                        ExecuteCorners(i, count);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+
+            public void ExecuteCenter(int i, int count)
+            {
+                bool* Op = Optr + i;
+
+                int iIndex = i % numBoxes;
+                int jIndex = (i / numBoxes) % numBoxes;
+                int batchIndex = (i / numBoxes) / numBoxes;
+
+                while (count > 0)
+                {
+                    float* Xpi = Xptr + (batchIndex * numBoxes + iIndex) * 4;
+                    float* Xpj = Xptr + (batchIndex * numBoxes + jIndex) * 4;
+
+                    int spanCount = math.min(count, numBoxes - iIndex);
+
+                    float xj_0 = Xpj[0], yj_0 = Xpj[1], xj_1 = Xpj[2], yj_1 = Xpj[3];
+                    float xj_min = xj_0 - 0.5f * xj_1;
+                    float xj_max = xj_0 + 0.5f * xj_1;
+                    float yj_min = yj_0 - 0.5f * yj_1;
+                    float yj_max = yj_0 + 0.5f * yj_1;
+                    float areaj = xj_1 * yj_1;
+
+                    for (int k = 0; k < spanCount; k++)
+                    {
+                        float xi_0 = Xpi[4 * k + 0], yi_0 = Xpi[4 * k + 1], xi_1 = Xpi[4 * k + 2], yi_1 = Xpi[4 * k + 3];
+                        float xi_min = xi_0 - 0.5f * xi_1;
+                        float xi_max = xi_0 + 0.5f * xi_1;
+                        float yi_min = yi_0 - 0.5f * yi_1;
+                        float yi_max = yi_0 + 0.5f * yi_1;
+                        float areai = xi_1 * yi_1;
+
+                        var intersectionMinX = math.max(xi_min, xj_min);
+                        var intersectionMaxX = math.min(xi_max, xj_max);
+                        if (intersectionMinX > intersectionMaxX)
+                        {
+                            Op[0] = false;
+                            Op++;
+                            continue;
+                        }
+                        var intersectionMinY = math.max(yi_min, yj_min);
+                        var intersectionMaxY = math.min(yi_max, yj_max);
+                        if (intersectionMinY > intersectionMaxY)
+                        {
+                            Op[0] = false;
+                            Op++;
+                            continue;
+                        }
+                        var intersection = (intersectionMaxX - intersectionMinX) * (intersectionMaxY - intersectionMinY);
+                        var union = areai + areaj - intersection;
+                        var iou = intersection / union;
+                        Op[0] = iou > iouThreshold;
+                        Op++;
+                    }
+
+                    count -= spanCount;
+                    iIndex = 0;
+                    jIndex++;
+
+                    if (jIndex == numBoxes)
+                    {
+                        batchIndex++;
+                        jIndex = 0;
+                    }
+                }
+            }
+
+            public void ExecuteCorners(int i, int count)
+            {
+                bool* Op = Optr + i;
+
+                int iIndex = i % numBoxes;
+                int jIndex = (i / numBoxes) % numBoxes;
+                int batchIndex = (i / numBoxes) / numBoxes;
+
+                while (count > 0)
+                {
+                    float* Xpi = Xptr + (batchIndex * numBoxes + iIndex) * 4;
+                    float* Xpj = Xptr + (batchIndex * numBoxes + jIndex) * 4;
+
+                    int spanCount = math.min(count, numBoxes - iIndex);
+
+                    float xj_0 = Xpj[0], yj_0 = Xpj[1], xj_1 = Xpj[2], yj_1 = Xpj[3];
+                    float xj_min = math.min(xj_0, xj_1);
+                    float xj_max = math.max(xj_0, xj_1);
+                    float yj_min = math.min(yj_0, yj_1);
+                    float yj_max = math.max(yj_0, yj_1);
+                    float areaj = (xj_max - xj_min) * (yj_max - yj_min);
+
+                    for (int k = 0; k < spanCount; k++)
+                    {
+                        float xi_0 = Xpi[4 * k + 0], yi_0 = Xpi[4 * k + 1], xi_1 = Xpi[4 * k + 2], yi_1 = Xpi[4 * k + 3];
+                        float xi_min = math.min(xi_0, xi_1);
+                        float xi_max = math.max(xi_0, xi_1);
+                        float yi_min = math.min(yi_0, yi_1);
+                        float yi_max = math.max(yi_0, yi_1);
+                        float areai = (xi_max - xi_min) * (yi_max - yi_min);
+
+                        var intersectionMinX = math.max(xi_min, xj_min);
+                        var intersectionMaxX = math.min(xi_max, xj_max);
+                        if (intersectionMinX > intersectionMaxX)
+                        {
+                            Op[0] = false;
+                            Op++;
+                            continue;
+                        }
+                        var intersectionMinY = math.max(yi_min, yj_min);
+                        var intersectionMaxY = math.min(yi_max, yj_max);
+                        if (intersectionMinY > intersectionMaxY)
+                        {
+                            Op[0] = false;
+                            Op++;
+                            continue;
+                        }
+                        var intersection = (intersectionMaxX - intersectionMinX) * (intersectionMaxY - intersectionMinY);
+                        var union = areai + areaj - intersection;
+                        var iou = intersection / union;
+                        Op[0] = iou > iouThreshold;
+                        Op++;
+                    }
+
+                    count -= spanCount;
+                    iIndex = 0;
+                    jIndex++;
+
+                    if (jIndex == numBoxes)
+                    {
+                        batchIndex++;
+                        jIndex = 0;
+                    }
+                }
+            }
+        }
+
+        unsafe struct ScoreComparer : IComparer<int>
+        {
+            [NativeDisableUnsafePtrRestriction]
+            public float* scores;
+
+            public int Compare(int i, int j)
+            {
+                var result = -scores[i].CompareTo(scores[j]);
+                // sort should be stable to return same result as onnx when scores are equal
+                return result != 0 ? result : i.CompareTo(j);
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        unsafe struct NMSSortSelectJob : IJobParallelFor, IJobResourceDeclarationXSBO
+        {
+            public ReadOnlyMemResource X { get; set; } bool* Xptr => (bool*)X.ptr;
+            public ReadOnlyMemResource S { get; set; } float* Sptr => (float*)S.ptr;
+            public ReadOnlyMemResource B { get; set; } int* Bptr => (int*)B.ptr;
+            public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+            public int numClasses, numBoxes, maxOutputBoxesPerClass;
+            public float scoreThreshold;
+            public void Execute(int index)
+            {
+                int batchIdx = index / numClasses;
+                var localBitmask = Xptr + (batchIdx * numBoxes * numBoxes);
+                var localScores = Sptr + (index * numBoxes);
+                var localOrder = Bptr + (index * numBoxes);
+                var localSelected = Optr + (index * numBoxes);
+
+                for (var j1 = 0; j1 < numBoxes; j1++)
+                {
+                    localOrder[j1] = j1;
+                }
+
+                var scoreComparer = new ScoreComparer();
+                scoreComparer.scores = localScores;
+                NativeSortExtension.Sort(localOrder, numBoxes, scoreComparer);
+
+                var numSelected = 0;
+                for (var j1 = 0; j1 < numBoxes; j1++)
+                {
+                    var i1 = localOrder[j1];
+                    if (localScores[i1] < scoreThreshold)
+                        break;
+                    var isSelected = true;
+                    for (var j2 = 0; j2 < numSelected && isSelected; j2++)
+                    {
+                        var i2 = localSelected[j2];
+                        bool intersection = localBitmask[i1 * numBoxes + i2];
+                        if (!intersection)
+                            continue;
+                        isSelected = false;
+                    }
+
+                    if (numSelected >= maxOutputBoxesPerClass)
+                        continue;
+
+                    if (isSelected)
+                    {
+                        localSelected[numSelected] = i1;
+                        numSelected++;
+                    }
+                }
+
+                if (numSelected < maxOutputBoxesPerClass)
+                    localSelected[numSelected] = -1;
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        unsafe struct NMSCompactJob : IJob, IJobResourceDeclarationXO
+        {
+            public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
+            public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
+            [NoAlias][NativeDisableUnsafePtrRestriction][Collections.ReadOnly] public int* numOutputPtr;
+
+            public int numBatches, numClasses, numBoxes;
+            public int maxNumOutput, maxOutputBoxesPerClass;
+
+            public void Execute()
+            {
+                int numOutput = 0;
+                for (var batchIdx = 0; batchIdx < numBatches; batchIdx++)
+                {
+                    for (var classIdx = 0; classIdx < numClasses; classIdx++)
+                    {
+                        if (numOutput >= maxNumOutput)
+                            continue;
+                        var localSelected = Xptr + (batchIdx * numClasses * numBoxes + classIdx * numBoxes);
+                        for (var i = 0; i < maxOutputBoxesPerClass; i++)
+                        {
+                            int selectedIndex = localSelected[i];
+                            if (selectedIndex < 0)
+                                break;
+                            Optr[numOutput * 3 + 0] = batchIdx;
+                            Optr[numOutput * 3 + 1] = classIdx;
+                            Optr[numOutput * 3 + 2] = selectedIndex;
+                            numOutput++;
+                            numOutputPtr[0] = numOutput;
+                        }
+                    }
+                }
             }
         }
     }

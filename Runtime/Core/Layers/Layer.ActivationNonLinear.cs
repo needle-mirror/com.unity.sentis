@@ -9,7 +9,7 @@ namespace Unity.Sentis.Layers
     {
         public int axis;
 
-        public LogSoftmax(string output, string input, int axis = -1)
+        public LogSoftmax(int output, int input, int axis = -1)
             : base(output, input)
         {
             this.axis = axis;
@@ -39,7 +39,7 @@ namespace Unity.Sentis.Layers
     {
         public int axis;
 
-        public Softmax(string output, string input, int axis = -1)
+        public Softmax(int output, int input, int axis = -1)
             : base(output, input)
         {
             this.axis = axis;

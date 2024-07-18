@@ -1,12 +1,12 @@
-#pragma kernel Greater GREATER SUFFIX=Greater
-#pragma kernel GreaterOrEqual GREATER_EQUAL SUFFIX=GreaterOrEqual
-#pragma kernel Less LESS SUFFIX=Less
-#pragma kernel LessOrEqual LESS_EQUAL SUFFIX=LessOrEqual
-#pragma kernel Equal EQUAL SUFFIX=Equal
+#pragma kernel GreaterFloat GREATER FLOAT SUFFIX=GreaterFloat
 #pragma kernel GreaterInt GREATER INT SUFFIX=GreaterInt
+#pragma kernel GreaterOrEqualFloat GREATER_EQUAL FLOAT SUFFIX=GreaterOrEqualFloat
 #pragma kernel GreaterOrEqualInt GREATER_EQUAL INT SUFFIX=GreaterOrEqualInt
+#pragma kernel LessFloat LESS FLOAT SUFFIX=LessFloat
 #pragma kernel LessInt LESS INT SUFFIX=LessInt
+#pragma kernel LessOrEqualFloat LESS_EQUAL FLOAT SUFFIX=LessOrEqualFloat
 #pragma kernel LessOrEqualInt LESS_EQUAL INT SUFFIX=LessOrEqualInt
+#pragma kernel EqualFloat EQUAL FLOAT SUFFIX=EqualFloat
 #pragma kernel EqualInt EQUAL INT SUFFIX=EqualInt
 
 #include "Tensor.cginc"

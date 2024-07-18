@@ -4,11 +4,36 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [1.5.0-pre.3] - 2024-06-10
+## [1.6.0-pre.1] - 2024-07-18
 
-## [1.5.0-pre.2] - 2024-05-21
+### Added
+- SliceSet backend method for Concat and other operations.
+- Support for GridSample ONNX operator, Functional API and backend method, PaddingMode Enum for use with GridSample.
+- Methods to IModelStorage to allow retrieval of data types, tensor shapes and CPU values.
+- CPU backend to ExecutionContext for CPU fallback execution.
+- Optimization that replaces a Gather with a single index by a Split or Narrow.
+- Functional RandomChoice methods similar to numpy.
+- BitonicSort method for fast GPU sorting.
+
+### Changed
+- Model Input, Output, Layer and Constant indices are stored as integers rather than strings.
+- Min and Max no longer take more than 2 inputs in the backend, for more inputs use repeated application of the backend calls.
+- Optimized loading of compute functions for performance.
+- Reduced CPU allocations inside operations to avoid GC.
+- CPU fallback pass runs at worker instantiation rather than being serialized to the model.
+
 ### Fixed
-- Fix linker error when doing a build
+- Many issues with Tensors of zero length and uploading/downloading data. They no longer have null backendData.
+- Issue where multiple Random layers were sometimes incorrectly collapsed to single layer by optimization pass.
+- NonMaxSuppression to have fast inference on CPU and GPUCompute backends.
+- Error messages for model deserialization.
+- Slice inference issues for slices of length 0.
+
+### Removed
+- Mean, Sum, Concat from the backend. Add, ScalarMad and SliceSet operations are used instead.
+- Unnecessary 'keepdim' argument from Reduce backend ops.
+- Constructor for Constant with a tensor argument.
+- CompleteOperationsAndDownload and similar methods from Tensor.
 
 ## [1.5.0-pre.1] - 2024-05-08
 

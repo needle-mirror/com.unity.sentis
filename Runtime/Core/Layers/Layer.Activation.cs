@@ -7,7 +7,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     abstract class Activation : Layer
     {
-        protected Activation(string output, string input)
+        protected Activation(int output, int input)
             : base(new[] { output }, new[] { input }) { }
 
         internal override void InferPartial(PartialInferenceContext ctx)
@@ -24,7 +24,7 @@ namespace Unity.Sentis.Layers
     {
         public float alpha;
 
-        public Celu(string output, string input, float alpha)
+        public Celu(int output, int input, float alpha)
             : base(output, input)
         {
             this.alpha = alpha;
@@ -54,7 +54,7 @@ namespace Unity.Sentis.Layers
     {
         public float alpha;
 
-        public Elu(string output, string input, float alpha = 1.0f)
+        public Elu(int output, int input, float alpha = 1.0f)
             : base(output, input)
         {
             this.alpha = alpha;
@@ -82,7 +82,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Gelu : Activation
     {
-        public Gelu(string output, string input)
+        public Gelu(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -99,7 +99,7 @@ namespace Unity.Sentis.Layers
 
     class GeluFast : Activation
     {
-        public GeluFast(string output, string input)
+        public GeluFast(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -119,7 +119,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Erf : Activation
     {
-        public Erf(string output, string input)
+        public Erf(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -141,7 +141,7 @@ namespace Unity.Sentis.Layers
     {
         public int axis;
 
-        public Hardmax(string output, string input, int axis = -1)
+        public Hardmax(int output, int input, int axis = -1)
             : base(output, input)
         {
             this.axis = axis;
@@ -172,7 +172,7 @@ namespace Unity.Sentis.Layers
         public float alpha;
         public float beta;
 
-        public HardSigmoid(string output, string input, float alpha = 0.2f, float beta = 0.5f)
+        public HardSigmoid(int output, int input, float alpha = 0.2f, float beta = 0.5f)
             : base(output, input)
         {
             this.alpha = alpha;
@@ -201,7 +201,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class HardSwish : Activation
     {
-        public HardSwish(string output, string input)
+        public HardSwish(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -223,7 +223,7 @@ namespace Unity.Sentis.Layers
     {
         public float alpha;
 
-        public LeakyRelu(string output, string input, float alpha = 0.01f)
+        public LeakyRelu(int output, int input, float alpha = 0.01f)
             : base(output, input)
         {
             this.alpha = alpha;
@@ -253,7 +253,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class PRelu : Layer
     {
-        public PRelu(string output, string input, string slope)
+        public PRelu(int output, int input, int slope)
             : base(new[] { output }, new[] { input, slope }) { }
 
         internal override void InferPartial(PartialInferenceContext ctx)
@@ -306,7 +306,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Relu : Activation
     {
-        public Relu(string output, string input)
+        public Relu(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -326,7 +326,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Relu6 : Activation
     {
-        public Relu6(string output, string input)
+        public Relu6(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -349,7 +349,7 @@ namespace Unity.Sentis.Layers
         public float alpha;
         public float gamma;
 
-        public Selu(string output, string input, float alpha = 1.67326f, float gamma = 1.0507f)
+        public Selu(int output, int input, float alpha = 1.67326f, float gamma = 1.0507f)
             : base(output, input)
         {
             this.alpha = alpha;
@@ -378,7 +378,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Sigmoid : Activation
     {
-        public Sigmoid(string output, string input)
+        public Sigmoid(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -398,7 +398,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Softplus : Activation
     {
-        public Softplus(string output, string input)
+        public Softplus(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -418,7 +418,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Softsign : Activation
     {
-        public Softsign(string output, string input)
+        public Softsign(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -438,7 +438,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Swish : Activation
     {
-        public Swish(string output, string input)
+        public Swish(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -458,7 +458,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Tanh : Activation
     {
-        public Tanh(string output, string input)
+        public Tanh(int output, int input)
             : base(output, input) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -480,7 +480,7 @@ namespace Unity.Sentis.Layers
     {
         public float alpha;
 
-        public ThresholdedRelu(string output, string input, float alpha)
+        public ThresholdedRelu(int output, int input, float alpha)
             : base(output, input)
         {
             this.alpha = alpha;

@@ -1,5 +1,6 @@
 using System;
 using Unity.Collections;
+using UnityEngine;
 
 namespace Unity.Sentis
 {
@@ -35,12 +36,9 @@ namespace Unity.Sentis
         {
             this.shape = shape;
             Logger.AssertIsTrue((srcData.Length - dataStartIndex) >= shape.length, "RangeError: array length {0} is too small compared to shape length {1}", srcData.Length, shape);
-
-            if (shape.length == 0)
-                return;
             var burstTensorData = new BurstTensorData(shape.length);
-            NativeTensorArray.Copy(srcData, burstTensorData.array, shape.length, dataStartIndex);
             m_DataOnBackend = burstTensorData;
+            NativeTensorArray.Copy(srcData, burstTensorData.array, shape.length, dataStartIndex);
         }
 
         /// <summary>
@@ -55,10 +53,8 @@ namespace Unity.Sentis
         {
             this.shape = shape;
             Logger.AssertIsTrue((srcData.Length - dataStartIndex) >= shape.length, "RangeError: array length {0} is too small compared to shape length {1}", srcData.Length, shape);
-
-            if (shape.length == 0)
-                return;
             var burstTensorData = new BurstTensorData(shape.length);
+            m_DataOnBackend = burstTensorData;
             NativeTensorArray.Copy(srcData, burstTensorData.array, shape.length, dataStartIndex);
             m_DataOnBackend = burstTensorData;
         }
@@ -76,7 +72,7 @@ namespace Unity.Sentis
         /// <returns>The instantiated zero tensor.</returns>
         public static TensorFloat AllocZeros(TensorShape shape)
         {
-            var dataOnBackend = shape.length == 0 ? null : new BurstTensorData(shape.length, clearOnInit: true);
+            var dataOnBackend = new BurstTensorData(shape.length, clearOnInit: true);
             return new TensorFloat(shape, dataOnBackend);
         }
 
@@ -90,15 +86,27 @@ namespace Unity.Sentis
             return new TensorFloat(shape, data: null);
         }
 
-        /// <inheritdoc/>
-        public override void UploadToDevice(ITensorData destination)
+        /// <summary>
+        /// Schedules synchronous download task of the internal data.
+        /// </summary>
+        /// <returns>returns cpu copy of the tensor.</returns>
+        public TensorFloat ReadbackAndClone()
         {
-            if (shape.length == 0)
-                return;
-            var data = m_DataOnBackend.Download<float>(shape.length);
-            destination.Upload(data, shape.length); data.Dispose();
-            PinToDevice(destination, disposeUnpinned: true);
+            var data = this.DownloadToNativeArray<float>();
+            return new TensorFloat(shape, data, 0);
         }
+
+        #if UNITY_2023_2_OR_NEWER
+        /// <summary>
+        /// Schedules asynchronous download task of the internal data.
+        /// </summary>
+        /// <returns>awaitable tensor on the cpu.</returns>
+        public async Awaitable<TensorFloat> ReadbackAndCloneAsync()
+        {
+            var data = await this.DownloadToNativeArrayAsync<float>();
+            return new TensorFloat(shape, data, 0);
+        }
+        #endif
 
         /// <summary>
         /// Returns the tensor element at offset `(d7, d6, d5, d4, d3, d2, d1, d0)`, which is position `d7 * stride6 + d6 * stride5 + d5 * stride4 + d4 * stride3 + d3 * stride2 + d2 * stride1 + d1 * stride0 + d0`.

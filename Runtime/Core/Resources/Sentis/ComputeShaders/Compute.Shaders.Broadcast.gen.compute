@@ -1,41 +1,41 @@
 // This is auto-generated -- do not modify directly
 
-#pragma kernel ScalarBroadcastPRelu SCALARBROADCAST PRELU   
-#pragma kernel BroadcastPRelu BROADCAST PRELU   
-#pragma kernel ElementwisePRelu ELEMENTWISE PRELU   
-#pragma kernel ScalarBroadcastPowFloat SCALARBROADCAST POWFLOAT   
-#pragma kernel BroadcastPowFloat BROADCAST POWFLOAT   
-#pragma kernel ElementwisePowFloat ELEMENTWISE POWFLOAT   
-#pragma kernel ScalarBroadcastAddFloat SCALARBROADCAST ADDFLOAT   
-#pragma kernel BroadcastAddFloat BROADCAST ADDFLOAT   
-#pragma kernel ElementwiseAddFloat ELEMENTWISE ADDFLOAT   
-#pragma kernel ScalarBroadcastSubFloat SCALARBROADCAST SUBFLOAT   
-#pragma kernel BroadcastSubFloat BROADCAST SUBFLOAT   
-#pragma kernel ElementwiseSubFloat ELEMENTWISE SUBFLOAT   
-#pragma kernel ScalarBroadcastMulFloat SCALARBROADCAST MULFLOAT   
-#pragma kernel BroadcastMulFloat BROADCAST MULFLOAT   
-#pragma kernel ElementwiseMulFloat ELEMENTWISE MULFLOAT   
-#pragma kernel ScalarBroadcastDivFloat SCALARBROADCAST DIVFLOAT   
-#pragma kernel BroadcastDivFloat BROADCAST DIVFLOAT   
-#pragma kernel ElementwiseDivFloat ELEMENTWISE DIVFLOAT   
-#pragma kernel ScalarBroadcastMinFloat SCALARBROADCAST MINFLOAT   
-#pragma kernel BroadcastMinFloat BROADCAST MINFLOAT   
-#pragma kernel ElementwiseMinFloat ELEMENTWISE MINFLOAT   
-#pragma kernel ScalarBroadcastMaxFloat SCALARBROADCAST MAXFLOAT   
-#pragma kernel BroadcastMaxFloat BROADCAST MAXFLOAT   
-#pragma kernel ElementwiseMaxFloat ELEMENTWISE MAXFLOAT   
-#pragma kernel ScalarBroadcastMeanFloat SCALARBROADCAST MEANFLOAT   
-#pragma kernel BroadcastMeanFloat BROADCAST MEANFLOAT   
-#pragma kernel ElementwiseMeanFloat ELEMENTWISE MEANFLOAT   
-#pragma kernel ScalarBroadcastModFloat SCALARBROADCAST MODFLOAT   
-#pragma kernel BroadcastModFloat BROADCAST MODFLOAT   
-#pragma kernel ElementwiseModFloat ELEMENTWISE MODFLOAT   
-#pragma kernel ScalarBroadcastFModFloat SCALARBROADCAST FMODFLOAT   
-#pragma kernel BroadcastFModFloat BROADCAST FMODFLOAT   
-#pragma kernel ElementwiseFModFloat ELEMENTWISE FMODFLOAT   
-#pragma kernel ScalarBroadcastPowInt SCALARBROADCAST POWINT  YINT 
-#pragma kernel BroadcastPowInt BROADCAST POWINT  YINT 
-#pragma kernel ElementwisePowInt ELEMENTWISE POWINT  YINT 
+#pragma kernel ScalarBroadcastPRelu SCALARBROADCAST PRELU
+#pragma kernel BroadcastPRelu BROADCAST PRELU
+#pragma kernel ElementwisePRelu ELEMENTWISE PRELU
+#pragma kernel ScalarBroadcastPowFloat SCALARBROADCAST POWFLOAT
+#pragma kernel BroadcastPowFloat BROADCAST POWFLOAT
+#pragma kernel ElementwisePowFloat ELEMENTWISE POWFLOAT
+#pragma kernel ScalarBroadcastAddFloat SCALARBROADCAST ADDFLOAT
+#pragma kernel BroadcastAddFloat BROADCAST ADDFLOAT
+#pragma kernel ElementwiseAddFloat ELEMENTWISE ADDFLOAT
+#pragma kernel ScalarBroadcastSubFloat SCALARBROADCAST SUBFLOAT
+#pragma kernel BroadcastSubFloat BROADCAST SUBFLOAT
+#pragma kernel ElementwiseSubFloat ELEMENTWISE SUBFLOAT
+#pragma kernel ScalarBroadcastMulFloat SCALARBROADCAST MULFLOAT
+#pragma kernel BroadcastMulFloat BROADCAST MULFLOAT
+#pragma kernel ElementwiseMulFloat ELEMENTWISE MULFLOAT
+#pragma kernel ScalarBroadcastDivFloat SCALARBROADCAST DIVFLOAT
+#pragma kernel BroadcastDivFloat BROADCAST DIVFLOAT
+#pragma kernel ElementwiseDivFloat ELEMENTWISE DIVFLOAT
+#pragma kernel ScalarBroadcastMinFloat SCALARBROADCAST MINFLOAT
+#pragma kernel BroadcastMinFloat BROADCAST MINFLOAT
+#pragma kernel ElementwiseMinFloat ELEMENTWISE MINFLOAT
+#pragma kernel ScalarBroadcastMaxFloat SCALARBROADCAST MAXFLOAT
+#pragma kernel BroadcastMaxFloat BROADCAST MAXFLOAT
+#pragma kernel ElementwiseMaxFloat ELEMENTWISE MAXFLOAT
+#pragma kernel ScalarBroadcastMeanFloat SCALARBROADCAST MEANFLOAT
+#pragma kernel BroadcastMeanFloat BROADCAST MEANFLOAT
+#pragma kernel ElementwiseMeanFloat ELEMENTWISE MEANFLOAT
+#pragma kernel ScalarBroadcastModFloat SCALARBROADCAST MODFLOAT
+#pragma kernel BroadcastModFloat BROADCAST MODFLOAT
+#pragma kernel ElementwiseModFloat ELEMENTWISE MODFLOAT
+#pragma kernel ScalarBroadcastFModFloat SCALARBROADCAST FMODFLOAT
+#pragma kernel BroadcastFModFloat BROADCAST FMODFLOAT
+#pragma kernel ElementwiseFModFloat ELEMENTWISE FMODFLOAT
+#pragma kernel ScalarBroadcastPowInt SCALARBROADCAST POWINT  YINT
+#pragma kernel BroadcastPowInt BROADCAST POWINT  YINT
+#pragma kernel ElementwisePowInt ELEMENTWISE POWINT  YINT
 #pragma kernel ScalarBroadcastAddInt SCALARBROADCAST ADDINT XINT YINT OINT
 #pragma kernel BroadcastAddInt BROADCAST ADDINT XINT YINT OINT
 #pragma kernel ElementwiseAddInt ELEMENTWISE ADDINT XINT YINT OINT

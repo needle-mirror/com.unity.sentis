@@ -7,7 +7,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     abstract class Comparison : Broadcast
     {
-        protected Comparison(string output, string a, string b)
+        protected Comparison(int output, int a, int b)
             : base(output, a, b) { }
 
         internal override DataType InferPartialDataType(PartialTensor[] inputTensors)
@@ -23,7 +23,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class And : Broadcast
     {
-        public And(string output, string a, string b)
+        public And(int output, int a, int b)
             : base(output, a, b) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -48,7 +48,7 @@ namespace Unity.Sentis.Layers
         public bool hasAxis;
         public int axis;
 
-        public Compress(string output, string input, string condition, int? axis)
+        public Compress(int output, int input, int condition, int? axis)
             : base(new[] { output }, new[] { input, condition })
         {
             hasAxis = axis.HasValue;
@@ -119,7 +119,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Equal : Comparison
     {
-        public Equal(string output, string a, string b)
+        public Equal(int output, int a, int b)
             : base(output, a, b) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -145,7 +145,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Greater : Comparison
     {
-        public Greater(string output, string a, string b)
+        public Greater(int output, int a, int b)
             : base(output, a, b) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -171,7 +171,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class GreaterOrEqual : Comparison
     {
-        public GreaterOrEqual(string output, string a, string b)
+        public GreaterOrEqual(int output, int a, int b)
             : base(output, a, b) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -198,7 +198,7 @@ namespace Unity.Sentis.Layers
         public bool detectNegative;
         public bool detectPositive;
 
-        public IsInf(string output, string input, bool detectNegative, bool detectPositive)
+        public IsInf(int output, int input, bool detectNegative, bool detectPositive)
             : base(new[] { output }, new[] { input })
         {
             this.detectNegative = detectNegative;
@@ -232,7 +232,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class IsNaN : Layer
     {
-        public IsNaN(string output, string input)
+        public IsNaN(int output, int input)
             : base(new[] { output }, new[] { input }) { }
 
         internal override void InferPartial(PartialInferenceContext ctx)
@@ -259,7 +259,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Less : Comparison
     {
-        public Less(string output, string a, string b)
+        public Less(int output, int a, int b)
             : base(output, a, b) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -285,7 +285,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class LessOrEqual : Comparison
     {
-        public LessOrEqual(string output, string a, string b)
+        public LessOrEqual(int output, int a, int b)
             : base(output, a, b) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -309,7 +309,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Not : Layer
     {
-        public Not(string output, string input)
+        public Not(int output, int input)
             : base(new[] { output }, new[] { input }) { }
 
         internal override void InferPartial(PartialInferenceContext ctx)
@@ -335,7 +335,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Or : Broadcast
     {
-        public Or(string output, string a, string b)
+        public Or(int output, int a, int b)
             : base(output, a, b) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -358,7 +358,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Xor : Broadcast
     {
-        public Xor(string output, string a, string b)
+        public Xor(int output, int a, int b)
             : base(output, a, b) { }
 
         public override void Execute(ExecutionContext ctx)
@@ -381,7 +381,7 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Where : Broadcast
     {
-        public Where(string output, string condition, string input1, string input2)
+        public Where(int output, int condition, int input1, int input2)
             : base(output, condition, input1, input2) { }
 
         internal override DataType InferPartialDataType(PartialTensor[] inputTensors)

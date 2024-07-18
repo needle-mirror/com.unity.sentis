@@ -77,39 +77,39 @@ namespace Unity.Sentis
                 LoadModelWeights(modelWeightsBytes, ref model);
                 return model;
             }
-            catch (InvalidOperationException)
+            catch (Exception e)
             {
-                D.LogError("Failed to load serialized Sentis model, ensure model was exported with Sentis 1.4 or newer.");
+                D.LogError($"Failed to load serialized Sentis model, ensure model was exported with Sentis 1.4 or newer. ({e.Message})");
                 return null;
             }
         }
 
-        internal static string OptionalInput(this Chain chain, int index)
+        internal static int OptionalInput(this Chain chain, int index)
         {
             var input = index < chain.InputsLength ? chain.Inputs(index) : -1;
-            return input != -1 ? input.ToString() : string.Empty;
+            return input;
         }
 
-        internal static string RequiredInput(this Chain chain, int index)
+        internal static int RequiredInput(this Chain chain, int index)
         {
             Logger.AssertIsTrue(index < chain.InputsLength, "Input Required");
             var input = chain.Inputs(index);
             Logger.AssertIsTrue(input != -1, "Input Required");
-            return input.ToString();
+            return input;
         }
 
-        internal static string OptionalOutput(this Chain chain, int index)
+        internal static int OptionalOutput(this Chain chain, int index)
         {
             var output = index < chain.OutputsLength ? chain.Outputs(index) : -1;
-            return output != -1 ? output.ToString() : string.Empty;
+            return output;
         }
 
-        internal static string RequiredOutput(this Chain chain, int index)
+        internal static int RequiredOutput(this Chain chain, int index)
         {
             Logger.AssertIsTrue(index < chain.OutputsLength, "Output Required");
             var output = chain.Outputs(index);
             Logger.AssertIsTrue(output != -1, "Output Required");
-            return output.ToString();
+            return output;
         }
 
         internal static int LoadModelDescription(byte[] modelDescription, ref Model model)
@@ -119,9 +119,11 @@ namespace Unity.Sentis
 
             try
             {
-                var executionPlan = program.ExecutionPlan.Value;
+                if (program.Version < ModelWriter.version)
+                    program = ModelUpgrader.Upgrade(program);
                 if (program.Version > ModelWriter.version)
                     D.LogWarning("Serialized model was exported in a newer version of Sentis than the current installed version and may not work as expected. Update the Sentis package to ensure compatibility.");
+                var executionPlan = program.ExecutionPlan.Value;
                 int inputCount = executionPlan.InputsLength;
                 for (int i = 0; i < inputCount; i++)
                 {
@@ -142,24 +144,19 @@ namespace Unity.Sentis
                         }
                     }
 
-                    model.AddInput(executionPlan.InputsName(i), input.ToString(), (DataType)inputDesc.ScalarType, shape);
+                    model.AddInput(executionPlan.InputsName(i), input, (DataType)inputDesc.ScalarType, shape);
                 }
                 model.outputs = new List<Model.Output>();
                 for (int i = 0; i < executionPlan.OutputsLength; i++)
                 {
-                    model.AddOutput(executionPlan.OutputsName(i), executionPlan.Outputs(i).ToString());
-                }
-                var backendPartition = executionPlan.BackendPartitioning.Value;
-                for (int i = 0; i < backendPartition.ChainsLength; i++)
-                {
-                    model.LayerCPUFallback.Add(backendPartition.Chains(i).ToString());
+                    model.AddOutput(executionPlan.OutputsName(i), executionPlan.Outputs(i));
                 }
 
                 HashSet<int> constants = new HashSet<int>();
                 for (int i = 0; i < executionPlan.ChainsLength; i++)
                 {
                     var chain = executionPlan.Chains(i).Value;
-                    var name = chain.Outputs(0).ToString();
+                    var index = chain.Outputs(0);
 
                     for (int k = 0; k < chain.InputsLength; k++)
                     {
@@ -173,7 +170,7 @@ namespace Unity.Sentis
                             continue;
                         var shape = new TensorShape(constantTensor.GetFixedSizesArray());
                         int lengthByte = constantTensor.LengthByte;
-                        model.AddConstant(new Constant(input.ToString(), shape, (DataType)constantTensor.ScalarType, lengthByte));
+                        model.AddConstant(new Constant(input, shape, (DataType)constantTensor.ScalarType, lengthByte));
                         constants.Add(input);
                     }
 
@@ -187,7 +184,7 @@ namespace Unity.Sentis
                         var input = chain.RequiredInput(0);
                         var shape = chain.RequiredInput(1);
                         bool allowZero = executionPlan.Values(kernel.Args(0)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new Reshape(name, input, shape, allowZero));
+                        model.AddLayer(new Reshape(index, input, shape, allowZero));
                     }
                     else if (kernelName == "Conv")
                     {
@@ -201,7 +198,7 @@ namespace Unity.Sentis
                         var strides = executionPlan.Values(kernel.Args(4)).Value.Val<IntList>()?.GetItemsArray();
                         var kernelShape = executionPlan.Values(kernel.Args(5)).Value.Val<IntList>()?.GetItemsArray();
                         var fusedactivation = (FusableActivation)executionPlan.Values(kernel.Args(6)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new Conv(name, input, weights, bias, group, strides, pads, dilations, autoPad, kernelShape, fusedactivation));
+                        model.AddLayer(new Conv(index, input, weights, bias, group, strides, pads, dilations, autoPad, kernelShape, fusedactivation));
                     }
                     else if (kernelName == "MaxPool")
                     {
@@ -210,124 +207,124 @@ namespace Unity.Sentis
                         var strides = executionPlan.Values(kernel.Args(1)).Value.Val<IntList>()?.GetItemsArray();
                         var pads = executionPlan.Values(kernel.Args(2)).Value.Val<IntList>()?.GetItemsArray();
                         var autoPad = (AutoPad)executionPlan.Values(kernel.Args(3)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new MaxPool(name, input, kernelShape, strides, pads, autoPad));
+                        model.AddLayer(new MaxPool(index, input, kernelShape, strides, pads, autoPad));
                     }
                     else if (kernelName == "Celu")
                     {
                         var input = chain.RequiredInput(0);
                         var alpha = executionPlan.Values(kernel.Args(0)).Value.ValAsFloat().FloatVal;
-                        model.AddLayer(new Celu(name, input, alpha));
+                        model.AddLayer(new Celu(index, input, alpha));
                     }
                     else if (kernelName == "Elu")
                     {
                         var input = chain.RequiredInput(0);
                         var alpha = executionPlan.Values(kernel.Args(0)).Value.ValAsFloat().FloatVal;
-                        model.AddLayer(new Elu(name, input, alpha));
+                        model.AddLayer(new Elu(index, input, alpha));
                     }
                     else if (kernelName == "Gelu")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Gelu(name, input));
+                        model.AddLayer(new Gelu(index, input));
                     }
                     else if (kernelName == "GeluFast")
                     {
-                        var input = chain.Inputs(0).ToString();
-                        model.AddLayer(new GeluFast(name, input));
+                        var input = chain.RequiredInput(0);
+                        model.AddLayer(new GeluFast(index, input));
                     }
                     else if (kernelName == "Erf")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Erf(name, input));
+                        model.AddLayer(new Erf(index, input));
                     }
                     else if (kernelName == "Hardmax")
                     {
                         var input = chain.RequiredInput(0);
                         var axis = executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new Hardmax(name, input, axis));
+                        model.AddLayer(new Hardmax(index, input, axis));
                     }
                     else if (kernelName == "HardSigmoid")
                     {
                         var input = chain.RequiredInput(0);
                         var alpha = executionPlan.Values(kernel.Args(0)).Value.ValAsFloat().FloatVal;
                         var beta = executionPlan.Values(kernel.Args(1)).Value.ValAsFloat().FloatVal;
-                        model.AddLayer(new HardSigmoid(name, input, alpha, beta));
+                        model.AddLayer(new HardSigmoid(index, input, alpha, beta));
                     }
                     else if (kernelName == "HardSwish")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new HardSwish(name, input));
+                        model.AddLayer(new HardSwish(index, input));
                     }
                     else if (kernelName == "LeakyRelu")
                     {
                         var input = chain.RequiredInput(0);
                         var alpha = executionPlan.Values(kernel.Args(0)).Value.ValAsFloat().FloatVal;
-                        model.AddLayer(new LeakyRelu(name, input, alpha));
+                        model.AddLayer(new LeakyRelu(index, input, alpha));
                     }
                     else if (kernelName == "PRelu")
                     {
                         var input = chain.RequiredInput(0);
                         var slope = chain.RequiredInput(1);
-                        model.AddLayer(new PRelu(name, input, slope));
+                        model.AddLayer(new PRelu(index, input, slope));
                     }
                     else if (kernelName == "Relu")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Relu(name, input));
+                        model.AddLayer(new Relu(index, input));
                     }
                     else if (kernelName == "Relu6")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Relu6(name, input));
+                        model.AddLayer(new Relu6(index, input));
                     }
                     else if (kernelName == "Selu")
                     {
                         var input = chain.RequiredInput(0);
                         var alpha = executionPlan.Values(kernel.Args(0)).Value.ValAsFloat().FloatVal;
                         var gamma = executionPlan.Values(kernel.Args(1)).Value.ValAsFloat().FloatVal;
-                        model.AddLayer(new Selu(name, input, alpha, gamma));
+                        model.AddLayer(new Selu(index, input, alpha, gamma));
                     }
                     else if (kernelName == "Sigmoid")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Sigmoid(name, input));
+                        model.AddLayer(new Sigmoid(index, input));
                     }
                     else if (kernelName == "Softplus")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Softplus(name, input));
+                        model.AddLayer(new Softplus(index, input));
                     }
                     else if (kernelName == "Softsign")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Softsign(name, input));
+                        model.AddLayer(new Softsign(index, input));
                     }
                     else if (kernelName == "Swish")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Swish(name, input));
+                        model.AddLayer(new Swish(index, input));
                     }
                     else if (kernelName == "Tanh")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Tanh(name, input));
+                        model.AddLayer(new Tanh(index, input));
                     }
                     else if (kernelName == "ThresholdedRelu")
                     {
                         var input = chain.RequiredInput(0);
                         var alpha = executionPlan.Values(kernel.Args(0)).Value.ValAsFloat().FloatVal;
-                        model.AddLayer(new ThresholdedRelu(name, input, alpha));
+                        model.AddLayer(new ThresholdedRelu(index, input, alpha));
                     }
                     else if (kernelName == "LogSoftmax")
                     {
                         var input = chain.RequiredInput(0);
                         var axis = executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new LogSoftmax(name, input, axis));
+                        model.AddLayer(new LogSoftmax(index, input, axis));
                     }
                     else if (kernelName == "Softmax")
                     {
                         var input = chain.RequiredInput(0);
                         var axis = executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new Softmax(name, input, axis));
+                        model.AddLayer(new Softmax(index, input, axis));
                     }
                     else if (kernelName == "ConvTranspose")
                     {
@@ -340,19 +337,19 @@ namespace Unity.Sentis
                         var strides = executionPlan.Values(kernel.Args(3)).Value.Val<IntList>()?.GetItemsArray();
                         var kernelShape = executionPlan.Values(kernel.Args(4)).Value.Val<IntList>()?.GetItemsArray();
                         var fusedactivation = (FusableActivation)executionPlan.Values(kernel.Args(5)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new ConvTranspose(name, input, weights, bias, strides, pads, autoPad, outputPadding, kernelShape, fusedactivation));
+                        model.AddLayer(new ConvTranspose(index, input, weights, bias, strides, pads, autoPad, outputPadding, kernelShape, fusedactivation));
                     }
                     else if (kernelName == "Shape")
                     {
                         var input = chain.RequiredInput(0);
                         var start = executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
                         var end = executionPlan.Values(kernel.Args(1)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new Shape(name, input, start, end));
+                        model.AddLayer(new Shape(index, input, start, end));
                     }
                     else if (kernelName == "Size")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Size(name, input));
+                        model.AddLayer(new Size(index, input));
                     }
                     else if (kernelName == "ConstantOfShape")
                     {
@@ -361,9 +358,9 @@ namespace Unity.Sentis
                         var cf = executionPlan.Values(kernel.Args(1)).Value.ValAsFloat().FloatVal;
                         var ci = executionPlan.Values(kernel.Args(2)).Value.ValAsInt().IntVal;
                         if (dataType == DataType.Float)
-                            model.AddLayer(new ConstantOfShape(name, input, cf));
+                            model.AddLayer(new ConstantOfShape(index, input, cf));
                         else if (dataType == DataType.Int)
-                            model.AddLayer(new ConstantOfShape(name, input, ci));
+                            model.AddLayer(new ConstantOfShape(index, input, ci));
                     }
                     else if (kernelName == "OneHot")
                     {
@@ -371,14 +368,14 @@ namespace Unity.Sentis
                         var depth = chain.RequiredInput(1);
                         var values = chain.RequiredInput(2);
                         var axis = executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new OneHot(name, indices, depth, values, axis));
+                        model.AddLayer(new OneHot(index, indices, depth, values, axis));
                     }
                     else if (kernelName == "Range")
                     {
                         var start = chain.RequiredInput(0);
                         var limit = chain.RequiredInput(1);
                         var delta = chain.RequiredInput(2);
-                        model.AddLayer(new Layers.Range(name, start, limit, delta));
+                        model.AddLayer(new Layers.Range(index, start, limit, delta));
                     }
                     else if (kernelName == "ArgMax")
                     {
@@ -386,7 +383,7 @@ namespace Unity.Sentis
                         var axis = executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
                         var keepdim = executionPlan.Values(kernel.Args(1)).Value.ValAsBool().BoolVal;
                         var selectLastIndex = executionPlan.Values(kernel.Args(2)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new ArgMax(name, input, axis, keepdim, selectLastIndex));
+                        model.AddLayer(new ArgMax(index, input, axis, keepdim, selectLastIndex));
                     }
                     else if (kernelName == "ArgMin")
                     {
@@ -394,33 +391,33 @@ namespace Unity.Sentis
                         var axis = executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
                         var keepdim = executionPlan.Values(kernel.Args(1)).Value.ValAsBool().BoolVal;
                         var selectLastIndex = executionPlan.Values(kernel.Args(2)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new ArgMin(name, input, axis, keepdim, selectLastIndex));
+                        model.AddLayer(new ArgMin(index, input, axis, keepdim, selectLastIndex));
                     }
                     else if (kernelName == "Gather")
                     {
                         var input = chain.RequiredInput(0);
                         var indices = chain.RequiredInput(1);
                         var axis = executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new Gather(name, input, indices, axis));
+                        model.AddLayer(new Gather(index, input, indices, axis));
                     }
                     else if (kernelName == "GatherElements")
                     {
                         var input = chain.RequiredInput(0);
                         var indices = chain.RequiredInput(1);
                         var axis = executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new GatherElements(name, input, indices, axis));
+                        model.AddLayer(new GatherElements(index, input, indices, axis));
                     }
                     else if (kernelName == "GatherND")
                     {
                         var input = chain.RequiredInput(0);
                         var indices = chain.RequiredInput(1);
                         var batchDims = executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new GatherND(name, input, indices, batchDims));
+                        model.AddLayer(new GatherND(index, input, indices, batchDims));
                     }
                     else if (kernelName == "NonZero")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new NonZero(name, input));
+                        model.AddLayer(new NonZero(index, input));
                     }
                     else if (kernelName == "ScatterElements")
                     {
@@ -429,7 +426,7 @@ namespace Unity.Sentis
                         var updates = chain.RequiredInput(2);
                         var axis = executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
                         var reduction = (ScatterReductionMode)executionPlan.Values(kernel.Args(1)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new ScatterElements(name, input, indices, updates, axis, reduction));
+                        model.AddLayer(new ScatterElements(index, input, indices, updates, axis, reduction));
                     }
                     else if (kernelName == "ScatterND")
                     {
@@ -437,7 +434,7 @@ namespace Unity.Sentis
                         var indices = chain.RequiredInput(1);
                         var updates = chain.RequiredInput(2);
                         var reduction = (ScatterReductionMode)executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new ScatterND(name, input, indices, updates, reduction));
+                        model.AddLayer(new ScatterND(index, input, indices, updates, reduction));
                     }
                     else if (kernelName == "TopK")
                     {
@@ -454,7 +451,7 @@ namespace Unity.Sentis
                     {
                         var a = chain.RequiredInput(0);
                         var b = chain.RequiredInput(1);
-                        model.AddLayer(new And(name, a, b));
+                        model.AddLayer(new And(index, a, b));
                     }
                     else if (kernelName == "Compress")
                     {
@@ -462,96 +459,96 @@ namespace Unity.Sentis
                         var conditions = chain.RequiredInput(1);
                         var hasAxis = executionPlan.Values(kernel.Args(0)).Value.ValAsBool().BoolVal;
                         var axis = executionPlan.Values(kernel.Args(1)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new Compress(name, input, conditions, hasAxis ? axis : null));
+                        model.AddLayer(new Compress(index, input, conditions, hasAxis ? (int?)axis: null));
                     }
                     else if (kernelName == "Equal")
                     {
                         var a = chain.RequiredInput(0);
                         var b = chain.RequiredInput(1);
-                        model.AddLayer(new Equal(name, a, b));
+                        model.AddLayer(new Equal(index, a, b));
                     }
                     else if (kernelName == "Greater")
                     {
                         var a = chain.RequiredInput(0);
                         var b = chain.RequiredInput(1);
-                        model.AddLayer(new Greater(name, a, b));
+                        model.AddLayer(new Greater(index, a, b));
                     }
                     else if (kernelName == "GreaterOrEqual")
                     {
                         var a = chain.RequiredInput(0);
                         var b = chain.RequiredInput(1);
-                        model.AddLayer(new GreaterOrEqual(name, a, b));
+                        model.AddLayer(new GreaterOrEqual(index, a, b));
                     }
                     else if (kernelName == "IsInf")
                     {
                         var input = chain.RequiredInput(0);
                         bool detectNegative = executionPlan.Values(kernel.Args(0)).Value.ValAsBool().BoolVal;
                         bool detectPositive = executionPlan.Values(kernel.Args(1)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new IsInf(name, input, detectNegative, detectPositive));
+                        model.AddLayer(new IsInf(index, input, detectNegative, detectPositive));
                     }
                     else if (kernelName == "IsNaN")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new IsNaN(name, input));
+                        model.AddLayer(new IsNaN(index, input));
                     }
                     else if (kernelName == "Less")
                     {
                         var a = chain.RequiredInput(0);
                         var b = chain.RequiredInput(1);
-                        model.AddLayer(new Less(name, a, b));
+                        model.AddLayer(new Less(index, a, b));
                     }
                     else if (kernelName == "LessOrEqual")
                     {
                         var a = chain.RequiredInput(0);
                         var b = chain.RequiredInput(1);
-                        model.AddLayer(new LessOrEqual(name, a, b));
+                        model.AddLayer(new LessOrEqual(index, a, b));
                     }
                     else if (kernelName == "Not")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Not(name, input));
+                        model.AddLayer(new Not(index, input));
                     }
                     else if (kernelName == "Or")
                     {
                         var a = chain.RequiredInput(0);
                         var b = chain.RequiredInput(1);
-                        model.AddLayer(new Or(name, a, b));
+                        model.AddLayer(new Or(index, a, b));
                     }
                     else if (kernelName == "Xor")
                     {
                         var a = chain.RequiredInput(0);
                         var b = chain.RequiredInput(1);
-                        model.AddLayer(new Xor(name, a, b));
+                        model.AddLayer(new Xor(index, a, b));
                     }
                     else if (kernelName == "Where")
                     {
                         var c = chain.RequiredInput(0);
                         var a = chain.RequiredInput(1);
                         var b = chain.RequiredInput(2);
-                        model.AddLayer(new Where(name, c, a, b));
+                        model.AddLayer(new Where(index, c, a, b));
                     }
                     else if (kernelName == "Abs")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Abs(name, input));
+                        model.AddLayer(new Abs(index, input));
                     }
                     else if (kernelName == "Add")
                     {
                         var a = chain.RequiredInput(0);
                         var b = chain.RequiredInput(1);
-                        model.AddLayer(new Add(name, a, b));
+                        model.AddLayer(new Add(index, a, b));
                     }
                     else if (kernelName == "Ceil")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Ceil(name, input));
+                        model.AddLayer(new Ceil(index, input));
                     }
                     else if (kernelName == "Clip")
                     {
                         var input = chain.RequiredInput(0);
                         var min = chain.OptionalInput(1);
                         var max = chain.OptionalInput(2);
-                        model.AddLayer(new Clip(name, input, min, max));
+                        model.AddLayer(new Clip(index, input, min, max));
                     }
                     else if (kernelName == "CumSum")
                     {
@@ -559,7 +556,7 @@ namespace Unity.Sentis
                         var axis = chain.RequiredInput(1);
                         bool reverse = executionPlan.Values(kernel.Args(0)).Value.ValAsBool().BoolVal;
                         bool exclusive = executionPlan.Values(kernel.Args(1)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new CumSum(name, input, axis, reverse, exclusive));
+                        model.AddLayer(new CumSum(index, input, axis, reverse, exclusive));
                     }
                     else if (kernelName == "Dense")
                     {
@@ -567,42 +564,42 @@ namespace Unity.Sentis
                         var weights = chain.RequiredInput(1);
                         var bias = chain.RequiredInput(2);
                         var fusedactivation = (FusableActivation)executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new Dense(name, input, weights, bias, fusedactivation));
+                        model.AddLayer(new Dense(index, input, weights, bias, fusedactivation));
                     }
                     else if (kernelName == "Div")
                     {
                         var a = chain.RequiredInput(0);
                         var b = chain.RequiredInput(1);
-                        model.AddLayer(new Div(name, a, b));
+                        model.AddLayer(new Div(index, a, b));
                     }
                     else if (kernelName == "Einsum")
                     {
-                        var inputs = new string[chain.InputsLength];
+                        var inputs = new int[chain.InputsLength];
                         for (int ii = 0; ii < inputs.Length; ii++)
                             inputs[ii] = chain.RequiredInput(ii);
                         var equation = executionPlan.Values(kernel.Args(0)).Value.ValAsString().StringVal;
-                        model.AddLayer(new Einsum(name, inputs, equation));
+                        model.AddLayer(new Einsum(index, inputs, equation));
                     }
                     else if (kernelName == "Exp")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Exp(name, input));
+                        model.AddLayer(new Exp(index, input));
                     }
                     else if (kernelName == "Floor")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Floor(name, input));
+                        model.AddLayer(new Floor(index, input));
                     }
                     else if (kernelName == "Log")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Log(name, input));
+                        model.AddLayer(new Log(index, input));
                     }
                     else if (kernelName == "MatMul")
                     {
                         var a = chain.RequiredInput(0);
                         var b = chain.RequiredInput(1);
-                        model.AddLayer(new MatMul(name, a, b));
+                        model.AddLayer(new MatMul(index, a, b));
                     }
                     else if (kernelName == "MatMul2D")
                     {
@@ -610,62 +607,53 @@ namespace Unity.Sentis
                         var b = chain.RequiredInput(1);
                         bool transposeA = executionPlan.Values(kernel.Args(0)).Value.ValAsBool().BoolVal;
                         bool transposeB = executionPlan.Values(kernel.Args(1)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new MatMul2D(name, a, transposeA, b, transposeB));
+                        model.AddLayer(new MatMul2D(index, a, transposeA, b, transposeB));
                     }
                     else if (kernelName == "Max")
                     {
-                        var inputs = new string[chain.InputsLength];
-                        for (int ii = 0; ii < inputs.Length; ii++)
-                            inputs[ii] = chain.RequiredInput(ii);
-                        model.AddLayer(new Max(name, inputs));
-                    }
-                    else if (kernelName == "Mean")
-                    {
-                        var inputs = new string[chain.InputsLength];
-                        for (int ii = 0; ii < inputs.Length; ii++)
-                            inputs[ii] = chain.RequiredInput(ii);
-                        model.AddLayer(new Mean(name, inputs));
+                        var a = chain.RequiredInput(0);
+                        var b = chain.RequiredInput(1);
+                        model.AddLayer(new Max(index, a, b));
                     }
                     else if (kernelName == "Min")
                     {
-                        var inputs = new string[chain.InputsLength];
-                        for (int ii = 0; ii < inputs.Length; ii++)
-                            inputs[ii] = chain.RequiredInput(ii);
-                        model.AddLayer(new Min(name, inputs));
+                        var a = chain.RequiredInput(0);
+                        var b = chain.RequiredInput(1);
+                        model.AddLayer(new Min(index, a, b));
                     }
                     else if (kernelName == "Mod")
                     {
                         var a = chain.RequiredInput(0);
                         var b = chain.RequiredInput(1);
                         bool fmod = executionPlan.Values(kernel.Args(0)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new Mod(name, a, b, fmod));
+                        model.AddLayer(new Mod(index, a, b, fmod));
                     }
                     else if (kernelName == "Mul")
                     {
                         var a = chain.RequiredInput(0);
                         var b = chain.RequiredInput(1);
-                        model.AddLayer(new Mul(name, a, b));
+                        model.AddLayer(new Mul(index, a, b));
                     }
                     else if (kernelName == "Neg")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Neg(name, input));
+                        model.AddLayer(new Neg(index, input));
                     }
                     else if (kernelName == "Pow")
                     {
                         var a = chain.RequiredInput(0);
                         var b = chain.RequiredInput(1);
-                        model.AddLayer(new Pow(name, a, b));
+                        model.AddLayer(new Pow(index, a, b));
                     }
                     else if (kernelName == "Reciprocal")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Reciprocal(name, input));
+                        model.AddLayer(new Reciprocal(index, input));
                     }
                     else if (kernelName == "Round")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Round(name, input));
+                        model.AddLayer(new Round(index, input));
                     }
                     else if (kernelName == "ScalarMad")
                     {
@@ -676,51 +664,44 @@ namespace Unity.Sentis
                         var sInt = executionPlan.Values(kernel.Args(3)).Value.ValAsInt().IntVal;
                         var bInt = executionPlan.Values(kernel.Args(4)).Value.ValAsInt().IntVal;
                         if (dataType == DataType.Float)
-                            model.AddLayer(new ScalarMad(name, input, sFloat, bFloat));
+                            model.AddLayer(new ScalarMad(index, input, sFloat, bFloat));
                         else if (dataType == DataType.Int)
-                            model.AddLayer(new ScalarMad(name, input, sInt, bInt));
+                            model.AddLayer(new ScalarMad(index, input, sInt, bInt));
                     }
                     else if (kernelName == "Shrink")
                     {
                         var input = chain.RequiredInput(0);
                         var bias = executionPlan.Values(kernel.Args(0)).Value.ValAsFloat().FloatVal;
                         var lamda = executionPlan.Values(kernel.Args(1)).Value.ValAsFloat().FloatVal;
-                        model.AddLayer(new Shrink(name, input, bias, lamda));
+                        model.AddLayer(new Shrink(index, input, bias, lamda));
                     }
                     else if (kernelName == "Sign")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Sign(name, input));
+                        model.AddLayer(new Sign(index, input));
                     }
                     else if (kernelName == "Sqrt")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Sqrt(name, input));
+                        model.AddLayer(new Sqrt(index, input));
                     }
                     else if (kernelName == "Square")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Square(name, input));
+                        model.AddLayer(new Square(index, input));
                     }
                     else if (kernelName == "Sub")
                     {
                         var a = chain.RequiredInput(0);
                         var b = chain.RequiredInput(1);
-                        model.AddLayer(new Sub(name, a, b));
-                    }
-                    else if (kernelName == "Sum")
-                    {
-                        var inputs = new string[chain.InputsLength];
-                        for (int ii = 0; ii < inputs.Length; ii++)
-                            inputs[ii] = chain.RequiredInput(ii);
-                        model.AddLayer(new Sum(name, inputs));
+                        model.AddLayer(new Sub(index, a, b));
                     }
                     else if (kernelName == "ScaleBias")
                     {
                         var input = chain.RequiredInput(0);
                         var scale = chain.RequiredInput(1);
                         var bias = chain.RequiredInput(2);
-                        model.AddLayer(new ScaleBias(name, input, scale, bias));
+                        model.AddLayer(new ScaleBias(index, input, scale, bias));
                     }
                     else if (kernelName == "InstanceNormalization")
                     {
@@ -728,7 +709,7 @@ namespace Unity.Sentis
                         var scale = chain.RequiredInput(1);
                         var bias = chain.RequiredInput(2);
                         var epsilon = executionPlan.Values(kernel.Args(0)).Value.ValAsFloat().FloatVal;
-                        model.AddLayer(new InstanceNormalization(name, input, scale, bias, epsilon));
+                        model.AddLayer(new InstanceNormalization(index, input, scale, bias, epsilon));
                     }
                     else if (kernelName == "LayerNormalization")
                     {
@@ -736,7 +717,7 @@ namespace Unity.Sentis
                         var scale = chain.RequiredInput(1);
                         var bias = chain.OptionalInput(2);
                         var epsilon = executionPlan.Values(kernel.Args(0)).Value.ValAsFloat().FloatVal;
-                        model.AddLayer(new LayerNormalization(name, input, scale, bias, epsilon));
+                        model.AddLayer(new LayerNormalization(index, input, scale, bias, epsilon));
                     }
                     else if (kernelName == "BatchNormalization")
                     {
@@ -746,7 +727,7 @@ namespace Unity.Sentis
                         var mean = chain.RequiredInput(3);
                         var variance = chain.RequiredInput(4);
                         var epsilon = executionPlan.Values(kernel.Args(0)).Value.ValAsFloat().FloatVal;
-                        model.AddLayer(new BatchNormalization(name, input, scale, bias, mean, variance, epsilon));
+                        model.AddLayer(new BatchNormalization(index, input, scale, bias, mean, variance, epsilon));
                     }
                     else if (kernelName == "LRN")
                     {
@@ -755,7 +736,7 @@ namespace Unity.Sentis
                         var beta = executionPlan.Values(kernel.Args(1)).Value.ValAsFloat().FloatVal;
                         var bias = executionPlan.Values(kernel.Args(2)).Value.ValAsFloat().FloatVal;
                         var count = executionPlan.Values(kernel.Args(3)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new LRN(name, input, alpha, beta, bias, count));
+                        model.AddLayer(new LRN(index, input, alpha, beta, bias, count));
                     }
                     else if (kernelName == "NonMaxSuppression")
                     {
@@ -765,7 +746,7 @@ namespace Unity.Sentis
                         var iouThreshold = chain.OptionalInput(3);
                         var scoreThreshold = chain.OptionalInput(4);
                         var centerPointBox = (CenterPointBox)executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new NonMaxSuppression(name, input, scores, maxOutputBoxesPerClass, iouThreshold, scoreThreshold, centerPointBox));
+                        model.AddLayer(new NonMaxSuppression(index, input, scores, maxOutputBoxesPerClass, iouThreshold, scoreThreshold, centerPointBox));
                     }
                     else if (kernelName == "RoiAlign")
                     {
@@ -777,7 +758,7 @@ namespace Unity.Sentis
                         var outputWidth = executionPlan.Values(kernel.Args(2)).Value.ValAsInt().IntVal;
                         var samplingRatio = executionPlan.Values(kernel.Args(3)).Value.ValAsInt().IntVal;
                         var spatialScale = executionPlan.Values(kernel.Args(4)).Value.ValAsFloat().FloatVal;
-                        model.AddLayer(new RoiAlign(name, input, rois, batchIndices, mode, outputHeight, outputWidth, samplingRatio, spatialScale));
+                        model.AddLayer(new RoiAlign(index, input, rois, batchIndices, mode, outputHeight, outputWidth, samplingRatio, spatialScale));
                     }
                     else if (kernelName == "AveragePool")
                     {
@@ -786,17 +767,17 @@ namespace Unity.Sentis
                         var strides = executionPlan.Values(kernel.Args(1)).Value.Val<IntList>()?.GetItemsArray();
                         var pads = executionPlan.Values(kernel.Args(2)).Value.Val<IntList>()?.GetItemsArray();
                         var autopad = (AutoPad)executionPlan.Values(kernel.Args(3)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new AveragePool(name, input, kernelShape, strides, pads, autopad));
+                        model.AddLayer(new AveragePool(index, input, kernelShape, strides, pads, autopad));
                     }
                     else if (kernelName == "GlobalAveragePool")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new GlobalAveragePool(name, input));
+                        model.AddLayer(new GlobalAveragePool(index, input));
                     }
                     else if (kernelName == "GlobalMaxPool")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new GlobalMaxPool(name, input));
+                        model.AddLayer(new GlobalMaxPool(index, input));
                     }
                     else if (kernelName == "MaxPool")
                     {
@@ -805,7 +786,7 @@ namespace Unity.Sentis
                         var strides = executionPlan.Values(kernel.Args(1)).Value.Val<IntList>()?.GetItemsArray();
                         var pads = executionPlan.Values(kernel.Args(2)).Value.Val<IntList>()?.GetItemsArray();
                         var autopad = (AutoPad)executionPlan.Values(kernel.Args(3)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new MaxPool(name, input, kernelShape, strides, pads, autopad));
+                        model.AddLayer(new MaxPool(index, input, kernelShape, strides, pads, autopad));
                     }
                     else if (kernelName == "RandomNormal")
                     {
@@ -814,7 +795,7 @@ namespace Unity.Sentis
                         var shape = executionPlan.Values(kernel.Args(2)).Value.Val<IntList>()?.GetItemsArray();
                         var hasSeed = executionPlan.Values(kernel.Args(3)).Value.ValAsBool().BoolVal;
                         var seed = executionPlan.Values(kernel.Args(4)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new RandomNormal(name, shape, mean, scale, hasSeed ? seed : null));
+                        model.AddLayer(new RandomNormal(index, shape, mean, scale, hasSeed ? (int?)seed : null));
                     }
                     else if (kernelName == "RandomNormalLike")
                     {
@@ -823,7 +804,7 @@ namespace Unity.Sentis
                         var scale = executionPlan.Values(kernel.Args(1)).Value.ValAsFloat().FloatVal;
                         var hasSeed = executionPlan.Values(kernel.Args(2)).Value.ValAsBool().BoolVal;
                         var seed = executionPlan.Values(kernel.Args(3)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new RandomNormalLike(name, input, mean, scale, hasSeed ? seed : null));
+                        model.AddLayer(new RandomNormalLike(index, input, mean, scale, hasSeed ? (int?)seed : null));
                     }
                     else if (kernelName == "RandomUniform")
                     {
@@ -832,7 +813,7 @@ namespace Unity.Sentis
                         var shape = executionPlan.Values(kernel.Args(2)).Value.Val<IntList>()?.GetItemsArray();
                         var hasSeed = executionPlan.Values(kernel.Args(3)).Value.ValAsBool().BoolVal;
                         var seed = executionPlan.Values(kernel.Args(4)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new RandomUniform(name, shape, low, high, hasSeed ? seed : null));
+                        model.AddLayer(new RandomUniform(index, shape, low, high, hasSeed ? (int?)seed : null));
                     }
                     else if (kernelName == "RandomUniformLike")
                     {
@@ -841,7 +822,7 @@ namespace Unity.Sentis
                         var high = executionPlan.Values(kernel.Args(1)).Value.ValAsFloat().FloatVal;
                         var hasSeed = executionPlan.Values(kernel.Args(2)).Value.ValAsBool().BoolVal;
                         var seed = executionPlan.Values(kernel.Args(3)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new RandomUniformLike(name, input, low, high, hasSeed ? seed : null));
+                        model.AddLayer(new RandomUniformLike(index, input, low, high, hasSeed ? (int?)seed : null));
                     }
                     else if (kernelName == "Bernoulli")
                     {
@@ -849,7 +830,7 @@ namespace Unity.Sentis
                         var dataType = (DataType)executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
                         var hasSeed = executionPlan.Values(kernel.Args(1)).Value.ValAsBool().BoolVal;
                         var seed = executionPlan.Values(kernel.Args(2)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new Bernoulli(name, input, dataType, hasSeed ? seed : null));
+                        model.AddLayer(new Bernoulli(index, input, dataType, hasSeed ? (int?)seed : null));
                     }
                     else if (kernelName == "Multinomial")
                     {
@@ -857,7 +838,7 @@ namespace Unity.Sentis
                         var count = executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
                         var hasSeed = executionPlan.Values(kernel.Args(1)).Value.ValAsBool().BoolVal;
                         var seed = executionPlan.Values(kernel.Args(2)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new Multinomial(name, input, count, hasSeed ? seed : null));
+                        model.AddLayer(new Multinomial(index, input, count, hasSeed ? (int?)seed : null));
                     }
                     else if (kernelName == "LSTM")
                     {
@@ -895,7 +876,7 @@ namespace Unity.Sentis
                         var axes = chain.OptionalInput(1);
                         var keepdims = executionPlan.Values(kernel.Args(0)).Value.ValAsBool().BoolVal;
                         var noopWithEmptyAxes = executionPlan.Values(kernel.Args(1)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new ReduceL1(name, data, axes, keepdims, noopWithEmptyAxes));
+                        model.AddLayer(new ReduceL1(index, data, axes, keepdims, noopWithEmptyAxes));
                     }
                     else if (kernelName == "ReduceL2")
                     {
@@ -903,7 +884,7 @@ namespace Unity.Sentis
                         var axes = chain.OptionalInput(1);
                         var keepdims = executionPlan.Values(kernel.Args(0)).Value.ValAsBool().BoolVal;
                         var noopWithEmptyAxes = executionPlan.Values(kernel.Args(1)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new ReduceL2(name, data, axes, keepdims, noopWithEmptyAxes));
+                        model.AddLayer(new ReduceL2(index, data, axes, keepdims, noopWithEmptyAxes));
                     }
                     else if (kernelName == "ReduceLogSum")
                     {
@@ -911,7 +892,7 @@ namespace Unity.Sentis
                         var axes = chain.OptionalInput(1);
                         var keepdims = executionPlan.Values(kernel.Args(0)).Value.ValAsBool().BoolVal;
                         var noopWithEmptyAxes = executionPlan.Values(kernel.Args(1)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new ReduceLogSum(name, data, axes, keepdims, noopWithEmptyAxes));
+                        model.AddLayer(new ReduceLogSum(index, data, axes, keepdims, noopWithEmptyAxes));
                     }
                     else if (kernelName == "ReduceLogSumExp")
                     {
@@ -919,7 +900,7 @@ namespace Unity.Sentis
                         var axes = chain.OptionalInput(1);
                         var keepdims = executionPlan.Values(kernel.Args(0)).Value.ValAsBool().BoolVal;
                         var noopWithEmptyAxes = executionPlan.Values(kernel.Args(1)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new ReduceLogSumExp(name, data, axes, keepdims, noopWithEmptyAxes));
+                        model.AddLayer(new ReduceLogSumExp(index, data, axes, keepdims, noopWithEmptyAxes));
                     }
                     else if (kernelName == "ReduceMax")
                     {
@@ -927,7 +908,7 @@ namespace Unity.Sentis
                         var axes = chain.OptionalInput(1);
                         var keepdims = executionPlan.Values(kernel.Args(0)).Value.ValAsBool().BoolVal;
                         var noopWithEmptyAxes = executionPlan.Values(kernel.Args(1)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new ReduceMax(name, data, axes, keepdims, noopWithEmptyAxes));
+                        model.AddLayer(new ReduceMax(index, data, axes, keepdims, noopWithEmptyAxes));
                     }
                     else if (kernelName == "ReduceMean")
                     {
@@ -935,7 +916,7 @@ namespace Unity.Sentis
                         var axes = chain.OptionalInput(1);
                         var keepdims = executionPlan.Values(kernel.Args(0)).Value.ValAsBool().BoolVal;
                         var noopWithEmptyAxes = executionPlan.Values(kernel.Args(1)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new ReduceMean(name, data, axes, keepdims, noopWithEmptyAxes));
+                        model.AddLayer(new ReduceMean(index, data, axes, keepdims, noopWithEmptyAxes));
                     }
                     else if (kernelName == "ReduceMin")
                     {
@@ -943,7 +924,7 @@ namespace Unity.Sentis
                         var axes = chain.OptionalInput(1);
                         var keepdims = executionPlan.Values(kernel.Args(0)).Value.ValAsBool().BoolVal;
                         var noopWithEmptyAxes = executionPlan.Values(kernel.Args(1)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new ReduceMin(name, data, axes, keepdims, noopWithEmptyAxes));
+                        model.AddLayer(new ReduceMin(index, data, axes, keepdims, noopWithEmptyAxes));
                     }
                     else if (kernelName == "ReduceProd")
                     {
@@ -951,7 +932,7 @@ namespace Unity.Sentis
                         var axes = chain.OptionalInput(1);
                         var keepdims = executionPlan.Values(kernel.Args(0)).Value.ValAsBool().BoolVal;
                         var noopWithEmptyAxes = executionPlan.Values(kernel.Args(1)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new ReduceProd(name, data, axes, keepdims, noopWithEmptyAxes));
+                        model.AddLayer(new ReduceProd(index, data, axes, keepdims, noopWithEmptyAxes));
                     }
                     else if (kernelName == "ReduceSum")
                     {
@@ -959,7 +940,7 @@ namespace Unity.Sentis
                         var axes = chain.OptionalInput(1);
                         var keepdims = executionPlan.Values(kernel.Args(0)).Value.ValAsBool().BoolVal;
                         var noopWithEmptyAxes = executionPlan.Values(kernel.Args(1)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new ReduceSum(name, data, axes, keepdims, noopWithEmptyAxes));
+                        model.AddLayer(new ReduceSum(index, data, axes, keepdims, noopWithEmptyAxes));
                     }
                     else if (kernelName == "ReduceSumSquare")
                     {
@@ -967,58 +948,67 @@ namespace Unity.Sentis
                         var axes = chain.OptionalInput(1);
                         var keepdims = executionPlan.Values(kernel.Args(0)).Value.ValAsBool().BoolVal;
                         var noopWithEmptyAxes = executionPlan.Values(kernel.Args(1)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new ReduceSumSquare(name, data, axes, keepdims, noopWithEmptyAxes));
+                        model.AddLayer(new ReduceSumSquare(index, data, axes, keepdims, noopWithEmptyAxes));
                     }
                     else if (kernelName == "Cast")
                     {
                         var input = chain.RequiredInput(0);
                         var dataType = (DataType)executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new Cast(name, input, dataType));
+                        model.AddLayer(new Cast(index, input, dataType));
                     }
                     else if (kernelName == "CastLike")
                     {
                         var input = chain.RequiredInput(0);
                         var targetType = chain.RequiredInput(1);
-                        model.AddLayer(new CastLike(name, input, targetType));
+                        model.AddLayer(new CastLike(index, input, targetType));
                     }
                     else if (kernelName == "Concat")
                     {
-                        var inputs = new string[chain.InputsLength];
+                        var inputs = new int[chain.InputsLength];
                         for (int ii = 0; ii < inputs.Length; ii++)
                             inputs[ii] = chain.RequiredInput(ii);
                         var axis = executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new Concat(name, inputs, axis));
+                        model.AddLayer(new Concat(index, inputs, axis));
                     }
                     else if (kernelName == "DepthToSpace")
                     {
                         var input = chain.RequiredInput(0);
                         var blocksize = executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
                         var mode = (DepthToSpaceMode)executionPlan.Values(kernel.Args(1)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new DepthToSpace(name, input, blocksize, mode));
+                        model.AddLayer(new DepthToSpace(index, input, blocksize, mode));
                     }
                     else if (kernelName == "Expand")
                     {
                         var input = chain.RequiredInput(0);
                         var shape = chain.RequiredInput(1);
-                        model.AddLayer(new Expand(name, input, shape));
+                        model.AddLayer(new Expand(index, input, shape));
                     }
                     else if (kernelName == "Flatten")
                     {
                         var input = chain.RequiredInput(0);
                         var axis = executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new Flatten(name, input, axis));
+                        model.AddLayer(new Flatten(index, input, axis));
+                    }
+                    else if (kernelName == "GridSample")
+                    {
+                        var input = chain.RequiredInput(0);
+                        var grid = chain.RequiredInput(1);
+                        var mode = (InterpolationMode)executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
+                        var paddingMode = (PaddingMode)executionPlan.Values(kernel.Args(1)).Value.ValAsInt().IntVal;
+                        var alignCorners = executionPlan.Values(kernel.Args(2)).Value.ValAsBool().BoolVal;
+                        model.AddLayer(new GridSample(index, input, grid, mode, paddingMode, alignCorners));
                     }
                     else if (kernelName == "Identity")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Identity(name, input));
+                        model.AddLayer(new Identity(index, input));
                     }
                     else if (kernelName == "MoveDim")
                     {
                         var input = chain.RequiredInput(0);
                         var source = executionPlan.Values(kernel.Args(0)).Value.Val<IntList>()?.GetItemsArray();
                         var destination = executionPlan.Values(kernel.Args(1)).Value.Val<IntList>()?.GetItemsArray();
-                        model.AddLayer(new MoveDim(name, input, source, destination));
+                        model.AddLayer(new MoveDim(index, input, source, destination));
                     }
                     else if (kernelName == "Narrow")
                     {
@@ -1026,7 +1016,7 @@ namespace Unity.Sentis
                         var dim = chain.RequiredInput(1);
                         var start = chain.RequiredInput(2);
                         var length = chain.RequiredInput(3);
-                        model.AddLayer(new Narrow(name, input, dim, start, length));
+                        model.AddLayer(new Narrow(index, input, dim, start, length));
                     }
                     else if (kernelName == "Pad")
                     {
@@ -1035,14 +1025,14 @@ namespace Unity.Sentis
                         var constantValue = chain.OptionalInput(2);
                         var axes = chain.OptionalInput(3);
                         var mode = (PadMode)executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new Pad(name, data, pads, constantValue, axes, mode));
+                        model.AddLayer(new Pad(index, data, pads, constantValue, axes, mode));
                     }
                     else if (kernelName == "Reshape")
                     {
                         var input = chain.RequiredInput(0);
                         var reshape = chain.RequiredInput(1);
                         var allowZero = executionPlan.Values(kernel.Args(0)).Value.ValAsBool().BoolVal;
-                        model.AddLayer(new Reshape(name, input, reshape, allowZero));
+                        model.AddLayer(new Reshape(index, input, reshape, allowZero));
                     }
                     else if (kernelName == "Resize")
                     {
@@ -1053,14 +1043,14 @@ namespace Unity.Sentis
                         var mode = (Layers.InterpolationMode)executionPlan.Values(kernel.Args(2)).Value.ValAsInt().IntVal;
                         var nearestMode = (Layers.NearestMode)executionPlan.Values(kernel.Args(3)).Value.ValAsInt().IntVal;
                         var axes = executionPlan.Values(kernel.Args(4)).Value.Val<IntList>()?.GetItemsArray();
-                        model.AddLayer(new Resize(name, input, scalesOrSizes, scaleMode, mode, coordTransformMode, nearestMode, axes));
+                        model.AddLayer(new Resize(index, input, scalesOrSizes, scaleMode, mode, coordTransformMode, nearestMode, axes));
                     }
                     else if (kernelName == "Select")
                     {
                         var input = chain.RequiredInput(0);
                         var dim = chain.RequiredInput(1);
-                        var index = chain.RequiredInput(2);
-                        model.AddLayer(new Select(name, input, dim, index));
+                        var selectIndex = chain.RequiredInput(2);
+                        model.AddLayer(new Select(index, input, dim, selectIndex));
                     }
                     else if (kernelName == "Slice")
                     {
@@ -1069,7 +1059,7 @@ namespace Unity.Sentis
                         var ends = chain.RequiredInput(2);
                         var axes = chain.OptionalInput(3);
                         var steps = chain.OptionalInput(4);
-                        model.AddLayer(new Slice(name, input, starts, ends, axes, steps));
+                        model.AddLayer(new Slice(index, input, starts, ends, axes, steps));
                     }
                     else if (kernelName == "SliceSet")
                     {
@@ -1079,13 +1069,13 @@ namespace Unity.Sentis
                         var ends = chain.RequiredInput(3);
                         var axes = chain.OptionalInput(4);
                         var steps = chain.OptionalInput(5);
-                        model.AddLayer(new SliceSet(name, input, values, starts, ends, axes, steps));
+                        model.AddLayer(new SliceSet(index, input, values, starts, ends, axes, steps));
                     }
                     else if (kernelName == "SpaceToDepth")
                     {
                         var input = chain.RequiredInput(0);
                         var blocksize = executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new SpaceToDepth(name, input, blocksize));
+                        model.AddLayer(new SpaceToDepth(index, input, blocksize));
                     }
                     else if (kernelName == "Split")
                     {
@@ -1093,7 +1083,7 @@ namespace Unity.Sentis
                         var split = chain.OptionalInput(1);
                         var axis = executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
                         var numOutputs = executionPlan.Values(kernel.Args(1)).Value.ValAsInt().IntVal;
-                        var outputs = new string[chain.OutputsLength];
+                        var outputs = new int[chain.OutputsLength];
                         for (int ii = 0; ii < outputs.Length; ii++)
                             outputs[ii] = chain.RequiredOutput(ii);
                         model.AddLayer(new Split(outputs, input, split, axis, numOutputs));
@@ -1102,94 +1092,94 @@ namespace Unity.Sentis
                     {
                         var input = chain.RequiredInput(0);
                         var axes = chain.OptionalInput(1);
-                        model.AddLayer(new Squeeze(name, input, axes));
+                        model.AddLayer(new Squeeze(index, input, axes));
                     }
                     else if (kernelName == "Tile")
                     {
                         var input = chain.RequiredInput(0);
                         var repeats = chain.RequiredInput(1);
-                        model.AddLayer(new Tile(name, input, repeats));
+                        model.AddLayer(new Tile(index, input, repeats));
                     }
                     else if (kernelName == "Transpose")
                     {
                         var input = chain.RequiredInput(0);
                         var permutations = executionPlan.Values(kernel.Args(0)).Value.Val<IntList>()?.GetItemsArray();
-                        model.AddLayer(new Transpose(name, input, permutations));
+                        model.AddLayer(new Transpose(index, input, permutations));
                     }
                     else if (kernelName == "Trilu")
                     {
                         var input = chain.RequiredInput(0);
                         var k = chain.OptionalInput(1);
                         var mode = (TriluMode)executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new Trilu(name, input, k, mode));
+                        model.AddLayer(new Trilu(index, input, k, mode));
                     }
                     else if (kernelName == "Unsqueeze")
                     {
                         var input = chain.RequiredInput(0);
                         var axes = chain.RequiredInput(1);
-                        model.AddLayer(new Unsqueeze(name, input, axes));
+                        model.AddLayer(new Unsqueeze(index, input, axes));
                     }
                     else if (kernelName == "Acos")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Acos(name, input));
+                        model.AddLayer(new Acos(index, input));
                     }
                     else if (kernelName == "Acosh")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Acosh(name, input));
+                        model.AddLayer(new Acosh(index, input));
                     }
                     else if (kernelName == "Asin")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Asin(name, input));
+                        model.AddLayer(new Asin(index, input));
                     }
                     else if (kernelName == "Asinh")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Asinh(name, input));
+                        model.AddLayer(new Asinh(index, input));
                     }
                     else if (kernelName == "Atan")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Atan(name, input));
+                        model.AddLayer(new Atan(index, input));
                     }
                     else if (kernelName == "Atanh")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Atanh(name, input));
+                        model.AddLayer(new Atanh(index, input));
                     }
                     else if (kernelName == "Cos")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Cos(name, input));
+                        model.AddLayer(new Cos(index, input));
                     }
                     else if (kernelName == "Cosh")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Cosh(name, input));
+                        model.AddLayer(new Cosh(index, input));
                     }
                     else if (kernelName == "Sin")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Sin(name, input));
+                        model.AddLayer(new Sin(index, input));
                     }
                     else if (kernelName == "Sinh")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Sinh(name, input));
+                        model.AddLayer(new Sinh(index, input));
                     }
                     else if (kernelName == "Tan")
                     {
                         var input = chain.RequiredInput(0);
-                        model.AddLayer(new Tan(name, input));
+                        model.AddLayer(new Tan(index, input));
                     }
                     else if (kernelName == "DequantizeUint8")
                     {
                         var input = chain.RequiredInput(0);
                         var scale = executionPlan.Values(kernel.Args(0)).Value.ValAsFloat().FloatVal;
                         var zeroPoint = (byte)executionPlan.Values(kernel.Args(1)).Value.ValAsInt().IntVal;
-                        model.AddLayer(new DequantizeUint8(name, input, scale, zeroPoint));
+                        model.AddLayer(new DequantizeUint8(index, input, scale, zeroPoint));
                     }
                     else
                         throw new NotImplementedException(kernelName);
@@ -1197,9 +1187,9 @@ namespace Unity.Sentis
 
                 return program.SegmentsLength;
             }
-            catch (InvalidOperationException)
+            catch (Exception e)
             {
-                D.LogError("Failed to load serialized model description.");
+                D.LogError($"Failed to load serialized model description. ({e.Message})");
                 throw;
             }
         }
