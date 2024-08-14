@@ -5,55 +5,48 @@ using Unity.Sentis;
 public class RunModelOnFullScreen : MonoBehaviour
 {
     Model m_Model;
-    IWorker m_Engine;
-    TensorFloat m_TensorY;
-    Dictionary<string, Tensor> m_Inputs;
+    Worker m_Worker;
+    Tensor<float> m_TensorY;
+    Tensor[] m_Inputs;
 
     void OnEnable()
     {
         Debug.Log("When running this example, the game vew should fade from black to white to black");
-        m_Model = Functional.Compile(
-            forward: (x, y) => x + y,
-            inputDefs: (
-                new InputDef(DataType.Float, new SymbolicTensorShape(SymbolicTensorDim.Int(1), SymbolicTensorDim.Int(4), SymbolicTensorDim.Param(0), SymbolicTensorDim.Param(1))),
-                new InputDef(DataType.Float, new SymbolicTensorShape())
-            )
-        );
-        m_Engine = WorkerFactory.CreateWorker(BackendType.GPUCompute, m_Model);
+        var graph = new FunctionalGraph();
+        var x = graph.AddInput<float>(new DynamicTensorShape(1, 4, -1, -1));
+        var y = graph.AddInput<float>(new TensorShape());
+        m_Model = graph.Compile(x + y);
+        m_Worker = new Worker(m_Model, BackendType.GPUCompute);
 
         // The value of Y will be added to all pixel values.
-        m_TensorY = new TensorFloat(0.1f);
+        m_TensorY = new Tensor<float>(new TensorShape(), new[] { 0.1f });
 
-        m_Inputs = new Dictionary<string, Tensor>
-        {
-            { m_Model.inputs[0].name, null },
-            { m_Model.inputs[1].name, m_TensorY },
-        };
+        m_Inputs = new Tensor[] { null, m_TensorY };
     }
 
     void OnDisable()
     {
-        foreach (var tensor in m_Inputs.Values) { tensor?.Dispose(); }
+        foreach (var tensor in m_Inputs) { tensor?.Dispose(); }
 
-        m_Engine.Dispose();
+        m_Worker.Dispose();
     }
 
     void Update()
     {
         // readback tensor from GPU to CPU to use tensor indexing
-        BurstTensorData.Pin(m_TensorY);
+        CPUTensorData.Pin(m_TensorY);
         m_TensorY[0] = Mathf.Sin(Time.timeSinceLevelLoad);
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         // TextureToTensor takes optional parameters for resampling, channel swizzles etc
-        using TensorFloat frameInputTensor = TextureConverter.ToTensor(source);
+        using Tensor<float> frameInputTensor = TextureConverter.ToTensor(source);
 
-        m_Inputs[m_Model.inputs[0].name] = frameInputTensor;
+        m_Inputs[0] = frameInputTensor;
 
-        m_Engine.Execute(m_Inputs);
-        TensorFloat output = m_Engine.PeekOutput() as TensorFloat;
+        m_Worker.Schedule(m_Inputs);
+        Tensor<float> output = m_Worker.PeekOutput() as Tensor<float>;
 
         // TensorToTextureUtils also has methods for rendering to a render texture with optional parameters
         TextureConverter.RenderToScreen(output);

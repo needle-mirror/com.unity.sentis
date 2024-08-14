@@ -8,7 +8,7 @@ To learn about the models Sentis supports, refer to [Supported models](supported
 
 ## Create a runtime model
 
-To use an imported model, you must use [`ModelLoader.Load`](xref:Unity.Sentis.ModelLoader.Load(Unity.Sentis.ModelAsset)) to create a runtime [`Model`](xref:Unity.Sentis.Model) object.
+To use an imported model, you must use [`ModelLoader.Load`](xref:Unity.Sentis.ModelLoader.Load*) to create a runtime [`Model`](xref:Unity.Sentis.Model) object.
 
 ```
 using UnityEngine;

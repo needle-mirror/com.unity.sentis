@@ -6,8 +6,8 @@ public class PollingReadback : MonoBehaviour
     [SerializeField]
     ModelAsset modelAsset;
 
-    TensorFloat m_Input, m_Output;
-    IWorker m_Engine;
+    Tensor<float> m_Input, m_Output;
+    Worker m_Worker;
 
     bool isRunning = false;
 
@@ -15,17 +15,17 @@ public class PollingReadback : MonoBehaviour
     {
         // Everything that can be statically assigned is setup during Start to avoid memory churn.
         var model = ModelLoader.Load(modelAsset);
-        m_Input = new TensorFloat(new TensorShape(1, 1), new[] { 43.0f });
-        m_Engine = WorkerFactory.CreateWorker(BackendType.GPUCompute, model);
+        m_Input = new Tensor<float>(new TensorShape(1, 1), new[] { 43.0f });
+        m_Worker = new Worker(model, BackendType.GPUCompute);
     }
 
     void Update()
     {
         if (!isRunning)
         {
-            m_Engine.Execute(m_Input);
+            m_Worker.Schedule(m_Input);
             // Peek the value from Sentis, without taking ownership of the Tensor (see PeekOutput docs for details).
-            m_Output = m_Engine.PeekOutput() as TensorFloat;
+            m_Output = m_Worker.PeekOutput() as Tensor<float>;
             // start a readback request. tensor's internal data is scheduled for download once all execution has finished
             m_Output.ReadbackRequest();
             isRunning = true;
@@ -46,6 +46,6 @@ public class PollingReadback : MonoBehaviour
     {
         m_Input.Dispose();
         // m_Output is still owned by the worker, no need to dispose of it
-        m_Engine.Dispose();
+        m_Worker.Dispose();
     }
 }

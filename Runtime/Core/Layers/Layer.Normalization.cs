@@ -1,4 +1,5 @@
 using System;
+using Unity.Collections;
 using UnityEngine;
 
 namespace Unity.Sentis.Layers
@@ -20,11 +21,11 @@ namespace Unity.Sentis.Layers
             var shapeX = X.shape;
             var shapeScale = scale.shape;
             var shapeBias = bias.shape;
-            var c = SymbolicTensorDim.Unknown;
+            var c = DynamicTensorDim.Unknown;
             shapeScale.DeclareRank(1);
-            c = SymbolicTensorDim.MaxDefinedDim(c, shapeScale[0]);
+            c = DynamicTensorDim.MaxDefinedDim(c, shapeScale[0]);
             shapeBias.DeclareRank(1);
-            c = SymbolicTensorDim.MaxDefinedDim(c, shapeBias[0]);
+            c = DynamicTensorDim.MaxDefinedDim(c, shapeBias[0]);
             if (!shapeX.hasRank)
             {
                 ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType));
@@ -33,18 +34,18 @@ namespace Unity.Sentis.Layers
 
             Logger.AssertIsTrue(shapeX.hasRank ? shapeX.rank >= 2 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", 2, shapeX.rank);
 
-            var shapeOut = new SymbolicTensorShape(shapeX);
-            shapeOut[1] = SymbolicTensorDim.MaxDefinedDim(shapeOut[1], c);
+            var shapeOut = new DynamicTensorShape(shapeX);
+            shapeOut[1] = DynamicTensorDim.MaxDefinedDim(shapeOut[1], c);
             ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, shapeOut));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
-            ctx.backend.ScaleBias(X as TensorFloat, ctx.storage.GetTensor(inputs[1]) as TensorFloat, ctx.storage.GetTensor(inputs[2]) as TensorFloat, O);
+            ctx.backend.ScaleBias(X as Tensor<float>, ctx.storage.GetTensor(inputs[1]) as Tensor<float>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, O);
         }
 
         internal override string profilerTag => "ScaleBias";
@@ -74,11 +75,11 @@ namespace Unity.Sentis.Layers
             var shapeX = X.shape;
             var shapeScale = scale.shape;
             var shapeBias = bias.shape;
-            var c = SymbolicTensorDim.Unknown;
+            var c = DynamicTensorDim.Unknown;
             shapeScale.DeclareRank(1);
-            c = SymbolicTensorDim.MaxDefinedDim(c, shapeScale[0]);
+            c = DynamicTensorDim.MaxDefinedDim(c, shapeScale[0]);
             shapeBias.DeclareRank(1);
-            c = SymbolicTensorDim.MaxDefinedDim(c, shapeBias[0]);
+            c = DynamicTensorDim.MaxDefinedDim(c, shapeBias[0]);
             if (!shapeX.hasRank)
             {
                 ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType));
@@ -88,18 +89,18 @@ namespace Unity.Sentis.Layers
             Logger.AssertIsTrue(shapeX.hasRank ? shapeX.rank >= 2 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", 2, shapeX.rank);
             shapeScale.DeclareRank(1);
 
-            var shapeOut = new SymbolicTensorShape(shapeX);
-            shapeOut[1] = SymbolicTensorDim.MaxDefinedDim(shapeOut[1], c);
+            var shapeOut = new DynamicTensorShape(shapeX);
+            shapeOut[1] = DynamicTensorDim.MaxDefinedDim(shapeOut[1], c);
             ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, shapeOut));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
-            ctx.backend.InstanceNormalization(X as TensorFloat, ctx.storage.GetTensor(inputs[1]) as TensorFloat, ctx.storage.GetTensor(inputs[2]) as TensorFloat, O, epsilon);
+            ctx.backend.InstanceNormalization(X as Tensor<float>, ctx.storage.GetTensor(inputs[1]) as Tensor<float>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, O, epsilon);
         }
 
         public override string ToString()
@@ -137,7 +138,7 @@ namespace Unity.Sentis.Layers
 
             if (!shapeX.hasRank)
             {
-                ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, SymbolicTensorShape.UnknownShape));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, DynamicTensorShape.DynamicRank));
                 return;
             }
 
@@ -146,18 +147,18 @@ namespace Unity.Sentis.Layers
             shapeScale.DeclareRank(1);
             shapeBias.DeclareRank(1);
 
-            var shape = new SymbolicTensorShape(shapeX);
-            shape[-1] = SymbolicTensorDim.MaxDefinedDim(shape[-1], SymbolicTensorDim.MaxDefinedDim(shapeScale[0], shapeBias[0]));
+            var shape = new DynamicTensorShape(shapeX);
+            shape[-1] = DynamicTensorDim.MaxDefinedDim(shape[-1], DynamicTensorDim.MaxDefinedDim(shapeScale[0], shapeBias[0]));
             ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, shape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
-            ctx.backend.LayerNormalization(X as TensorFloat, ctx.storage.GetTensor(inputs[1]) as TensorFloat, ctx.storage.GetTensor(inputs[2]) as TensorFloat, O, epsilon);
+            ctx.backend.LayerNormalization(X as Tensor<float>, ctx.storage.GetTensor(inputs[1]) as Tensor<float>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, O, epsilon);
         }
 
         public override string ToString()
@@ -197,7 +198,7 @@ namespace Unity.Sentis.Layers
 
             if (!shapeX.hasRank)
             {
-                ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, SymbolicTensorShape.UnknownShape));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, DynamicTensorShape.DynamicRank));
                 return;
             }
 
@@ -208,19 +209,19 @@ namespace Unity.Sentis.Layers
             shapeMean.DeclareRank(1);
             shapeVar.DeclareRank(1);
 
-            var shape = new SymbolicTensorShape(shapeX);
+            var shape = new DynamicTensorShape(shapeX);
             if (shapeX.rank > 1)
-                shape[1] = SymbolicTensorDim.MaxDefinedDim(shape[1], SymbolicTensorDim.MaxDefinedDim(shapeScale[0], SymbolicTensorDim.MaxDefinedDim(shapeBias[0], SymbolicTensorDim.MaxDefinedDim(shapeMean[0], shapeVar[0]))));
+                shape[1] = DynamicTensorDim.MaxDefinedDim(shape[1], DynamicTensorDim.MaxDefinedDim(shapeScale[0], DynamicTensorDim.MaxDefinedDim(shapeBias[0], DynamicTensorDim.MaxDefinedDim(shapeMean[0], shapeVar[0]))));
             ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, shape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
-            ctx.backend.BatchNormalization(X as TensorFloat, ctx.storage.GetTensor(inputs[1]) as TensorFloat, ctx.storage.GetTensor(inputs[2]) as TensorFloat, ctx.storage.GetTensor(inputs[3]) as TensorFloat, ctx.storage.GetTensor(inputs[4]) as TensorFloat, O, epsilon);
+            ctx.backend.BatchNormalization(X as Tensor<float>, ctx.storage.GetTensor(inputs[1]) as Tensor<float>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, ctx.storage.GetTensor(inputs[3]) as Tensor<float>, ctx.storage.GetTensor(inputs[4]) as Tensor<float>, O, epsilon);
         }
 
         public override string ToString()
@@ -253,16 +254,22 @@ namespace Unity.Sentis.Layers
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var X = ctx.GetPartialTensor(inputs[0]);
-            Logger.AssertIsTrue(X.shape.hasRank ? X.shape.rank >= 2 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", 2, X.shape.rank);
+            if (X.shape.hasRank)
+                Logger.AssertIsTrue(X.shape.rank >= 2, "RankError: incorrect rank, expecting at least {0}, got {1}", 2, X.shape.rank);
 
             ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, X.shape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            Logger.AssertIsFalse(ctx.backend is GPUCommandBufferBackend, "BackendTypeError: GPUCommandBuffer is not supported on the LRN layer");
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+
+            // pixel we don't know which dim to pin
+            var outputBackendType = ctx.backend.backendType;
+            if (outputBackendType == BackendType.GPUPixel)
+                outputBackendType = BackendType.CPU;
+
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, outputBackendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
 
@@ -273,8 +280,13 @@ namespace Unity.Sentis.Layers
             // Tensorflow don't and follow the paper to the letter https://github.com/tensorflow/tensorflow/blob/e6faa845c51bb69465146d93646947fd2ba53efa/tensorflow/python/kernel_tests/lrn_op_test.py#L53
             // However they bake the division to alpha when exporting to ONNX https://github.com/onnx/tensorflow-onnx/blob/7c37ccb97e0fd478ce093910c4a1411b18e44fd7/tf2onnx/onnx_opset/math.py
 
-            BurstTensorData.Pin(X);
-            BurstTensorData.Pin(O);
+
+            // need to download, if gpucompute need to execute commandbuffer and flush.
+            if (ctx.backend is GPUComputeBackend gpuBackend)
+                gpuBackend.ExecuteCommandBufferAndClear();
+
+            var arrayX = (X as Tensor<float>).DownloadToNativeArray();
+            var arrayO = new NativeArray<float>(O.shape.length, Allocator.Temp);
 
             float sizef = count;
 
@@ -290,12 +302,13 @@ namespace Unity.Sentis.Layers
                 {
                     itRemap.CopyNDIndex(it);
                     itRemap[1] = ci;
-                    float regionValue = X[itRemap.index];
+                    float regionValue = arrayX[itRemap.index];
                     sumOfSquared += regionValue * regionValue;
                 }
 
-                O[it.index] = X[it.index] / Mathf.Pow(bias + alpha * sumOfSquared / sizef, beta);
+                arrayO[it.index] = arrayX[it.index] / Mathf.Pow(bias + alpha * sumOfSquared / sizef, beta);
             }
+            O.dataOnBackend.Upload(arrayO, arrayO.Length);
         }
 
         public override string ToString()

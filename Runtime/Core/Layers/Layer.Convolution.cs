@@ -5,7 +5,7 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Options for auto padding in image layers.
     /// </summary>
-    public enum AutoPad
+    enum AutoPad
     {
         /// <summary>
         /// Use explicit padding.
@@ -57,7 +57,7 @@ namespace Unity.Sentis.Layers
             var shapeKernel = W.shape;
             for (var i = 0; kernelShape != null && i < kernelShape.Length; i++)
             {
-                shapeKernel[i + 2] = SymbolicTensorDim.MaxDefinedDim(shapeKernel[i + 2], SymbolicTensorDim.Int(kernelShape[i]));
+                shapeKernel[i + 2] = DynamicTensorDim.MaxDefinedDim(shapeKernel[i + 2], DynamicTensorDim.Int(kernelShape[i]));
             }
 
             if (!shapeX.hasRank)
@@ -68,14 +68,14 @@ namespace Unity.Sentis.Layers
 
             shapeKernel.DeclareRank(shapeX.rank);
 
-            var shapeOut = SymbolicTensorShape.UnknownOfRank(shapeX.rank);
+            var shapeOut = DynamicTensorShape.DynamicOfRank(shapeX.rank);
 
             shapeOut[0] = shapeX[0];
             shapeOut[1] = shapeKernel[0];
 
-            var shapeBias = ctx.GetPartialTensor(inputs[2])?.shape ?? SymbolicTensorShape.UnknownShape;
+            var shapeBias = ctx.GetPartialTensor(inputs[2])?.shape ?? DynamicTensorShape.DynamicRank;
             shapeBias.DeclareRank(1);
-            shapeOut[1] = SymbolicTensorDim.MaxDefinedDim(shapeOut[1], shapeBias[0]);
+            shapeOut[1] = DynamicTensorDim.MaxDefinedDim(shapeOut[1], shapeBias[0]);
 
             for (var i = 2; i < shapeOut.rank; i++)
             {
@@ -89,17 +89,17 @@ namespace Unity.Sentis.Layers
                 else if (dimKernel.isParam && (autoPad is AutoPad.SameLower || autoPad is AutoPad.SameUpper))
                     shapeOut[i] = dimX.Pool(0, stride, pad, dilation, false, autoPad);
                 else
-                    shapeOut[i] = SymbolicTensorDim.Unknown;
+                    shapeOut[i] = DynamicTensorDim.Unknown;
             }
 
             ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Float, shapeOut));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var W = ctx.storage.GetTensor(inputs[1]) as TensorFloat;
-            var B = ctx.storage.GetTensor(inputs[2]) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var W = ctx.storage.GetTensor(inputs[1]) as Tensor<float>;
+            var B = ctx.storage.GetTensor(inputs[2]) as Tensor<float>;
 
             var numSpatialDims = X.shape.rank - 2;
             var stridesSpan = strides.AsSpan(0, numSpatialDims);
@@ -108,7 +108,7 @@ namespace Unity.Sentis.Layers
             ShapeInference.UpdatePadForConvAutoPadding(X.shape, W.shape, stridesSpan, dilationsSpan, autoPad, padsSpan);
             var shapeO = ShapeInference.Conv(X.shape, W.shape, group, stridesSpan, padsSpan, dilationsSpan);
 
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shapeO, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shapeO, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
 
@@ -153,7 +153,7 @@ namespace Unity.Sentis.Layers
             var shapeKernel = W.shape;
             for (var i = 0; kernelShape != null && i < kernelShape.Length; i++)
             {
-                shapeKernel[i + 2] = SymbolicTensorDim.MaxDefinedDim(shapeKernel[i + 2], SymbolicTensorDim.Int(kernelShape[i]));
+                shapeKernel[i + 2] = DynamicTensorDim.MaxDefinedDim(shapeKernel[i + 2], DynamicTensorDim.Int(kernelShape[i]));
             }
 
             if (!shapeX.hasRank)
@@ -164,14 +164,14 @@ namespace Unity.Sentis.Layers
 
             shapeKernel.DeclareRank(shapeX.rank);
 
-            var shapeOut = SymbolicTensorShape.Ones(shapeX.rank);
+            var shapeOut = DynamicTensorShape.Ones(shapeX.rank);
 
             shapeOut[0] = shapeX[0];
             shapeOut[1] = shapeKernel[1];
 
-            var shapeBias = ctx.GetPartialTensor(inputs[2])?.shape ?? SymbolicTensorShape.UnknownShape;
+            var shapeBias = ctx.GetPartialTensor(inputs[2])?.shape ?? DynamicTensorShape.DynamicRank;
             shapeBias.DeclareRank(1);
-            shapeOut[1] = SymbolicTensorDim.MaxDefinedDim(shapeOut[1], shapeBias[0]);
+            shapeOut[1] = DynamicTensorDim.MaxDefinedDim(shapeOut[1], shapeBias[0]);
 
             for (var i = 2; i < shapeOut.rank; i++)
             {
@@ -190,11 +190,11 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Float, shapeOut));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var W = ctx.storage.GetTensor(inputs[1]) as TensorFloat;
-            var B = ctx.storage.GetTensor(inputs[2]) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var W = ctx.storage.GetTensor(inputs[1]) as Tensor<float>;
+            var B = ctx.storage.GetTensor(inputs[2]) as Tensor<float>;
 
             var numSpatialDims = X.shape.rank - 2;
             var stridesSpan = strides.AsSpan(0, numSpatialDims);
@@ -202,7 +202,7 @@ namespace Unity.Sentis.Layers
             var outputPaddingSpan = outputPadding.AsSpan(0, numSpatialDims);
             ShapeInference.UpdatePadForConvTransAutoPadding(X.shape, W.shape, stridesSpan, autoPad, outputPaddingSpan, padsSpan);
             var shapeO = ShapeInference.ConvTranspose(X.shape, W.shape, stridesSpan, padsSpan, outputPaddingSpan);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shapeO, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shapeO, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.ConvTranspose(X, W, B, O, stridesSpan, padsSpan, outputPaddingSpan, fusedActivation);

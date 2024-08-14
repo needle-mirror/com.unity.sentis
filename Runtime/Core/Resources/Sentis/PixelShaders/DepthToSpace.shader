@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/DepthToSpace"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile COLUMNROWDEPTH DEPTHCOLUMNROW
+            #pragma multi_compile_local COLUMNROWDEPTH DEPTHCOLUMNROW
             #pragma vertex vert
             #pragma fragment frag
 

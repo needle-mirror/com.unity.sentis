@@ -14,4 +14,4 @@ Use Sentis to run an imported model with input data and get the output data.
 |[Get output from a model](get-the-output.md)|Get and log the output data from a model.|
 |[Read output asynchronously](read-output-async.md)|Read the output data from a model asynchronously.|
 |[Use output data](use-model-output.md)|Convert the output data to an array or a texture, copy the data to the screen.|
-|[Manage memory](manage-memory.md)|Call `Dispose` on workers, inputs and sometimes outputs.|
+|[Manage memory](manage-memory.md)|Call `Dispose` on workers and tensors.|

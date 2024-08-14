@@ -6,10 +6,10 @@ namespace Unity.Sentis.Compiler.Analyser
 {
     static class MemoryFootprintAnalysis
     {
-        public static HashSet<Layers.Layer> FindLayersThatRequireStorage(Model model)
+        public static HashSet<Layer> FindLayersThatRequireStorage(Model model)
         {
             var allInputsExceptFromPreviousLayer = new HashSet<int>();
-            Layers.Layer prevLayer = null;
+            Layer prevLayer = null;
             foreach (var layer in model.layers)
             {
                 foreach (var input in layer.inputs)
@@ -26,7 +26,7 @@ namespace Unity.Sentis.Compiler.Analyser
             foreach (var output in model.outputs)
                 allOutputs.Add(output.index);
 
-            var requireStorage = new HashSet<Layers.Layer>();
+            var requireStorage = new HashSet<Layer>();
             foreach (var layer in model.layers)
             {
                 if (allInputsExceptFromPreviousLayer.Contains(layer.outputs[0]) ||

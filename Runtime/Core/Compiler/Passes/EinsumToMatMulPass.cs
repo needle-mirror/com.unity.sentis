@@ -38,11 +38,11 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             }
         }
 
-        static bool InsertPermuteReshapeLayers(Model model, Einsum einsumLayer, int inputLayerIndex, TensorIndex originalDims, TensorIndex[] transformedDims, SymbolicTensorShape originalShape, ref int uniqueIndex)
+        static bool InsertPermuteReshapeLayers(Model model, Einsum einsumLayer, int inputLayerIndex, TensorIndex originalDims, TensorIndex[] transformedDims, DynamicTensorShape originalShape, ref int uniqueIndex)
         {
             CalculatePermutations(originalDims, transformedDims, out _, out var inversePermutation, out var isPermuted);
 
-            var shape = SymbolicTensorShape.Ones(transformedDims.Length);
+            var shape = DynamicTensorShape.Ones(transformedDims.Length);
             var index = 0;
             for (var i = 0; i < transformedDims.Length; i++)
             {
@@ -59,7 +59,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     isReshaped = true;
             }
 
-            if (isReshaped && !shape.IsFullyKnown())
+            if (isReshaped && !shape.IsStatic())
                 return false;
 
             var inputIndex = einsumLayer.inputs[inputLayerIndex];
@@ -88,11 +88,11 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             return true;
         }
 
-        static bool InsertInversePermuteReshapeLayers(Model model, Einsum einsumLayer, TensorIndex originalDims, TensorIndex[] transformedDims, SymbolicTensorShape originalShape, ref int uniqueIndex)
+        static bool InsertInversePermuteReshapeLayers(Model model, Einsum einsumLayer, TensorIndex originalDims, TensorIndex[] transformedDims, DynamicTensorShape originalShape, ref int uniqueIndex)
         {
             CalculatePermutations(originalDims, transformedDims, out var permutation, out var inversePermutation, out var isPermuted);
 
-            var shape = SymbolicTensorShape.UnknownOfRank(originalDims.rank);
+            var shape = DynamicTensorShape.DynamicOfRank(originalDims.rank);
             for (var i = 0; i < originalDims.rank; i++)
             {
                 shape[i] = originalShape[permutation[i]];
@@ -105,7 +105,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     isReshaped = true;
             }
 
-            if (isReshaped && !shape.IsFullyKnown())
+            if (isReshaped && !shape.IsStatic())
                 return false;
 
             var insertLayerIndex = model.layers.IndexOf(einsumLayer) + 1;
@@ -153,7 +153,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 }
 
                 var isInputShapes = true;
-                var operandShapes = new SymbolicTensorShape[numOperands];
+                var operandShapes = new DynamicTensorShape[numOperands];
                 for (var i = 0; i < numOperands && isInputShapes; i++)
                 {
                     var shape = ctx.GetPartialTensor(layer.inputs[i]).shape;

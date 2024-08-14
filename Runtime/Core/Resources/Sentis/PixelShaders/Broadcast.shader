@@ -12,7 +12,7 @@ Shader "Hidden/Sentis/Broadcast"
         {
             CGPROGRAM
             // TODO: use Scriban to generate variants
-            #pragma multi_compile Add Sub Mul Div Pow Min Max Mod FMod Mean AddInt SubInt MulInt DivInt PowInt MinInt MaxInt ModInt FModInt And Equal Greater GreaterOrEqual Less LessOrEqual EqualInt GreaterInt GreaterOrEqualInt LessInt LessOrEqualInt Or Xor PRelu
+            #pragma multi_compile_local Add Sub Mul Div Pow Min Max Mod FMod Mean AddInt SubInt MulInt DivInt PowInt MinInt MaxInt ModInt FModInt And Equal Greater GreaterOrEqual Less LessOrEqual EqualInt GreaterInt GreaterOrEqualInt LessInt LessOrEqualInt Or Xor PRelu
 
             #pragma vertex vert
             #pragma fragment frag

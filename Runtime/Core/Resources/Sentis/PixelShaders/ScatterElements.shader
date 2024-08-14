@@ -11,10 +11,10 @@ Shader "Hidden/Sentis/ScatterElements"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile _ ScatterInt
-            #pragma multi_compile ReduceNone ReduceAdd ReduceMul
-            #pragma multi_compile _ UseDiv4Mask
-            #pragma multi_compile _ NoFastPath
+            #pragma multi_compile_local _ ScatterInt
+            #pragma multi_compile_local ReduceNone ReduceAdd ReduceMul
+            #pragma multi_compile_local _ UseDiv4Mask
+            #pragma multi_compile_local _ NoFastPath
             #pragma vertex vert
             #pragma fragment frag
 

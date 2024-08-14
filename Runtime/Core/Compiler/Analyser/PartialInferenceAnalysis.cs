@@ -8,7 +8,7 @@ namespace Unity.Sentis.Compiler.Analyser
     {
         public static PartialInferenceContext InferModelPartialTensors(Model model)
         {
-            ProfilerMarkers.InferModelSymbolicTensors.Begin();
+            ProfilerMarkers.InferModelPartialTensors.Begin();
 
             var ctx = new PartialInferenceContext();
 
@@ -27,7 +27,7 @@ namespace Unity.Sentis.Compiler.Analyser
             foreach (var layer in model.layers)
                 layer.InferPartial(ctx);
 
-            ProfilerMarkers.InferModelSymbolicTensors.End();
+            ProfilerMarkers.InferModelPartialTensors.End();
 
             return ctx;
         }

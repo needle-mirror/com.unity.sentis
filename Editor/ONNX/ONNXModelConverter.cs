@@ -15,11 +15,21 @@ namespace Unity.Sentis.ONNX
     /// <summary>
     /// Represents a converter from an ONNX model to Sentis format.
     /// </summary>
-    public class ONNXModelConverter
+    class ONNXModelConverter
     {
         // Configuration
         string m_DirectoryPath;
         string m_FilePath;
+
+        /// <summary>
+        /// Occurs when the metadata of the ONNX model is loaded.
+        /// </summary>
+        /// <remarks>
+        /// This event is triggered during the conversion of an ONNX model to Sentis format, when
+        /// <see cref="Convert"/> is called. The event handler receives an argument of type
+        /// <see cref="ONNXModelMetadata"/> containing metadata loaded from ONNX model.
+        /// </remarks>
+        public event Action<ONNXModelMetadata> MetadataLoaded;
 
         /// <summary>
         /// Converts an ONNX model to a Sentis `Model` object.
@@ -321,7 +331,7 @@ namespace Unity.Sentis.ONNX
                 {
                     // TopK-1
                     var k = node.GetRequiredInt("k");
-                    var kConstant = new Layers.Constant(AppendNewLayer(), new TensorShape(1), new[] { k });
+                    var kConstant = new Constant(AppendNewLayer(), new TensorShape(1), new[] { k });
                     model.AddConstant(kConstant);
                     model.AddLayer(new Layers.TopK(AppendName(node.Output0), AppendName(node.Output1), NameToIndex(node.Input0), kConstant.index, axis, largest, sorted));
                 }
@@ -406,10 +416,10 @@ namespace Unity.Sentis.ONNX
                 {
                     // Clip-1, Clip-6
                     var min = node.GetOptionalFloat("min", float.MinValue);
-                    var minConstant = new Layers.Constant(AppendNewLayer(), new TensorShape(), new[] { min });
+                    var minConstant = new Constant(AppendNewLayer(), new TensorShape(), new[] { min });
                     model.AddConstant(minConstant);
                     var max = node.GetOptionalFloat("max", float.MaxValue);
-                    var maxConstant = new Layers.Constant(AppendNewLayer(), new TensorShape(), new[] { max });
+                    var maxConstant = new Constant(AppendNewLayer(), new TensorShape(), new[] { max });
                     model.AddConstant(maxConstant);
                     model.AddLayer(new Layers.Clip(AppendName(node.Name), NameToIndex(node.Input0), minConstant.index, maxConstant.index));
                 }
@@ -651,7 +661,7 @@ namespace Unity.Sentis.ONNX
             }
             else if (opType == "Multinomial")
             {
-                node.IgnoredAttribute("dtype", "dtype can only be int32 or int64 which both map to TensorInt");
+                node.IgnoredAttribute("dtype", "dtype can only be int32 or int64 which both map to Tensor<int>");
                 var samples = node.GetOptionalInt("sample_size", 1);
                 model.AddLayer(new Layers.Multinomial(AppendName(node.Name), NameToIndex(node.Input0), samples, node.Seed));
             }
@@ -712,7 +722,7 @@ namespace Unity.Sentis.ONNX
                     if (axes != null)
                     {
                         axesIndex = AppendNewLayer();
-                        var axesConstant = new Layers.Constant(axesIndex, new TensorShape(axes.Length), axes);
+                        var axesConstant = new Constant(axesIndex, new TensorShape(axes.Length), axes);
                         model.AddConstant(axesConstant);
                     }
                 }
@@ -734,7 +744,7 @@ namespace Unity.Sentis.ONNX
                     if (axes != null)
                     {
                         axesIndex = AppendNewLayer();
-                        var axesConstant = new Layers.Constant(axesIndex, new TensorShape(axes.Length), axes);
+                        var axesConstant = new Constant(axesIndex, new TensorShape(axes.Length), axes);
                         model.AddConstant(axesConstant);
                     }
                 }
@@ -756,7 +766,7 @@ namespace Unity.Sentis.ONNX
                     if (axes != null)
                     {
                         axesIndex = AppendNewLayer();
-                        var axesConstant = new Layers.Constant(axesIndex, new TensorShape(axes.Length), axes);
+                        var axesConstant = new Constant(axesIndex, new TensorShape(axes.Length), axes);
                         model.AddConstant(axesConstant);
                     }
                 }
@@ -778,7 +788,7 @@ namespace Unity.Sentis.ONNX
                     if (axes != null)
                     {
                         axesIndex = AppendNewLayer();
-                        var axesConstant = new Layers.Constant(axesIndex, new TensorShape(axes.Length), axes);
+                        var axesConstant = new Constant(axesIndex, new TensorShape(axes.Length), axes);
                         model.AddConstant(axesConstant);
                     }
                 }
@@ -800,7 +810,7 @@ namespace Unity.Sentis.ONNX
                     if (axes != null)
                     {
                         axesIndex = AppendNewLayer();
-                        var axesConstant = new Layers.Constant(axesIndex, new TensorShape(axes.Length), axes);
+                        var axesConstant = new Constant(axesIndex, new TensorShape(axes.Length), axes);
                         model.AddConstant(axesConstant);
                     }
                 }
@@ -822,7 +832,7 @@ namespace Unity.Sentis.ONNX
                     if (axes != null)
                     {
                         axesIndex = AppendNewLayer();
-                        var axesConstant = new Layers.Constant(axesIndex, new TensorShape(axes.Length), axes);
+                        var axesConstant = new Constant(axesIndex, new TensorShape(axes.Length), axes);
                         model.AddConstant(axesConstant);
                     }
                 }
@@ -844,7 +854,7 @@ namespace Unity.Sentis.ONNX
                     if (axes != null)
                     {
                         axesIndex = AppendNewLayer();
-                        var axesConstant = new Layers.Constant(axesIndex, new TensorShape(axes.Length), axes);
+                        var axesConstant = new Constant(axesIndex, new TensorShape(axes.Length), axes);
                         model.AddConstant(axesConstant);
                     }
                 }
@@ -866,7 +876,7 @@ namespace Unity.Sentis.ONNX
                     if (axes != null)
                     {
                         axesIndex = AppendNewLayer();
-                        var axesConstant = new Layers.Constant(axesIndex, new TensorShape(axes.Length), axes);
+                        var axesConstant = new Constant(axesIndex, new TensorShape(axes.Length), axes);
                         model.AddConstant(axesConstant);
                     }
                 }
@@ -888,7 +898,7 @@ namespace Unity.Sentis.ONNX
                     if (axes != null)
                     {
                         axesIndex = AppendNewLayer();
-                        var axesConstant = new Layers.Constant(axesIndex, new TensorShape(axes.Length), axes);
+                        var axesConstant = new Constant(axesIndex, new TensorShape(axes.Length), axes);
                         model.AddConstant(axesConstant);
                     }
                 }
@@ -910,7 +920,7 @@ namespace Unity.Sentis.ONNX
                     if (axes != null)
                     {
                         axesIndex = AppendNewLayer();
-                        var axesConstant = new Layers.Constant(axesIndex, new TensorShape(axes.Length), axes);
+                        var axesConstant = new Constant(axesIndex, new TensorShape(axes.Length), axes);
                         model.AddConstant(axesConstant);
                     }
                 }
@@ -998,11 +1008,11 @@ namespace Unity.Sentis.ONNX
                     // Pad-1 or Pad-2
                     var pads = node.GetRequiredIntArray(node.HasAttribute("pads") ? "pads" : "paddings");
                     var padsIndex = AppendNewLayer();
-                    model.AddConstant(new Layers.Constant(padsIndex, new TensorShape(pads.Length), pads));
+                    model.AddConstant(new Constant(padsIndex, new TensorShape(pads.Length), pads));
 
                     var value = node.GetOptionalFloat("value", 0f);
                     var valueIndex = AppendNewLayer();
-                    model.AddConstant(new Layers.Constant(valueIndex, new TensorShape(), new[] { value }));
+                    model.AddConstant(new Constant(valueIndex, new TensorShape(), new[] { value }));
 
                     model.AddLayer(new Layers.Pad(AppendName(node.Name), NameToIndex(node.Input0), padsIndex, valueIndex, mode: mode));
                 }
@@ -1021,7 +1031,7 @@ namespace Unity.Sentis.ONNX
                     // Reshape-1
                     var shape = node.GetRequiredIntArray("shape");
                     var shapeIndex = AppendNewLayer();
-                    model.AddConstant(new Layers.Constant(shapeIndex, new TensorShape(shape.Length), shape));
+                    model.AddConstant(new Constant(shapeIndex, new TensorShape(shape.Length), shape));
                     model.AddLayer(new Layers.Reshape(AppendName(node.Name), NameToIndex(node.Input0), shapeIndex));
                 }
                 else
@@ -1066,17 +1076,17 @@ namespace Unity.Sentis.ONNX
                     // Slice-1
                     var starts = node.GetRequiredIntArray("starts");
                     var startsIndex = AppendNewLayer();
-                    model.AddConstant(new Layers.Constant(startsIndex, new TensorShape(starts.Length), starts));
+                    model.AddConstant(new Constant(startsIndex, new TensorShape(starts.Length), starts));
 
                     var ends = node.GetRequiredIntArray("ends");
                     var endsIndex = AppendNewLayer();
-                    model.AddConstant(new Layers.Constant(endsIndex, new TensorShape(ends.Length), ends));
+                    model.AddConstant(new Constant(endsIndex, new TensorShape(ends.Length), ends));
 
                     if (node.HasAttribute("axes"))
                     {
                         var axes = node.GetRequiredIntArray("axes");
                         var axesIndex = AppendNewLayer();
-                        model.AddConstant(new Layers.Constant(axesIndex, new TensorShape(axes.Length), axes));
+                        model.AddConstant(new Constant(axesIndex, new TensorShape(axes.Length), axes));
                         model.AddLayer(new Layers.Slice(AppendName(node.Name), NameToIndex(node.Input0), startsIndex, endsIndex, axesIndex));
                     }
                     else
@@ -1106,7 +1116,7 @@ namespace Unity.Sentis.ONNX
                     // Split-1, Split-2, Split-11 with "split" attribute
                     var split = node.GetRequiredIntArray("split");
                     var splitIndex = AppendNewLayer();
-                    model.AddConstant(new Layers.Constant(splitIndex, new TensorShape(split.Length), split));
+                    model.AddConstant(new Constant(splitIndex, new TensorShape(split.Length), split));
                     model.AddLayer(new Layers.Split(outputs, NameToIndex(node.Input0), splitIndex, axis));
                 }
                 else if (!string.IsNullOrEmpty(node.OptionalInput(1)))
@@ -1128,7 +1138,7 @@ namespace Unity.Sentis.ONNX
                     var axes = node.GetRequiredIntArray("axes");
                     var axesIndex = AppendNewLayer();
 
-                    model.AddConstant(new Layers.Constant(axesIndex, new TensorShape(axes.Length), axes));
+                    model.AddConstant(new Constant(axesIndex, new TensorShape(axes.Length), axes));
                     model.AddLayer(new Layers.Squeeze(AppendName(node.Name), NameToIndex(node.Input0), axesIndex));
                 }
                 else
@@ -1162,7 +1172,7 @@ namespace Unity.Sentis.ONNX
                     var scales = node.GetRequiredFloatArray("scales");
                     var scalesIndex = AppendNewLayer();
 
-                    model.AddConstant(new Layers.Constant(scalesIndex, new TensorShape(scales.Length), scales));
+                    model.AddConstant(new Constant(scalesIndex, new TensorShape(scales.Length), scales));
                     model.AddLayer(new Layers.Resize(AppendName(node.Name), NameToIndex(node.Input0), scalesIndex, Layers.ScaleMode.Scales, mode, coordinateTransformMode, nearestMode, null));
                 }
                 else
@@ -1179,7 +1189,7 @@ namespace Unity.Sentis.ONNX
                     var axes = node.GetRequiredIntArray("axes");
                     var axesIndex = AppendNewLayer();
 
-                    model.AddConstant(new Layers.Constant(axesIndex, new TensorShape(axes.Length), axes));
+                    model.AddConstant(new Constant(axesIndex, new TensorShape(axes.Length), axes));
                     model.AddLayer(new Layers.Unsqueeze(AppendName(node.Name), NameToIndex(node.Input0), axesIndex));
                 }
                 else
@@ -1246,8 +1256,8 @@ namespace Unity.Sentis.ONNX
 
                 var scaleIndex = AppendNewLayer();
                 var biasIndex = AppendNewLayer();
-                model.AddConstant(new Layers.Constant(scaleIndex, new TensorShape(maxElements), attrScale));
-                model.AddConstant(new Layers.Constant(biasIndex, new TensorShape(maxElements), attrBias));
+                model.AddConstant(new Constant(scaleIndex, new TensorShape(maxElements), attrScale));
+                model.AddConstant(new Constant(biasIndex, new TensorShape(maxElements), attrBias));
                 model.AddLayer(new Layers.ScaleBias(AppendName(node.Name), NameToIndex(node.Input0), scaleIndex, biasIndex));
             }
             else
@@ -1369,7 +1379,7 @@ namespace Unity.Sentis.ONNX
                     continue;
 
                 var onnxShape = input.Type.TensorType.Shape;
-                var inputShape = SymbolicTensorShape.UnknownOfRank(onnxShape.Dim.Count);
+                var inputShape = DynamicTensorShape.DynamicOfRank(onnxShape.Dim.Count);
 
                 for (var i = 0; i < inputShape.rank; i++)
                 {
@@ -1377,7 +1387,7 @@ namespace Unity.Sentis.ONNX
                     switch (dim.ValueCase)
                     {
                         case TensorShapeProto.Types.Dimension.ValueOneofCase.None:
-                            inputShape[i] = SymbolicTensorDim.Unknown;
+                            inputShape[i] = DynamicTensorDim.Unknown;
                             break;
                         case TensorShapeProto.Types.Dimension.ValueOneofCase.DimParam:
                             var index = namedDims.IndexOf(dim.DimParam);
@@ -1386,13 +1396,13 @@ namespace Unity.Sentis.ONNX
                                 index = namedDims.Count;
                                 namedDims.Add(dim.DimParam);
                             }
-                            inputShape[i] = SymbolicTensorDim.Param((byte)index);
+                            inputShape[i] = DynamicTensorDim.Param((byte)index);
                             break;
                         case TensorShapeProto.Types.Dimension.ValueOneofCase.DimValue:
                             if (dim.DimValue < 0)
                                 Warn(WarningType.Warning, "Tensor shape has negative index, treating as unknown dimension");
                             else
-                                inputShape[i] = SymbolicTensorDim.Int(dim.DimValue > int.MaxValue ? int.MaxValue : (int)dim.DimValue);
+                                inputShape[i] = DynamicTensorDim.Int(dim.DimValue > int.MaxValue ? int.MaxValue : (int)dim.DimValue);
                             break;
                         default:
                             throw new ArgumentOutOfRangeException();
@@ -1476,6 +1486,24 @@ namespace Unity.Sentis.ONNX
                 ModelOptimizer.OptimizeModel(ref model);
             }
 
+            // Invoke metadata handlers
+            var propDict = new Dictionary<string, string>();
+            foreach (var prop in onnxModel.MetadataProps)
+            {
+                propDict[prop.Key] = prop.Value;
+            }
+
+            MetadataLoaded?.Invoke(new ONNXModelMetadata
+            {
+                DocString = onnxModel.DocString,
+                Domain = onnxModel.Domain,
+                IRVersion = onnxModel.IrVersion,
+                MetadataProps = propDict,
+                ProducerName = onnxModel.ProducerName,
+                ProducerVersion = onnxModel.ProducerVersion,
+                ModelVersion = onnxModel.ModelVersion,
+            });
+
             return model;
         }
 
@@ -1515,7 +1543,7 @@ namespace Unity.Sentis.ONNX
         /// <summary>
         /// Represents types of warning from the model importer.
         /// </summary>
-        public enum WarningType
+        internal enum WarningType
         {
             /// <summary>
             /// No error.
@@ -1541,7 +1569,7 @@ namespace Unity.Sentis.ONNX
         /// <summary>
         /// Represents the data structure for a warning from the model importer.
         /// </summary>
-        public class ImporterWarning
+        internal class ImporterWarning
         {
             /// <summary>
             /// A message.
@@ -1569,7 +1597,7 @@ namespace Unity.Sentis.ONNX
     /// <summary>
     /// Represents an exception during the import of an ONNX model.
     /// </summary>
-    public class OnnxImportException : Exception
+    class OnnxImportException : Exception
     {
         /// <summary>
         /// Initializes and returns an instance of `OnnxImportException`.
@@ -1581,7 +1609,7 @@ namespace Unity.Sentis.ONNX
     /// <summary>
     /// Represents an exception during the import of a ONNX layer.
     /// </summary>
-    public class OnnxLayerImportException : Exception
+    class OnnxLayerImportException : Exception
     {
         /// <summary>
         /// Initializes and returns an instance of `ONNXLayerImportException`.

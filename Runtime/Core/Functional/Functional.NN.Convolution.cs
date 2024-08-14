@@ -18,10 +18,20 @@ namespace Unity.Sentis
         public static FunctionalTensor Conv1D(FunctionalTensor input, FunctionalTensor weight, FunctionalTensor bias, int stride = 1, int padding = 0, int dilation = 1, int groups = 1)
         {
             // TODO add auto padding
+            DeclareRank(input, 3);
+            DeclareRank(weight, 3);
+            if (bias != null)
+                DeclareRank(bias, 1);
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, new[] { stride }, new[] { padding, padding }, new[] { dilation }), DataType.Float, new[] { input, weight, bias });
+            var strides = new[] { stride };
+            var pads = new[] { padding, padding };
+            var dilations = new[] { dilation };
+            var output = FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, strides, pads, dilations), DataType.Float, new[] { input, weight, bias });
+            if (input.isShapeKnown && weight.isShapeKnown)
+                output.SetShape(ShapeInference.Conv(input.shape, weight.shape, groups, strides, pads, dilations));
+            return output;
         }
 
         /// <summary>
@@ -38,10 +48,20 @@ namespace Unity.Sentis
         public static FunctionalTensor Conv2D(FunctionalTensor input, FunctionalTensor weight, FunctionalTensor bias, int stride = 1, int padding = 0, int dilation = 1, int groups = 1)
         {
             // TODO add auto padding
+            DeclareRank(input, 4);
+            DeclareRank(weight, 4);
+            if (bias != null)
+                DeclareRank(bias, 1);
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, new[] { stride, stride }, new[] { padding, padding, padding, padding }, new[] { dilation, dilation }), DataType.Float, new[] { input, weight, bias });
+            var strides = new[] { stride, stride };
+            var pads = new[] { padding, padding, padding, padding };
+            var dilations = new[] { dilation, dilation };
+            var output = FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, strides, pads, dilations), DataType.Float, new[] { input, weight, bias });
+            if (input.isShapeKnown && weight.isShapeKnown)
+                output.SetShape(ShapeInference.Conv(input.shape, weight.shape, groups, strides, pads, dilations));
+            return output;
         }
 
         /// <summary>
@@ -58,13 +78,20 @@ namespace Unity.Sentis
         public static FunctionalTensor Conv2D(FunctionalTensor input, FunctionalTensor weight, FunctionalTensor bias, (int, int) stride, (int, int) padding, (int, int) dilation, int groups = 1)
         {
             // TODO add auto padding
+            DeclareRank(input, 4);
+            DeclareRank(weight, 4);
+            if (bias != null)
+                DeclareRank(bias, 1);
             var strideArray = new[] { stride.Item1, stride.Item2 };
             var paddingArray = new[] { padding.Item1, padding.Item2, padding.Item1, padding.Item2 };
             var dilationArray = new[] { dilation.Item1, dilation.Item2 };
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, strideArray, paddingArray, dilationArray), DataType.Float, new[] { input, weight, bias });
+            var output = FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, strideArray, paddingArray, dilationArray), DataType.Float, new[] { input, weight, bias });
+            if (input.isShapeKnown && weight.isShapeKnown)
+                output.SetShape(ShapeInference.Conv(input.shape, weight.shape, groups, strideArray, paddingArray, dilationArray));
+            return output;
         }
 
         /// <summary>
@@ -81,10 +108,20 @@ namespace Unity.Sentis
         public static FunctionalTensor Conv3D(FunctionalTensor input, FunctionalTensor weight, FunctionalTensor bias, int stride = 1, int padding = 0, int dilation = 1, int groups = 1)
         {
             // TODO add auto padding
+            DeclareRank(input, 5);
+            DeclareRank(weight, 5);
+            if (bias != null)
+                DeclareRank(bias, 1);
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, new[] { stride, stride, stride }, new[] { padding, padding, padding, padding, padding, padding }, new[] { dilation, dilation, dilation }), DataType.Float, new[] { input, weight, bias });
+            var strides = new[] { stride, stride, stride };
+            var pads = new[] { padding, padding, padding, padding, padding, padding };
+            var dilations = new[] { dilation, dilation, dilation };
+            var output = FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, strides, pads, dilations), DataType.Float, new[] { input, weight, bias });
+            if (input.isShapeKnown && weight.isShapeKnown)
+                output.SetShape(ShapeInference.Conv(input.shape, weight.shape, groups, strides, pads, dilations));
+            return output;
         }
 
         /// <summary>
@@ -101,13 +138,20 @@ namespace Unity.Sentis
         public static FunctionalTensor Conv3D(FunctionalTensor input, FunctionalTensor weight, FunctionalTensor bias, (int, int, int) stride, (int, int, int) padding, (int, int, int) dilation, int groups = 1)
         {
             // TODO add auto padding
+            DeclareRank(input, 5);
+            DeclareRank(weight, 5);
+            if (bias != null)
+                DeclareRank(bias, 1);
             var strideArray = new[] { stride.Item1, stride.Item2, stride.Item3 };
             var paddingArray = new[] { padding.Item1, padding.Item2, padding.Item3, padding.Item1, padding.Item2, padding.Item3 };
             var dilationArray = new[] { dilation.Item1, dilation.Item2, dilation.Item3 };
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, strideArray, paddingArray, dilationArray), DataType.Float, new[] { input, weight, bias });
+            var output = FromLayer(new Layers.Conv(-1, -1, -1, -1, groups, strideArray, paddingArray, dilationArray), DataType.Float, new[] { input, weight, bias });
+            if (input.isShapeKnown && weight.isShapeKnown)
+                output.SetShape(ShapeInference.Conv(input.shape, weight.shape, groups, strideArray, paddingArray, dilationArray));
+            return output;
         }
 
         /// <summary>
@@ -124,10 +168,20 @@ namespace Unity.Sentis
         {
             // TODO add auto padding
             // TODO support groups, dilation
+            DeclareRank(input, 3);
+            DeclareRank(weight, 3);
+            if (bias != null)
+                DeclareRank(bias, 1);
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, new[] { stride }, new[] { padding, padding }, Layers.AutoPad.NotSet, new[] { outputPadding }), DataType.Float, new[] { input, weight, bias });
+            var strides = new[] { stride };
+            var pads = new[] { padding, padding };
+            var outputPaddings = new[] { outputPadding };
+            var output = FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, strides, pads, Layers.AutoPad.NotSet, outputPaddings), DataType.Float, new[] { input, weight, bias });
+            if (input.isShapeKnown && weight.isShapeKnown)
+                output.SetShape(ShapeInference.ConvTranspose(input.shape, weight.shape, strides, pads, outputPaddings));
+            return output;
         }
 
         /// <summary>
@@ -144,10 +198,20 @@ namespace Unity.Sentis
         {
             // TODO add auto padding
             // TODO support groups, dilation
+            DeclareRank(input, 4);
+            DeclareRank(weight, 4);
+            if (bias != null)
+                DeclareRank(bias, 1);
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, new[] { stride, stride }, new[] { padding, padding, padding, padding }, Layers.AutoPad.NotSet, new[] { outputPadding, outputPadding }), DataType.Float, new[] { input, weight, bias });
+            var strides = new[] { stride, stride };
+            var pads = new[] { padding, padding, padding, padding };
+            var outputPaddings = new[] { outputPadding, outputPadding };
+            var output = FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, strides, pads, Layers.AutoPad.NotSet, outputPaddings), DataType.Float, new[] { input, weight, bias });
+            if (input.isShapeKnown && weight.isShapeKnown)
+                output.SetShape(ShapeInference.ConvTranspose(input.shape, weight.shape, strides, pads, outputPaddings));
+            return output;
         }
 
         /// <summary>
@@ -164,13 +228,20 @@ namespace Unity.Sentis
         {
             // TODO add auto padding
             // TODO support groups, dilation
+            DeclareRank(input, 4);
+            DeclareRank(weight, 4);
+            if (bias != null)
+                DeclareRank(bias, 1);
             var strideArray = new[] { stride.Item1, stride.Item2 };
             var paddingArray = new[] { padding.Item1, padding.Item2, padding.Item1, padding.Item2 };
             var outputPaddingArray = new[] { outputPadding.Item1, outputPadding.Item2 };
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, strideArray, paddingArray, Layers.AutoPad.NotSet, outputPaddingArray), DataType.Float, new[] { input, weight, bias });
+            var output = FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, strideArray, paddingArray, Layers.AutoPad.NotSet, outputPaddingArray), DataType.Float, new[] { input, weight, bias });
+            if (input.isShapeKnown && weight.isShapeKnown)
+                output.SetShape(ShapeInference.ConvTranspose(input.shape, weight.shape, strideArray, paddingArray, outputPaddingArray));
+            return output;
         }
 
         /// <summary>
@@ -187,10 +258,20 @@ namespace Unity.Sentis
         {
             // TODO add auto padding
             // TODO support groups, dilation
+            DeclareRank(input, 5);
+            DeclareRank(weight, 5);
+            if (bias != null)
+                DeclareRank(bias, 1);
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, new[] { stride, stride, stride }, new[] { padding, padding, padding, padding, padding, padding }, Layers.AutoPad.NotSet, new[] { outputPadding, outputPadding, outputPadding }), DataType.Float, new[] { input, weight, bias });
+            var strides = new[] { stride, stride, stride };
+            var pads = new[] { padding, padding, padding, padding, padding, padding };
+            var outputPaddings = new[] { outputPadding, outputPadding, outputPadding };
+            var output = FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, strides, pads, Layers.AutoPad.NotSet, outputPaddings), DataType.Float, new[] { input, weight, bias });
+            if (input.isShapeKnown && weight.isShapeKnown)
+                output.SetShape(ShapeInference.ConvTranspose(input.shape, weight.shape, strides, pads, outputPaddings));
+            return output;
         }
 
         /// <summary>
@@ -207,13 +288,20 @@ namespace Unity.Sentis
         {
             // TODO add auto padding
             // TODO support groups, dilation
+            DeclareRank(input, 5);
+            DeclareRank(weight, 5);
+            if (bias != null)
+                DeclareRank(bias, 1);
             var strideArray = new[] { stride.Item1, stride.Item2, stride.Item3 };
             var paddingArray = new[] { padding.Item1, padding.Item2, padding.Item3, padding.Item1, padding.Item2, padding.Item3 };
             var outputPaddingArray = new[] { outputPadding.Item1, outputPadding.Item2, outputPadding.Item3 };
             input = input.Float();
             weight = weight.Float();
             bias = bias?.Float();
-            return FunctionalTensor.FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, strideArray, paddingArray, Layers.AutoPad.NotSet, outputPaddingArray), DataType.Float, new[] { input, weight, bias });
+            var output = FromLayer(new Layers.ConvTranspose(-1, -1, -1, -1, strideArray, paddingArray, Layers.AutoPad.NotSet, outputPaddingArray), DataType.Float, new[] { input, weight, bias });
+            if (input.isShapeKnown && weight.isShapeKnown)
+                output.SetShape(ShapeInference.ConvTranspose(input.shape, weight.shape, strideArray, paddingArray, outputPaddingArray));
+            return output;
         }
     }
 }

@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/OneHot"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile _ OneHotInt
+            #pragma multi_compile_local _ OneHotInt
             #pragma vertex vert
             #pragma fragment frag
 

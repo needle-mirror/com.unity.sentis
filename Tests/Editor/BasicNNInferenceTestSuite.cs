@@ -22,12 +22,12 @@ namespace Unity.Sentis.Editor.Tests
 
             var modelAsset = AssetDatabase.LoadAssetAtPath(AssetDatabase.GUIDToAssetPath(allCandidates[0]), typeof(ModelAsset)) as ModelAsset;
             var model = ModelLoader.Load(modelAsset);
-            var engine = WorkerFactory.CreateWorker(model, DeviceType.CPU);
+            var worker = new Worker(model, BackendType.CPU);
 
-            var inputTensor = new TensorFloat(new TensorShape(1, 28, 28, 1), input);
-            engine.Execute(inputTensor);
+            var inputTensor = new Tensor<float>(new TensorShape(1, 28, 28, 1), input);
+            worker.Schedule(inputTensor);
 
-            var outputTensor = (engine.PeekOutput() as TensorFloat);
+            var outputTensor = (worker.PeekOutput() as Tensor<float>);
 
             Assert.AreEqual(output.Length, outputTensor.shape.length);
             // Check if output matches expected output down to epsilon
@@ -37,7 +37,7 @@ namespace Unity.Sentis.Editor.Tests
             }
 
             inputTensor.Dispose();
-            engine.Dispose();
+            worker.Dispose();
         }
 
         // Bitmap of the handwritten number 7

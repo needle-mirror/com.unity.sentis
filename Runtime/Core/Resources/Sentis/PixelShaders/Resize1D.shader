@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/Resize1D"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile LINEAR NEAREST_FLOOR NEAREST_CEIL
+            #pragma multi_compile_local LINEAR NEAREST_FLOOR NEAREST_CEIL
 
             #pragma vertex vert
             #pragma fragment frag

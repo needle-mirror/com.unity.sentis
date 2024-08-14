@@ -129,18 +129,18 @@ namespace Unity.Sentis
                 {
                     int input = executionPlan.Inputs(i);
                     var inputDesc = executionPlan.Values(input).Value.ValAsTensor();
-                    SymbolicTensorShape shape;
+                    DynamicTensorShape shape;
                     if (inputDesc.ShapeDynamism == TensorShapeDynamism.STATIC)
                     {
-                        shape = new SymbolicTensorShape(new TensorShape(inputDesc.GetFixedSizesArray()));
+                        shape = new DynamicTensorShape(new TensorShape(inputDesc.GetFixedSizesArray()));
                     }
                     else
                     {
-                        shape = SymbolicTensorShape.UnknownOfRank(inputDesc.DynamicSizesLength);
+                        shape = DynamicTensorShape.DynamicOfRank(inputDesc.DynamicSizesLength);
                         for (int k = 0; k < shape.rank; k++)
                         {
                             var ddim = inputDesc.DynamicSizes(k).Value;
-                            shape[k] = ddim.ValType == SymbolicDim.Int ? SymbolicTensorDim.Int(ddim.ValAsInt().IntVal) : SymbolicTensorDim.Param(ddim.ValAsByte().ByteVal);
+                            shape[k] = ddim.ValType == SymbolicDim.Int ? DynamicTensorDim.Int(ddim.ValAsInt().IntVal) : DynamicTensorDim.Param(ddim.ValAsByte().ByteVal);
                         }
                     }
 

@@ -7,7 +7,7 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Options for the padding values for `Pad`.
     /// </summary>
-    public enum PadMode
+    enum PadMode
     {
         /// <summary>
         /// Use a constant value for the padded data.
@@ -34,7 +34,7 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Options for the scaling mode to use for `Resize`.
     /// </summary>
-    public enum ScaleMode
+    enum ScaleMode
     {
         /// <summary>
         /// Use the size tensor directly for the shape of the output tensor.
@@ -49,7 +49,7 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Options for the interpolation mode to use for `Resize`.
     /// </summary>
-    public enum InterpolationMode
+    enum InterpolationMode
     {
         /// <summary>
         /// Use the nearest element to the calculated coordinate. The exact behaviour depends on `nearestMode`.
@@ -68,7 +68,7 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Options for how to sample the nearest element in `Resize` when using `InterpolationMode.NearestMode`.
     /// </summary>
-    public enum NearestMode
+    enum NearestMode
     {
         /// <summary>
         /// Use rounding to the nearest integer coordinate. If the fractional part equals 0.5 then round down.
@@ -91,7 +91,7 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Padding mode for outside grid values.
     /// </summary>
-    public enum PaddingMode
+    enum PaddingMode
     {
         /// <summary>
         /// Use 0 for out-of-bound grid locations.
@@ -110,7 +110,7 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Options for how to transform between the coordinate in the output tensor and the coordinate in the input tensor in `Resize`.
     /// </summary>
-    public enum CoordTransformMode
+    enum CoordTransformMode
     {
         /// <summary>
         /// Use shifting by half a pixel before and after scaling.
@@ -133,7 +133,7 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Options for which part of the input matrix to retain in `Trilu`.
     /// </summary>
-    public enum TriluMode
+    enum TriluMode
     {
         /// <summary>
         /// Use retaining of the lower part of the input matrix.
@@ -148,7 +148,7 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Options for the ordering of the elements in `DepthToSpace`.
     /// </summary>
-    public enum DepthToSpaceMode
+    enum DepthToSpaceMode
     {
         /// <summary>
         /// Use depth, column, row ordering where the data is arranged (by * blocksize * channels) + (bx * channels) + c.
@@ -178,7 +178,7 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(toType, ctx.GetPartialTensor(inputs[0]).shape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, toType, ctx.backend.backendType);
@@ -188,11 +188,11 @@ namespace Unity.Sentis.Layers
             if (X.dataType == O.dataType)
                 ctx.backend.MemCopy(X, O);
             else if (X.dataType == DataType.Int && O.dataType == DataType.Float)
-                ctx.backend.Cast(X as TensorInt, O as TensorFloat);
+                ctx.backend.Cast(X as Tensor<int>, O as Tensor<float>);
             else if (X.dataType == DataType.Float && O.dataType == DataType.Int)
-                ctx.backend.Cast(X as TensorFloat, O as TensorInt);
+                ctx.backend.Cast(X as Tensor<float>, O as Tensor<int>);
             else if (X.dataType == DataType.Short && O.dataType == DataType.Float)
-                ctx.backend.Cast(X as TensorShort, O as TensorFloat);
+                ctx.backend.Cast(X as Tensor<short>, O as Tensor<float>);
             else
                 throw new NotImplementedException();
         }
@@ -214,7 +214,7 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(toType, ctx.GetPartialTensor(inputs[0]).shape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var dataType = ctx.storage.GetDataType(inputs[1]);
@@ -225,11 +225,11 @@ namespace Unity.Sentis.Layers
             if (X.dataType == dataType)
                 ctx.backend.MemCopy(X, O);
             else if (X.dataType == DataType.Int && dataType == DataType.Float)
-                ctx.backend.Cast(X as TensorInt, O as TensorFloat);
+                ctx.backend.Cast(X as Tensor<int>, O as Tensor<float>);
             else if (X.dataType == DataType.Float && dataType == DataType.Int)
-                ctx.backend.Cast(X as TensorFloat, O as TensorInt);
+                ctx.backend.Cast(X as Tensor<float>, O as Tensor<int>);
             else if (X.dataType == DataType.Short && dataType == DataType.Float)
-                ctx.backend.Cast(X as TensorShort, O as TensorFloat);
+                ctx.backend.Cast(X as Tensor<short>, O as Tensor<float>);
             else
                 throw new NotImplementedException();
         }
@@ -256,30 +256,30 @@ namespace Unity.Sentis.Layers
             var inputTensors = ctx.GetPartialTensors(inputs);
             var dataType = inputTensors[0].dataType;
 
-            var rank = SymbolicTensorDim.Unknown;
+            var rank = DynamicTensorDim.Unknown;
             foreach (var tensorInput in inputTensors)
             {
                 if (tensorInput.shape.hasRank)
-                    rank = SymbolicTensorDim.MaxDefinedDim(rank, SymbolicTensorDim.Int(tensorInput.shape.rank));
+                    rank = DynamicTensorDim.MaxDefinedDim(rank, DynamicTensorDim.Int(tensorInput.shape.rank));
             }
 
             if (rank.isUnknown)
             {
-                ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, SymbolicTensorShape.UnknownShape));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, DynamicTensorShape.DynamicRank));
                 return;
             }
 
             foreach (var tensorInput in inputTensors)
                 tensorInput.shape.DeclareRank(rank.value);
 
-            var shapeOut = SymbolicTensorShape.UnknownOfRank(rank.value);
+            var shapeOut = DynamicTensorShape.DynamicOfRank(rank.value);
             var axisOut = shapeOut.Axis(axis);
 
             for (var i = 0; i < shapeOut.rank; i++)
             {
                 if (i == axisOut)
                 {
-                    shapeOut[i] = SymbolicTensorDim.Zero;
+                    shapeOut[i] = DynamicTensorDim.Zero;
                     foreach (var tensorInput in inputTensors)
                     {
                         shapeOut[i] += tensorInput.shape[i];
@@ -287,10 +287,10 @@ namespace Unity.Sentis.Layers
                 }
                 else
                 {
-                    shapeOut[i] = SymbolicTensorDim.Unknown;
+                    shapeOut[i] = DynamicTensorDim.Unknown;
                     foreach (var tensorInput in inputTensors)
                     {
-                        shapeOut[i] = SymbolicTensorDim.MaxDefinedDim(shapeOut[i], tensorInput.shape[i]);
+                        shapeOut[i] = DynamicTensorDim.MaxDefinedDim(shapeOut[i], tensorInput.shape[i]);
                     }
                 }
             }
@@ -315,7 +315,7 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], tensorOut);
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var shapeO = ctx.storage.GetTensorShape(inputs[0]);
             for (var i = 1; i < inputs.Length; i++)
@@ -369,13 +369,13 @@ namespace Unity.Sentis.Layers
             var X = ctx.GetPartialTensor(inputs[0]);
             var shapeX = X.shape;
             shapeX.DeclareRank(4);
-            ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, new SymbolicTensorShape(shapeX[0], shapeX[1] / (blocksize * blocksize), shapeX[2] * blocksize, shapeX[3] * blocksize)));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, new DynamicTensorShape(shapeX[0], shapeX[1] / (blocksize * blocksize), shapeX[2] * blocksize, shapeX[3] * blocksize)));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.DepthToSpace(X.shape, blocksize), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.DepthToSpace(X.shape, blocksize), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.DepthToSpace(X, O, blocksize, mode);
@@ -401,10 +401,10 @@ namespace Unity.Sentis.Layers
         {
             var X = ctx.GetPartialTensor(inputs[0]);
             var shape = ctx.GetPartialTensor(inputs[1]);
-            ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, shape.ToSymbolicTensorShape().Broadcast(X.shape)));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, shape.ToDynamicTensorShape().Broadcast(X.shape)));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var shape = new TensorShape(ctx.storage.GetInts(inputs[1]));
@@ -437,15 +437,15 @@ namespace Unity.Sentis.Layers
             if (!shapeX.hasRank)
             {
                 if (axis == 0)
-                    ctx.AddPartialTensor(outputs[0], X.Reshape(new SymbolicTensorShape(SymbolicTensorDim.One, shapeX.Length())));
+                    ctx.AddPartialTensor(outputs[0], X.Reshape(new DynamicTensorShape(DynamicTensorDim.One, shapeX.Length())));
                 else
-                    ctx.AddPartialTensor(outputs[0], X.Reshape(SymbolicTensorShape.UnknownOfRank(2)));
+                    ctx.AddPartialTensor(outputs[0], X.Reshape(DynamicTensorShape.DynamicOfRank(2)));
                 return;
             }
 
             var axisX = axis >= 0 ? axis : shapeX.rank + axis;
 
-            var shapeOut = SymbolicTensorShape.Ones(2);
+            var shapeOut = DynamicTensorShape.Ones(2);
             for (var i = 0; i < axisX; i++)
             {
                 shapeOut[0] *= shapeX[i];
@@ -458,7 +458,7 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], X.Reshape(shapeOut));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var shape = X.shape.Flatten(axis);
@@ -498,7 +498,7 @@ namespace Unity.Sentis.Layers
             var X = ctx.GetPartialTensor(inputs[0]);
             var grid = ctx.GetPartialTensor(inputs[1]);
 
-            var outShape = SymbolicTensorShape.UnknownShape;
+            var outShape = DynamicTensorShape.DynamicRank;
 
             if (X.shape.hasRank)
                 outShape.DeclareRank(X.shape.rank);
@@ -509,7 +509,7 @@ namespace Unity.Sentis.Layers
             {
                 outShape[i] = i switch
                 {
-                    0 => SymbolicTensorDim.MaxDefinedDim(X.shape[0], grid.shape[0]),
+                    0 => DynamicTensorDim.MaxDefinedDim(X.shape[0], grid.shape[0]),
                     1 => X.shape[i],
                     _ => grid.shape[i - 1]
                 };
@@ -518,16 +518,11 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, outShape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var grid = ctx.storage.GetTensor(inputs[1]) as TensorFloat;
-            var shapeO = TensorShape.Ones(X.shape.rank);
-            shapeO[0] = X.shape[0];
-            shapeO[1] = X.shape[1];
-            for (var i = 2; i < shapeO.rank; i++)
-                shapeO[i] = grid.shape[i - 1];
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shapeO, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var grid = ctx.storage.GetTensor(inputs[1]) as Tensor<float>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.GridSample(X.shape, grid.shape), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.GridSample(X, grid, O, mode, paddingMode, alignCorners);
@@ -554,7 +549,7 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], ctx.GetPartialTensor(inputs[0]));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
@@ -594,7 +589,7 @@ namespace Unity.Sentis.Layers
                 return;
             }
 
-            var shapeOut = SymbolicTensorShape.UnknownOfRank(shapeX.rank);
+            var shapeOut = DynamicTensorShape.DynamicOfRank(shapeX.rank);
 
             // move given dims
             uint srcAxesBitMask = 0;
@@ -626,37 +621,12 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(ctx.GetPartialTensor(inputs[0]).dataType, shapeOut));
         }
 
-        public override unsafe void Execute(ExecutionContext ctx)
+        internal override unsafe void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
 
             Span<int> permutations = stackalloc int[X.shape.rank];
-            // move given dims
-            uint srcAxesBitMask = 0;
-            uint dstAxesBitMask = 0;
-            for (var i = 0; i < source.Length; i++)
-            {
-                var srcAxis = X.shape.Axis(source[i]);
-                var dstAxis = X.shape.Axis(destination[i]);
-                Logger.AssertIsTrue(((srcAxesBitMask >> srcAxis) & 1U) == 0, "MoveDim.ValueError: source dims may not repeat");
-                Logger.AssertIsTrue(((dstAxesBitMask >> dstAxis) & 1U) == 0, "MoveDim.ValueError: destination dims may not repeat");
-                srcAxesBitMask |= 1U << srcAxis;
-                dstAxesBitMask |= 1U << dstAxis;
-                permutations[dstAxis] = srcAxis;
-            }
-
-            // fill remaining dims in order
-            for (int srcAxis = 0, dstAxis = 0; srcAxis < X.shape.rank; srcAxis++)
-            {
-                if (((srcAxesBitMask >> srcAxis) & 1U) != 0)
-                    continue;
-                while (((dstAxesBitMask >> dstAxis) & 1U) != 0)
-                    dstAxis++;
-                srcAxesBitMask |= 1U << srcAxis;
-                dstAxesBitMask |= 1U << dstAxis;
-                permutations[dstAxis] = srcAxis;
-                dstAxis++;
-            }
+            ShapeInference.MoveDim(X.shape, source, destination, ref permutations);
 
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Transpose(permutations), X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
@@ -686,21 +656,21 @@ namespace Unity.Sentis.Layers
             var dim = ctx.GetPartialTensor(inputs[1]);
             var start = ctx.GetPartialTensor(inputs[2]);
             var length = ctx.GetPartialTensor(inputs[3]);
-            if (!dim.IsFullyKnown())
+            if (!dim.IsStatic())
             {
-                ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, SymbolicTensorShape.UnknownOfRank(X.shape.rank)));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, DynamicTensorShape.DynamicOfRank(X.shape.rank)));
                 return;
             }
 
             var dimValue = dim[0].intValue;
 
-            if (X.isPartiallyKnown && X.shape.rank == 1 && start.IsFullyKnown() && length.IsFullyKnown())
+            if (X.isPartiallyKnown && X.shape.rank == 1 && start.IsStatic() && length.IsStatic())
             {
                 var dimSize = X.shape[dimValue].value;
                 var startValue = (start[0].intValue + dimSize) % dimSize;
                 var end = Mathf.Min(startValue + length[0].intValue, dimSize);
                 var lengthValue = end - startValue;
-                var oShape = new SymbolicTensorShape(lengthValue);
+                var oShape = new DynamicTensorShape(lengthValue);
                 var tensorOut = new PartialTensor(X.dataType, oShape);
                 for (var i = 0; i < lengthValue; i++)
                     tensorOut[i] = X[startValue + i];
@@ -709,24 +679,17 @@ namespace Unity.Sentis.Layers
             }
 
             var outShape = X.shape;
-            outShape[dimValue] = SymbolicTensorDim.Unknown;
+            outShape[dimValue] = DynamicTensorDim.Unknown;
             ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, outShape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var dim = ctx.storage.GetInt(inputs[1]);
             var start = ctx.storage.GetInt(inputs[2]);
             var length = ctx.storage.GetInt(inputs[3]);
-            dim = X.shape.Axis(dim);
-            var dimSize = X.shape[dim];
-            start = (start + dimSize) % dimSize;
-            var end = Mathf.Min(start + length, dimSize);
-            length = end - start;
-            var oShape = X.shape;
-            oShape[dim] = length;
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], oShape, X.dataType, ctx.backend.backendType);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.MoveDim(X.shape, ref dim, ref start, ref length), X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Split(X, O, dim, start);
@@ -765,10 +728,10 @@ namespace Unity.Sentis.Layers
             if (axes == null)
             {
                 shapeX.DeclareRank(shapePads[0] / 2);
-                axes = shapeX.hasRank ? PartialTensor.Range(0, shapeX.rank) : new PartialTensor(DataType.Int, SymbolicTensorShape.UnknownOfRank(1));
+                axes = shapeX.hasRank ? PartialTensor.Range(0, shapeX.rank) : new PartialTensor(DataType.Int, DynamicTensorShape.DynamicOfRank(1));
             }
 
-            var shapeOut = SymbolicTensorShape.UnknownOfRankLike(shapeX);
+            var shapeOut = DynamicTensorShape.DynamicOfRankLike(shapeX);
 
             if (!axes.isPartiallyKnown)
             {
@@ -784,13 +747,13 @@ namespace Unity.Sentis.Layers
                     continue;
                 var axis = axes[i].intValue;
                 var dimPad = pads[i] + pads[i + axes.length];
-                shapeOut[axis] = shapeX[axis] + (SymbolicTensorDim)dimPad;
+                shapeOut[axis] = shapeX[axis] + (DynamicTensorDim)dimPad;
             }
 
             ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, shapeOut));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var pad = ctx.storage.GetInts(inputs[1]);
@@ -818,9 +781,9 @@ namespace Unity.Sentis.Layers
             {
                 Assert.IsFalse(X.shape.HasZeroDims(), "ValueError: zero dimensions input for Pad operator is not supported");
                 if (X.dataType == DataType.Float)
-                    ctx.backend.Pad(X as TensorFloat, O as TensorFloat, pads, padMode, 0);
+                    ctx.backend.Pad(X as Tensor<float>, O as Tensor<float>, pads, padMode, 0);
                 else
-                    ctx.backend.Pad(X as TensorInt, O as TensorInt, pads, padMode, 0);
+                    ctx.backend.Pad(X as Tensor<int>, O as Tensor<int>, pads, padMode, 0);
                 return;
             }
 
@@ -828,17 +791,17 @@ namespace Unity.Sentis.Layers
             {
                 var constantValue = ctx.storage.GetFloat(inputs[2]);
                 if (X.shape.HasZeroDims())
-                    ctx.backend.MemSet(O as TensorFloat, constantValue);
+                    ctx.backend.MemSet(O as Tensor<float>, constantValue);
                 else
-                    ctx.backend.Pad(X as TensorFloat, O as TensorFloat, pads, padMode, constantValue);
+                    ctx.backend.Pad(X as Tensor<float>, O as Tensor<float>, pads, padMode, constantValue);
             }
             else
             {
                 var constantValue = ctx.storage.GetInt(inputs[2]);
                 if (X.shape.HasZeroDims())
-                    ctx.backend.MemSet(O as TensorInt, constantValue);
+                    ctx.backend.MemSet(O as Tensor<int>, constantValue);
                 else
-                    ctx.backend.Pad(X as TensorInt, O as TensorInt, pads, padMode, constantValue);
+                    ctx.backend.Pad(X as Tensor<int>, O as Tensor<int>, pads, padMode, constantValue);
             }
         }
 
@@ -870,13 +833,13 @@ namespace Unity.Sentis.Layers
             if (!shape.isPartiallyKnown)
             {
                 if (shape.shape[0].isValue)
-                    ctx.AddPartialTensor(outputs[0], X.Reshape(SymbolicTensorShape.UnknownOfRank(shape.shape[0].value)));
+                    ctx.AddPartialTensor(outputs[0], X.Reshape(DynamicTensorShape.DynamicOfRank(shape.shape[0].value)));
                 else
-                    ctx.AddPartialTensor(outputs[0], X.Reshape(SymbolicTensorShape.UnknownShape));
+                    ctx.AddPartialTensor(outputs[0], X.Reshape(DynamicTensorShape.DynamicRank));
                 return;
             }
 
-            var shapeOut = SymbolicTensorShape.UnknownOfRank(shape.length);
+            var shapeOut = DynamicTensorShape.DynamicOfRank(shape.length);
 
             var containsMinusOne = false;
 
@@ -891,7 +854,7 @@ namespace Unity.Sentis.Layers
                 if (shape[i].isUnknown)
                     continue;
 
-                var dim = (SymbolicTensorDim)shape[i];
+                var dim = (DynamicTensorDim)shape[i];
                 if (shape[i].isParam)
                 {
                     if (allowZero || (shapeX.hasRank && i >= shapeX.rank) || shapeX[i] == dim)
@@ -913,13 +876,13 @@ namespace Unity.Sentis.Layers
                 if (shape[i].intValue > 0)
                     shapeOut[i] = dim;
                 else if (shape[i].intValue == 0)
-                    shapeOut[i] = allowZero ? SymbolicTensorDim.Zero : shapeX[i];
+                    shapeOut[i] = allowZero ? DynamicTensorDim.Zero : shapeX[i];
             }
 
             ctx.AddPartialTensor(outputs[0], X.Reshape(shapeOut, !containsMinusOne));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var shape = X.shape.Reshape(ctx.storage.GetInts(inputs[1]), allowZero);
@@ -967,20 +930,20 @@ namespace Unity.Sentis.Layers
             sizesOrScales.shape.DeclareRank(1);
             if (axes == null)
                 shapeX.DeclareRank(sizesOrScales.shape[0]);
-            var shapeOut = new SymbolicTensorShape(shapeX);
+            var shapeOut = new DynamicTensorShape(shapeX);
             if (shapeOut.hasRank)
             {
                 if (axes == null)
                 {
                     for (var i = 0; i < shapeOut.rank; i++)
-                        shapeOut[i] = scaleMode == ScaleMode.Sizes ? (SymbolicTensorDim)sizesOrScales[i] : shapeX[i].Resize(sizesOrScales[i]);
+                        shapeOut[i] = scaleMode == ScaleMode.Sizes ? (DynamicTensorDim)sizesOrScales[i] : shapeX[i].Resize(sizesOrScales[i]);
                 }
                 else
                 {
                     for (var i = 0; i < axes.Length; i++)
                     {
                         var axis = shapeOut.Axis(axes[i]);
-                        shapeOut[axis] = scaleMode == ScaleMode.Sizes ? (SymbolicTensorDim)sizesOrScales[i] : shapeX[axis].Resize(sizesOrScales[i]);
+                        shapeOut[axis] = scaleMode == ScaleMode.Sizes ? (DynamicTensorDim)sizesOrScales[i] : shapeX[axis].Resize(sizesOrScales[i]);
                     }
                 }
             }
@@ -988,9 +951,9 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, shapeOut));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
             Span<float> s = stackalloc float[X.shape.rank];
             for (var i = 0; i < s.Length; i++)
                 s[i] = 1f;
@@ -1013,7 +976,7 @@ namespace Unity.Sentis.Layers
                         s[i] = sizes[i] / (float)X.shape[i];
                 }
 
-                var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.Resize(X.shape, s), DataType.Float, ctx.backend.backendType) as TensorFloat;
+                var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.Resize(X.shape, s), DataType.Float, ctx.backend.backendType) as Tensor<float>;
                 if (O.shape.HasZeroDims())
                     return;
                 ctx.backend.Resize(X, O, s, mode, nearestMode, coordTransformMode);
@@ -1021,22 +984,7 @@ namespace Unity.Sentis.Layers
             else
             {
                 var scales = ctx.storage.GetFloats(inputs[1]);
-
-                if (axes != null)
-                {
-                    for (var i = 0; i < axes.Length; i++)
-                    {
-                        var axis = X.shape.Axis(axes[i]);
-                        s[axis] = scales[i];
-                    }
-                }
-                else
-                {
-                    for (var i = 0; i < X.shape.rank; i++)
-                        s[i] = scales[i];
-                }
-
-                var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.Resize(X.shape, scales), DataType.Float, ctx.backend.backendType) as TensorFloat;
+                var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.Resize(X.shape, scales), DataType.Float, ctx.backend.backendType) as Tensor<float>;
                 if (O.shape.HasZeroDims())
                     return;
                 ctx.backend.Resize(X, O, scales, mode, nearestMode, coordTransformMode);
@@ -1064,19 +1012,19 @@ namespace Unity.Sentis.Layers
             var X = ctx.GetPartialTensor(inputs[0]);
             var dim = ctx.GetPartialTensor(inputs[1]);
             var selectIndex = ctx.GetPartialTensor(inputs[2]);
-            if (!dim.IsFullyKnown())
+            if (!dim.IsStatic())
             {
-                ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, SymbolicTensorShape.UnknownOfRank(X.shape.rank - 1)));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, DynamicTensorShape.DynamicOfRank(X.shape.rank - 1)));
                 return;
             }
 
             var axis = dim[0].intValue;
             var outShape = X.shape;
-            outShape[axis] = SymbolicTensorDim.One;
+            outShape[axis] = DynamicTensorDim.One;
             outShape = outShape.Squeeze(axis);
             var tensorOut = new PartialTensor(X.dataType, outShape);
 
-            if (axis == 0 && X.isPartiallyKnown && selectIndex.IsFullyKnown())
+            if (axis == 0 && X.isPartiallyKnown && selectIndex.IsStatic())
             {
                 var index = selectIndex[0].intValue;
                 index = index < 0 ? index + X.shape.Length().value : index;
@@ -1086,7 +1034,7 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], tensorOut);
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var dim = ctx.storage.GetInt(inputs[1]);
@@ -1145,7 +1093,7 @@ namespace Unity.Sentis.Layers
                 var length = (int)Math.Ceiling((end - start) / (double)step);
                 length = Mathf.Max(length, 0);
 
-                var tensorOut = new PartialTensor(data.dataType, new SymbolicTensorShape(length));
+                var tensorOut = new PartialTensor(data.dataType, new DynamicTensorShape(length));
 
                 for (var i = 0; i < length; i++)
                 {
@@ -1158,18 +1106,18 @@ namespace Unity.Sentis.Layers
 
             if (!axes.isPartiallyKnown)
             {
-                ctx.AddPartialTensor(outputs[0], new PartialTensor(data.dataType, SymbolicTensorShape.UnknownOfRank(data.shape.rank)));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(data.dataType, DynamicTensorShape.DynamicOfRank(data.shape.rank)));
                 return;
             }
 
-            var shapeOut = new SymbolicTensorShape(data.shape);
+            var shapeOut = new DynamicTensorShape(data.shape);
 
             for (var i = 0; i < axes.length; i++)
             {
                 var axisElement = axes[i];
                 if (!axisElement.isIntValue)
                 {
-                    shapeOut = SymbolicTensorShape.UnknownOfRank(data.shape.rank);
+                    shapeOut = DynamicTensorShape.DynamicOfRank(data.shape.rank);
                     continue;
                 }
                 var axis = shapeOut.Axis(axisElement.intValue);
@@ -1179,17 +1127,24 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(data.dataType, shapeOut));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var starts = ctx.storage.GetInts(inputs[1]);
             var ends = ctx.storage.GetInts(inputs[2]);
             var axes = ctx.storage.GetInts(inputs[3], null);
             var steps = ctx.storage.GetInts(inputs[4], null);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Slice(starts, ends, axes, steps), X.dataType, ctx.backend.backendType);
+            var numAxes = starts.Length;
+            Span<int> startsSpan = stackalloc int[numAxes];
+            Span<int> endsSpan = stackalloc int[numAxes];
+            Span<int> axesSpan = stackalloc int[numAxes];
+            Span<int> stepsSpan = stackalloc int[numAxes];
+            ShapeInference.Slice(X.shape, starts, ends, axes, steps, ref startsSpan, ref endsSpan, ref axesSpan, ref stepsSpan);
+            var shapeOut = X.shape.Slice(startsSpan, endsSpan, axesSpan, stepsSpan);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shapeOut, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            ctx.backend.Slice(X, O, starts, axes, steps);
+            ctx.backend.Slice(X, O, startsSpan, axesSpan, stepsSpan);
         }
 
         internal override string profilerTag => "Slice";
@@ -1206,7 +1161,7 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, X.shape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var values = ctx.storage.GetTensor(inputs[1]);
@@ -1217,19 +1172,46 @@ namespace Unity.Sentis.Layers
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            var slicedShape = X.shape.Slice(starts, ends, axes, steps);
+            var numAxes = starts.Length;
+            Span<int> startsSpan = stackalloc int[numAxes];
+            Span<int> endsSpan = stackalloc int[numAxes];
+            Span<int> axesSpan = stackalloc int[numAxes];
+            Span<int> stepsSpan = stackalloc int[numAxes];
+            for (var i = 0; i < numAxes; i++)
+            {
+                var axis = axes == null ? i : X.shape.Axis(axes[i]);
+                var start = starts[i];
+                var end = ends[i];
+                var step = steps == null ? 1 : steps[i];
+
+                stepsSpan[i] = step;
+                axesSpan[i] = axis;
+
+                var dim = X.shape[axis];
+                var clampAdjustDirection = step < 0 ? -1 : 0;
+
+                start = start < 0 ? dim + start : start;
+                start = Mathf.Clamp(start, 0, dim + clampAdjustDirection);
+
+                end = end < 0 ? dim + end : end;
+                end = Mathf.Clamp(end, clampAdjustDirection, dim);
+
+                startsSpan[i] = dim == 0 ? 0 : start;
+                endsSpan[i] = dim == 0 ? 0 : end;
+            }
+            var slicedShape = X.shape.Slice(startsSpan, endsSpan, axesSpan, stepsSpan);
             Logger.AssertIsTrue(slicedShape.Broadcast(values.shape) == slicedShape, "SliceSet.InputError: values shape must be broadcastable to sliced shape, {0} {1}", values.shape, slicedShape);
             if (slicedShape != values.shape)
             {
                 // broadcast values
                 var broadcastValues = ctx.storage.AllocateTensor(slicedShape, values.dataType, ctx.backend.backendType);
                 ctx.backend.Expand(values, broadcastValues);
-                ctx.backend.SliceSet(X, broadcastValues, O, starts, axes, steps);
+                ctx.backend.SliceSet(X, broadcastValues, O, startsSpan, axesSpan, stepsSpan);
                 ctx.storage.Dispose(broadcastValues);
             }
             else
             {
-                ctx.backend.SliceSet(X, values, O, starts, axes, steps);
+                ctx.backend.SliceSet(X, values, O, startsSpan, axesSpan, stepsSpan);
             }
         }
 
@@ -1253,13 +1235,13 @@ namespace Unity.Sentis.Layers
         {
             var shapeX = ctx.GetPartialTensor(inputs[0]).shape;
             shapeX.DeclareRank(4);
-            ctx.AddPartialTensor(outputs[0], new PartialTensor(ctx.GetPartialTensor(inputs[0]).dataType, new SymbolicTensorShape(shapeX[0], shapeX[1] * (blocksize * blocksize), shapeX[2] / blocksize, shapeX[3] / blocksize)));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(ctx.GetPartialTensor(inputs[0]).dataType, new DynamicTensorShape(shapeX[0], shapeX[1] * (blocksize * blocksize), shapeX[2] / blocksize, shapeX[3] / blocksize)));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.SpaceToDepth(X.shape, blocksize), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.SpaceToDepth(X.shape, blocksize), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.SpaceToDepth(X, O, blocksize);
@@ -1295,7 +1277,7 @@ namespace Unity.Sentis.Layers
             var partialSplit = ctx.GetPartialTensor(inputs[1]);
             if (partialSplit == null)
             {
-                partialSplit = new PartialTensor(DataType.Int, new SymbolicTensorShape(numOutputs));
+                partialSplit = new PartialTensor(DataType.Int, new DynamicTensorShape(numOutputs));
 
                 var dim = X.shape[axis];
                 if (dim.isParam && numOutputs == 1)
@@ -1319,13 +1301,13 @@ namespace Unity.Sentis.Layers
 
             for (var i = 0; i < outputs.Length; i++)
             {
-                var outputShape = new SymbolicTensorShape(X.shape);
-                outputShape[axis] = (SymbolicTensorDim)partialSplit[i];
+                var outputShape = new DynamicTensorShape(X.shape);
+                outputShape[axis] = (DynamicTensorDim)partialSplit[i];
                 ctx.AddPartialTensor(outputs[i], new PartialTensor(X.dataType, outputShape));
             }
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
 
@@ -1344,7 +1326,7 @@ namespace Unity.Sentis.Layers
                 end = Math.Min(end, dim);
                 var O = ctx.storage.AllocateTensorAndStore(outputs[i], X.shape.Split(axis, start, end), X.dataType, ctx.backend.backendType);
                 if (!O.shape.HasZeroDims())
-                    ctx.backend.Split(X, O, axis, start);
+                    ctx.backend.Split(X, O, X.shape.Axis(axis), start);
                 start = end;
             }
         }
@@ -1372,9 +1354,9 @@ namespace Unity.Sentis.Layers
             if (axes != null)
             {
                 if (!axes.isPartiallyKnown)
-                    ctx.AddPartialTensor(outputs[0], X.Reshape(SymbolicTensorShape.UnknownShape));
-                else if (!axes.IsFullyKnown())
-                    ctx.AddPartialTensor(outputs[0], X.Reshape(SymbolicTensorShape.UnknownOfRank(X.shape.rank - axes.length)));
+                    ctx.AddPartialTensor(outputs[0], X.Reshape(DynamicTensorShape.DynamicRank));
+                else if (!axes.IsStatic())
+                    ctx.AddPartialTensor(outputs[0], X.Reshape(DynamicTensorShape.DynamicOfRank(X.shape.rank - axes.length)));
                 else
                     ctx.AddPartialTensor(outputs[0], X.Reshape(X.shape.Squeeze(axes)));
                 return;
@@ -1383,7 +1365,7 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], X.Reshape(X.shape.Squeeze()));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var axes = ctx.storage.GetInts(inputs[1], null);
@@ -1415,23 +1397,24 @@ namespace Unity.Sentis.Layers
             if (!repeats.isPartiallyKnown)
             {
                 if (repeats.shape[0].isValue && !shapeX.hasRank)
-                    shapeX = SymbolicTensorShape.UnknownOfRank(repeats.shape[0].value);
-                Logger.AssertIsFalse(repeats.shape[0] != shapeX.rank, "Tile.InputError: repeats value must be equal to input rank");
-                ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, SymbolicTensorShape.UnknownOfRankLike(shapeX)));
+                    shapeX = DynamicTensorShape.DynamicOfRank(repeats.shape[0].value);
+                if (shapeX.hasRank)
+                    Logger.AssertIsFalse(repeats.shape[0] != shapeX.rank, "Tile.InputError: repeats value must be equal to input rank");
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, DynamicTensorShape.DynamicOfRankLike(shapeX)));
                 return;
             }
 
             shapeX.DeclareRank(repeats.length);
 
-            var shapeOut = new SymbolicTensorShape(shapeX);
+            var shapeOut = new DynamicTensorShape(shapeX);
             for (var i = 0; i < shapeOut.rank; i++)
             {
-                shapeOut[i] *= (SymbolicTensorDim)repeats[i];
+                shapeOut[i] *= (DynamicTensorDim)repeats[i];
             }
             ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, shapeOut));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var repeats = ctx.storage.GetInts(inputs[1]);
@@ -1469,7 +1452,7 @@ namespace Unity.Sentis.Layers
                 return;
             }
 
-            var shapeOut = SymbolicTensorShape.UnknownOfRank(shapeX.rank);
+            var shapeOut = DynamicTensorShape.DynamicOfRank(shapeX.rank);
 
             if (permutations == null || permutations.Length == 0)
             {
@@ -1494,7 +1477,7 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(ctx.GetPartialTensor(inputs[0]).dataType, shapeOut));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             if (permutations == null)
@@ -1545,7 +1528,7 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, X.shape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var k = ctx.storage.GetInt(inputs[1]);
@@ -1581,7 +1564,7 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], X.Reshape(X.shape.Unsqueeze(shape)));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var axes = ctx.storage.GetInts(inputs[1]);

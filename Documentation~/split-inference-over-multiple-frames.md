@@ -1,69 +1,42 @@
 # Split inference over multiple frames
 
-To run a model one layer at a time, use the [`StartManualSchedule`](xref:Unity.Sentis.GenericWorker.StartManualSchedule) method of the worker. This method creates an `IEnumerator` object.
+To run a model one layer at a time, use the [`ScheduleIterable`](xref:Unity.Sentis.Worker.ScheduleIterable) method of the worker. This method creates an `IEnumerator` object.
 
 For example, if a model takes 50 milliseconds to execute, running it in one frame might cause stuttering or low frame rates in gameplay. Instead, by spreading the execution over 10 frames, you can allocate 5 milliseconds per frame, ensuring smoother performance.
 
 The following code sample runs the model one layer per frame and executes the rest of the `Update` method only after the model finishes.
 
 ```
-using UnityEngine;
-using Unity.Sentis;
-using System;
-using System.Collections;
+// Set a larger number for faster GPUs
+const int k_LayersPerFrame = 20;
 
-public class ModelExecutionInParts : MonoBehaviour
+IEnumerator m_Schedule;
+bool m_Started = false;
+
+void Update()
 {
-    [SerializeField]
-    ModelAsset modelAsset;
-    IWorker m_Engine;
-    Tensor m_Input;
-
-    // Set this number higher for faster GPUs
-    const int k_LayersPerFrame = 20;
-
-    IEnumerator m_Schedule;
-    bool m_Started = false;
-
-    void OnEnable()
+    if (!m_Started)
     {
-        var model = ModelLoader.Load(modelAsset);
-        m_Engine = WorkerFactory.CreateWorker(BackendType.GPUCompute, model);
-        m_Input = TensorFloat.AllocZeros(new TensorShape(1024));
+        // ExecuteLayerByLayer starts the scheduling of the model
+        // It returns an IEnumerator to iterate over the model layers and schedule each layer sequentially
+        m_Schedule = m_Worker.ScheduleIterable(m_Input);
+        m_Started = true;
     }
 
-    void Update()
+    int it = 0;
+    while (m_Schedule.MoveNext())
     {
-        if (!m_Started)
-        {
-            // StartManualSchedule starts the scheduling of the model
-            // it returns a IEnumerator to iterate over the model layers, scheduling each layer sequentially
-            m_Schedule = m_Engine.ExecuteLayerByLayer(m_Input);
-            m_Started = true;
-        }
-
-        int it = 0;
-        while (m_Schedule.MoveNext())
-        {
-            if (++it % k_LayersPerFrame == 0)
-                return;
-        }
-
-        var outputTensor = m_Engine.PeekOutput() as TensorFloat;
-        var cpuCopyTensor = outputTensor.ReadbackAndClone();
-        // cpuCopyTensor is a CPU copy of the output tensor, you can access it and modify it
-
-        // Set this flag to false if we want to run the network again
-        m_Started = false;
-        cpuCopyTensor.Dispose();
+        if (++it % k_LayersPerFrame == 0)
+            return;
     }
 
-    void OnDisable()
-    {
-        // Clean up Sentis resources.
-        m_Engine.Dispose();
-        m_Input.Dispose();
-    }
+    var outputTensor = m_Worker.PeekOutput() as Tensor<float>;
+    var cpuCopyTensor = outputTensor.ReadbackAndClone();
+    // cpuCopyTensor is a CPU copy of the output tensor. You can access it and modify it
+
+    // Set this flag to false to run the network again
+    m_Started = false;
+    cpuCopyTensor.Dispose();
 }
 ```
 

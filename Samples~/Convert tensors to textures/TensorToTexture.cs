@@ -15,8 +15,8 @@ public class TensorToTexture : MonoBehaviour
     void Start()
     {
         // create single pixel tensors
-        using TensorFloat rTensor = TensorFloat.AllocZeros(new TensorShape(1, 1, 1, 1));
-        using TensorFloat rgbaTensor = TensorFloat.AllocZeros(new TensorShape(1, 4, 1, 1));
+        using Tensor<float> rTensor = new Tensor<float>(new TensorShape(1, 1, 1, 1));
+        using Tensor<float> rgbaTensor = new Tensor<float>(new TensorShape(1, 4, 1, 1));
 
         // set red channel to 0.5
         rTensor[0, 0, 0, 0] = 0.5f;
@@ -54,7 +54,7 @@ public class TensorToTexture : MonoBehaviour
         TextureConverter.RenderToTexture(rgbaTensor, rgbaRenderTexture, new TextureTransform().SetChannelSwizzle(ChannelSwizzle.BGRA));
 
         // if the tensor has a different layout use SetTensorLayout to sample from the tensor correctly
-        using TensorFloat rgbaNHWCTensor = TensorFloat.AllocZeros(new TensorShape(1, 8, 8, 4));
+        using Tensor<float> rgbaNHWCTensor = new Tensor<float>(new TensorShape(1, 8, 8, 4));
         TextureConverter.RenderToTexture(rgbaNHWCTensor, rgbaRenderTexture, new TextureTransform().SetTensorLayout(TensorLayout.NHWC));
 
         // if 0, 0 in the tensor should correspond to the bottom left of the texture rather than the top left use CoordOrigin.BottomLeft

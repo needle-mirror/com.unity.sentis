@@ -11,8 +11,8 @@ Shader "Hidden/Sentis/Dense"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile Gemm Dense
-            #pragma multi_compile None Relu
+            #pragma multi_compile_local Gemm Dense
+            #pragma multi_compile_local None Relu
 
             #pragma vertex vert
             #pragma fragment frag

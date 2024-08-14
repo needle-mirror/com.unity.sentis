@@ -126,28 +126,28 @@ namespace Unity.Sentis
         /// <summary>
         /// Returns the backing texture storing the tensor data.
         /// </summary>
-        public RenderTexture bufferAsTexture => m_BufferAsTexture;
+        internal RenderTexture bufferAsTexture => m_BufferAsTexture;
         /// <summary>
         /// Returns the power in the power of two width of the backing texture.
         /// </summary>
-        public int widthShift => m_WidthShift;
+        internal int widthShift => m_WidthShift;
         /// <summary>
         /// Returns the width of the texture - 1 for efficient masking in shaders.
         /// </summary>
-        public int widthMask => m_WidthMask;
+        internal int widthMask => m_WidthMask;
 
         /// <summary>
         /// Returns the data type of the associated tensor.
         /// </summary>
-        public DataType dataType => m_DataType;
+        internal DataType dataType => m_DataType;
         /// <summary>
         /// Returns the shape of the associated tensor.
         /// </summary>
-        public TensorShape shape => m_Shape;
+        internal TensorShape shape => m_Shape;
         /// <summary>
         /// Returns the shape of the tensor with the blocked axis divided by 4.
         /// </summary>
-        public TensorShape blockedShape => m_BlockedShape;
+        internal TensorShape blockedShape => m_BlockedShape;
         /// <summary>
         /// Returns the axis of the tensor which is blocked.
         ///
@@ -155,24 +155,24 @@ namespace Unity.Sentis
         ///
         /// Thus negative axis values do not count from the back of the shape as elsewhere.
         /// </summary>
-        public int blockAxis => m_BlockAxis;
+        internal int blockAxis => m_BlockAxis;
         /// <summary>
         /// The size of the blocked axis in the original tensor shape (when not blocked).
         /// </summary>
-        public int dimAxis => m_DimAxis;
+        internal int dimAxis => m_DimAxis;
         /// <summary>
         /// The size of the blocked axis in the blocked tensor shape, i.e. dimAxisDiv4 = ceil(dimAxis / 4).
         /// </summary>
-        public int dimAxisDiv4 => m_DimAxisDiv4;
+        internal int dimAxisDiv4 => m_DimAxisDiv4;
         /// <summary>
         /// A 4 int mask with 1 or 0 in each component to indicate whether the last blocked slice along the blocked axis has a valid entry or not.
         /// eg. if dimAxis % 4 = ceil(dimAxis/4)*4 - dimAxis = 3, blockedAxisDiv4RemainderMask = {1, 1, 1, 0};
         /// </summary>
-        public int[] blockedAxisDiv4RemainderMask => m_BlockedAxisDiv4RemainderMask;
+        internal int[] blockedAxisDiv4RemainderMask => m_BlockedAxisDiv4RemainderMask;
         /// <summary>
         /// The size of the stride of the blocked axis.
         /// </summary>
-        public int strideAxis => m_StrideAxis;
+        internal int strideAxis => m_StrideAxis;
 
         static int MaxTextureSize => Mathf.Min(SystemInfo.maxTextureSize, 16384);
 
@@ -267,20 +267,6 @@ namespace Unity.Sentis
             widthShift = ComputeHelper.CalculateWidthShift(numPixels);
             width = Mathf.Min(numPixels, 1 << widthShift);
             height = ComputeHelper.IDivC(numPixels, width);
-        }
-
-        /// <inheritdoc/>
-        public ITensorData Clone()
-        {
-            var copy = new TextureTensorData(m_DataType, m_Shape, m_BlockAxis);
-
-            var func = new PixelFunc("Hidden/Sentis/Copy");
-            if (dataType == DataType.Int)
-                func.EnableKeyword("INT");
-            func.SetTensor(k_TensorPropertiesX, this);
-            func.Dispatch(copy);
-
-            return copy;
         }
 
         /// <summary>
@@ -399,12 +385,13 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public NativeArray<T> Download<T>(int dstCount) where T : unmanaged
         {
+            Assert.IsTrue(maxCapacity >= dstCount);
+
             var count = shape.length;
             if (count == 0)
                 return new NativeArray<T>();
 
             ProfilerMarkers.TextureTensorDataDownload.Begin();
-            Assert.IsTrue(maxCapacity >= count);
 
             var linearRenderTexture = bufferAsTexture;
             var numValues = shape.length;
@@ -478,21 +465,21 @@ namespace Unity.Sentis
             var onDevice = X.dataOnBackend;
             if (onDevice == null)
             {
-                X.AttachToDevice(new TextureTensorData(X.dataType, X.shape, blockAxis, clearOnInit));
+                X.AdoptTensorData(new TextureTensorData(X.dataType, X.shape, blockAxis, clearOnInit));
                 return X.dataOnBackend as TextureTensorData;
             }
 
             if (onDevice is TextureTensorData textureTensorData)
             {
                 var newTextureTensorData = textureTensorData.SwitchBlockedLayout(X.shape, blockAxis);
-                X.AttachToDevice(newTextureTensorData);
+                X.AdoptTensorData(newTextureTensorData);
                 return X.dataOnBackend as TextureTensorData;
             }
 
             // TODO as IConvertibleToTextureTensorData
             var dataOnBackend = new TextureTensorData(X.dataType, X.shape, blockAxis, clearOnInit: false);
             dataOnBackend.Upload<int>(onDevice.Download<int>(X.count), X.count);
-            X.AttachToDevice(dataOnBackend);
+            X.AdoptTensorData(dataOnBackend);
 
             return X.dataOnBackend as TextureTensorData;
         }

@@ -6,30 +6,30 @@ public class ModelExecutionMultipleInputsOutputs : MonoBehaviour
 {
     [SerializeField]
     ModelAsset modelAsset;
-    IWorker m_Engine;
-    Dictionary<string, Tensor> m_Inputs;
+    Worker m_Worker;
+    Tensor[] m_Inputs;
 
     void OnEnable()
     {
         var model = ModelLoader.Load(modelAsset);
-        m_Engine = WorkerFactory.CreateWorker(BackendType.GPUCompute, model);
+        m_Worker = new Worker(model, BackendType.GPUCompute);
 
         // The MultipleInputMultipleOuput model takes two inputs, "input0" and "input1"
         // since it has multiple inputs, we need to use a dictionary tensorName -> tensor
-        m_Inputs = new Dictionary<string, Tensor>
+        m_Inputs = new Tensor[]
         {
-            { "input0", TensorFloat.AllocZeros(new TensorShape(1024)) },
-            { "input1", TensorFloat.AllocZeros(new TensorShape(1)) },
+            new Tensor<float>(new TensorShape(1024)),
+            new Tensor<float>(new TensorShape(1))
         };
     }
 
     void Update()
     {
-        m_Engine.Execute(m_Inputs);
+        m_Worker.Schedule(m_Inputs);
 
         // model has multiple output, so to know which output to get we need to specify which one we are referring to
-        var outputTensor0 = m_Engine.PeekOutput("output0") as TensorFloat;
-        var outputTensor1 = m_Engine.PeekOutput("output1") as TensorFloat;
+        var outputTensor0 = m_Worker.PeekOutput("output0") as Tensor<float>;
+        var outputTensor1 = m_Worker.PeekOutput("output1") as Tensor<float>;
 
         // If you wish to read from the tensor, download it to cpu.
         // See async examples for non-blocking readback.
@@ -40,7 +40,7 @@ public class ModelExecutionMultipleInputsOutputs : MonoBehaviour
     void OnDisable()
     {
         // Clean up Sentis resources.
-        m_Engine.Dispose();
-        foreach (var tensor in m_Inputs.Values) { tensor.Dispose(); }
+        m_Worker.Dispose();
+        foreach (var tensor in m_Inputs) { tensor.Dispose(); }
     }
 }

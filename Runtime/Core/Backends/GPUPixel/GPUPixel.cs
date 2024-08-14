@@ -186,20 +186,18 @@ namespace Unity.Sentis
     /// <summary>
     /// Represents a GPUPixel backend ops.
     /// </summary>
-    public class GPUPixelBackend : IBackend
+    class GPUPixelBackend : IBackend
     {
         /// <summary>
         /// Initializes and returns an instance of `GPUPixelBackend`.
         /// </summary>
-        public GPUPixelBackend()
-        {
-        }
+        public GPUPixelBackend() { }
 
         /// <inheritdoc/>
         public BackendType backendType => BackendType.GPUPixel;
 
-        TensorClassPool<TensorFloat> m_TensorFloatPool = new TensorClassPool<TensorFloat>();
-        TensorClassPool<TensorInt> m_TensorIntPool = new TensorClassPool<TensorInt>();
+        TensorClassPool<Tensor<float>> m_TensorFloatPool = new TensorClassPool<Tensor<float>>();
+        TensorClassPool<Tensor<int>> m_TensorIntPool = new TensorClassPool<Tensor<int>>();
 
         Tensor AllocTensor(TensorShape shape, DataType dataType)
         {
@@ -208,14 +206,16 @@ namespace Unity.Sentis
                 case DataType.Float:
                     var tensorf = m_TensorFloatPool.AdoptFromPool();
                     if (tensorf == null)
-                        tensorf = TensorFloat.AllocNoData(shape);
+                        tensorf = new Tensor<float>(shape, data: null);
                     tensorf.shape = shape;
+                    tensorf.count = shape.length;
                     return tensorf;
                 case DataType.Int:
                     var tensori = m_TensorIntPool.AdoptFromPool();
                     if (tensori == null)
-                        tensori = TensorInt.AllocNoData(shape);
+                        tensori = new Tensor<int>(shape, data: null);
                     tensori.shape = shape;
+                    tensori.count = shape.length;
                     return tensori;
                 default:
                     throw new NotImplementedException();
@@ -231,10 +231,10 @@ namespace Unity.Sentis
             switch (tensor.dataType)
             {
                 case DataType.Float:
-                    m_TensorFloatPool.ReleaseToPool(tensor as TensorFloat);
+                    m_TensorFloatPool.ReleaseToPool(tensor as Tensor<float>);
                     break;
                 case DataType.Int:
-                    m_TensorIntPool.ReleaseToPool(tensor as TensorInt);
+                    m_TensorIntPool.ReleaseToPool(tensor as Tensor<int>);
                     break;
                 default:
                     throw new NotImplementedException();
@@ -288,7 +288,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Cast(TensorInt X, TensorFloat O)
+        public void Cast(Tensor<int> X, Tensor<float> O)
         {
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX, false);
@@ -300,7 +300,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Cast(TensorFloat X, TensorInt O)
+        public void Cast(Tensor<float> X, Tensor<int> O)
         {
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX, false);
@@ -312,13 +312,13 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Cast(TensorShort X, TensorFloat O)
+        public void Cast(Tensor<short> X, Tensor<float> O)
         {
             throw new NotImplementedException();
         }
 
         /// <inheritdoc/>
-        public void DequantizeLinear(TensorByte X, TensorFloat O, float scale, byte zeroPoint)
+        public void DequantizeLinear(Tensor<byte> X, Tensor<float> O, float scale, byte zeroPoint)
         {
             throw new NotImplementedException();
         }
@@ -327,13 +327,13 @@ namespace Unity.Sentis
         public void MemClear(Tensor O)
         {
             if (O.dataType == DataType.Float)
-                MemSet(O as TensorFloat, 0f);
+                MemSet(O as Tensor<float>, 0f);
             else
-                MemSet(O as TensorInt, 0);
+                MemSet(O as Tensor<int>, 0);
         }
 
         /// <inheritdoc/>
-        public void MemSet(TensorFloat O, float value)
+        public void MemSet(Tensor<float> O, float value)
         {
             var func = new PixelFunc("Hidden/Sentis/ConstantOfShape");
             var pinO = PinBlockAny(O, false);
@@ -343,7 +343,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void MemSet(TensorInt O, int value)
+        public void MemSet(Tensor<int> O, int value)
         {
             var func = new PixelFunc("Hidden/Sentis/ConstantOfShape");
             var pinO = PinBlockAny(O, false);
@@ -353,7 +353,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void MatMul(TensorFloat X, TensorFloat Y, TensorFloat O)
+        public void MatMul(Tensor<float> X, Tensor<float> Y, Tensor<float> O)
         {
             var xShape = X.shape.rank == 1 ? new TensorShape(1, X.shape[0]) : X.shape;
             var yShape = Y.shape.rank == 1 ? new TensorShape(Y.shape[0], 1) : Y.shape;
@@ -391,7 +391,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void MatMul2D(TensorFloat X, TensorFloat Y, TensorFloat O, bool xTranspose, bool yTranspose)
+        public void MatMul2D(Tensor<float> X, Tensor<float> Y, Tensor<float> O, bool xTranspose, bool yTranspose)
         {
             var func = new PixelFunc("Hidden/Sentis/Gemm");
 
@@ -414,7 +414,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Dense(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Layers.FusableActivation fusedActivation)
+        public void Dense(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Layers.FusableActivation fusedActivation)
         {
             var func = new PixelFunc("Hidden/Sentis/Dense");
 
@@ -443,7 +443,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Conv(TensorFloat X, TensorFloat K, TensorFloat B, TensorFloat O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
+        public void Conv(Tensor<float> X, Tensor<float> K, Tensor<float> B, Tensor<float> O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
         {
             if (X.shape.rank > 5)
             {
@@ -529,7 +529,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ConvTranspose(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Span<int> strides, Span<int> pads, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
+        public void ConvTranspose(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Span<int> strides, Span<int> pads, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
         {
             if (X.shape.rank > 5)
             {
@@ -594,7 +594,7 @@ namespace Unity.Sentis
             func.Dispatch(pinO);
         }
 
-        void Activation(TensorFloat X, TensorFloat O, string kernelName, float alpha = 0f, float beta = 0f)
+        void Activation(Tensor<float> X, Tensor<float> O, string kernelName, float alpha = 0f, float beta = 0f)
         {
             var func = new PixelFunc("Hidden/Sentis/Activation");
 
@@ -612,7 +612,7 @@ namespace Unity.Sentis
             func.Dispatch(pinO);
         }
 
-        void Activation(TensorInt X, TensorInt O, string kernelName, int alpha = 0, int beta = 0)
+        void Activation(Tensor<int> X, Tensor<int> O, string kernelName, int alpha = 0, int beta = 0)
         {
             var func = new PixelFunc("Hidden/Sentis/ActivationInt");
 
@@ -631,200 +631,200 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Relu(TensorFloat X, TensorFloat O)
+        public void Relu(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Relu");
         }
 
         /// <inheritdoc/>
-        public void Relu6(TensorFloat X, TensorFloat O)
+        public void Relu6(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Relu6");
         }
 
         /// <inheritdoc/>
-        public void LeakyRelu(TensorFloat X, TensorFloat O, float alpha)
+        public void LeakyRelu(Tensor<float> X, Tensor<float> O, float alpha)
         {
             Logger.AssertIsTrue(alpha <= 1, "LeakyRelu.ValueError: alpha is supposed to be <= 1, got {0}", alpha);
             Activation(X, O, "LeakyRelu", alpha);
         }
 
         /// <inheritdoc/>
-        public void Tanh(TensorFloat X, TensorFloat O)
+        public void Tanh(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Tanh");
         }
 
         /// <inheritdoc/>
-        public void Softplus(TensorFloat X, TensorFloat O)
+        public void Softplus(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Softplus");
         }
 
         /// <inheritdoc/>
-        public void Sigmoid(TensorFloat X, TensorFloat O)
+        public void Sigmoid(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Sigmoid");
         }
 
         /// <inheritdoc/>
-        public void HardSigmoid(TensorFloat X, TensorFloat O, float alpha, float beta)
+        public void HardSigmoid(Tensor<float> X, Tensor<float> O, float alpha, float beta)
         {
             Activation(X, O, "HardSigmoid", alpha, beta);
         }
 
         /// <inheritdoc/>
-        public void Elu(TensorFloat X, TensorFloat O, float alpha)
+        public void Elu(Tensor<float> X, Tensor<float> O, float alpha)
         {
             Activation(X, O, "Elu", alpha);
         }
 
         /// <inheritdoc/>
-        public void Gelu(TensorFloat X, TensorFloat O)
+        public void Gelu(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Gelu");
         }
 
         /// <inheritdoc/>
-        public void GeluFast(TensorFloat X, TensorFloat O)
+        public void GeluFast(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "GeluFast");
         }
 
         /// <inheritdoc/>
-        public void Shrink(TensorFloat X, TensorFloat O, float bias, float lambd)
+        public void Shrink(Tensor<float> X, Tensor<float> O, float bias, float lambd)
         {
             Activation(X, O, "Shrink", bias, lambd);
         }
 
         /// <inheritdoc/>
-        public void Selu(TensorFloat X, TensorFloat O, float alpha, float gamma)
+        public void Selu(Tensor<float> X, Tensor<float> O, float alpha, float gamma)
         {
             Activation(X, O, "Selu", alpha, gamma);
         }
 
         /// <inheritdoc/>
-        public void Swish(TensorFloat X, TensorFloat O)
+        public void Swish(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Swish");
         }
 
         /// <inheritdoc/>
-        public void Abs(TensorFloat X, TensorFloat O)
+        public void Abs(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Abs");
         }
 
         /// <inheritdoc/>
-        public void Abs(TensorInt X, TensorInt O)
+        public void Abs(Tensor<int> X, Tensor<int> O)
         {
             Activation(X, O, "Abs");
         }
 
         /// <inheritdoc/>
-        public void Neg(TensorFloat X, TensorFloat O)
+        public void Neg(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Neg");
         }
 
         /// <inheritdoc/>
-        public void Neg(TensorInt X, TensorInt O)
+        public void Neg(Tensor<int> X, Tensor<int> O)
         {
             Activation(X, O, "Neg");
         }
 
         /// <inheritdoc/>
-        public void Not(TensorInt X, TensorInt O)
+        public void Not(Tensor<int> X, Tensor<int> O)
         {
             Activation(X, O, "Not");
         }
 
         /// <inheritdoc/>
-        public void Ceil(TensorFloat X, TensorFloat O)
+        public void Ceil(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Ceil");
         }
 
         /// <inheritdoc/>
-        public void Clip(TensorFloat X, TensorFloat O, float min, float max)
+        public void Clip(Tensor<float> X, Tensor<float> O, float min, float max)
         {
             Activation(X, O, "Clip", min, max);
         }
 
         /// <inheritdoc/>
-        public void Clip(TensorInt X, TensorInt O, int min, int max)
+        public void Clip(Tensor<int> X, Tensor<int> O, int min, int max)
         {
             Activation(X, O, "Clip", min, max);
         }
 
         /// <inheritdoc/>
-        public void Floor(TensorFloat X, TensorFloat O)
+        public void Floor(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Floor");
         }
 
         /// <inheritdoc/>
-        public void Round(TensorFloat X, TensorFloat O)
+        public void Round(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Round");
         }
 
         /// <inheritdoc/>
-        public void Reciprocal(TensorFloat X, TensorFloat O)
+        public void Reciprocal(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Reciprocal");
         }
 
         /// <inheritdoc/>
-        public void Square(TensorFloat X, TensorFloat O)
+        public void Square(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Square");
         }
 
         /// <inheritdoc/>
-        public void Square(TensorInt X, TensorInt O)
+        public void Square(Tensor<int> X, Tensor<int> O)
         {
             Activation(X, O, "Square");
         }
 
         /// <inheritdoc/>
-        public void Exp(TensorFloat X, TensorFloat O)
+        public void Exp(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Exp");
         }
 
         /// <inheritdoc/>
-        public void Log(TensorFloat X, TensorFloat O)
+        public void Log(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Log");
         }
 
         /// <inheritdoc/>
-        public void Sqrt(TensorFloat X, TensorFloat O)
+        public void Sqrt(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Sqrt");
         }
 
         /// <inheritdoc/>
-        public void Celu(TensorFloat X, TensorFloat O, float alpha)
+        public void Celu(Tensor<float> X, Tensor<float> O, float alpha)
         {
             Activation(X, O, "Celu", alpha);
         }
 
         /// <inheritdoc/>
-        public void HardSwish(TensorFloat X, TensorFloat O)
+        public void HardSwish(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "HardSwish");
         }
 
         /// <inheritdoc/>
-        public void Softsign(TensorFloat X, TensorFloat O)
+        public void Softsign(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Softsign");
         }
 
         /// <inheritdoc/>
-        public void ScalarMad(TensorFloat X, TensorFloat O, float s, float b)
+        public void ScalarMad(Tensor<float> X, Tensor<float> O, float s, float b)
         {
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX, false);
@@ -840,7 +840,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ScalarMad(TensorInt X, TensorInt O, int s, int b)
+        public void ScalarMad(Tensor<int> X, Tensor<int> O, int s, int b)
         {
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX, false);
@@ -857,109 +857,109 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Sign(TensorFloat X, TensorFloat O)
+        public void Sign(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Sign");
         }
 
         /// <inheritdoc/>
-        public void Sign(TensorInt X, TensorInt O)
+        public void Sign(Tensor<int> X, Tensor<int> O)
         {
             Activation(X, O, "Sign");
         }
 
         /// <inheritdoc/>
-        public void ThresholdedRelu(TensorFloat X, TensorFloat O, float alpha)
+        public void ThresholdedRelu(Tensor<float> X, Tensor<float> O, float alpha)
         {
             Activation(X, O, "ThresholdedRelu", alpha);
         }
 
         /// <inheritdoc/>
-        public void PRelu(TensorFloat X, TensorFloat S, TensorFloat O)
+        public void PRelu(Tensor<float> X, Tensor<float> S, Tensor<float> O)
         {
             Broadcast(X, S, O, "PRelu");
         }
 
         /// <inheritdoc/>
-        public void And(TensorInt A, TensorInt B, TensorInt O)
+        public void And(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "And");
         }
 
         /// <inheritdoc/>
-        public void Equal(TensorFloat A, TensorFloat B, TensorInt O)
+        public void Equal(Tensor<float> A, Tensor<float> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "Equal");
         }
 
         /// <inheritdoc/>
-        public void Equal(TensorInt A, TensorInt B, TensorInt O)
+        public void Equal(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "EqualInt");
         }
 
         /// <inheritdoc/>
-        public void Greater(TensorFloat A, TensorFloat B, TensorInt O)
+        public void Greater(Tensor<float> A, Tensor<float> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "Greater");
         }
 
         /// <inheritdoc/>
-        public void Greater(TensorInt A, TensorInt B, TensorInt O)
+        public void Greater(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "GreaterInt");
         }
 
         /// <inheritdoc/>
-        public void GreaterOrEqual(TensorFloat A, TensorFloat B, TensorInt O)
+        public void GreaterOrEqual(Tensor<float> A, Tensor<float> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "GreaterOrEqual");
         }
 
         /// <inheritdoc/>
-        public void GreaterOrEqual(TensorInt A, TensorInt B, TensorInt O)
+        public void GreaterOrEqual(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "GreaterOrEqualInt");
         }
 
         /// <inheritdoc/>
-        public void Less(TensorFloat A, TensorFloat B, TensorInt O)
+        public void Less(Tensor<float> A, Tensor<float> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "Less");
         }
 
         /// <inheritdoc/>
-        public void Less(TensorInt A, TensorInt B, TensorInt O)
+        public void Less(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "LessInt");
         }
 
         /// <inheritdoc/>
-        public void LessOrEqual(TensorFloat A, TensorFloat B, TensorInt O)
+        public void LessOrEqual(Tensor<float> A, Tensor<float> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "LessOrEqual");
         }
 
         /// <inheritdoc/>
-        public void LessOrEqual(TensorInt A, TensorInt B, TensorInt O)
+        public void LessOrEqual(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "LessOrEqualInt");
         }
 
         /// <inheritdoc/>
-        public void Or(TensorInt A, TensorInt B, TensorInt O)
+        public void Or(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "Or");
         }
 
         /// <inheritdoc/>
-        public void Xor(TensorInt A, TensorInt B, TensorInt O)
+        public void Xor(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "Xor");
         }
 
         /// <inheritdoc/>
-        public void Where(TensorInt C, Tensor A, Tensor B, Tensor O)
+        public void Where(Tensor<int> C, Tensor A, Tensor B, Tensor O)
         {
             PinBothSame(A, B);
             PinBothSame(A, C);
@@ -988,7 +988,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void IsInf(TensorFloat X, TensorInt O, bool detectNegative, bool detectPositive)
+        public void IsInf(Tensor<float> X, Tensor<int> O, bool detectNegative, bool detectPositive)
         {
             var func = new PixelFunc("Hidden/Sentis/IsInfNaN");
             func.EnableKeyword("IsInf");
@@ -1004,7 +1004,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void IsNaN(TensorFloat X, TensorInt O)
+        public void IsNaN(Tensor<float> X, Tensor<int> O)
         {
             var func = new PixelFunc("Hidden/Sentis/IsInfNaN");
             func.EnableKeyword("IsNaN");
@@ -1017,181 +1017,181 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Acos(TensorFloat X, TensorFloat O)
+        public void Acos(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Acos");
         }
 
         /// <inheritdoc/>
-        public void Acosh(TensorFloat X, TensorFloat O)
+        public void Acosh(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Acosh");
         }
 
         /// <inheritdoc/>
-        public void Asin(TensorFloat X, TensorFloat O)
+        public void Asin(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Asin");
         }
 
         /// <inheritdoc/>
-        public void Asinh(TensorFloat X, TensorFloat O)
+        public void Asinh(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Asinh");
         }
 
         /// <inheritdoc/>
-        public void Atan(TensorFloat X, TensorFloat O)
+        public void Atan(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Atan");
         }
 
         /// <inheritdoc/>
-        public void Atanh(TensorFloat X, TensorFloat O)
+        public void Atanh(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Atanh");
         }
 
         /// <inheritdoc/>
-        public void Cos(TensorFloat X, TensorFloat O)
+        public void Cos(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Cos");
         }
 
         /// <inheritdoc/>
-        public void Cosh(TensorFloat X, TensorFloat O)
+        public void Cosh(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Cosh");
         }
 
         /// <inheritdoc/>
-        public void Sin(TensorFloat X, TensorFloat O)
+        public void Sin(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Sin");
         }
 
         /// <inheritdoc/>
-        public void Sinh(TensorFloat X, TensorFloat O)
+        public void Sinh(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Sinh");
         }
 
         /// <inheritdoc/>
-        public void Tan(TensorFloat X, TensorFloat O)
+        public void Tan(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Tan");
         }
 
         /// <inheritdoc/>
-        public void Erf(TensorFloat X, TensorFloat O)
+        public void Erf(Tensor<float> X, Tensor<float> O)
         {
             Activation(X, O, "Erf");
         }
 
         /// <inheritdoc/>
-        public void Add(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Add(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             Broadcast(A, B, O, "Add");
         }
 
         /// <inheritdoc/>
-        public void Add(TensorInt A, TensorInt B, TensorInt O)
+        public void Add(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "AddInt");
         }
 
         /// <inheritdoc/>
-        public void Sub(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Sub(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             Broadcast(A, B, O, "Sub");
         }
 
         /// <inheritdoc/>
-        public void Sub(TensorInt A, TensorInt B, TensorInt O)
+        public void Sub(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "SubInt");
         }
 
         /// <inheritdoc/>
-        public void Div(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Div(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             Broadcast(A, B, O, "Div");
         }
 
         /// <inheritdoc/>
-        public void Div(TensorInt A, TensorInt B, TensorInt O)
+        public void Div(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "DivInt");
         }
 
         /// <inheritdoc/>
-        public void Pow(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Pow(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             Broadcast(A, B, O, "Pow");
         }
 
         /// <inheritdoc/>
-        public void Pow(TensorFloat A, TensorInt B, TensorFloat O)
+        public void Pow(Tensor<float> A, Tensor<int> B, Tensor<float> O)
         {
             Broadcast(A, B, O, "PowInt");
         }
 
         /// <inheritdoc/>
-        public void FMod(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void FMod(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             Broadcast(A, B, O, "FMod");
         }
 
         /// <inheritdoc/>
-        public void FMod(TensorInt A, TensorInt B, TensorInt O)
+        public void FMod(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "FModInt");
         }
 
         /// <inheritdoc/>
-        public void Mod(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Mod(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             Broadcast(A, B, O, "Mod");
         }
 
         /// <inheritdoc/>
-        public void Mod(TensorInt A, TensorInt B, TensorInt O)
+        public void Mod(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "ModInt");
         }
 
         /// <inheritdoc/>
-        public void Mul(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Mul(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             Broadcast(A, B, O, "Mul");
         }
 
         /// <inheritdoc/>
-        public void Mul(TensorInt A, TensorInt B, TensorInt O)
+        public void Mul(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "MulInt");
         }
 
         /// <inheritdoc/>
-        public void Min(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Min(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             Broadcast(A, B, O, "Min");
         }
 
         /// <inheritdoc/>
-        public void Min(TensorInt A, TensorInt B, TensorInt O)
+        public void Min(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "MinInt");
         }
 
         /// <inheritdoc/>
-        public void Max(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Max(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             Broadcast(A, B, O, "Max");
         }
 
         /// <inheritdoc/>
-        public void Max(TensorInt A, TensorInt B, TensorInt O)
+        public void Max(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             Broadcast(A, B, O, "MaxInt");
         }
@@ -1404,7 +1404,7 @@ namespace Unity.Sentis
             func.Dispatch(pinO);
         }
 
-        unsafe void PrepareSliceLocal(TensorShape shape, ReadOnlySpan<int> starts, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps, int* startsLocal, int* stepsLocal)
+        unsafe void PrepareSliceLocal(ReadOnlySpan<int> starts, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps, int* startsLocal, int* stepsLocal)
         {
             for (var i = 0; i < 8; i++)
             {
@@ -1413,18 +1413,9 @@ namespace Unity.Sentis
 
             for (var i = 0; i < starts.Length; i++)
             {
-                var axis = axes == null ? i : shape.Axis(axes[i]);
-                var step = steps != null ? steps[i] : 1;
-                var dim = shape[axis];
-
-                var clampAdjustDirection = step < 0 ? -1 : 0;
-
-                var start = starts[i];
-                start = start < 0 ? dim + start : start;
-                start = Mathf.Clamp(start, 0, dim + clampAdjustDirection);
-
-                startsLocal[axis] = start;
-                stepsLocal[axis] = step;
+                var axis = axes[i];
+                startsLocal[axis] = starts[i];
+                stepsLocal[axis] = steps[i];
             }
         }
 
@@ -1435,7 +1426,7 @@ namespace Unity.Sentis
             {
                 var startsLocal = stackalloc int[TensorShape.maxRank];
                 var stepsLocal = stackalloc int[TensorShape.maxRank];
-                PrepareSliceLocal(X.shape, starts, axes, steps, startsLocal, stepsLocal);
+                PrepareSliceLocal(starts, axes, steps, startsLocal, stepsLocal);
                 Slice(X, O, startsLocal, stepsLocal);
             }
         }
@@ -1447,12 +1438,12 @@ namespace Unity.Sentis
             {
                 var startsLocal = stackalloc int[TensorShape.maxRank];
                 var stepsLocal = stackalloc int[TensorShape.maxRank];
-                PrepareSliceLocal(X.shape, starts, axes, steps, startsLocal, stepsLocal);
+                PrepareSliceLocal(starts, axes, steps, startsLocal, stepsLocal);
                 SliceSet(X, values, O, startsLocal, stepsLocal);
             }
         }
 
-        void SoftmaxActivation(Tensor X, TensorFloat O, int reduceAxis, string endKernelName)
+        void SoftmaxActivation(Tensor X, Tensor<float> O, int reduceAxis, string endKernelName)
         {
             var reduceOpShape = X.shape.Reduce(reduceAxis);
             var B = AllocTensor(reduceOpShape, DataType.Float);
@@ -1502,19 +1493,19 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Softmax(TensorFloat X, TensorFloat O, int axis)
+        public void Softmax(Tensor<float> X, Tensor<float> O, int axis)
         {
             SoftmaxActivation(X, O, axis, "SOFTMAXEND");
         }
 
         /// <inheritdoc/>
-        public void LogSoftmax(TensorFloat X, TensorFloat O, int axis)
+        public void LogSoftmax(Tensor<float> X, Tensor<float> O, int axis)
         {
             SoftmaxActivation(X, O, axis, "LOGSOFTMAXEND");
         }
 
         /// <inheritdoc/>
-        public void Hardmax(TensorFloat X, TensorFloat O, int axis)
+        public void Hardmax(Tensor<float> X, Tensor<float> O, int axis)
         {
             axis = X.shape.Axis(axis);
 
@@ -1541,7 +1532,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void OneHot(TensorInt X, TensorInt O, int axis, int depth, int offValue, int onValue)
+        public void OneHot(Tensor<int> X, Tensor<int> O, int axis, int depth, int offValue, int onValue)
         {
             axis = O.shape.Axis(axis);
 
@@ -1561,7 +1552,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void OneHot(TensorInt X, TensorFloat O, int axis, int depth, float offValue, float onValue)
+        public void OneHot(Tensor<int> X, Tensor<float> O, int axis, int depth, float offValue, float onValue)
         {
             axis = O.shape.Axis(axis);
 
@@ -1640,97 +1631,97 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceMax(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceMax(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             Reduce(X, O, axes, "ReduceMax");
         }
 
         /// <inheritdoc/>
-        public void ReduceMax(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
+        public void ReduceMax(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             Reduce(X, O, axes, "ReduceMaxInt");
         }
 
         /// <inheritdoc/>
-        public void ReduceMean(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceMean(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             Reduce(X, O, axes, "ReduceMean");
         }
 
         /// <inheritdoc/>
-        public void ReduceMin(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceMin(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             Reduce(X, O, axes, "ReduceMin");
         }
 
         /// <inheritdoc/>
-        public void ReduceMin(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
+        public void ReduceMin(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             Reduce(X, O, axes, "ReduceMinInt");
         }
 
         /// <inheritdoc/>
-        public void ReduceProd(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceProd(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             Reduce(X, O, axes, "ReduceProd");
         }
 
         /// <inheritdoc/>
-        public void ReduceProd(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
+        public void ReduceProd(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             Reduce(X, O, axes, "ReduceProdInt");
         }
 
         /// <inheritdoc/>
-        public void ReduceSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceSum(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             Reduce(X, O, axes, "ReduceSum");
         }
 
         /// <inheritdoc/>
-        public void ReduceSum(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
+        public void ReduceSum(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             Reduce(X, O, axes, "ReduceSumInt");
         }
 
         /// <inheritdoc/>
-        public void ReduceL1(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceL1(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             Reduce(X, O, axes, "ReduceL1", "ReduceL1", "ReduceSum", "ReduceSum");
         }
 
         /// <inheritdoc/>
-        public void ReduceL1(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
+        public void ReduceL1(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             Reduce(X, O, axes, "ReduceL1Int", "ReduceL1Int", "ReduceSumInt", "ReduceSumInt");
         }
 
         /// <inheritdoc/>
-        public void ReduceL2(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceL2(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             Reduce(X, O, axes, "ReduceL2", "ReduceSumSquare", "ReduceSum", "ReduceSqrt");
         }
 
         /// <inheritdoc/>
-        public void ReduceLogSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceLogSum(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             Reduce(X, O, axes, "ReduceLogSum", "ReduceSum", "ReduceSum", "ReduceLogSum");
         }
 
         /// <inheritdoc/>
-        public void ReduceLogSumExp(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceLogSumExp(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             Reduce(X, O, axes, "ReduceLogSumExp");
         }
 
         /// <inheritdoc/>
-        public void ReduceSumSquare(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceSumSquare(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             Reduce(X, O, axes, "ReduceSumSquare", "ReduceSumSquare", "ReduceSum", "ReduceSum");
         }
 
         /// <inheritdoc/>
-        public void ReduceSumSquare(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
+        public void ReduceSumSquare(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             Reduce(X, O, axes, "ReduceSumSquareInt", "ReduceSumSquareInt", "ReduceSumInt", "ReduceSumInt");
         }
@@ -1753,7 +1744,7 @@ namespace Unity.Sentis
             func.Dispatch(pinO);
         }
 
-        void ReduceIndices(Tensor X, TensorInt O, string kernelName, int axis, bool keepDim, bool selectLastIndex)
+        void ReduceIndices(Tensor X, Tensor<int> O, string kernelName, int axis, bool keepDim, bool selectLastIndex)
         {
             if (keepDim)
             {
@@ -1769,35 +1760,35 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ArgMax(TensorFloat X, TensorInt O, int axis, bool selectLastIndex)
+        public void ArgMax(Tensor<float> X, Tensor<int> O, int axis, bool selectLastIndex)
         {
             bool keepDim = X.shape.rank == O.shape.rank;
             ReduceIndices(X, O, "ArgMax", axis, keepDim, selectLastIndex);
         }
 
         /// <inheritdoc/>
-        public void ArgMax(TensorInt X, TensorInt O, int axis, bool selectLastIndex)
+        public void ArgMax(Tensor<int> X, Tensor<int> O, int axis, bool selectLastIndex)
         {
             bool keepDim = X.shape.rank == O.shape.rank;
             ReduceIndices(X, O, "ArgMax", axis, keepDim, selectLastIndex);
         }
 
         /// <inheritdoc/>
-        public void ArgMin(TensorFloat X, TensorInt O, int axis, bool selectLastIndex)
+        public void ArgMin(Tensor<float> X, Tensor<int> O, int axis, bool selectLastIndex)
         {
             bool keepDim = X.shape.rank == O.shape.rank;
             ReduceIndices(X, O, "ArgMin", axis, keepDim, selectLastIndex);
         }
 
         /// <inheritdoc/>
-        public void ArgMin(TensorInt X, TensorInt O, int axis, bool selectLastIndex)
+        public void ArgMin(Tensor<int> X, Tensor<int> O, int axis, bool selectLastIndex)
         {
             bool keepDim = X.shape.rank == O.shape.rank;
             ReduceIndices(X, O, "ArgMin", axis, keepDim, selectLastIndex);
         }
 
         /// <inheritdoc/>
-        public void Gather(Tensor X, TensorInt indices, Tensor O, int axis)
+        public void Gather(Tensor X, Tensor<int> indices, Tensor O, int axis)
         {
             var pinX = PinBlockAny(X);
             var pinB = PinBlockAny(indices);
@@ -1818,7 +1809,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void GatherElements(Tensor X, TensorInt indices, Tensor O, int axis)
+        public void GatherElements(Tensor X, Tensor<int> indices, Tensor O, int axis)
         {
             axis = X.shape.Axis(axis); // need positive axis below
 
@@ -1857,7 +1848,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void GatherND(Tensor X, TensorInt indices, Tensor O, int batchDims)
+        public void GatherND(Tensor X, Tensor<int> indices, Tensor O, int batchDims)
         {
             var pinX = PinBlockAny(X);
             var pinB = PinBlockAny(indices);
@@ -1882,7 +1873,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ScatterElements(Tensor X, TensorInt indices, Tensor updates, Tensor O, int axis, Layers.ScatterReductionMode reduction)
+        public void ScatterElements(Tensor X, Tensor<int> indices, Tensor updates, Tensor O, int axis, Layers.ScatterReductionMode reduction)
         {
             axis = X.shape.Axis(axis); // need positive axis below
 
@@ -1949,7 +1940,7 @@ namespace Unity.Sentis
             func.Dispatch(pinO);
         }
 
-        void ScatterND(Tensor X, TensorInt indices, Tensor updates, Tensor O, DataType dataType, Layers.ScatterReductionMode reduction)
+        void ScatterND(Tensor X, Tensor<int> indices, Tensor updates, Tensor O, DataType dataType, Layers.ScatterReductionMode reduction)
         {
             var func = new PixelFunc("Hidden/Sentis/ScatterND");
             if (dataType == DataType.Int)
@@ -1997,13 +1988,13 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ScatterND(TensorFloat X, TensorInt indices, TensorFloat updates, TensorFloat O, Layers.ScatterReductionMode reduction)
+        public void ScatterND(Tensor<float> X, Tensor<int> indices, Tensor<float> updates, Tensor<float> O, Layers.ScatterReductionMode reduction)
         {
             ScatterND(X, indices, updates, O, DataType.Float, reduction);
         }
 
         /// <inheritdoc/>
-        public void ScatterND(TensorInt X, TensorInt indices, TensorInt updates, TensorInt O, Layers.ScatterReductionMode reduction)
+        public void ScatterND(Tensor<int> X, Tensor<int> indices, Tensor<int> updates, Tensor<int> O, Layers.ScatterReductionMode reduction)
         {
             ScatterND(X, indices, updates, O, DataType.Int, reduction);
         }
@@ -2090,7 +2081,7 @@ namespace Unity.Sentis
             func.Dispatch(pinO);
         }
 
-        void GlobalPool(TensorFloat X, TensorFloat O, string kernelName)
+        void GlobalPool(Tensor<float> X, Tensor<float> O, string kernelName)
         {
             var pinX = TextureTensorData.Pin(X, 1);
             var pinO = TextureTensorData.Pin(O, 1);
@@ -2108,18 +2099,18 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void GlobalAveragePool(TensorFloat X, TensorFloat O)
+        public void GlobalAveragePool(Tensor<float> X, Tensor<float> O)
         {
             GlobalPool(X, O, "AVGPOOL");
         }
 
         /// <inheritdoc/>
-        public void GlobalMaxPool(TensorFloat X, TensorFloat O)
+        public void GlobalMaxPool(Tensor<float> X, Tensor<float> O)
         {
             GlobalPool(X, O, "MAXPOOL");
         }
 
-        void LocalPool(TensorFloat X, TensorFloat O, int[] pool, int[] stride, int[] pad, string kernelName)
+        void LocalPool(Tensor<float> X, Tensor<float> O, int[] pool, int[] stride, int[] pad, string kernelName)
         {
             var pinX = TextureTensorData.Pin(X, 1);
             var pinO = TextureTensorData.Pin(O, 1);
@@ -2153,7 +2144,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void MaxPool(TensorFloat X, TensorFloat O, int[] kernelShape, int[] strides, int[] pads)
+        public void MaxPool(Tensor<float> X, Tensor<float> O, int[] kernelShape, int[] strides, int[] pads)
         {
             if (X.shape.rank > 4)
                 throw new NotImplementedException();
@@ -2162,7 +2153,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void AveragePool(TensorFloat X, TensorFloat O, int[] kernelShape, int[] strides, int[] pads)
+        public void AveragePool(Tensor<float> X, Tensor<float> O, int[] kernelShape, int[] strides, int[] pads)
         {
             if (X.shape.rank > 4)
                 throw new NotImplementedException();
@@ -2171,7 +2162,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void DepthToSpace(TensorFloat X, TensorFloat O, int blocksize, Layers.DepthToSpaceMode mode)
+        public void DepthToSpace(Tensor<float> X, Tensor<float> O, int blocksize, Layers.DepthToSpaceMode mode)
         {
             var func = new PixelFunc("Hidden/Sentis/DepthToSpace");
 
@@ -2202,7 +2193,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void SpaceToDepth(TensorFloat X, TensorFloat O, int blocksize)
+        public void SpaceToDepth(Tensor<float> X, Tensor<float> O, int blocksize)
         {
             var func = new PixelFunc("Hidden/Sentis/SpaceToDepth");
 
@@ -2230,8 +2221,6 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Split(Tensor X, Tensor O, int axis, int start)
         {
-            axis = X.shape.Axis(axis);
-
             var pinX = PinBlockAny(X);
             var pinO = PinAsSame(O, pinX, false);
 
@@ -2281,7 +2270,7 @@ namespace Unity.Sentis
             func.Dispatch(pinO);
         }
 
-        void ResizeND(TensorFloat X, TensorFloat O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
+        void ResizeND(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
         {
             // calculate first and last axes with scaling
             var firstScaleAxis = scale.Length;
@@ -2310,7 +2299,7 @@ namespace Unity.Sentis
                 if (scale[i] == 1f)
                     continue;
                 var oShape = ShapeInference.Resize(X.shape, i, scale[i]);
-                var oCurr = i == lastScaleAxis ? O : AllocTensor(oShape, DataType.Float) as TensorFloat;
+                var oCurr = i == lastScaleAxis ? O : AllocTensor(oShape, DataType.Float) as Tensor<float>;
                 Resize1D(X, oCurr, blockAxis, i, scale[i], interpolationMode, nearestMode, coordTransformMode);
                 if (i != firstScaleAxis)
                     ReleaseTensor(X);
@@ -2318,7 +2307,7 @@ namespace Unity.Sentis
             }
         }
 
-        void Resize1D(TensorFloat X, TensorFloat O, int blockAxis, int axis, float scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
+        void Resize1D(Tensor<float> X, Tensor<float> O, int blockAxis, int axis, float scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
         {
             var pinX = TextureTensorData.Pin(X, blockAxis);
             var pinO = TextureTensorData.Pin(O, blockAxis);
@@ -2359,7 +2348,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Pad(TensorFloat X, TensorFloat O, ReadOnlySpan<int> pad, Layers.PadMode padMode, float constant)
+        public void Pad(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> pad, Layers.PadMode padMode, float constant)
         {
             var pinX = X.dataOnBackend as TextureTensorData;
             var xRank = X.shape.rank;
@@ -2426,7 +2415,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Pad(TensorInt X, TensorInt O, ReadOnlySpan<int> pad, Layers.PadMode padMode, int constant)
+        public void Pad(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> pad, Layers.PadMode padMode, int constant)
         {
             var pinX = X.dataOnBackend as TextureTensorData;
             var xRank = X.shape.rank;
@@ -2494,7 +2483,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Resize(TensorFloat X, TensorFloat O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
+        public void Resize(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
         {
             if (X.shape.rank > 5 || scale[0] != 1f || scale[1] != 1f)
             {
@@ -2574,7 +2563,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void GridSample(TensorFloat X, TensorFloat grid, TensorFloat O, Layers.InterpolationMode mode, Layers.PaddingMode paddingMode, bool alignCorners)
+        public void GridSample(Tensor<float> X, Tensor<float> grid, Tensor<float> O, Layers.InterpolationMode mode, Layers.PaddingMode paddingMode, bool alignCorners)
         {
             var numSpatialDims = X.shape.rank - 2;
 
@@ -2650,7 +2639,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ScaleBias(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O)
+        public void ScaleBias(Tensor<float> X, Tensor<float> S, Tensor<float> B, Tensor<float> O)
         {
             var func = new PixelFunc("Hidden/Sentis/ScaleBias");
 
@@ -2679,7 +2668,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void BatchNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat mean, TensorFloat variance, TensorFloat O, float epsilon)
+        public void BatchNormalization(Tensor<float> X, Tensor<float> S, Tensor<float> B, Tensor<float> mean, Tensor<float> variance, Tensor<float> O, float epsilon)
         {
             var func = new PixelFunc("Hidden/Sentis/BatchNormalization");
 
@@ -2706,7 +2695,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void InstanceNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O, float epsilon)
+        public void InstanceNormalization(Tensor<float> X, Tensor<float> S, Tensor<float> B, Tensor<float> O, float epsilon)
         {
             var spatialSize = X.shape.Strides(1);
             var pinX = TextureTensorData.Pin(X, 1);
@@ -2763,7 +2752,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void LayerNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O, float epsilon)
+        public void LayerNormalization(Tensor<float> X, Tensor<float> S, Tensor<float> B, Tensor<float> O, float epsilon)
         {
             var axis = X.shape.Axis(-1);
             var reducedShape = X.shape.Reduce(axis);
@@ -2796,7 +2785,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void RoiAlign(TensorFloat X, TensorFloat rois, TensorInt indices, TensorFloat O, Layers.RoiPoolingMode mode, int outputHeight, int outputWidth, int samplingRatio, float spatialScale)
+        public void RoiAlign(Tensor<float> X, Tensor<float> rois, Tensor<int> indices, Tensor<float> O, Layers.RoiPoolingMode mode, int outputHeight, int outputWidth, int samplingRatio, float spatialScale)
         {
             var pinX = TextureTensorData.Pin(X, 1);
             var pinB = PinBlockAny(indices);
@@ -2828,7 +2817,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void RandomUniform(TensorFloat O, float low, float high, int? seed)
+        public void RandomUniform(Tensor<float> O, float low, float high, int? seed)
         {
             var pinO = PinBlockAny(O, false);
 
@@ -2843,7 +2832,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void RandomNormal(TensorFloat O, float mean, float scale, int? seed)
+        public void RandomNormal(Tensor<float> O, float mean, float scale, int? seed)
         {
             var pinO = PinBlockAny(O, false);
 
@@ -2858,7 +2847,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Bernoulli(TensorFloat X, Tensor O, int? seed)
+        public void Bernoulli(Tensor<float> X, Tensor O, int? seed)
         {
             var func = new PixelFunc("Hidden/Sentis/Random");
             func.EnableKeyword(O.dataType == DataType.Int ? "BernoulliInt" : "Bernoulli");
@@ -2874,7 +2863,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Range(TensorFloat O, float start, float delta)
+        public void Range(Tensor<float> O, float start, float delta)
         {
             var pinO = PinBlockAny(O);
 
@@ -2885,7 +2874,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Range(TensorInt O, int start, int delta)
+        public void Range(Tensor<int> O, int start, int delta)
         {
             var pinO = PinBlockAny(O);
 
@@ -2945,13 +2934,13 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void CumSum(TensorFloat X, TensorFloat O, int axis, bool reverse, bool exclusive)
+        public void CumSum(Tensor<float> X, Tensor<float> O, int axis, bool reverse, bool exclusive)
         {
             CumSum(X, O, DataType.Float, axis, reverse, exclusive);
         }
 
         /// <inheritdoc/>
-        public void CumSum(TensorInt X, TensorInt O, int axis, bool reverse, bool exclusive)
+        public void CumSum(Tensor<int> X, Tensor<int> O, int axis, bool reverse, bool exclusive)
         {
             CumSum(X, O, DataType.Int, axis, reverse, exclusive);
         }
@@ -3011,7 +3000,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void TopP(TensorFloat X, TensorFloat random, TensorInt O)
+        public void TopP(Tensor<float> X, Tensor<float> random, Tensor<int> O)
         {
             var axis = 1;
             var pinX = PinBlockOther(X, nonBlockAxis: axis);
@@ -3028,19 +3017,19 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void LSTM(TensorFloat X, TensorFloat W, TensorFloat R, TensorFloat B, TensorInt sequenceLens, TensorFloat initialH, TensorFloat initialC, TensorFloat P, TensorFloat Y, TensorFloat Yh, TensorFloat Yc, Layers.RnnDirection direction, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, Layers.RnnLayout layout)
+        public void LSTM(Tensor<float> X, Tensor<float> W, Tensor<float> R, Tensor<float> B, Tensor<int> sequenceLens, Tensor<float> initialH, Tensor<float> initialC, Tensor<float> P, Tensor<float> Y, Tensor<float> Yh, Tensor<float> Yc, Layers.RnnDirection direction, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, Layers.RnnLayout layout)
         {
             throw new NotImplementedException();
         }
 
         /// <inheritdoc/>
-        public void TopK(TensorFloat X, TensorFloat values, TensorInt indices, int k, int axis, bool largest)
+        public void TopK(Tensor<float> X, Tensor<float> values, Tensor<int> indices, int k, int axis, bool largest)
         {
             throw new NotImplementedException();
         }
 
         /// <inheritdoc/>
-        public void Einsum(TensorFloat[] inputTensors, TensorFloat O, TensorIndex[] operandIndices, TensorIndex outputIndices, TensorIndex sumIndices, TensorShape sumShape)
+        public void Einsum(Tensor<float>[] inputTensors, Tensor<float> O, TensorIndex[] operandIndices, TensorIndex outputIndices, TensorIndex sumIndices, TensorShape sumShape)
         {
             throw new NotImplementedException();
         }
@@ -3052,7 +3041,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void CompressWithIndices(Tensor X, TensorInt indices, Tensor O, int numIndices, int axis)
+        public void CompressWithIndices(Tensor X, Tensor<int> indices, Tensor O, int numIndices, int axis)
         {
             var pinX = PinBlockAny(X);
             var pinB = PinBlockAny(indices);
@@ -3070,12 +3059,6 @@ namespace Unity.Sentis
             func.SetTensorBlockStride(k_TensorPropertiesB, pinB);
             func.SetTensorBlockStride(k_TensorPropertiesO, pinO);
             func.Dispatch(pinO);
-        }
-
-        /// <inheritdoc/>
-        public Tensor PinToDevice(Tensor X, bool clearOnInit = false)
-        {
-            throw new NotImplementedException();
         }
 
         /// <inheritdoc/>

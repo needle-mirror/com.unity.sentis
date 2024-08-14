@@ -35,7 +35,7 @@ namespace Unity.Sentis
         void CompleteAllPendingOperations();
 
         /// <summary>
-        /// Returns a contiguous block of data from internal storage.
+        /// Blocking call that returns a contiguous block of data from internal storage.
         /// </summary>
         /// <param name="dstCount">The number of elements to download.</param>
         /// <typeparam name="T">The data type of the elements.</typeparam>
@@ -53,12 +53,6 @@ namespace Unity.Sentis
         #endif
 
         /// <summary>
-        /// Returns a deep copy of the internal storage.
-        /// </summary>
-        /// <returns>Cloned internal storage.</returns>
-        ITensorData Clone();
-
-        /// <summary>
         /// The maximum count of the stored data elements.
         /// </summary>
         int maxCapacity { get; }
@@ -67,51 +61,5 @@ namespace Unity.Sentis
         /// On what backend are the data elements stored.
         /// </summary>
         BackendType backendType { get; }
-    }
-
-    /// <summary>
-    /// An interface that represents tensor data that can be read to and written from on CPU.
-    /// </summary>
-    public interface IReadableTensorData
-    {
-        /// <summary>
-        /// Returns a data element.
-        /// </summary>
-        /// <param name="index">The index of the element.</param>
-        /// <typeparam name="T">The data type of the element.</typeparam>
-        /// <returns>Data element.</returns>
-        T Get<T>(int index) where T : unmanaged;
-
-        /// <summary>
-        /// Sets `value` data element at `index`.
-        /// </summary>
-        /// <param name="index">The index of the element to set.</param>
-        /// <param name="value">The value to set for the element.</param>
-        /// <typeparam name="T">The data type of the element.</typeparam>
-        void Set<T>(int index, T value) where T : unmanaged;
-
-        /// <summary>
-        /// Returns a ReadOnlySpan on the linear memory data.
-        /// </summary>
-        /// <param name="dstCount">The number of elements to span.</param>
-        /// <typeparam name="T">The data type of the elements.</typeparam>
-        /// <returns>Span of elements.</returns>
-        ReadOnlySpan<T> ToReadOnlySpan<T>(int dstCount) where T : unmanaged;
-
-        /// <summary>
-        /// Returns a ReadOnlyNativeArray handle on the linear memory data.
-        /// </summary>
-        /// <param name="dstCount">The number of elements in the array.</param>
-        /// <typeparam name="T">The data type of the elements.</typeparam>
-        /// <returns>NativeArray of elements.</returns>
-        NativeArray<T>.ReadOnly GetReadOnlyNativeArrayHandle<T>(int dstCount) where T : unmanaged;
-
-        /// <summary>
-        /// Returns an array that is a copy of the linear memory data.
-        /// </summary>
-        /// <param name="dstCount">The number of elements in the array.</param>
-        /// <typeparam name="T">The data type of the elements.</typeparam>
-        /// <returns>Array of elements.</returns>
-        T[] ToArray<T>(int dstCount) where T : unmanaged;
     }
 }

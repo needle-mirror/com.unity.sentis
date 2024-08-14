@@ -11,8 +11,8 @@ Shader "Hidden/Sentis/LocalPool"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile POOL1D POOL2D
-            #pragma multi_compile MAXPOOL AVGPOOL
+            #pragma multi_compile_local POOL1D POOL2D
+            #pragma multi_compile_local MAXPOOL AVGPOOL
 
             #pragma vertex vert
             #pragma fragment frag

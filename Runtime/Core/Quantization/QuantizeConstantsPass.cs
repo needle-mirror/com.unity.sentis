@@ -3,7 +3,7 @@ using Unity.Sentis.Layers;
 using Unity.Jobs;
 using UnityEngine;
 
-namespace Unity.Sentis.Quantization
+namespace Unity.Sentis
 {
     class QuantizeConstantsPass
     {
@@ -24,8 +24,8 @@ namespace Unity.Sentis.Quantization
             }
 
             using var backend = new CPUBackend();
-            using var min = TensorFloat.AllocZeros(new TensorShape());
-            using var max = TensorFloat.AllocZeros(new TensorShape());
+            using var min = new Tensor<float>(new TensorShape());
+            using var max = new Tensor<float>(new TensorShape());
 
             var quantizeTensors = new HashSet<int>();
             for (var i = 0; i < model.layers.Count; i++)
@@ -50,8 +50,8 @@ namespace Unity.Sentis.Quantization
 
                     if (m_QuantizationType == QuantizationType.Float16)
                     {
-                        var quantizedTensor = TensorShort.AllocZeros(constant.shape);
-                        var data = BurstTensorData.Pin(quantizedTensor);
+                        var quantizedTensor = new Tensor<short>(constant.shape);
+                        var data = CPUTensorData.Pin(quantizedTensor);
                         unsafe
                         {
                             var job = new BurstJobsQuantizeTensor.CastFloatToHalfJob
@@ -71,16 +71,18 @@ namespace Unity.Sentis.Quantization
                     }
                     else if (m_QuantizationType == QuantizationType.Uint8)
                     {
-                        using var X = constant.WeightsToTensorWithSharedTensorData() as TensorFloat;
+                        using var X = constant.WeightsToTensorWithSharedTensorData() as Tensor<float>;
                         backend.ReduceMin(X, min, null);
                         backend.ReduceMax(X, max, null);
+                        min.CompleteAllPendingOperations();
+                        max.CompleteAllPendingOperations();
                         var minValue = min.GetItem<float>(0);
                         var maxValue = max.GetItem<float>(0);
                         float scale = (Mathf.Max(0, maxValue) - Mathf.Min(0, minValue)) / 255f;
                         byte zeroPoint = (byte)Mathf.RoundToInt(Mathf.Clamp(-minValue / scale, 0, 255));
 
-                        var quantizedTensor = TensorByte.AllocZeros(constant.shape);
-                        var data = BurstTensorData.Pin(quantizedTensor);
+                        var quantizedTensor = new Tensor<byte>(constant.shape);
+                        var data = CPUTensorData.Pin(quantizedTensor);
                         unsafe
                         {
                             var job = new BurstJobsQuantizeTensor.QuantizeUint8Job

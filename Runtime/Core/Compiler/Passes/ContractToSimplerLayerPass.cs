@@ -13,7 +13,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             var op = new CPUOps();
             var ctx = PartialInferenceAnalysis.InferModelPartialTensors(model);
 
-            var modelConstants = new Dictionary<int, Layers.Constant>();
+            var modelConstants = new Dictionary<int, Constant>();
             foreach (var c in model.constants)
                 modelConstants.Add(c.index, c);
 
@@ -38,7 +38,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     var tileShape = TensorShape.Ones(shape.rank);
                     tileShape[concatLayer.axis] = concatLayer.inputs.Length;
 
-                    var repeatsConstant = new Layers.Constant(model.GetUniqueIndex(), new TensorShape(tileShape.rank), tileShape.ToArray());
+                    var repeatsConstant = new Constant(model.GetUniqueIndex(), new TensorShape(tileShape.rank), tileShape.ToArray());
                     model.AddConstant(repeatsConstant);
                     model.layers[l] = new Layers.Tile(concatLayer.outputs[0], concatLayer.inputs[0], repeatsConstant.index);
                     continue;
@@ -113,9 +113,9 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                         }
                     }
 
-                    if (outputShape.IsFullyKnown() && inputShape.IsFullyKnown() && outputShape.Length() == inputShape.Length())
+                    if (outputShape.IsStatic() && inputShape.IsStatic() && outputShape.Length() == inputShape.Length())
                     {
-                        var shapeConstant = new Layers.Constant(model.GetUniqueIndex(), new TensorShape(outputShape.rank), outputShape.ToTensorShape().ToArray());
+                        var shapeConstant = new Constant(model.GetUniqueIndex(), new TensorShape(outputShape.rank), outputShape.ToTensorShape().ToArray());
                         model.AddConstant(shapeConstant);
                         model.layers[l] = new Layers.Reshape(layer.outputs[0], layer.inputs[0], shapeConstant.index);
                     }
@@ -139,7 +139,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     // replace Tile layer where the tile values are all 1 with Identity
                     var repeats = ctx.GetPartialTensor(tileLayer.inputs[1]);
 
-                    if (!repeats.IsFullyKnown())
+                    if (!repeats.IsStatic())
                         continue;
                     var allOnes = true;
                     for (var i = 0; i < repeats.length; i++)
@@ -164,7 +164,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     }
 
                     // these reductions don't change the values if we reduce along a 0 or 1 length axis
-                    if (isEmptyAxes || !axes.IsFullyKnown() || !(reduceLayer is Layers.ReduceMin or Layers.ReduceMax || reduceLayer is Layers.ReduceSum || reduceLayer is Layers.ReduceLogSumExp || reduceLayer is Layers.ReduceProd))
+                    if (isEmptyAxes || !axes.IsStatic() || !(reduceLayer is Layers.ReduceMin or Layers.ReduceMax || reduceLayer is Layers.ReduceSum || reduceLayer is Layers.ReduceLogSumExp || reduceLayer is Layers.ReduceProd))
                         continue;
 
                     var input = ctx.GetPartialTensor(reduceLayer.inputs[0]);
@@ -227,10 +227,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     var c3 = modelConstants[bnLayer.inputs[3]];
                     var c4 = modelConstants[bnLayer.inputs[4]];
 
-                    using var gamma = c1.WeightsToTensorWithSharedTensorData() as TensorFloat;
-                    using var beta = c2.WeightsToTensorWithSharedTensorData() as TensorFloat;
-                    using var mean = c3.WeightsToTensorWithSharedTensorData() as TensorFloat;
-                    using var variance = c4.WeightsToTensorWithSharedTensorData() as TensorFloat;
+                    using var gamma = c1.WeightsToTensorWithSharedTensorData() as Tensor<float>;
+                    using var beta = c2.WeightsToTensorWithSharedTensorData() as Tensor<float>;
+                    using var mean = c3.WeightsToTensorWithSharedTensorData() as Tensor<float>;
+                    using var variance = c4.WeightsToTensorWithSharedTensorData() as Tensor<float>;
 
                     using var epsilonTensor = op.ConstantOfShape(new TensorShape(1), bnLayer.epsilon);
                     using var a0 = op.Add(variance, epsilonTensor);
@@ -240,10 +240,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     using var bias = op.Sub(beta, m0);
 
                     var scaleConstantIndex = model.GetUniqueIndex();
-                    model.AddConstant(new Layers.Constant(scaleConstantIndex, scale.shape, scale.ToReadOnlyArray()));
+                    model.AddConstant(new Constant(scaleConstantIndex, scale.shape, scale.DownloadToArray()));
 
                     var biasConstantIndex = model.GetUniqueIndex();
-                    model.AddConstant(new Layers.Constant(biasConstantIndex, bias.shape, bias.ToReadOnlyArray()));
+                    model.AddConstant(new Constant(biasConstantIndex, bias.shape, bias.DownloadToArray()));
 
                     model.layers[l] = new Layers.ScaleBias(bnLayer.outputs[0], bnLayer.inputs[0], scaleConstantIndex, biasConstantIndex);
                     continue;
@@ -258,7 +258,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                         continue;
 
                     var dimConstantIndex = model.GetUniqueIndex();
-                    model.AddConstant(new Layers.Constant(dimConstantIndex, new TensorShape(), new[] { gatherLayer.axis }));
+                    model.AddConstant(new Constant(dimConstantIndex, new TensorShape(), new[] { gatherLayer.axis }));
 
                     if (indices.shape.rank == 0)
                     {
@@ -269,7 +269,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     if (indices.shape.rank == 1)
                     {
                         var lengthConstantIndex = model.GetUniqueIndex();
-                        model.AddConstant(new Layers.Constant(lengthConstantIndex, new TensorShape(), new[] { 1 }));
+                        model.AddConstant(new Constant(lengthConstantIndex, new TensorShape(), new[] { 1 }));
                         model.layers[l] = new Layers.Narrow(gatherLayer.outputs[0], gatherLayer.inputs[0], dimConstantIndex, gatherLayer.inputs[1], lengthConstantIndex);
                     }
                 }

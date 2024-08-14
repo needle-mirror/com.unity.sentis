@@ -4,66 +4,68 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Mathematics;
-using static Unity.Sentis.BurstTensorData;
+using static Unity.Sentis.CPUTensorData;
 
 namespace Unity.Sentis
 {
-    public partial class CPUBackend
+    partial class CPUBackend
     {
         internal static FencedMemoryAlloc s_tmpMemBlock0 = new FencedMemoryAlloc();
         internal static FencedMemoryAlloc s_tmpMemBlock1 = new FencedMemoryAlloc();
 
         static BLASPlugin s_BLAS = BLASPluginFactory.CreateNativeBLASPlugin();
 
-        // Do we need this class or operate on BurstTensorData instead?
-        TensorClassPool<TensorFloat> m_TensorFloatPool = new TensorClassPool<TensorFloat>();
-        TensorClassPool<TensorInt> m_TensorIntPool = new TensorClassPool<TensorInt>();
-        TensorDataPool<BurstTensorData> m_MemoryPool = new TensorDataPool<BurstTensorData>();
+        // Do we need this class or operate on CPUTensorData instead?
+        TensorClassPool<Tensor<float>> m_TensorFloatPool = new TensorClassPool<Tensor<float>>();
+        TensorClassPool<Tensor<int>> m_TensorIntPool = new TensorClassPool<Tensor<int>>();
+        TensorDataPool<CPUTensorData> m_MemoryPool = new TensorDataPool<CPUTensorData>();
 
-        TensorFloat AllocTensorFloat(TensorShape shape)
+        Tensor<float> AllocTensorFloat(TensorShape shape)
         {
-            BurstTensorData data = m_MemoryPool.AdoptFromPool(shape.length);
+            CPUTensorData data = m_MemoryPool.AdoptFromPool(shape.length);
             if (data == null)
-                data = new BurstTensorData(shape.length);
+                data = new CPUTensorData(shape.length);
             var tensor = m_TensorFloatPool.AdoptFromPool();
             if (tensor == null)
-                tensor = TensorFloat.AllocNoData(shape);
+                tensor = new Tensor<float>(shape, data: null);
 
             tensor.shape = shape;
+            tensor.count = shape.length;
             tensor.dataOnBackend = data;
             return tensor;
         }
 
-        TensorInt AllocTensorInt(TensorShape shape)
+        Tensor<int> AllocTensorInt(TensorShape shape)
         {
-            BurstTensorData data = m_MemoryPool.AdoptFromPool(shape.length);
+            CPUTensorData data = m_MemoryPool.AdoptFromPool(shape.length);
             if (data == null)
-                data = new BurstTensorData(shape.length);
+                data = new CPUTensorData(shape.length);
             var tensor = m_TensorIntPool.AdoptFromPool();
             if (tensor == null)
-                tensor = TensorInt.AllocNoData(shape);
+                tensor = new Tensor<int>(shape, data: null);
 
             tensor.shape = shape;
+            tensor.count = shape.length;
             tensor.dataOnBackend = data;
             return tensor;
         }
 
-        void ReleaseTensorFloat(TensorFloat tensor)
+        void ReleaseTensorFloat(Tensor<float> tensor)
         {
             if (tensor == null)
                 return;
-            m_MemoryPool.ReleaseToPool(tensor.dataOnBackend as BurstTensorData);
+            m_MemoryPool.ReleaseToPool(tensor.dataOnBackend as CPUTensorData);
             tensor.dataOnBackend = null;
-            m_TensorFloatPool.ReleaseToPool(tensor as TensorFloat);
+            m_TensorFloatPool.ReleaseToPool(tensor as Tensor<float>);
         }
 
-        void ReleaseTensorInt(TensorInt tensor)
+        void ReleaseTensorInt(Tensor<int> tensor)
         {
             if (tensor == null)
                 return;
-            m_MemoryPool.ReleaseToPool(tensor.dataOnBackend as BurstTensorData);
+            m_MemoryPool.ReleaseToPool(tensor.dataOnBackend as CPUTensorData);
             tensor.dataOnBackend = null;
-            m_TensorIntPool.ReleaseToPool(tensor as TensorInt);
+            m_TensorIntPool.ReleaseToPool(tensor as Tensor<int>);
         }
 
         unsafe void ScheduleSGEMM(
@@ -110,7 +112,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void MatMul2D(TensorFloat X, TensorFloat Y, TensorFloat O, bool xTranspose, bool yTranspose)
+        public void MatMul2D(Tensor<float> X, Tensor<float> Y, Tensor<float> O, bool xTranspose, bool yTranspose)
         {
             ScheduleSGEMM(
                 X, X.shape[0], X.shape[1],
@@ -120,7 +122,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void MatMul(TensorFloat X, TensorFloat Y, TensorFloat O)
+        public void MatMul(Tensor<float> X, Tensor<float> Y, Tensor<float> O)
         {
             var pinX = Pin(X);
             var pinY = Pin(Y);
@@ -164,7 +166,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Dense(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Layers.FusableActivation fusedActivation)
+        public void Dense(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Layers.FusableActivation fusedActivation)
         {
             var Otmp = (fusedActivation != Layers.FusableActivation.None) ? AllocTensorFloat(O.shape) : O;
 
@@ -191,7 +193,7 @@ namespace Unity.Sentis
             }
         }
 
-        void ApplyFusedActivation(TensorFloat X, TensorFloat O, Layers.FusableActivation fusedActivation)
+        void ApplyFusedActivation(Tensor<float> X, Tensor<float> O, Layers.FusableActivation fusedActivation)
         {
             switch (fusedActivation)
             {
@@ -206,7 +208,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Conv(TensorFloat X, TensorFloat K, TensorFloat B, TensorFloat O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
+        public void Conv(Tensor<float> X, Tensor<float> K, Tensor<float> B, Tensor<float> O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
         {
             if (X.shape.rank > 5)
             {
@@ -242,7 +244,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ConvTranspose(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Span<int> strides, Span<int> pads, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
+        public void ConvTranspose(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Span<int> strides, Span<int> pads, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
         {
             if (X.shape.rank >= 5)
             {
@@ -302,7 +304,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Resize(TensorFloat X, TensorFloat O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
+        public void Resize(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
         {
             int rankX = X.shape.rank;
 
@@ -427,7 +429,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void GridSample(TensorFloat X, TensorFloat grid, TensorFloat O, Layers.InterpolationMode mode, Layers.PaddingMode paddingMode, bool alignCorners)
+        public void GridSample(Tensor<float> X, Tensor<float> grid, Tensor<float> O, Layers.InterpolationMode mode, Layers.PaddingMode paddingMode, bool alignCorners)
         {
             int n = O.shape[0]; int c = O.shape[1];
             int oH = O.shape[-2]; int oW = O.shape[-1];
@@ -478,7 +480,7 @@ namespace Unity.Sentis
         static readonly int[] permutationsSpaceToDepth = new int[] { 0, 3, 5, 1, 2, 4 };
 
         /// <inheritdoc/>
-        public void DepthToSpace(TensorFloat X, TensorFloat O, int blocksize, Layers.DepthToSpaceMode mode)
+        public void DepthToSpace(Tensor<float> X, Tensor<float> O, int blocksize, Layers.DepthToSpaceMode mode)
         {
             int[] permutations;
             int dim1, dim3;
@@ -504,7 +506,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void SpaceToDepth(TensorFloat X, TensorFloat O, int blocksize)
+        public void SpaceToDepth(Tensor<float> X, Tensor<float> O, int blocksize)
         {
             var reshape = new TensorShape(X.shape[0], X.shape[1], X.shape[2] / blocksize, blocksize, X.shape[3] / blocksize, blocksize);
 
@@ -514,7 +516,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void MaxPool(TensorFloat X, TensorFloat O, int[] kernelShape, int[] strides, int[] pads)
+        public void MaxPool(Tensor<float> X, Tensor<float> O, int[] kernelShape, int[] strides, int[] pads)
         {
             if (X.shape.rank > 4)
             {
@@ -553,7 +555,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void AveragePool(TensorFloat X, TensorFloat O, int[] kernelShape, int[] strides, int[] pads)
+        public void AveragePool(Tensor<float> X, Tensor<float> O, int[] kernelShape, int[] strides, int[] pads)
         {
             if (X.shape.rank > 4)
             {
@@ -592,7 +594,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void GlobalMaxPool(TensorFloat X, TensorFloat O)
+        public void GlobalMaxPool(Tensor<float> X, Tensor<float> O)
         {
             var job = new ReduceMaxFloatJob();
             job.innerLength = 1;
@@ -601,7 +603,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void GlobalAveragePool(TensorFloat X, TensorFloat O)
+        public void GlobalAveragePool(Tensor<float> X, Tensor<float> O)
         {
             int strideX = X.shape.Strides(1);
 
@@ -617,7 +619,7 @@ namespace Unity.Sentis
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="axis">The axis from which to pool.</param>
-        public void GlobalAverageVariancePool(TensorFloat X, TensorFloat O, int axis)
+        public void GlobalAverageVariancePool(Tensor<float> X, Tensor<float> O, int axis)
         {
             if (O.shape.HasZeroDims())
                 return;
@@ -629,7 +631,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void InstanceNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O, float epsilon)
+        public void InstanceNormalization(Tensor<float> X, Tensor<float> S, Tensor<float> B, Tensor<float> O, float epsilon)
         {
             var pinX = Pin(X);
             var pinS = Pin(S);
@@ -652,7 +654,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void LayerNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O, float epsilon)
+        public void LayerNormalization(Tensor<float> X, Tensor<float> S, Tensor<float> B, Tensor<float> O, float epsilon)
         {
             int axis = X.shape.Axis(-1);
 
@@ -675,7 +677,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ScaleBias(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O)
+        public void ScaleBias(Tensor<float> X, Tensor<float> S, Tensor<float> B, Tensor<float> O)
         {
             var job = new ScaleBiasJob();
             job.channels = X.shape[1];
@@ -685,7 +687,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void BatchNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat mean, TensorFloat variance, TensorFloat O, float epsilon)
+        public void BatchNormalization(Tensor<float> X, Tensor<float> S, Tensor<float> B, Tensor<float> mean, Tensor<float> variance, Tensor<float> O, float epsilon)
         {
             var pinX = Pin(X);
             var pinS = Pin(S);
@@ -713,7 +715,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Cast(TensorFloat X, TensorInt O)
+        public void Cast(Tensor<float> X, Tensor<int> O)
         {
             var job = new CastFloatToIntJob();
             job.length = O.shape.length;
@@ -721,7 +723,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Cast(TensorInt X, TensorFloat O)
+        public void Cast(Tensor<int> X, Tensor<float> O)
         {
             var job = new CastIntToFloatJob();
             job.length = O.shape.length;
@@ -729,14 +731,14 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Cast(TensorShort X, TensorFloat O)
+        public void Cast(Tensor<short> X, Tensor<float> O)
         {
             var job = new CastHalfToFloatJob();
             job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
 
         /// <inheritdoc/>
-        public void DequantizeLinear(TensorByte X, TensorFloat O, float scale, byte zeroPoint)
+        public void DequantizeLinear(Tensor<byte> X, Tensor<float> O, float scale, byte zeroPoint)
         {
             var job = new DequantizeUint8Job();
             job.scale = scale;
@@ -745,7 +747,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void IsInf(TensorFloat X, TensorInt O, bool detectNegative, bool detectPositive)
+        public void IsInf(Tensor<float> X, Tensor<int> O, bool detectNegative, bool detectPositive)
         {
             var job = new IsInfJob();
             job.detectNegative = detectNegative;
@@ -754,7 +756,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void PRelu(TensorFloat X, TensorFloat S, TensorFloat O)
+        public void PRelu(Tensor<float> X, Tensor<float> S, Tensor<float> O)
         {
             var job = new PReluJob();
             var outputLength = job.broadcast.Prepare(X.shape, S.shape);
@@ -762,7 +764,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void LeakyRelu(TensorFloat X, TensorFloat O, float alpha)
+        public void LeakyRelu(Tensor<float> X, Tensor<float> O, float alpha)
         {
             var job = new LeakyReluJob();
             job.alpha = alpha;
@@ -773,7 +775,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void HardSigmoid(TensorFloat X, TensorFloat O, float alpha, float beta)
+        public void HardSigmoid(Tensor<float> X, Tensor<float> O, float alpha, float beta)
         {
             var job = new HardSigmoidJob();
             job.alpha = alpha;
@@ -783,7 +785,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Elu(TensorFloat X, TensorFloat O, float alpha)
+        public void Elu(Tensor<float> X, Tensor<float> O, float alpha)
         {
             var job = new EluJob();
             job.alpha = alpha;
@@ -792,7 +794,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Gelu(TensorFloat X, TensorFloat O)
+        public void Gelu(Tensor<float> X, Tensor<float> O)
         {
             var job = new GeluJob();
             job.length = O.shape.length;
@@ -800,7 +802,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void GeluFast(TensorFloat X, TensorFloat O)
+        public void GeluFast(Tensor<float> X, Tensor<float> O)
         {
             var job = new GeluFastJob();
             job.length = O.shape.length;
@@ -808,7 +810,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Selu(TensorFloat X, TensorFloat O, float alpha, float gamma)
+        public void Selu(Tensor<float> X, Tensor<float> O, float alpha, float gamma)
         {
             var job = new SeluJob();
             job.alpha = alpha;
@@ -818,7 +820,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Clip(TensorFloat X, TensorFloat O, float min, float max)
+        public void Clip(Tensor<float> X, Tensor<float> O, float min, float max)
         {
             var job = new ClipFloatJob();
             job.alpha = min;
@@ -828,7 +830,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Clip(TensorInt X, TensorInt O, int min, int max)
+        public void Clip(Tensor<int> X, Tensor<int> O, int min, int max)
         {
             var job = new ClipIntJob();
             job.alphai = min;
@@ -838,7 +840,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Celu(TensorFloat X, TensorFloat O, float alpha)
+        public void Celu(Tensor<float> X, Tensor<float> O, float alpha)
         {
             var job = new CeluJob();
             job.alpha = alpha;
@@ -847,7 +849,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Shrink(TensorFloat X, TensorFloat O, float bias, float lambd)
+        public void Shrink(Tensor<float> X, Tensor<float> O, float bias, float lambd)
         {
             var job = new ShrinkJob();
             job.alpha = bias;
@@ -857,7 +859,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ThresholdedRelu(TensorFloat X, TensorFloat O, float alpha)
+        public void ThresholdedRelu(Tensor<float> X, Tensor<float> O, float alpha)
         {
             var job = new ThresholdedReluJob();
             job.alpha = alpha;
@@ -866,7 +868,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Einsum(TensorFloat[] inputTensors, TensorFloat O, TensorIndex[] operandIndices, TensorIndex outputIndices, TensorIndex sumIndices, TensorShape sumShape)
+        public void Einsum(Tensor<float>[] inputTensors, Tensor<float> O, TensorIndex[] operandIndices, TensorIndex outputIndices, TensorIndex sumIndices, TensorShape sumShape)
         {
             switch (inputTensors.Length)
             {
@@ -920,7 +922,7 @@ namespace Unity.Sentis
         /// <param name="iouThreshold">Boxes with intersect-over-union with a selected box above this threshold are discarded.</param>
         /// <param name="scoreThreshold">Boxes with a score below this threshold are discarded.</param>
         /// <param name="centerPointBox">The types of the box coordinates, either [x1, y1, x2, y2] or [x, y, w, h].</param>
-        public void NonMaxSuppression(TensorFloat boxes, TensorFloat scores, TensorInt O, int maxOutputBoxesPerClass, float iouThreshold, float scoreThreshold, Layers.CenterPointBox centerPointBox)
+        public void NonMaxSuppression(Tensor<float> boxes, Tensor<float> scores, Tensor<int> O, int maxOutputBoxesPerClass, float iouThreshold, float scoreThreshold, Layers.CenterPointBox centerPointBox)
         {
             // based on https://github.com/pytorch/vision/blob/main/torchvision/csrc/ops/cpu/nms_kernel.cpp
             // extended to onnx multiple class multiple batch inputs as here
@@ -978,7 +980,7 @@ namespace Unity.Sentis
             ReleaseTensorInt(selected);
             ReleaseTensorInt(bitmask);
 
-            O.shape = new TensorShape(numOutput, 3);
+            O.Reshape(new TensorShape(numOutput, 3));
         }
 
         /// <inheritdoc/>
@@ -1013,13 +1015,13 @@ namespace Unity.Sentis
         public void Split(Tensor X, Tensor O, int axis, int start)
         {
             var job = new SliceJob();
-            job.sliceParams.Prepare(X.shape, O.shape, axis, start);
+            job.sliceParams.Prepare(X.shape, O.shape, stackalloc int[] { start }, stackalloc int[] { axis }, stackalloc int[] { 1 });
 
             job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
         }
 
         /// <inheritdoc/>
-        public void Pad(TensorFloat X, TensorFloat O, ReadOnlySpan<int> pad, Layers.PadMode padMode, float constant)
+        public void Pad(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> pad, Layers.PadMode padMode, float constant)
         {
             var job = new PadJob();
             job.padMode = padMode;
@@ -1029,7 +1031,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Pad(TensorInt X, TensorInt O, ReadOnlySpan<int> pad, Layers.PadMode padMode, int constant)
+        public void Pad(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> pad, Layers.PadMode padMode, int constant)
         {
             var job = new PadJob();
             job.padMode = padMode;
@@ -1055,7 +1057,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Pow(TensorFloat A, TensorInt B, TensorFloat O)
+        public void Pow(Tensor<float> A, Tensor<int> B, Tensor<float> O)
         {
             var job = new PowFloatIntJob();
             var outputLength = job.broadcast.Prepare(A.shape, B.shape);
@@ -1063,7 +1065,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Where(TensorInt C, Tensor A, Tensor B, Tensor O)
+        public void Where(Tensor<int> C, Tensor A, Tensor B, Tensor O)
         {
             var job = new WhereJob();
             unsafe
@@ -1101,7 +1103,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void MemSet(TensorFloat O, float value)
+        public void MemSet(Tensor<float> O, float value)
         {
             var job = new SetJob();
             job.memValue = math.asint(value);
@@ -1109,7 +1111,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void MemSet(TensorInt O, int value)
+        public void MemSet(Tensor<int> O, int value)
         {
             var job = new SetJob();
             job.memValue = value;
@@ -1130,7 +1132,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void CompressWithIndices(Tensor X, TensorInt indices, Tensor O, int numIndices, int axis)
+        public void CompressWithIndices(Tensor X, Tensor<int> indices, Tensor O, int numIndices, int axis)
         {
             var job = new GatherJob();
             job.innerLength = X.shape.Strides(axis);
@@ -1141,7 +1143,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Gather(Tensor X, TensorInt indices, Tensor O, int axis)
+        public void Gather(Tensor X, Tensor<int> indices, Tensor O, int axis)
         {
             var job = new GatherJob();
             job.innerLength = X.shape.Strides(axis);
@@ -1151,7 +1153,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void GatherElements(Tensor X, TensorInt indices, Tensor O, int axis)
+        public void GatherElements(Tensor X, Tensor<int> indices, Tensor O, int axis)
         {
             // See ScatterElements and compute code for more info
             axis = X.shape.Axis(axis); // note: this is safe since the ranks all match
@@ -1186,7 +1188,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void GatherND(Tensor X, TensorInt indices, Tensor O, int batchDims)
+        public void GatherND(Tensor X, Tensor<int> indices, Tensor O, int batchDims)
         {
             var job = new GatherNDJob();
             job.rankX = X.shape.rank;
@@ -1206,11 +1208,11 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ScatterElements(Tensor X, TensorInt indices, Tensor updates, Tensor O, int axis, Layers.ScatterReductionMode reduction)
+        public void ScatterElements(Tensor X, Tensor<int> indices, Tensor updates, Tensor O, int axis, Layers.ScatterReductionMode reduction)
         {
             if (X.dataType == DataType.Int && reduction != Layers.ScatterReductionMode.None)
             {
-                ScatterElementsReduce(X as TensorInt, indices, updates as TensorInt, O as TensorInt, axis, reduction);
+                ScatterElementsReduce(X as Tensor<int>, indices, updates as Tensor<int>, O as Tensor<int>, axis, reduction);
                 return;
             }
 
@@ -1255,7 +1257,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ScatterND(TensorFloat X, TensorInt indices, TensorFloat updates, TensorFloat O, Layers.ScatterReductionMode reduction)
+        public void ScatterND(Tensor<float> X, Tensor<int> indices, Tensor<float> updates, Tensor<float> O, Layers.ScatterReductionMode reduction)
         {
             MemCopy(X, O);
 
@@ -1280,7 +1282,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ScatterND(TensorInt X, TensorInt indices, TensorInt updates, TensorInt O, Layers.ScatterReductionMode reduction)
+        public void ScatterND(Tensor<int> X, Tensor<int> indices, Tensor<int> updates, Tensor<int> O, Layers.ScatterReductionMode reduction)
         {
             MemCopy(X, O);
 
@@ -1305,7 +1307,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void OneHot(TensorInt X, TensorInt O, int axis, int depth, int offValue, int onValue)
+        public void OneHot(Tensor<int> X, Tensor<int> O, int axis, int depth, int offValue, int onValue)
         {
             var job = new OneHotJob();
             job.depth = depth;
@@ -1323,7 +1325,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void OneHot(TensorInt X, TensorFloat O, int axis, int depth, float offValue, float onValue)
+        public void OneHot(Tensor<int> X, Tensor<float> O, int axis, int depth, float offValue, float onValue)
         {
             var job = new OneHotJob();
             job.depth = depth;
@@ -1341,7 +1343,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void TopK(TensorFloat X, TensorFloat values, TensorInt indices, int k, int axis, bool largest)
+        public void TopK(Tensor<float> X, Tensor<float> values, Tensor<int> indices, int k, int axis, bool largest)
         {
             int reduceLength = X.shape[axis];
             int innerLength = X.shape.Strides(axis);
@@ -1365,7 +1367,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void RoiAlign(TensorFloat X, TensorFloat rois, TensorInt indices, TensorFloat O, Layers.RoiPoolingMode mode, int outputHeight, int outputWidth, int samplingRatio, float spatialScale)
+        public void RoiAlign(Tensor<float> X, Tensor<float> rois, Tensor<int> indices, Tensor<float> O, Layers.RoiPoolingMode mode, int outputHeight, int outputWidth, int samplingRatio, float spatialScale)
         {
             var job = new RoiAlignJob();
             job.numRois = rois.shape[0];
@@ -1385,7 +1387,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void RandomNormal(TensorFloat O, float mean, float scale, int? seed)
+        public void RandomNormal(Tensor<float> O, float mean, float scale, int? seed)
         {
             var job = new RandomNormalJob();
             job.seed = Random.GetSeed(seed);
@@ -1395,7 +1397,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void RandomUniform(TensorFloat O, float low, float high, int? seed)
+        public void RandomUniform(Tensor<float> O, float low, float high, int? seed)
         {
             var job = new RandomUniformJob();
             job.seed = Random.GetSeed(seed);
@@ -1405,7 +1407,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Bernoulli(TensorFloat X, Tensor O, int? seed)
+        public void Bernoulli(Tensor<float> X, Tensor O, int? seed)
         {
             var job = new BernoulliJob();
             job.seed = Random.GetSeed(seed);
@@ -1414,7 +1416,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void TopP(TensorFloat X, TensorFloat random, TensorInt O)
+        public void TopP(Tensor<float> X, Tensor<float> random, Tensor<int> O)
         {
             var batch = O.shape.length;
             var job = new TopPJob();
@@ -1472,7 +1474,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ScalarMad(TensorFloat X, TensorFloat O, float s, float b)
+        public void ScalarMad(Tensor<float> X, Tensor<float> O, float s, float b)
         {
             var job = new ScalarMadFloatJob();
             job.alpha = s;
@@ -1482,7 +1484,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ScalarMad(TensorInt X, TensorInt O, int s, int b)
+        public void ScalarMad(Tensor<int> X, Tensor<int> O, int s, int b)
         {
             var job = new ScalarMadIntJob();
             job.alphai = s;
@@ -1520,7 +1522,7 @@ namespace Unity.Sentis
         /// <param name="isReverse">Whether the direction is reverse.</param>
         /// <param name="dirIndex">Which pass this is in a bidirectional LSTM.</param>
         /// <param name="layout">The layout of the tensors.</param>
-        protected void SinglePassLSTM(TensorFloat X, TensorFloat W, TensorFloat R, TensorFloat B, TensorInt sequenceLens, TensorFloat P, TensorFloat Y, TensorFloat Y_h, TensorFloat Y_c, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, bool isReverse, int dirIndex, Layers.RnnLayout layout)
+        protected void SinglePassLSTM(Tensor<float> X, Tensor<float> W, Tensor<float> R, Tensor<float> B, Tensor<int> sequenceLens, Tensor<float> P, Tensor<float> Y, Tensor<float> Y_h, Tensor<float> Y_c, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, bool isReverse, int dirIndex, Layers.RnnLayout layout)
         {
             var pinY = Pin(Y);
 
@@ -1616,7 +1618,7 @@ namespace Unity.Sentis
         /// if no input is provided the tensor is cleared to 0 as a default
         /// otherwise if the input tensor can be used directly in the calculation this will early out
         /// </summary>
-        void SetRnnInput(TensorFloat X, TensorFloat O, int index, int count, int length, int strideX)
+        void SetRnnInput(Tensor<float> X, Tensor<float> O, int index, int count, int length, int strideX)
         {
             if (X == O)
                 return;
@@ -1631,7 +1633,7 @@ namespace Unity.Sentis
         /// if the calculation is single direction and sequenceFirst layout then the output
         /// tensor will be used directly and this command early outs
         /// </summary>
-        void SetRnnOutput(TensorFloat X, TensorFloat O, int index, int count, int length, int strideO)
+        void SetRnnOutput(Tensor<float> X, Tensor<float> O, int index, int count, int length, int strideO)
         {
             if (X == O)
                 return;
@@ -1639,7 +1641,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void LSTM(TensorFloat X, TensorFloat W, TensorFloat R, TensorFloat B, TensorInt sequenceLens, TensorFloat initialH, TensorFloat initialC, TensorFloat P, TensorFloat Y, TensorFloat Yh, TensorFloat Yc, Layers.RnnDirection direction, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, Layers.RnnLayout layout)
+        public void LSTM(Tensor<float> X, Tensor<float> W, Tensor<float> R, Tensor<float> B, Tensor<int> sequenceLens, Tensor<float> initialH, Tensor<float> initialC, Tensor<float> P, Tensor<float> Y, Tensor<float> Yh, Tensor<float> Yc, Layers.RnnDirection direction, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, Layers.RnnLayout layout)
         {
             var seqLength = X.shape[layout == Layers.RnnLayout.SequenceFirst ? 0 : 1];
             var batchSize = X.shape[layout == Layers.RnnLayout.SequenceFirst ? 1 : 0];
@@ -1709,18 +1711,6 @@ namespace Unity.Sentis
                 ReleaseTensorFloat(Y_h1);
                 ReleaseTensorFloat(Y_c1);
             }
-        }
-
-        /// <summary>
-        /// Prepares `Tensor` for use with CPU backend.
-        /// </summary>
-        /// <param name="X">`Tensor` to prepare for CPU backend.</param>
-        /// <param name="clearOnInit">Whether to copy tensor data to CPU backend.</param>
-        /// <returns>`Tensor` once prepared for CPU backend.</returns>
-        public Tensor PinToDevice(Tensor X, bool clearOnInit = false)
-        {
-            Pin(X, clearOnInit);
-            return X;
         }
     }
 }

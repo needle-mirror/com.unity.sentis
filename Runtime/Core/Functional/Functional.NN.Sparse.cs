@@ -16,8 +16,11 @@ namespace Unity.Sentis
             if (numClasses == -1)
                 depthTensor = ReduceMax(tensor, 0) + 1;
             else
-                depthTensor = Tensor(numClasses);
-            return FunctionalTensor.FromLayer(new Layers.OneHot(-1, -1, -1, -1, -1), DataType.Int, new[] { tensor, depthTensor, Tensor(new[] { 0, 1 }) });
+                depthTensor = Constant(numClasses);
+            var output = FromLayer(new Layers.OneHot(-1, -1, -1, -1, -1), DataType.Int, new[] { tensor, depthTensor, Constant(new[] { 0, 1 }) });
+            if (tensor.isShapeKnown && numClasses != -1)
+                output.SetShape(ShapeInference.OneHot(tensor.shape, -1, numClasses));
+            return output;
         }
     }
 }

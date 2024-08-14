@@ -7,7 +7,7 @@ public class ModelExecutionInParts : MonoBehaviour
 {
     [SerializeField]
     ModelAsset modelAsset;
-    IWorker m_Engine;
+    Worker m_Worker;
     Tensor m_Input;
     const int k_LayersPerFrame = 5;
 
@@ -17,17 +17,17 @@ public class ModelExecutionInParts : MonoBehaviour
     void OnEnable()
     {
         var model = ModelLoader.Load(modelAsset);
-        m_Engine = WorkerFactory.CreateWorker(BackendType.GPUCompute, model);
-        m_Input = TensorFloat.AllocZeros(new TensorShape(1024));
+        m_Worker = new Worker(model, BackendType.GPUCompute);
+        m_Input = new Tensor<float>(new TensorShape(1024));
     }
 
     void Update()
     {
         if (!m_Started)
         {
-            // ExecuteLayerByLayer starts the scheduling of the model
+            // ScheduleIterable starts the scheduling of the model
             // it returns a IEnumerator to iterate over the model layers, scheduling each layer sequentially
-            m_Schedule = m_Engine.ExecuteLayerByLayer(m_Input);
+            m_Schedule = m_Worker.ScheduleIterable(m_Input);
             m_Started = true;
         }
 
@@ -38,7 +38,7 @@ public class ModelExecutionInParts : MonoBehaviour
                 return;
         }
 
-        var outputTensor = m_Engine.PeekOutput() as TensorFloat;
+        var outputTensor = m_Worker.PeekOutput() as Tensor<float>;
 
         // If you wish to read from the tensor, download it to cpu.
         var cpuTensor = outputTensor.ReadbackAndClone();
@@ -53,7 +53,7 @@ public class ModelExecutionInParts : MonoBehaviour
     void OnDisable()
     {
         // Clean up Sentis resources.
-        m_Engine.Dispose();
+        m_Worker.Dispose();
         m_Input.Dispose();
     }
 }

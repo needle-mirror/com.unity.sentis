@@ -6,7 +6,7 @@
 #pragma kernel GroupedConv2D_GroupLower64 GCONV_KERNEL_NAME=GroupedConv2D_GroupLower64 GCONV2D GROUP_LOWER_64
 #pragma kernel GroupedConv1D_GroupLower64 GCONV_KERNEL_NAME=GroupedConv1D_GroupLower64 GCONV1D GROUP_LOWER_64
 
-#pragma multi_compile _ USEBIAS
+#pragma multi_compile_local _ USEBIAS
 
 #include "Tensor.cginc"
 
@@ -65,13 +65,16 @@ void GCONV_KERNEL_NAME(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 group
     uint4 topX = centroidId * _Stride.x;
 #endif
 
+    uint inputGroupChannels = inputGroupedChannels;
+    uint outputGroupChannels = outputGroupedChannels;
+
     uint4 featureBaseId = bx + ((ti & 15) << 2 | uint4(0, 1, 2, 3));
-    uint4 readK = (featureBaseId * inputGroupedChannels + (ti / 16)) * strideK;
+    uint4 readK = (featureBaseId * inputGroupChannels + (ti / 16)) * strideK;
     #ifdef GROUP_LOWER_64
-    uint channelsX = (bx / outputGroupedChannels) * inputGroupedChannels;
+    uint channelsX = (bx / outputGroupChannels) * inputGroupChannels;
     uint readChannelsX = channelsX * strideX;
     #else
-    uint4 channelsX = (featureBaseId / outputGroupedChannels) * inputGroupedChannels;
+    uint4 channelsX = (featureBaseId / outputGroupChannels) * inputGroupChannels;
     uint4 readChannelsX = channelsX * strideX;
     #endif
 
@@ -129,9 +132,9 @@ void GCONV_KERNEL_NAME(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 group
         maskX = (kernelOffsetXW < X_width);
         #endif
 
-        for (uint i = 0; i < inputGroupedChannels; i += CACHE_DEPTH)
+        for (uint i = 0; i < inputGroupChannels; i += CACHE_DEPTH)
         {
-            bool maskChannelsK = (i + (ti / 16)) < inputGroupedChannels;
+            bool maskChannelsK = (i + (ti / 16)) < inputGroupChannels;
 
             LDS_W[(ti >> 4) * 65 + (((ti & 15) << 2) | 0)] = maskChannelsK ? Kptr[readK.x + i * strideK + weightOffsetK] : 0.0f;
             LDS_W[(ti >> 4) * 65 + (((ti & 15) << 2) | 1)] = maskChannelsK ? Kptr[readK.y + i * strideK + weightOffsetK] : 0.0f;

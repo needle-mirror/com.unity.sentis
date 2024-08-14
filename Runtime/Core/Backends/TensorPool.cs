@@ -5,12 +5,12 @@ namespace Unity.Sentis
     class TensorPool : IDisposable
     {
         // tensor classes re-use pool
-        TensorClassPool<TensorInt> m_TensorIntPool = new TensorClassPool<TensorInt>();
-        TensorClassPool<TensorFloat> m_TensorFloatPool = new TensorClassPool<TensorFloat>();
+        TensorClassPool<Tensor<int>> m_TensorIntPool = new TensorClassPool<Tensor<int>>();
+        TensorClassPool<Tensor<float>> m_TensorFloatPool = new TensorClassPool<Tensor<float>>();
 
         // tensor data re-use pool
         TensorDataPool<ComputeTensorData> m_computeMemoryPool = new TensorDataPool<ComputeTensorData>();
-        TensorDataPool<BurstTensorData> m_cpuMemoryPool = new TensorDataPool<BurstTensorData>();
+        TensorDataPool<CPUTensorData> m_cpuMemoryPool = new TensorDataPool<CPUTensorData>();
 
         public Tensor NewTensor(TensorShape shape, DataType dataType, BackendType backendType)
         {
@@ -21,17 +21,18 @@ namespace Unity.Sentis
                 case DataType.Float:
                     tensor = m_TensorFloatPool.AdoptFromPool();
                     if (tensor == null)
-                        tensor = TensorFloat.AllocNoData(shape);
+                        tensor = new Tensor<float>(shape, data: null);
                     break;
                 case DataType.Int:
                     tensor = m_TensorIntPool.AdoptFromPool();
                     if (tensor == null)
-                        tensor = TensorInt.AllocNoData(shape);
+                        tensor = new Tensor<int>(shape, data: null);
                     break;
                 default:
                     throw new NotImplementedException();
             }
             tensor.shape = shape;
+            tensor.count = shape.length;
 
             ITensorData data; // alloc here or in ops?
             switch (backendType)
@@ -44,7 +45,7 @@ namespace Unity.Sentis
                 case BackendType.CPU:
                     data = m_cpuMemoryPool.AdoptFromPool(shape.length);
                     if (data == null)
-                        data = new BurstTensorData(shape.length);
+                        data = new CPUTensorData(shape.length);
                     break;
                 default:
                     data = null;
@@ -64,7 +65,7 @@ namespace Unity.Sentis
                         m_computeMemoryPool.ReleaseToPool(tensor.dataOnBackend as ComputeTensorData);
                         break;
                     case BackendType.CPU:
-                        m_cpuMemoryPool.ReleaseToPool(tensor.dataOnBackend as BurstTensorData);
+                        m_cpuMemoryPool.ReleaseToPool(tensor.dataOnBackend as CPUTensorData);
                         break;
                     default:
                         tensor.dataOnBackend.Dispose();
@@ -75,10 +76,10 @@ namespace Unity.Sentis
             switch (tensor.dataType)
             {
                 case DataType.Float:
-                    m_TensorFloatPool.ReleaseToPool(tensor as TensorFloat);
+                    m_TensorFloatPool.ReleaseToPool(tensor as Tensor<float>);
                     break;
                 case DataType.Int:
-                    m_TensorIntPool.ReleaseToPool(tensor as TensorInt);
+                    m_TensorIntPool.ReleaseToPool(tensor as Tensor<int>);
                     break;
                 default:
                     throw new NotImplementedException();

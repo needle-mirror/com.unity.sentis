@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/Trilu"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile _ INT
+            #pragma multi_compile_local _ INT
 
             #pragma vertex vert
             #pragma fragment frag

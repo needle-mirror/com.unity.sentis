@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/ActivationInt"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile Sign Not Abs Neg Clip Square
+            #pragma multi_compile_local Sign Not Abs Neg Clip Square
 
             #pragma vertex vert
             #pragma fragment frag

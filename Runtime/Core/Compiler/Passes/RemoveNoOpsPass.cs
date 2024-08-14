@@ -55,7 +55,7 @@ namespace Unity.Sentis.Compiler.Passes.Cleanup
             model.layers.RemoveAll(x => noopLayers.Contains(x.outputs[0]) && !preserve.Contains(x.outputs[0]));
         }
 
-        static bool IsLayerNoop(Model model, Layers.Layer layer)
+        static bool IsLayerNoop(Model model, Layer layer)
         {
             if (layer is Layers.Identity)
                 return true;

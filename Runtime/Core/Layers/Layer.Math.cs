@@ -11,16 +11,16 @@ namespace Unity.Sentis.Layers
         public Abs(int output, int input)
             : base(output, input) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (X is TensorInt)
-                ctx.backend.Abs(X as TensorInt, O as TensorInt);
+            if (X is Tensor<int>)
+                ctx.backend.Abs(X as Tensor<int>, O as Tensor<int>);
             else
-                ctx.backend.Abs(X as TensorFloat, O as TensorFloat);
+                ctx.backend.Abs(X as Tensor<float>, O as Tensor<float>);
         }
 
         internal override string profilerTag => "Abs";
@@ -38,17 +38,17 @@ namespace Unity.Sentis.Layers
 
         internal override Func<PartialTensorElement, PartialTensorElement, PartialTensorElement> InferPartialOp => (a, b) => a + b;
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var A = ctx.storage.GetTensor(inputs[0]);
             var B = ctx.storage.GetTensor(inputs[1]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(A, B), A.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (A is TensorInt)
-                ctx.backend.Add(A as TensorInt, B as TensorInt, O as TensorInt);
+            if (A is Tensor<int>)
+                ctx.backend.Add(A as Tensor<int>, B as Tensor<int>, O as Tensor<int>);
             else
-                ctx.backend.Add(A as TensorFloat, B as TensorFloat, O as TensorFloat);
+                ctx.backend.Add(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
         internal override string profilerTag => "Add";
@@ -62,10 +62,10 @@ namespace Unity.Sentis.Layers
         public Ceil(int output, int input)
             : base(output, input) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Ceil(X, O);
@@ -88,24 +88,24 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, X.shape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             // TODO don't switch data type at runtime
-            if (X is TensorInt)
+            if (X is Tensor<int>)
             {
                 var min = ctx.storage.GetInt(inputs[1], int.MinValue);
                 var max = ctx.storage.GetInt(inputs[2], int.MaxValue);
-                ctx.backend.Clip(X as TensorInt, O as TensorInt, min, max);
+                ctx.backend.Clip(X as Tensor<int>, O as Tensor<int>, min, max);
             }
             else
             {
                 var min = ctx.storage.GetFloat(inputs[1], float.MinValue);
                 var max = ctx.storage.GetFloat(inputs[2], float.MaxValue);
-                ctx.backend.Clip(X as TensorFloat, O as TensorFloat, min, max);
+                ctx.backend.Clip(X as Tensor<float>, O as Tensor<float>, min, max);
             }
         }
 
@@ -133,17 +133,17 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, X.shape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             var axis = ctx.storage.GetInt(inputs[1]);
-            if (X is TensorInt)
-                ctx.backend.CumSum(X as TensorInt, O as TensorInt, axis, reverse, exclusive);
+            if (X is Tensor<int>)
+                ctx.backend.CumSum(X as Tensor<int>, O as Tensor<int>, axis, reverse, exclusive);
             else
-                ctx.backend.CumSum(X as TensorFloat, O as TensorFloat, axis, reverse, exclusive);
+                ctx.backend.CumSum(X as Tensor<float>, O as Tensor<float>, axis, reverse, exclusive);
         }
 
         public override string ToString()
@@ -174,18 +174,18 @@ namespace Unity.Sentis.Layers
             var B = ctx.GetPartialTensor(inputs[2]);
             var shapeOut = X.shape.MatMul(W.shape);
             if (shapeOut.hasRank)
-                shapeOut[-1] = SymbolicTensorDim.MaxDefinedDim(B.shape[0], shapeOut[-1]);
+                shapeOut[-1] = DynamicTensorDim.MaxDefinedDim(B.shape[0], shapeOut[-1]);
             ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Float, shapeOut));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var W = ctx.storage.GetTensor(inputs[1]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.MatMul(W.shape), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.MatMul(W.shape), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
-            ctx.backend.Dense(X as TensorFloat, W as TensorFloat, ctx.storage.GetTensor(inputs[2]) as TensorFloat, O, fusedActivation);
+            ctx.backend.Dense(X as Tensor<float>, W as Tensor<float>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, O, fusedActivation);
         }
 
         internal override string profilerTag => "Dense";
@@ -201,17 +201,17 @@ namespace Unity.Sentis.Layers
         public Div(int output, int a, int b)
             : base(output, a, b) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var A = ctx.storage.GetTensor(inputs[0]);
             var B = ctx.storage.GetTensor(inputs[1]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(A, B), A.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (A is TensorInt)
-                ctx.backend.Div(A as TensorInt, B as TensorInt, O as TensorInt);
+            if (A is Tensor<int>)
+                ctx.backend.Div(A as Tensor<int>, B as Tensor<int>, O as Tensor<int>);
             else
-                ctx.backend.Div(A as TensorFloat, B as TensorFloat, O as TensorFloat);
+                ctx.backend.Div(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
         internal override string profilerTag => "Div";
@@ -232,7 +232,7 @@ namespace Unity.Sentis.Layers
 
         TensorShape[] operandShapes;
         TensorIndex[] operandIndices;
-        TensorFloat[] operandTensors;
+        Tensor<float>[] operandTensors;
 
         public Einsum(int output, int[] inputs, string equation)
             : base(new[] { output }, inputs)
@@ -240,7 +240,7 @@ namespace Unity.Sentis.Layers
             this.equation = equation;
             operandShapes = new TensorShape[inputs.Length];
             operandIndices = new TensorIndex[inputs.Length];
-            operandTensors = new TensorFloat[inputs.Length];
+            operandTensors = new Tensor<float>[inputs.Length];
         }
 
         internal override void InferPartial(PartialInferenceContext ctx)
@@ -251,15 +251,15 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Float, shape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             for (int i = 0; i < inputs.Length; i++)
             {
-                operandTensors[i] = ctx.storage.GetTensor(inputs[i]) as TensorFloat;
+                operandTensors[i] = ctx.storage.GetTensor(inputs[i]) as Tensor<float>;
                 operandShapes[i] = operandTensors[i].shape;
             }
             EinsumHelper.ParseEquationString(equation, operandShapes, ref operandIndices, out var outputIndices, out var outputShape, out var sumIndices, out var sumShape, out var numIndices);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], outputShape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], outputShape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             if (inputs.Length > 2)
@@ -284,10 +284,10 @@ namespace Unity.Sentis.Layers
         public Exp(int output, int input)
             : base(output, input) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Exp(X, O);
@@ -304,10 +304,10 @@ namespace Unity.Sentis.Layers
         public Floor(int output, int input)
             : base(output, input) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Floor(X, O);
@@ -324,10 +324,10 @@ namespace Unity.Sentis.Layers
         public Log(int output, int input)
             : base(output, input) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Log(X, O);
@@ -351,17 +351,17 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(A.dataType, A.shape.MatMul(B.shape)));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var A = ctx.storage.GetTensor(inputs[0]);
             var B = ctx.storage.GetTensor(inputs[1]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], A.shape.MatMul(B.shape), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], A.shape.MatMul(B.shape), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             if (A.shape.HasZeroDims() || B.shape.HasZeroDims())
                 ctx.backend.MemSet(O, 0.0f);
             else
-                ctx.backend.MatMul(A as TensorFloat, B as TensorFloat, O);
+                ctx.backend.MatMul(A as Tensor<float>, B as Tensor<float>, O);
         }
 
         internal override string profilerTag => "MatMul";
@@ -397,21 +397,21 @@ namespace Unity.Sentis.Layers
             var mulYDim = transposeB ? shapeB[1] : shapeB[0];
             Logger.AssertIsFalse(mulXDim != mulYDim, "MatMul2D.ValueError: failed, dims not equal");
 
-            var shapeOut = new SymbolicTensorShape(transposeA ? shapeA[1] : shapeA[0], transposeB ? shapeB[0] : shapeB[1]);
+            var shapeOut = new DynamicTensorShape(transposeA ? shapeA[1] : shapeA[0], transposeB ? shapeB[0] : shapeB[1]);
             ctx.AddPartialTensor(outputs[0], new PartialTensor(A.dataType, shapeOut));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var A = ctx.storage.GetTensor(inputs[0]);
             var B = ctx.storage.GetTensor(inputs[1]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.Gemm(A.shape, B.shape, transposeA, transposeB), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.Gemm(A.shape, B.shape, transposeA, transposeB), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             if (A.shape.HasZeroDims() || B.shape.HasZeroDims())
                 ctx.backend.MemSet(O, 0.0f);
             else
-                ctx.backend.MatMul2D(A as TensorFloat, B as TensorFloat, O, transposeA, transposeB);
+                ctx.backend.MatMul2D(A as Tensor<float>, B as Tensor<float>, O, transposeA, transposeB);
         }
 
         public override string ToString()
@@ -432,17 +432,17 @@ namespace Unity.Sentis.Layers
         public Min(int output, int a, int b)
             : base(output, a, b) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var A = ctx.storage.GetTensor(inputs[0]);
             var B = ctx.storage.GetTensor(inputs[1]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(A, B), A.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (A is TensorInt)
-                ctx.backend.Min(A as TensorInt, B as TensorInt, O as TensorInt);
+            if (A is Tensor<int>)
+                ctx.backend.Min(A as Tensor<int>, B as Tensor<int>, O as Tensor<int>);
             else
-                ctx.backend.Min(A as TensorFloat, B as TensorFloat, O as TensorFloat);
+                ctx.backend.Min(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
         internal override string profilerTag => "Min";
@@ -458,17 +458,17 @@ namespace Unity.Sentis.Layers
         public Max(int output, int a, int b)
             : base(output, a, b) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var A = ctx.storage.GetTensor(inputs[0]);
             var B = ctx.storage.GetTensor(inputs[1]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(A, B), A.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (A is TensorInt)
-                ctx.backend.Max(A as TensorInt, B as TensorInt, O as TensorInt);
+            if (A is Tensor<int>)
+                ctx.backend.Max(A as Tensor<int>, B as Tensor<int>, O as Tensor<int>);
             else
-                ctx.backend.Max(A as TensorFloat, B as TensorFloat, O as TensorFloat);
+                ctx.backend.Max(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
         internal override string profilerTag => "Max";
@@ -493,7 +493,7 @@ namespace Unity.Sentis.Layers
             this.fmod = fmod;
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var A = ctx.storage.GetTensor(inputs[0]);
             var B = ctx.storage.GetTensor(inputs[1]);
@@ -502,17 +502,17 @@ namespace Unity.Sentis.Layers
                 return;
             if (!fmod)
             {
-                if (A is TensorInt)
-                    ctx.backend.Mod(A as TensorInt, B as TensorInt, O as TensorInt);
+                if (A is Tensor<int>)
+                    ctx.backend.Mod(A as Tensor<int>, B as Tensor<int>, O as Tensor<int>);
                 else
-                    ctx.backend.Mod(A as TensorFloat, B as TensorFloat, O as TensorFloat);
+                    ctx.backend.Mod(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
             }
             else
             {
-                if (A is TensorInt)
-                    ctx.backend.FMod(A as TensorInt, B as TensorInt, O as TensorInt);
+                if (A is Tensor<int>)
+                    ctx.backend.FMod(A as Tensor<int>, B as Tensor<int>, O as Tensor<int>);
                 else
-                    ctx.backend.FMod(A as TensorFloat, B as TensorFloat, O as TensorFloat);
+                    ctx.backend.FMod(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
             }
         }
 
@@ -536,17 +536,17 @@ namespace Unity.Sentis.Layers
 
         internal override Func<PartialTensorElement, PartialTensorElement, PartialTensorElement> InferPartialOp => (a, b) => a * b;
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var A = ctx.storage.GetTensor(inputs[0]);
             var B = ctx.storage.GetTensor(inputs[1]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(A, B), A.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (A is TensorInt)
-                ctx.backend.Mul(A as TensorInt, B as TensorInt, O as TensorInt);
+            if (A is Tensor<int>)
+                ctx.backend.Mul(A as Tensor<int>, B as Tensor<int>, O as Tensor<int>);
             else
-                ctx.backend.Mul(A as TensorFloat, B as TensorFloat, O as TensorFloat);
+                ctx.backend.Mul(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
         internal override string profilerTag => "Mul";
@@ -560,16 +560,16 @@ namespace Unity.Sentis.Layers
         public Neg(int output, int input)
             : base(output, input) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (X is TensorInt)
-                ctx.backend.Neg(X as TensorInt, O as TensorInt);
+            if (X is Tensor<int>)
+                ctx.backend.Neg(X as Tensor<int>, O as Tensor<int>);
             else
-                ctx.backend.Neg(X as TensorFloat, O as TensorFloat);
+                ctx.backend.Neg(X as Tensor<float>, O as Tensor<float>);
         }
 
         internal override string profilerTag => "Neg";
@@ -585,17 +585,17 @@ namespace Unity.Sentis.Layers
         public Pow(int output, int a, int b)
             : base(output, a, b) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var A = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
+            var A = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
             var B = ctx.storage.GetTensor(inputs[1]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(A, B), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(A, B), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
-            if (B is TensorInt)
-                ctx.backend.Pow(A, B as TensorInt, O);
+            if (B is Tensor<int>)
+                ctx.backend.Pow(A, B as Tensor<int>, O);
             else
-                ctx.backend.Pow(A, B as TensorFloat, O);
+                ctx.backend.Pow(A, B as Tensor<float>, O);
         }
 
         internal override string profilerTag => "Pow";
@@ -609,13 +609,13 @@ namespace Unity.Sentis.Layers
         public Reciprocal(int output, int input)
             : base(output, input) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
-            ctx.backend.Reciprocal(X as TensorFloat, O);
+            ctx.backend.Reciprocal(X as Tensor<float>, O);
         }
 
         internal override string profilerTag => "Reciprocal";
@@ -629,13 +629,13 @@ namespace Unity.Sentis.Layers
         public Round(int output, int input)
             : base(output, input) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
-            ctx.backend.Round(X as TensorFloat, O);
+            ctx.backend.Round(X as Tensor<float>, O);
         }
 
         internal override string profilerTag => "Round";
@@ -668,16 +668,16 @@ namespace Unity.Sentis.Layers
             bInt = b;
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             if (dataType == DataType.Float)
-                ctx.backend.ScalarMad(X as TensorFloat, O as TensorFloat, sFloat, bFloat);
+                ctx.backend.ScalarMad(X as Tensor<float>, O as Tensor<float>, sFloat, bFloat);
             else
-                ctx.backend.ScalarMad(X as TensorInt, O as TensorInt, sInt, bInt);
+                ctx.backend.ScalarMad(X as Tensor<int>, O as Tensor<int>, sInt, bInt);
         }
 
         public override string ToString()
@@ -709,13 +709,13 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, X.shape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
-            ctx.backend.Shrink(X as TensorFloat, O, bias, lambd);
+            ctx.backend.Shrink(X as Tensor<float>, O, bias, lambd);
         }
 
         public override string ToString()
@@ -740,16 +740,16 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(X.dataType, X.shape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (X is TensorInt)
-                ctx.backend.Sign(X as TensorInt, O as TensorInt);
+            if (X is Tensor<int>)
+                ctx.backend.Sign(X as Tensor<int>, O as Tensor<int>);
             else
-                ctx.backend.Sign(X as TensorFloat, O as TensorFloat);
+                ctx.backend.Sign(X as Tensor<float>, O as Tensor<float>);
         }
 
         internal override string profilerTag => "Sign";
@@ -763,13 +763,13 @@ namespace Unity.Sentis.Layers
         public Sqrt(int output, int input)
             : base(output, input) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
-            ctx.backend.Sqrt(X as TensorFloat, O);
+            ctx.backend.Sqrt(X as Tensor<float>, O);
         }
 
         internal override string profilerTag => "Sqrt";
@@ -783,16 +783,16 @@ namespace Unity.Sentis.Layers
         public Square(int output, int input)
             : base(output, input) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (X is TensorInt)
-                ctx.backend.Square(X as TensorInt, O as TensorInt);
+            if (X is Tensor<int>)
+                ctx.backend.Square(X as Tensor<int>, O as Tensor<int>);
             else
-                ctx.backend.Square(X as TensorFloat, O as TensorFloat);
+                ctx.backend.Square(X as Tensor<float>, O as Tensor<float>);
         }
 
         internal override string profilerTag => "Square";
@@ -810,17 +810,17 @@ namespace Unity.Sentis.Layers
 
         internal override Func<PartialTensorElement, PartialTensorElement, PartialTensorElement> InferPartialOp => (a, b) => a - b;
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var A = ctx.storage.GetTensor(inputs[0]);
             var B = ctx.storage.GetTensor(inputs[1]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], TensorShapeHelper.BroadcastShape(A, B), A.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (A is TensorInt)
-                ctx.backend.Sub(A as TensorInt, B as TensorInt, O as TensorInt);
+            if (A is Tensor<int>)
+                ctx.backend.Sub(A as Tensor<int>, B as Tensor<int>, O as Tensor<int>);
             else
-                ctx.backend.Sub(A as TensorFloat, B as TensorFloat, O as TensorFloat);
+                ctx.backend.Sub(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
         internal override string profilerTag => "Sub";

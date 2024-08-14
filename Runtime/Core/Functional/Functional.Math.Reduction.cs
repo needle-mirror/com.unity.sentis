@@ -13,7 +13,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ArgMax(FunctionalTensor input, int dim = 0, bool keepdim = false)
         {
-            return FunctionalTensor.FromLayer(new Layers.ArgMax(-1,-1,dim, keepdim), DataType.Int, input);
+            var output = FromLayer(new Layers.ArgMax(-1, -1, dim, keepdim), DataType.Int, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Reduce(dim, keepdim));
+            return output;
         }
 
         /// <summary>
@@ -25,7 +28,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ArgMin(FunctionalTensor input, int dim = 0, bool keepdim = false)
         {
-            return FunctionalTensor.FromLayer(new Layers.ArgMin(-1,-1,dim, keepdim), DataType.Int, input);
+            var output = FromLayer(new Layers.ArgMin(-1, -1, dim, keepdim), DataType.Int, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Reduce(dim, keepdim));
+            return output;
         }
 
         /// <summary>
@@ -37,7 +43,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ReduceMax(FunctionalTensor input, int[] dim, bool keepdim = false)
         {
-            return FunctionalTensor.FromLayer(new Layers.ReduceMax(-1,-1,-1,keepdim), input.DataType, new[] { input, Tensor(dim) });
+            var output = FromLayer(new Layers.ReduceMax(-1, -1, -1, keepdim), input.dataType, new[] { input, Constant(dim) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Reduce(dim, keepdim));
+            return output;
         }
 
         /// <summary>
@@ -61,7 +70,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ReduceMin(FunctionalTensor input, int[] dim, bool keepdim = false)
         {
-            return FunctionalTensor.FromLayer(new Layers.ReduceMin(-1,-1,-1,keepdim), input.DataType, new[] { input, Tensor(dim) });
+            var output = FromLayer(new Layers.ReduceMin(-1, -1, -1, keepdim), input.dataType, new[] { input, Constant(dim) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Reduce(dim, keepdim));
+            return output;
         }
 
         /// <summary>
@@ -86,7 +98,10 @@ namespace Unity.Sentis
         public static FunctionalTensor ReduceLogSumExp(FunctionalTensor input, int[] dim, bool keepdim = false)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.ReduceLogSumExp(-1,-1,-1,keepdim), input.DataType, new[] { input, Tensor(dim) });
+            var output = FromLayer(new Layers.ReduceLogSumExp(-1, -1, -1, keepdim), input.dataType, new[] { input, Constant(dim) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Reduce(dim, keepdim));
+            return output;
         }
 
         /// <summary>
@@ -111,7 +126,10 @@ namespace Unity.Sentis
         public static FunctionalTensor ReduceMean(FunctionalTensor input, int[] dim, bool keepdim = false)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.ReduceMean(-1,-1,-1,keepdim), input.DataType, new[] { input, Tensor(dim) });
+            var output = FromLayer(new Layers.ReduceMean(-1, -1, -1, keepdim), input.dataType, new[] { input, Constant(dim) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Reduce(dim, keepdim));
+            return output;
         }
 
         /// <summary>
@@ -135,7 +153,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ReduceProd(FunctionalTensor input, int[] dim, bool keepdim = false)
         {
-            return FunctionalTensor.FromLayer(new Layers.ReduceProd(-1,-1,-1,keepdim), input.DataType, new[] { input, Tensor(dim) });
+            var output = FromLayer(new Layers.ReduceProd(-1, -1, -1, keepdim), input.dataType, new[] { input, Constant(dim) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Reduce(dim, keepdim));
+            return output;
         }
 
         /// <summary>
@@ -159,7 +180,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ReduceSum(FunctionalTensor input, int[] dim, bool keepdim = false)
         {
-            return FunctionalTensor.FromLayer(new Layers.ReduceSum(-1,-1,-1,keepdim), input.DataType, new[] { input, Tensor(dim) });
+            var output = FromLayer(new Layers.ReduceSum(-1, -1, -1, keepdim), input.dataType, new[] { input, Constant(dim) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Reduce(dim, keepdim));
+            return output;
         }
 
         /// <summary>

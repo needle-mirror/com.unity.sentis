@@ -77,7 +77,9 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ARange(int start, int end, int step = 1)
         {
-            return FunctionalTensor.FromLayer(new Layers.Range(-1, -1, -1, -1), DataType.Int, new[] { Tensor(start), Tensor(end), Tensor(step) });
+            var output = FromLayer(new Layers.Range(-1, -1, -1, -1), DataType.Int, new[] { Constant(start), Constant(end), Constant(step) });
+            output.SetShape(ShapeInference.Range(start, end, step));
+            return output;
         }
 
         /// <summary>
@@ -99,7 +101,9 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ARange(float start, float end, float step = 1)
         {
-            return FunctionalTensor.FromLayer(new Layers.Range(-1, -1, -1, -1), DataType.Float, new[] { Tensor(start), Tensor(end), Tensor(step) });
+            var output = FromLayer(new Layers.Range(-1, -1, -1, -1), DataType.Float, new[] { Constant(start), Constant(end), Constant(step) });
+            output.SetShape(ShapeInference.Range(start, end, step));
+            return output;
         }
 
         /// <summary>
@@ -123,11 +127,15 @@ namespace Unity.Sentis
         {
             Logger.AssertIsTrue(steps >= 0, "LinSpace.InputError steps must be non-negative");
             if (steps == 0)
-                return Tensor(Array.Empty<float>());
+                return Constant(Array.Empty<float>());
             if (steps == 1)
-                return Tensor(new[] { start });
+                return Constant(new[] { start });
             var delta = (end - start) / (steps - 1);
-            return FunctionalTensor.FromLayer(new Layers.Range(-1, -1, -1, -1), DataType.Float, new[] { Tensor(start), Tensor(end + 0.5f * delta), Tensor(delta) });
+            var starts = start;
+            var ends = end + 0.5f * delta;
+            var output = FromLayer(new Layers.Range(-1, -1, -1, -1), DataType.Float, new[] { Constant(starts), Constant(ends), Constant(delta) });
+            output.SetShape(ShapeInference.Range(starts, ends, delta));
+            return output;
         }
 
         // Creates a one-dimensional tensor of size steps whose values are evenly spaced from base ^ start to base ^ end, inclusive, on a logarithmic scale with base base.
@@ -142,7 +150,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor LogSpace(float start, float end, int steps, float logBase = 10)
         {
-            return Pow(Tensor(logBase), LinSpace(start, end, steps));
+            return Pow(Constant(logBase), LinSpace(start, end, steps));
         }
 
         /// <summary>
@@ -153,7 +161,9 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Full(int[] size, int fillValue)
         {
-            return FunctionalTensor.FromLayer(new Layers.ConstantOfShape(-1, -1, fillValue), DataType.Int, Tensor(size));
+            var output = FromLayer(new Layers.ConstantOfShape(-1, -1, fillValue), DataType.Int, Constant(size));
+            output.SetShape(new TensorShape(size));
+            return output;
         }
 
         /// <summary>
@@ -164,7 +174,9 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Full(int[] size, float fillValue)
         {
-            return FunctionalTensor.FromLayer(new Layers.ConstantOfShape(-1, -1, fillValue), DataType.Float, Tensor(size));
+            var output = FromLayer(new Layers.ConstantOfShape(-1, -1, fillValue), DataType.Float, Constant(size));
+            output.SetShape(new TensorShape(size));
+            return output;
         }
 
         /// <summary>
@@ -175,8 +187,11 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor FullLike(FunctionalTensor input, int fillValue)
         {
-            var shape = FunctionalTensor.FromLayer(new Layers.Shape(-1, -1), DataType.Int, input);
-            return FunctionalTensor.FromLayer(new Layers.ConstantOfShape(-1, -1, fillValue), DataType.Int, shape);
+            var shape = FromLayer(new Layers.Shape(-1, -1), DataType.Int, input);
+            var output = FromLayer(new Layers.ConstantOfShape(-1, -1, fillValue), DataType.Int, shape);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -187,8 +202,11 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor FullLike(FunctionalTensor input, float fillValue)
         {
-            var shape = FunctionalTensor.FromLayer(new Layers.Shape(-1, -1), DataType.Int, input);
-            return FunctionalTensor.FromLayer(new Layers.ConstantOfShape(-1, -1, fillValue), DataType.Float, shape);
+            var shape = FromLayer(new Layers.Shape(-1, -1), DataType.Int, input);
+            var output = FromLayer(new Layers.ConstantOfShape(-1, -1, fillValue), DataType.Float, shape);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
     }
 }

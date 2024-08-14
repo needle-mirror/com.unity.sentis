@@ -1,7 +1,7 @@
 #pragma kernel BitonicSortStep
 #pragma kernel BitonicSortKeyStep
 
-#pragma multi_compile _ DESCENDING
+#pragma multi_compile_local _ DESCENDING
 
 RWStructuredBuffer<float> Xptr;
 RWStructuredBuffer<int> O_int_ptr;

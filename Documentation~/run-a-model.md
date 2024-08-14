@@ -1,12 +1,13 @@
 # Run a model
 
-After you [create a worker](create-an-engine.md), use [`Execute`](xref:Unity.Sentis.IWorker.Execute) to run the model.
+After you [create a worker](create-an-engine.md), call [`Schedule`](xref:Unity.Sentis.Worker.Schedule*) to run the model.
 
 ```
-worker.Execute(inputTensor);
+worker.Schedule(inputTensor);
 ```
 
-The initial execution of a model within the Unity Editor may be slow as Sentis needs to compile code and shaders. Subsequent runs will be faster due to caching.
+The first scheduling of a model within the Unity Editor may be slow as Sentis needs to compile code and shaders as well as allocating internal memory. Subsequent runs will be faster due to caching.
+Including a dummy run when starting the application is a good idea.
 
 For an example, refer to the `Run a model` sample in the [sample scripts](package-samples.md).
 

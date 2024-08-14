@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/IsInfNaN"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile IsInf IsNaN
+            #pragma multi_compile_local IsInf IsNaN
 
             #pragma vertex vert
             #pragma fragment frag

@@ -16,17 +16,16 @@ Sentis currently supports the following quantization types.
 
 Reducing the number of bits per value decreases the disk and memory usage of your model, while the inference speed remains almost unchanged.
 
-Sentis quantizes only float weights used as inputs to specific operations (Dense, MatMul, Conv, etc.), leaving integer constants unchanged.
+Sentis only quantizes float weights used as inputs to specific operations (Dense, MatMul, Conv, etc.), leaving integer constants unchanged.
 
 The impact on model accuracy varies depending on the model type. The most effective way to assess whether model quantization is appropriate for your needs is through testing.
 
 ## Quantizing a loaded model
 
-Use the `ModelQuantizer` API to quantize a model and the `ModelWriter` API to save the quantized model to disk.
+Use the [`ModelQuantizer`](xref:Unity.Sentis.Quantization.ModelQuantizer) API to quantize a model and the [`ModelWriter`](xref:Unity.Sentis.ModelWriter) API to save the quantized model to disk.
 
 ```
 using Unity.Sentis;
-using Unity.Sentis.Quantization;
 
 void QuantizeAndSerializeModel(Model model, string path)
 {

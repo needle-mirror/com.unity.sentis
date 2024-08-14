@@ -15,13 +15,13 @@ namespace Unity.Sentis.Layers
             this.axis = axis;
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
-            ctx.backend.LogSoftmax(X as TensorFloat, O, axis);
+            ctx.backend.LogSoftmax(X, O, axis);
         }
 
         public override string ToString()
@@ -45,10 +45,10 @@ namespace Unity.Sentis.Layers
             this.axis = axis;
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.Softmax(X, O, axis);

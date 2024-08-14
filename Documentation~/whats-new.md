@@ -1,6 +1,20 @@
+# What's new in Sentis 2.0.0
+
+This is a summary of the changes from Sentis 1.6.0-pre.1 to 2.0.0.
+
+### Added
+- Ability to copy model outputs into allocated tensors.
+- Funtional API now shows the data type and shape (if known) for easy debugging.
+
+### Updated
+- Unified Tensor to allow easy definition of different data-types as well as data upload and shape manipulation
+- Reworked and unified methods for setting scheduling a model.
+- Improved functional API to make it easier to debug and define custom models.
+- Unified Compute and CommandBuffer backend
+
 # What's new in Sentis 1.6.0-pre.1
 
-This is a summary of the changes from Sentis Sentis 1.5.0-pre.3 to 1.6.0-pre.1.
+This is a summary of the changes from Sentis 1.5.0-pre.3 to 1.6.0-pre.1.
 
 ### Added
 - Support for GridSample ONNX operator along with functional API method.
@@ -134,7 +148,7 @@ For information on how to upgrade, refer to the [Upgrade Guide](upgrade-guide.md
 ## Updated
 
 - All the backend types have been optimized and improved so Sentis as a whole has better performance on both the GPU and the CPU.
-- The way Sentis represents tensors has changed to make Sentis compatible with more models and make it easier to convert Python preprocessing code into C#. Refer to [Tensor fundamentals](tensor-fundamentals.md) and [Do operations on tensors](do-operations-on-tensors.md) for more information.
+- The way Sentis represents tensors has changed to make Sentis compatible with more models and make it easier to convert Python preprocessing code into C#. Refer to [Tensor fundamentals](tensor-fundamentals.md) for more information.
 - Sentis supports more ONNX operators. Refer to [Supported ONNX operators](supported-operators.md) for more information.
 - You can now import models larger than two gigabytes.
 - The [Model Asset Import Settings](onnx-model-importer-properties.md) window no longer has the options for `Force Arbitrary Batch Size` and `Treat Errors as Warnings` settings. Additionally, the `Open imported NN model as temp file` button is no longer available, simply use the `Open` button.

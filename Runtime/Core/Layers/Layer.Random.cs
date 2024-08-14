@@ -48,12 +48,12 @@ namespace Unity.Sentis.Layers
 
         internal override void InferPartial(PartialInferenceContext ctx)
         {
-            ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Float, new SymbolicTensorShape(new TensorShape(shape))));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Float, new DynamicTensorShape(new TensorShape(shape))));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], new TensorShape(shape), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], new TensorShape(shape), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.RandomNormal(O, mean, scale, NextSeed);
@@ -87,10 +87,10 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Float, ctx.GetPartialTensor(inputs[0]).shape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var shapeX = ctx.storage.GetTensorShape(inputs[0]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shapeX, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shapeX, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.RandomNormal(O, mean, scale, NextSeed);
@@ -123,12 +123,12 @@ namespace Unity.Sentis.Layers
 
         internal override void InferPartial(PartialInferenceContext ctx)
         {
-            ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Float, new SymbolicTensorShape(new TensorShape(shape))));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Float, new DynamicTensorShape(new TensorShape(shape))));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], new TensorShape(shape), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], new TensorShape(shape), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.RandomUniform(O, low, high, NextSeed);
@@ -162,10 +162,10 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Float, ctx.GetPartialTensor(inputs[0]).shape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var shapeX = ctx.storage.GetTensorShape(inputs[0]);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shapeX, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shapeX, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.RandomUniform(O, low, high, NextSeed);
@@ -197,9 +197,9 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, ctx.GetPartialTensor(inputs[0]).shape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
@@ -230,16 +230,16 @@ namespace Unity.Sentis.Layers
         internal override void InferPartial(PartialInferenceContext ctx)
         {
             var shapeX = ctx.GetPartialTensor(inputs[0]).shape;
-            ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Int, new SymbolicTensorShape(shapeX[0], SymbolicTensorDim.Int(count))));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Int, new DynamicTensorShape(shapeX[0], DynamicTensorDim.Int(count))));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], new TensorShape(X.shape[0], count), DataType.Int, ctx.backend.backendType) as TensorInt;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], new TensorShape(X.shape[0], count), DataType.Int, ctx.backend.backendType) as Tensor<int>;
 
-            var Xtmp = ctx.storage.AllocateTensor(X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
-            var random = ctx.storage.AllocateTensor(new TensorShape(X.shape[0], count), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var Xtmp = ctx.storage.AllocateTensor(X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
+            var random = ctx.storage.AllocateTensor(new TensorShape(X.shape[0], count), DataType.Float, ctx.backend.backendType) as Tensor<float>;
 
             ctx.backend.RandomUniform(random, 0, 1, NextSeed);
             ctx.backend.Softmax(X, Xtmp, -1);

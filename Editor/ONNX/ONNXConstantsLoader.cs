@@ -13,12 +13,12 @@ namespace Unity.Sentis.ONNX
 {
     internal static class ONNXConstantsLoader
     {
-        public static Layers.Constant LoadConstant(TensorProto tensorProto, FileStream weightStream)
+        public static Constant LoadConstant(TensorProto tensorProto, FileStream weightStream)
         {
             var shape = GetShape(tensorProto);
             var dataType = GetDataType(tensorProto);
 
-            var constant = new Layers.Constant(-1, shape, dataType, shape.length * NativeTensorArray.k_DataItemSize);
+            var constant = new Constant(-1, shape, dataType, shape.length * NativeTensorArray.k_DataItemSize);
             if (shape.HasZeroDims())
             {
                 return constant;
@@ -37,7 +37,7 @@ namespace Unity.Sentis.ONNX
             return constant;
         }
 
-        public static Layers.Constant LoadConstant(TensorProto tensorProto, string directoryPath = null)
+        public static Constant LoadConstant(TensorProto tensorProto, string directoryPath = null)
         {
             if (tensorProto.ExternalData != null && tensorProto.ExternalData.Any(x => x.Key == "location"))
             {
@@ -49,7 +49,7 @@ namespace Unity.Sentis.ONNX
             var shape = GetShape(tensorProto);
             var dataType = GetDataType(tensorProto);
 
-            var constant = new Layers.Constant(-1, shape, dataType, shape.length * NativeTensorArray.k_DataItemSize);
+            var constant = new Constant(-1, shape, dataType, shape.length * NativeTensorArray.k_DataItemSize);
 
             if (shape.HasZeroDims())
                 return constant;

@@ -2,7 +2,7 @@
 
 ## Get model inputs
 
-Use the [`inputs`](xref:Unity.Sentis.Model.inputs) property of the runtime model to get the inputs of the model, and the name or tensor shape of each input.
+Use the [`inputs`](xref:Unity.Sentis.Model.inputs) property of the runtime model to get the inputs of the model with and the name and shape of each input.
 
 For example:
 
@@ -43,14 +43,14 @@ Use the [`outputs`](xref:Unity.Sentis.Model.outputs) property of the runtime mod
 For example:
 
 ```
-        List<Model.Output> outputs = runtimeModel.outputs;
+List<Model.Output> outputs = runtimeModel.outputs;
 
-        // Loop through each output
-        foreach (var output in outputs)
-        {
-            // Log the name of the output
-            Debug.Log(output.name);
-        }
+// Loop through each output
+foreach (var output in outputs)
+{
+    // Log the name of the output
+    Debug.Log(output.name);
+}
 ```
 
 ## Get layers and layer properties

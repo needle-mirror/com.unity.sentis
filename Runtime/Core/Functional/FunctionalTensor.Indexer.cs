@@ -22,12 +22,15 @@ namespace Unity.Sentis
                     axes.Add(axis);
                 }
 
+                if (indexOrRange.IsIndex)
+                    src = src.Unsqueeze(axis);
+
                 axis++;
             }
-            var c = FromLayer(new Layers.SliceSet(-1, -1, -1, -1, -1, -1, -1), Functional.CommonType(this, src), new[] { this, src, Functional.Tensor(starts.ToArray()), Functional.Tensor(ends.ToArray()), Functional.Tensor(axes.ToArray()), null });
-            m_DataType = c.DataType;
-            m_Source = c.Source;
-            m_OutputIndex = c.m_OutputIndex;
+            var c = Functional.FromLayer(new Layers.SliceSet(-1, -1, -1, -1, -1, -1, -1), Functional.CommonType(this, src), new[] { this, src, Functional.Constant(starts.ToArray()), Functional.Constant(ends.ToArray()), Functional.Constant(axes.ToArray()), null });
+            m_DataType = c.dataType;
+            m_Source = c.source;
+            m_OutputIndex = c.outputIndex;
         }
 
         FunctionalTensor IndexerGet(IEnumerable<IndexOrRange> indexOrRanges)
@@ -53,7 +56,21 @@ namespace Unity.Sentis
 
             if (starts.Count == 0)
                 return this;
-            var slice = FromLayer(new Layers.Slice(-1, -1, -1, -1, -1, -1), DataType, new[] { this, Functional.Tensor(starts.ToArray()), Functional.Tensor(ends.ToArray()), Functional.Tensor(axes.ToArray()), null });
+            var startsArray = starts.ToArray();
+            var endsArray = ends.ToArray();
+            var axesArray = axes.ToArray();
+            var slice = Functional.FromLayer(new Layers.Slice(-1, -1, -1, -1, -1, -1), dataType, new[] { this, Functional.Constant(startsArray), Functional.Constant(endsArray), Functional.Constant(axesArray), null });
+            if (isShapeKnown)
+            {
+                var numAxes = startsArray.Length;
+                Span<int> startsSpan = stackalloc int[numAxes];
+                Span<int> endsSpan = stackalloc int[numAxes];
+                Span<int> axesSpan = stackalloc int[numAxes];
+                Span<int> stepsSpan = stackalloc int[numAxes];
+                ShapeInference.Slice(shape, startsArray, endsArray, axesArray, null, ref startsSpan, ref endsSpan, ref axesSpan, ref stepsSpan);
+                var oShape = shape.Slice(startsSpan, endsSpan, axesSpan, stepsSpan);
+                slice.SetShape(oShape);
+            }
             if (squeezeAxes.Count > 0)
                 slice = slice.Squeeze(squeezeAxes.ToArray());
             return slice;

@@ -11,8 +11,8 @@ Shader "Hidden/Sentis/Gemm"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile _ TRANSPOSE_X
-            #pragma multi_compile _ TRANSPOSE_W
+            #pragma multi_compile_local _ TRANSPOSE_X
+            #pragma multi_compile_local _ TRANSPOSE_W
 
             #pragma vertex vert
             #pragma fragment frag

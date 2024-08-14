@@ -12,7 +12,7 @@ namespace Unity.Sentis.Compiler.Passes
             model.layers.RemoveAll(l => removeLayers.Contains(l.outputs[0]));
             for (int l = 0; l < model.layers.Count; ++l)
             {
-                Layers.Layer layer = model.layers[l];
+                Layer layer = model.layers[l];
                 for (int i = 0; i < layer.inputs.Length; i++)
                 {
                     var input = layer.inputs[i];

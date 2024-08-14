@@ -1,4 +1,4 @@
-﻿#define SENTIS_LOG_ENABLED
+#define SENTIS_LOG_ENABLED
 
 using System;
 using UnityEngine;

@@ -36,9 +36,9 @@ namespace Unity.Sentis
             public DataType dataType;
 
             /// <summary>
-            /// The shape of the input, as `SymbolicTensorShape`.
+            /// The shape of the input, as `DynamicTensorShape`.
             /// </summary>
-            public SymbolicTensorShape shape;
+            public DynamicTensorShape shape;
         }
 
         /// <summary>
@@ -70,12 +70,12 @@ namespace Unity.Sentis
         /// <summary>
         /// The layers of the model.
         /// </summary>
-        public List<Layers.Layer> layers = new List<Layers.Layer>();
+        public List<Layer> layers = new List<Layer>();
 
         /// <summary>
         /// The constants of the model.
         /// </summary>
-        public List<Layers.Constant> constants = new List<Layers.Constant>();
+        public List<Constant> constants = new List<Constant>();
 
         /// <summary>
         /// The producer of the model, as a string.
@@ -131,13 +131,13 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Adds an input to the model with a symbolic tensor shape.
+        /// Adds an input to the model with a dynamic tensor shape.
         /// </summary>
         /// <param name="name">The name of the input.</param>
         /// <param name="index">The index of the input.</param>
         /// <param name="dataType">The data type of the input.</param>
-        /// <param name="shape">The `SymbolicTensorShape` of the input.</param>
-        internal void AddInput(string name, int index, DataType dataType, SymbolicTensorShape shape)
+        /// <param name="shape">The `DynamicTensorShape` of the input.</param>
+        internal void AddInput(string name, int index, DataType dataType, DynamicTensorShape shape)
         {
             inputs.Add(new Input { name = name, index = index, dataType = dataType, shape = shape });
         }
@@ -150,7 +150,7 @@ namespace Unity.Sentis
         /// <param name="shape">The `TensorShape` of the input.</param>
         internal void AddInput(string name, int index, DataType dataType, TensorShape shape)
         {
-            inputs.Add(new Input { name = name, index = index, dataType = dataType, shape = new SymbolicTensorShape(shape) });
+            inputs.Add(new Input { name = name, index = index, dataType = dataType, shape = new DynamicTensorShape(shape) });
         }
 
         /// <summary>
@@ -167,7 +167,7 @@ namespace Unity.Sentis
         /// Appends a `layer` to the model.
         /// </summary>
         /// <param name="layer">The layer to append.</param>
-        internal void AddLayer(Layers.Layer layer)
+        internal void AddLayer(Layer layer)
         {
             layers.Add(layer);
         }
@@ -176,7 +176,7 @@ namespace Unity.Sentis
         /// Adds a `constant` to the model.
         /// </summary>
         /// <param name="constant">The constant to add.</param>
-        internal void AddConstant(Layers.Constant constant)
+        internal void AddConstant(Constant constant)
         {
             constants.Add(constant);
         }

@@ -9,7 +9,7 @@ namespace Unity.Sentis
     {
         const int k_MaxLength = TensorShape.maxRank * 2;
         DataType m_DataType;
-        SymbolicTensorShape m_Shape;
+        DynamicTensorShape m_Shape;
         PartialTensorElement[] m_Elements;
 
         /// <summary>
@@ -17,9 +17,9 @@ namespace Unity.Sentis
         /// </summary>
         public int length => m_Elements.Length;
         /// <summary>
-        /// The shape of the partial tensor as a SymbolicTensorShape.
+        /// The shape of the partial tensor as a DynamicTensorShape.
         /// </summary>
-        public SymbolicTensorShape shape => m_Shape;
+        public DynamicTensorShape shape => m_Shape;
         /// <summary>
         /// Whether partial elements are stored.
         /// </summary>
@@ -33,11 +33,11 @@ namespace Unity.Sentis
         /// Initializes and returns a partial tensor with the specified `dataType` and 'shape'.
         /// If the shape is small enough unknown partial tensor elements are tracked and 'isPartiallyKnown' returns 'true'.
         /// </summary>
-        public PartialTensor(DataType dataType, SymbolicTensorShape shape)
+        public PartialTensor(DataType dataType, DynamicTensorShape shape)
         {
             m_DataType = dataType;
             m_Shape = shape;
-            if (shape.IsFullyKnown() && shape.Length() <= k_MaxLength)
+            if (shape.IsStatic() && shape.Length() <= k_MaxLength)
                 m_Elements = new PartialTensorElement[shape.Length().value];
         }
 
@@ -45,7 +45,7 @@ namespace Unity.Sentis
         /// Initializes and returns a partial tensor with the specified `dataType` and unknown shape.
         /// </summary>
         public PartialTensor(DataType dataType)
-            : this(dataType, SymbolicTensorShape.UnknownShape) { }
+            : this(dataType, DynamicTensorShape.DynamicRank) { }
 
         /// <summary>
         /// Initializes and returns a partial tensor from a given 'tensor'. The data type shape and potential partial
@@ -53,16 +53,16 @@ namespace Unity.Sentis
         /// </summary>
         public static PartialTensor FromTensor(Tensor tensor)
         {
-            var partialTensor = new PartialTensor(tensor.dataType, new SymbolicTensorShape(tensor.shape));
+            var partialTensor = new PartialTensor(tensor.dataType, new DynamicTensorShape(tensor.shape));
             if (!partialTensor.isPartiallyKnown)
                 return partialTensor;
 
-            if (tensor is TensorInt tensorInt)
+            if (tensor is Tensor<int> tensorInt)
             {
                 for (var i = 0; i < partialTensor.length; i++)
                     partialTensor[i] = PartialTensorElement.IntValue(tensorInt[i]);
             }
-            else if (tensor is TensorFloat tensorFloat)
+            else if (tensor is Tensor<float> tensorFloat)
             {
                 for (var i = 0; i < partialTensor.length; i++)
                     partialTensor[i] = PartialTensorElement.FloatValue(tensorFloat[i]);
@@ -84,7 +84,7 @@ namespace Unity.Sentis
                 return a;
             Logger.AssertIsTrue(a.dataType == b.dataType, "InputError: incompatible tensor shapes");
             if (!a.isPartiallyKnown && !b.isPartiallyKnown)
-                return new PartialTensor(a.dataType, SymbolicTensorShape.MaxDefinedShape(a.shape, b.shape));
+                return new PartialTensor(a.dataType, DynamicTensorShape.MaxDefinedShape(a.shape, b.shape));
             if (!a.isPartiallyKnown)
                 return b;
             if (!b.isPartiallyKnown)
@@ -99,19 +99,19 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Returns a new partial tensor resulting from reshaping this partial tensor with a given symbolic shape.
+        /// Returns a new partial tensor resulting from reshaping this partial tensor with a given dynamic shape.
         /// A single unknown output dimension can be inferred when the input shape is fully known.
         /// If 'allowZeroLength' is false then this method assumes no dimensions are 0, which allows for more general
         /// inference.
         /// </summary>
-        public PartialTensor Reshape(SymbolicTensorShape newShape, bool allowZeroLength = true)
+        public PartialTensor Reshape(DynamicTensorShape newShape, bool allowZeroLength = true)
         {
             if (!newShape.hasRank)
                 return new PartialTensor(dataType, newShape);
 
-            if (!newShape.IsFullyKnown())
+            if (!newShape.IsStatic())
             {
-                SymbolicTensorShape.ReduceCommonFactors(shape, newShape, out var reducedPrev, out var reducedNew, !allowZeroLength);
+                DynamicTensorShape.ReduceCommonFactors(shape, newShape, out var reducedPrev, out var reducedNew, !allowZeroLength);
                 var reducedPrevLength = reducedPrev.Length();
                 if (!reducedPrevLength.isUnknown)
                 {
@@ -149,7 +149,7 @@ namespace Unity.Sentis
         /// Whether the partial tensor is fully known, i.e. the shape is known and all the partial elements are known.
         /// If so this partial tensor can be converted to a tensor.
         /// </summary>
-        public bool IsFullyKnown()
+        public bool IsStatic()
         {
             if (!isPartiallyKnown)
                 return false;
@@ -185,31 +185,31 @@ namespace Unity.Sentis
         public PartialTensorElement this[PartialTensorElement d0] => !d0.isIntValue ? PartialTensorElement.Unknown : this[d0.intValue];
 
         /// <summary>
-        /// Returns a symbolic tensor shape represented by the (integer) partial tensor
+        /// Returns a dynamic tensor shape represented by the (integer) partial tensor
         /// e.g. as an input to ConstantOfShape.
         /// </summary>
-        public SymbolicTensorShape ToSymbolicTensorShape()
+        public DynamicTensorShape ToDynamicTensorShape()
         {
             if (isPartiallyKnown)
             {
-                var shapeOut = SymbolicTensorShape.UnknownOfRank(length);
+                var shapeOut = DynamicTensorShape.DynamicOfRank(length);
                 for (var i = 0; i < length; i++)
                 {
-                    shapeOut[i] = (SymbolicTensorDim)m_Elements[i];
+                    shapeOut[i] = (DynamicTensorDim)m_Elements[i];
                 }
 
                 return shapeOut;
             }
 
             if (!shape.hasRank)
-                return SymbolicTensorShape.UnknownShape;
+                return DynamicTensorShape.DynamicRank;
 
             Logger.AssertIsTrue(shape.rank == 1, "Shape tensor must have rank 1");
 
             if (shape[0].isValue)
-                return SymbolicTensorShape.UnknownOfRank(shape[0].value);
+                return DynamicTensorShape.DynamicOfRank(shape[0].value);
 
-            return SymbolicTensorShape.UnknownShape;
+            return DynamicTensorShape.DynamicRank;
         }
 
         /// <summary>
@@ -218,7 +218,7 @@ namespace Unity.Sentis
         /// </summary>
         public Tensor ToTensor()
         {
-            if (!IsFullyKnown())
+            if (!IsStatic())
                 return null;
 
             if (dataType == DataType.Float)
@@ -226,14 +226,14 @@ namespace Unity.Sentis
                 var values = new float[length];
                 for (var i = 0; i < length; i++)
                     values[i] = m_Elements[i].floatValue;
-                return new TensorFloat(shape.ToTensorShape(), values);
+                return new Tensor<float>(shape.ToTensorShape(), values);
             }
             else
             {
                 var values = new int[length];
                 for (var i = 0; i < length; i++)
                     values[i] = m_Elements[i].intValue;
-                return new TensorInt(shape.ToTensorShape(), values);
+                return new Tensor<int>(shape.ToTensorShape(), values);
             }
         }
 
@@ -243,7 +243,7 @@ namespace Unity.Sentis
         /// </summary>
         public T[] ToArray<T>() where T : unmanaged
         {
-            if (!IsFullyKnown())
+            if (!IsStatic())
                 return null;
 
             if (dataType == DataType.Float)
@@ -265,7 +265,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Creates and returns an integer partial tensor with a given 'shape' and elements all ones if the length is small enough.
         /// </summary>
-        public static PartialTensor Ones(SymbolicTensorShape shape)
+        public static PartialTensor Ones(DynamicTensorShape shape)
         {
             var partialTensor = new PartialTensor(DataType.Int, shape);
             if (!partialTensor.isPartiallyKnown)
@@ -283,7 +283,7 @@ namespace Unity.Sentis
         /// </summary>
         public static PartialTensor Range(int start, int end)
         {
-            var partialTensor = new PartialTensor(DataType.Int, new SymbolicTensorShape(SymbolicTensorDim.Int(end - start)));
+            var partialTensor = new PartialTensor(DataType.Int, new DynamicTensorShape(DynamicTensorDim.Int(end - start)));
             if (!partialTensor.isPartiallyKnown)
                 return partialTensor;
             for (var i = 0; i < partialTensor.length; i++)

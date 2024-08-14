@@ -1,4 +1,0 @@
-{
-  "displayName": "Quantize a model",
-  "description": "Example of serializing a quantized model to disk using a custom editor window and loading that quantized model at runtime."
-}

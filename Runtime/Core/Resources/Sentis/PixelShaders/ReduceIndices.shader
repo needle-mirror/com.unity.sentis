@@ -11,9 +11,9 @@ Shader "Hidden/Sentis/ReduceIndices"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile ArgMin ArgMax
-            #pragma multi_compile First Last
-            #pragma multi_compile _ X_INT
+            #pragma multi_compile_local ArgMin ArgMax
+            #pragma multi_compile_local First Last
+            #pragma multi_compile_local _ X_INT
 
             #pragma vertex vert
             #pragma fragment frag

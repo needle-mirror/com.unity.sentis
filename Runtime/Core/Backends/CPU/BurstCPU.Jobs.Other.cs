@@ -15,7 +15,7 @@ using Unity.Collections;
 
 namespace Unity.Sentis
 {
-    public partial class CPUBackend
+    partial class CPUBackend
     {
         [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
         unsafe struct CopyJob : IJob, IJobResourceDeclarationXO

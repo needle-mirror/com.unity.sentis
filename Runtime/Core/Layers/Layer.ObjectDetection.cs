@@ -7,7 +7,7 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Options for the formatting of the box data for `NonMaxSuppression`.
     /// </summary>
-    public enum CenterPointBox
+    enum CenterPointBox
     {
         /// <summary>
         /// Use TensorFlow box formatting. Box data is [y1, x1, y2, x2] where (y1, x1) and (y2, x2) are the normalized coordinates of any diagonal pair of box corners.
@@ -34,19 +34,17 @@ namespace Unity.Sentis.Layers
 
         internal override void InferPartial(PartialInferenceContext ctx)
         {
-            var shape = new SymbolicTensorShape(SymbolicTensorDim.Unknown, SymbolicTensorDim.Int(3));
+            var shape = new DynamicTensorShape(DynamicTensorDim.Unknown, DynamicTensorDim.Int(3));
             ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Int, shape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            Logger.AssertIsFalse(ctx.backend is GPUCommandBufferBackend, "BackendTypeError: GPUCommandBuffer is not supported on the NonMaxSuppression layer");
-
             var maxOutputBoxesPerClass = ctx.storage.GetInt(inputs[2], defaultValue: 0);
             var iouThreshold = ctx.storage.GetFloat(inputs[3], defaultValue: 0);
             var scoreThreshold = ctx.storage.GetFloat(inputs[4], defaultValue: float.MinValue);
-            var boxes = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var scores = ctx.storage.GetTensor(inputs[1]) as TensorFloat;
+            var boxes = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var scores = ctx.storage.GetTensor(inputs[1]) as Tensor<float>;
 
             Logger.AssertIsTrue(boxes.shape.rank == 3, "NonMaxSuppression.InputError: box data needs to be rank 3, got {0}", boxes.shape.rank);
             Logger.AssertIsTrue(scores.shape.rank == 3, "NonMaxSuppression.InputError: score data needs to be rank 3, got {0}", scores.shape.rank);
@@ -63,7 +61,7 @@ namespace Unity.Sentis.Layers
             maxOutputBoxesPerClass = Mathf.Min(numBoxes, maxOutputBoxesPerClass);
 
             var shapeO = new TensorShape(numBatches * numClasses * maxOutputBoxesPerClass, 3);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shapeO, DataType.Int, ctx.backend.backendType) as TensorInt;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], shapeO, DataType.Int, ctx.backend.backendType) as Tensor<int>;
             if (shapeO.HasZeroDims())
                 return;
 
@@ -79,7 +77,7 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Options for the pooling mode for `RoiAlign`.
     /// </summary>
-    public enum RoiPoolingMode
+    enum RoiPoolingMode
     {
         /// <summary>
         /// Use average pooling.
@@ -120,7 +118,7 @@ namespace Unity.Sentis.Layers
             var shapeX = X.shape;
             var shapeRois = rois.shape;
             var shapeIndices = indices.shape;
-            var shapeOut = SymbolicTensorShape.UnknownOfRank(4);
+            var shapeOut = DynamicTensorShape.DynamicOfRank(4);
 
             shapeRois.DeclareRank(2);
             Logger.AssertIsFalse(shapeRois[1] != 4, "RoiAlign.ValueError: incorrect number of num_rois, expecting 4");
@@ -130,20 +128,20 @@ namespace Unity.Sentis.Layers
             shapeOut[1] = shapeX[1];
 
             shapeIndices.DeclareRank(1);
-            shapeOut[0] = SymbolicTensorDim.MaxDefinedDim(shapeOut[0], shapeIndices[0]);
+            shapeOut[0] = DynamicTensorDim.MaxDefinedDim(shapeOut[0], shapeIndices[0]);
 
-            shapeOut[2] = SymbolicTensorDim.Int(outputHeight);
-            shapeOut[3] = SymbolicTensorDim.Int(outputWidth);
+            shapeOut[2] = DynamicTensorDim.Int(outputHeight);
+            shapeOut[3] = DynamicTensorDim.Int(outputWidth);
 
             ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Float, shapeOut));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var rois = ctx.storage.GetTensor(inputs[1]) as TensorFloat;
-            var indices = ctx.storage.GetTensor(inputs[2]) as TensorInt;
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.RoiAlign(X.shape, rois.shape, indices.shape, outputHeight, outputWidth), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var rois = ctx.storage.GetTensor(inputs[1]) as Tensor<float>;
+            var indices = ctx.storage.GetTensor(inputs[2]) as Tensor<int>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.RoiAlign(X.shape, rois.shape, indices.shape, outputHeight, outputWidth), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.RoiAlign(X, rois, indices, O, mode, outputHeight, outputWidth, samplingRatio, spatialScale);

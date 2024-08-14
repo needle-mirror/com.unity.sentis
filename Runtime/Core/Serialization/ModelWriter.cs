@@ -88,7 +88,7 @@ namespace Unity.Sentis
                 inputsNames[i] = builder.CreateString(input.name);
 
                 Offset<SentisFlatBuffer.Tensor> val;
-                if (input.shape.IsFullyKnown())
+                if (input.shape.IsStatic())
                 {
                     var size = SentisFlatBuffer.Tensor.CreateFixedSizesVector(builder, input.shape.ToTensorShape().ToArray());
                     int lengthByte = input.shape.ToTensorShape().length * sizeof(int); // TODO<quantization> quantized inputs
@@ -135,7 +135,7 @@ namespace Unity.Sentis
             }
 
             // constants
-            var constants = new Dictionary<int, Layers.Constant>();
+            var constants = new Dictionary<int, Constant>();
             for (int i = 0; i < model.constants.Count; i++)
             {
                 constants.Add(model.constants[i].index, model.constants[i]);
@@ -371,13 +371,13 @@ namespace Unity.Sentis
         {
             ProfilerMarkers.SaveModelWeights.Begin();
 
-            var constants = new Dictionary<int, Layers.Constant>();
+            var constants = new Dictionary<int, Constant>();
             var foundConstants = new HashSet<int>();
             for (int i = 0; i < model.constants.Count; i++)
             {
                 constants.Add(model.constants[i].index, model.constants[i]);
             }
-            var constantsInOrder = new List<Layers.Constant>();
+            var constantsInOrder = new List<Constant>();
             for (int i = 0; i < model.layers.Count; i++)
             {
                 var layer = model.layers[i];

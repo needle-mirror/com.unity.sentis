@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/Reduce"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile ReduceMin ReduceMax ReduceSum ReduceSumSquare ReduceMean ReduceMeanSquare ReduceProd ReduceL1 ReduceL2 ReduceSqrt ReduceLogSum ReduceLogSumExp ReduceMinInt ReduceMaxInt ReduceSumInt ReduceSumSquareInt ReduceProdInt ReduceL1Int
+            #pragma multi_compile_local ReduceMin ReduceMax ReduceSum ReduceSumSquare ReduceMean ReduceMeanSquare ReduceProd ReduceL1 ReduceL2 ReduceSqrt ReduceLogSum ReduceLogSumExp ReduceMinInt ReduceMaxInt ReduceSumInt ReduceSumSquareInt ReduceProdInt ReduceL1Int
 
             #pragma vertex vert
             #pragma fragment frag

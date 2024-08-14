@@ -11,8 +11,8 @@ Shader "Hidden/Sentis/Upsample"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile UPSAMPLE1D UPSAMPLE2D UPSAMPLE3D
-            #pragma multi_compile LINEAR NEAREST_FLOOR NEAREST_CEIL
+            #pragma multi_compile_local UPSAMPLE1D UPSAMPLE2D UPSAMPLE3D
+            #pragma multi_compile_local LINEAR NEAREST_FLOOR NEAREST_CEIL
 
             #pragma vertex vert
             #pragma fragment frag

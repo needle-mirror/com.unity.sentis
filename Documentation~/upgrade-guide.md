@@ -1,19 +1,42 @@
-# Upgrade from Sentis Sentis 1.4 or 1.5 to Sentis 1.6
+# Upgrade from Sentis 1.6 to Sentis 2.0
 
-To upgrade from Sentis 1.4 or 1.5 to Sentis 1.6, do the following:
+To upgrade from Sentis 1.6 to Sentis 2.0, do the following:
+
+- Replace uses of `TensorFloat` with `Tensor<float>` and uses of `TensorInt` with `Tensor<int>`.
+- Replace uses of `TensorFloat.AllocZeros(shape)` with `new Tensor<float>(shape)` and uses of `TensorInt.AllocZeros(shape)` with `new Tensor<int>(shape)`.
+- Replace uses of `TensorFloat.AllocEmpty(shape)` with `new Tensor<float>(shape, null)` and uses of `TensorInt.AllocEmpty(shape)` with `new Tensor<int>(shape, null)`.
+- Replace uses of `new TensorFloat(float)` with `new Tensor<float>(new TensorShape(), new[] { float })` and uses of `new TensorInt(int)` with `new Tensor<int>(new TensorShape(), new[] { int })` for scalars.
+- Replace uses of `tensor.ToReadOnlyArray()` with `tensor.DownloadToArray()`.
+- Replace uses of `SymbolicTensorShape` with `DynamicTensorShape`, and `SymbolicTensorDim` with integers, where -1 represents an unknown dimension.
+- Replace uses of `BurstTensorData` with `CPUTensorData`.
+- Replace uses of `IWorker` or `GenericWorker` with `Worker`.
+- Replace uses of `WorkerFactory.CreateWorker(backendType, model)` with `new Worker(model, backendType)`.
+- Replace uses of `worker.Execute` with `worker.Schedule`.
+- Remove uses of `worker.Execute` or `worker.SetInputs` with a dictionary, instead use an array or set the inputs one at a time by name.
+- Replace uses of `worker.ExecuteLayerByLayer` with `worker.ScheduleIterable`.
+- Replace uses of `BackendType.GPUCommandBuffer` with `BackendType.GPUCompute`.
+- Replace uses of `commandBuffer.ExecuteWorker` with `commandBuffer.ScheduleWorker`.
+- Rewrite uses of `worker.TakeOutputOwnership(...)` using `tensor.ReadbackAndClone(...)`,`tensor.ReadbackAndCloneAsync(...)` or `worker.CopyOutput(...)`.
+- Replace uses of the `IBackend` methods with functional graph calls to build models.
+- Replace uses of `Functional.Compile(Func)` with `new FunctionalGraph()` then `graph.Compile(outputs)` where the outputs are calculated from the inputs and constants.
+- Replace uses of `InputDefs` with `graph.AddInput<T>(shape)`.
+- Replace uses of `Functional.Tensor(shape, values)` with `Functional.Constant(shape, values)`.
+
+# Upgrade from Sentis 1.5 to Sentis 1.6
+
+To upgrade from Sentis 1.5 to Sentis 1.6, do the following:
 
 - Replace uses of `IBackend.Concat` with calls to `IBackend.SliceSet`.
 - Rewrite calls to `IBackend.Min` and `IBackend.Max` to not use tensor arrays as inputs.
 - Rewrite calls to `IBackend.Sum` and `IBackend.Mean` to use `IBackend.Add` and `IBackend.ScalarMad` instead.
-- Remove `keepdim` argument from calls to backend reduction methods such as `IBackend.ReduceMin`. 
+- Remove `keepdim` argument from calls to backend reduction methods such as `IBackend.ReduceMin`.
 - Replace strings with ints for tensor indexing internal to models, e.g. when referencing `Output.index`.
 - Replace uses of `CompleteOperationsAndDownload` with `ReadbackAndClone`, this will create a new tensor object which you are responsible for disposing.
 - Rewrite any code that assumes that a zero-length tensor will have a null `Tensor.dataOnBackend`.
 
+# Upgrade from Sentis 1.3 or Sentis 1.4 to Sentis 1.5
 
-# Upgrade from Sentis 1.3 to Sentis 1.4 or 1.5
-
-To upgrade from Sentis 1.3 to Sentis 1.4 or 1.5, do the following:
+To upgrade from Sentis 1.3 or Sentis 1.4 to Sentis 1.5, do the following:
 
 - Reimport models that were previously imported in an earlier version of Sentis.
 - Reexport serialized .sentis files and encrypted serialized models using Sentis 1.4.
@@ -32,11 +55,11 @@ To upgrade from Sentis 1.3 to Sentis 1.4 or 1.5, do the following:
 - When calling `Model.outputs`, use `Model.Output.name` to get the name of the output.
 - Replace uses of `Layer.name` and `Constant.name` with `Layer.index` and `Constant.index`.
 - Remove uses of the `Ops` API, use the functional API to build models to operate on tensors, or use `IBackend` to operate on allocated tensors.
-- Replace uses of `ArrayTensorData` and `SharedArrayTensorData` with `BurstTensorData`.
+- Replace uses of `ArrayTensorData` and `SharedArrayTensorData` with `CPUTensorData`.
 - Remove `CustomLayer` custom ONNX layer importers as these are not compatible with Sentis 1.4 serialization. These will be reimplemented in an upcoming release.
 - Replace uses of `IBackend.deviceType` with `IBackend.backendType` to get the backend type.
 - Remove allocation of tensors using `IBackend` methods, either allocate tensors with `Tensor` or `IModelStorage`.
-- Remove offset from constructors of `BurstTensorData`, if the offset needs to be greater than zero use a `NativeTensorArrayFromManagedArray` in the `BurstTensorData` constructor.
+- Remove offset from constructors of `CPUTensorData`, if the offset needs to be greater than zero use a `NativeTensorArrayFromManagedArray` in the `CPUTensorData` constructor.
 - Replace uses of `IWorker.StartManualSchedule` with `IWorker.ExecuteLayerByLayer`.
 - Replace uses of `ITensorData.shape` with `Tensor.shape`.
 - Remove uses of `ITensorData.AsyncReadbackRequest` and `ITensorData.IsAsyncReadbackRequestDone`, use `Tensor.ReadbackRequest`, `Tensor.ReadbackRequestAsync`, and `Tensor.IsReadbackRequestDone` for async readback of tensor data.
@@ -71,7 +94,7 @@ To upgrade from Barracuda 3.0 to Sentis 1.0, do the following:
 
 - Replace references to `Barracuda` with `Sentis`.
 - Update tensor operations in your project.
-- Use `TensorFloat` or `TensorInt` for input and output tensors.
+- Use `Tensor<float>` or `Tensor<int>` for input and output tensors.
 - Update methods that convert between tensors and textures.
 - Convert the model asset type.
 - Convert backend types.
@@ -86,18 +109,18 @@ All namespaces now use `Sentis` instead of `Barracuda`. To upgrade your project,
 
 The way tensors work has changed. Sentis no longer converts tensors to different layouts automatically, so you might need to update your code to make sure input and output tensors are the layout you expect. Refer to [Tensor fundamentals](tensor-fundamentals.md) for more information.
 
-## Use TensorFloat or TensorInt to create tensors
+## Use Tensor<float> or Tensor<int> to create tensors
 
 Sentis supports tensors that contain floats or ints.
 
-If you use the `new Tensor()` constructor in your code, you must replace it with either `new TensorFloat()` or `new TensorInt()`.
+If you use the `new Tensor()` constructor in your code, you must replace it with either `new Tensor<float>()` or `new Tensor<int>()`.
 
-You can no longer pass dimension sizes to the constructor directly. Instead, you can use the `TensorShape` constructor to create a tensor shape, then pass the `TensorShape` to the `TensorFloat` or `TensorInt` constructor.
+You can no longer pass dimension sizes to the constructor directly. Instead, you can use the `TensorShape` constructor to create a tensor shape, then pass the `TensorShape` to the `Tensor<float>` or `Tensor<int>` constructor.
 
 The following example creates a 1D tensor of length 4:
 
 ```
-TensorFloat inputTensor = new TensorFloat(new TensorShape(4), new[] { 2.0f, 1.0f, 3.0f, 0.0f });
+Tensor<float> inputTensor = new Tensor<float>(new TensorShape(4), new[] { 2.0f, 1.0f, 3.0f, 0.0f });
 ```
 
 Refer to [Create input for a model](create-an-input-tensor.md) for more information.
@@ -109,7 +132,7 @@ You can no longer pass a texture as a parameter to a `Tensor` constructor direct
 For example:
 
 ```
-TensorFloat inputTensor = TextureConvert.ToTensor(inputTexture);
+Tensor<float> inputTensor = TextureConvert.ToTensor(inputTexture);
 ```
 
 Refer to [Use output data](use-model-output.md) for more information.
@@ -148,7 +171,7 @@ Update your code to reflect the following changes to backend type names:
 For example, use the following to create a worker that runs on the GPU with Sentis compute shaders:
 
 ```
-IWorker worker = WorkerFactory.CreateWorker(BackendType.GPUCompute, runtimeModel);
+IWorker worker = new Worker(runtimeModel, BackendType.GPUCompute);
 ```
 
 ## Update getting output from intermediate layers
@@ -161,16 +184,16 @@ For example:
 runtimeModel.AddOutput("ConvolutionLayer");
 
 // Create a worker
-worker = WorkerFactory.CreateWorker(BackendType.GPUCompute, runtimeModel);
+worker = new Worker(runtimeModel, BackendType.GPUCompute);
 
 // Run the model with the input data
-worker.Execute(inputTensor);
+worker.Schedule(inputTensor);
 
 // Get the output from the model
-TensorFloat outputTensor = worker.PeekOutput() as TensorFloat;
+Tensor<float> outputTensor = worker.PeekOutput() as Tensor<float>;
 
 // Get the output from the ConvolutionLayer layer
-TensorFloat convolutionLayerOutputTensor = worker.PeekOutput("ConvolutionLayer") as TensorFloat;
+Tensor<float> convolutionLayerOutputTensor = worker.PeekOutput("ConvolutionLayer") as Tensor<float>;
 ```
 
 You should only use this for debugging. Refer to [Profile a model](profile-a-model.md) for more information.

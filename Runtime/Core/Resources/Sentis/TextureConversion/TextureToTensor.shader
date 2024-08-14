@@ -11,8 +11,8 @@ Shader "Hidden/Sentis/TextureConversion/TextureToTensor"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile EXACT LINEAR
-            #pragma multi_compile _ RGBA BGRA
+            #pragma multi_compile_local EXACT LINEAR
+            #pragma multi_compile_local _ RGBA BGRA
 
             #pragma vertex vert
             #pragma fragment frag

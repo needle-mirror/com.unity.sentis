@@ -40,12 +40,12 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             }
         }
 
-        public static bool IsActivationFusable(Layers.Layer layer)
+        public static bool IsActivationFusable(Layer layer)
         {
             return (layer is Layers.Relu);
         }
 
-        public static Layers.FusableActivation LayerToActivation(Layers.Layer layer)
+        public static Layers.FusableActivation LayerToActivation(Layer layer)
         {
             if (layer is Layers.Relu)
                 return Layers.FusableActivation.Relu;
@@ -53,7 +53,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 return Layers.FusableActivation.None;
         }
 
-        static private void FuseActivation(ref Model model, Layers.Layer mainLayer, Layers.Layer activationToFuse)
+        static private void FuseActivation(ref Model model, Layer mainLayer, Layer activationToFuse)
         {
             // patch `mainLayer`
             if (mainLayer is Layers.FusedActivation)

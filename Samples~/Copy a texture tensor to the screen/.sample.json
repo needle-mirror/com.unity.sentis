@@ -1,4 +1,0 @@
-{
-  "displayName": "Copy a texture tensor to the screen",
-  "description": "An example of using TextureConverter.RenderToScreen to copy a texture tensor to the screen."
-}

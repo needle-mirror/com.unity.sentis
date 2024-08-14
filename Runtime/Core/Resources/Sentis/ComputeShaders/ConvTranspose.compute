@@ -2,7 +2,7 @@
 #pragma kernel ConvTranspose2D_T16x16_R4x4 SUFFIX=ConvTranspose2D_T16x16_R BLOCK_SIZE=4 KERNEL_PER_TG=256 CONV2D
 #pragma kernel ConvTranspose1D_T16x16_R4x4 SUFFIX=ConvTranspose1D_T16x16_R BLOCK_SIZE=4 KERNEL_PER_TG=256 CONV1D
 
-#pragma multi_compile _ USEBIAS
+#pragma multi_compile_local _ USEBIAS
 
 StructuredBuffer<float> Xptr;
 StructuredBuffer<float> Kptr;
@@ -78,6 +78,19 @@ void FUNC_NAME(KERNEL_NAME, BLOCK_SIZE)(uint3 dispatchThreadID : SV_DispatchThre
     uint4 Pad = uint4((K_width - _Pad.x) - 1, 0, 0, 0);
     #endif
 
+    uint lengthX = maxXIndex;
+    uint channelsX = X_channels;
+    uint depthX = X_depth;
+    uint heightX = X_height;
+    uint widthX = X_width;
+
+    uint lengthK = maxKIndex;
+    uint depthK = K_depth;
+    uint heightK = K_height;
+    uint widthK = K_width;
+
+    uint4 Stride = _Stride;
+
     uint batchReadOffset = dispatchThreadID.z * X_channels * strideX;
     uint batchWriteOffset = dispatchThreadID.z * O_channels * strideO;
 
@@ -104,62 +117,74 @@ void FUNC_NAME(KERNEL_NAME, BLOCK_SIZE)(uint3 dispatchThreadID : SV_DispatchThre
 
     uint weightOffsetK = 0;
     #if defined(CONV3D)
-    for (uint dz = 0; dz < K_depth; dz++)
-    for (uint dy = 0; dy < K_height; dy++)
-    for (uint dx = 0; dx < K_width; dx++)
+    #if defined(SHADER_API_WEBGPU)
+    // WEBGPU - FXC fails at triple for loop and incorectly complains about 'workgroupBarrier' must only be called from uniform control flow
+    // patch is to make this loop more complex and avoid optimizations that leads to this error
+    // fix is to use DXC
+    for (uint dd = 0; dd < depthK * heightK * widthK; dd++)
+    #else
+    for (uint dz = 0; dz < depthK; dz++)
+    for (uint dy = 0; dy < heightK; dy++)
+    for (uint dx = 0; dx < widthK; dx++)
+    #endif
     #elif defined(CONV2D)
-    for (uint dy = 0; dy < K_height; dy++)
-    for (uint dx = 0; dx < K_width; dx++)
+    for (uint dy = 0; dy < heightK; dy++)
+    for (uint dx = 0; dx < widthK; dx++)
     #elif defined(CONV1D)
-    for (uint dx = 0; dx < K_width; dx++)
+    for (uint dx = 0; dx < widthK; dx++)
     #endif
     {
         #if defined(CONV3D)
-        uint4 readW = (topX + dx - Pad.z) / _Stride.z;
-        uint4 readH = (topY + dy - Pad.y) / _Stride.y;
-        uint4 readD = (topZ + dz - Pad.x) / _Stride.x;
+        #if defined(SHADER_API_WEBGPU)
+        uint dx = dd % widthK;
+        uint dy = (dd / widthK) % heightK;
+        uint dz = (dd / (widthK * heightK)) % depthK;
+        #endif
+        uint4 readW = (topX + dx - Pad.z) / Stride.z;
+        uint4 readH = (topY + dy - Pad.y) / Stride.y;
+        uint4 readD = (topZ + dz - Pad.x) / Stride.x;
 
-        maskX.x = (readD.x < X_depth) && (readH.x < X_height) && (readW.x < X_width) && ((topZ.x + dz - Pad.x) % _Stride.x == 0) && ((topY.x + dy - Pad.y) % _Stride.y == 0) && ((topX.x + dx - Pad.z) % _Stride.z == 0);
-        maskX.y = (readD.y < X_depth) && (readH.y < X_height) && (readW.y < X_width) && ((topZ.y + dz - Pad.x) % _Stride.x == 0) && ((topY.y + dy - Pad.y) % _Stride.y == 0) && ((topX.y + dx - Pad.z) % _Stride.z == 0);
-        maskX.z = (readD.z < X_depth) && (readH.z < X_height) && (readW.z < X_width) && ((topZ.z + dz - Pad.x) % _Stride.x == 0) && ((topY.z + dy - Pad.y) % _Stride.y == 0) && ((topX.z + dx - Pad.z) % _Stride.z == 0);
-        maskX.w = (readD.w < X_depth) && (readH.w < X_height) && (readW.w < X_width) && ((topZ.w + dz - Pad.x) % _Stride.x == 0) && ((topY.w + dy - Pad.y) % _Stride.y == 0) && ((topX.w + dx - Pad.z) % _Stride.z == 0);
+        maskX.x = (readD.x < depthX) && (readH.x < heightX) && (readW.x < widthX) && ((topZ.x + dz - Pad.x) % Stride.x == 0) && ((topY.x + dy - Pad.y) % Stride.y == 0) && ((topX.x + dx - Pad.z) % Stride.z == 0);
+        maskX.y = (readD.y < depthX) && (readH.y < heightX) && (readW.y < widthX) && ((topZ.y + dz - Pad.x) % Stride.x == 0) && ((topY.y + dy - Pad.y) % Stride.y == 0) && ((topX.y + dx - Pad.z) % Stride.z == 0);
+        maskX.z = (readD.z < depthX) && (readH.z < heightX) && (readW.z < widthX) && ((topZ.z + dz - Pad.x) % Stride.x == 0) && ((topY.z + dy - Pad.y) % Stride.y == 0) && ((topX.z + dx - Pad.z) % Stride.z == 0);
+        maskX.w = (readD.w < depthX) && (readH.w < heightX) && (readW.w < widthX) && ((topZ.w + dz - Pad.x) % Stride.x == 0) && ((topY.w + dy - Pad.y) % Stride.y == 0) && ((topX.w + dx - Pad.z) % Stride.z == 0);
 
         kernelOffsetX = readX + readD * X_width * X_height + readH * X_width + readW;
         #elif defined(CONV2D)
-        uint4 readW = (topX + dx - Pad.y) / _Stride.y;
-        uint4 readH = (topY + dy - Pad.x) / _Stride.x;
+        uint4 readW = (topX + dx - Pad.y) / Stride.y;
+        uint4 readH = (topY + dy - Pad.x) / Stride.x;
 
-        maskX.x = (readH.x < X_height) && (readW.x < X_width) && ((topY.x + dy - Pad.x) % _Stride.x == 0) && ((topX.x + dx - Pad.y) % _Stride.y == 0);
-        maskX.y = (readH.y < X_height) && (readW.y < X_width) && ((topY.y + dy - Pad.x) % _Stride.x == 0) && ((topX.y + dx - Pad.y) % _Stride.y == 0);
-        maskX.z = (readH.z < X_height) && (readW.z < X_width) && ((topY.z + dy - Pad.x) % _Stride.x == 0) && ((topX.z + dx - Pad.y) % _Stride.y == 0);
-        maskX.w = (readH.w < X_height) && (readW.w < X_width) && ((topY.w + dy - Pad.x) % _Stride.x == 0) && ((topX.w + dx - Pad.y) % _Stride.y == 0);
+        maskX.x = (readH.x < heightX) && (readW.x < widthX) && ((topY.x + dy - Pad.x) % Stride.x == 0) && ((topX.x + dx - Pad.y) % Stride.y == 0);
+        maskX.y = (readH.y < heightX) && (readW.y < widthX) && ((topY.y + dy - Pad.x) % Stride.x == 0) && ((topX.y + dx - Pad.y) % Stride.y == 0);
+        maskX.z = (readH.z < heightX) && (readW.z < widthX) && ((topY.z + dy - Pad.x) % Stride.x == 0) && ((topX.z + dx - Pad.y) % Stride.y == 0);
+        maskX.w = (readH.w < heightX) && (readW.w < widthX) && ((topY.w + dy - Pad.x) % Stride.x == 0) && ((topX.w + dx - Pad.y) % Stride.y == 0);
 
         kernelOffsetX = readX + readH * X_width + readW;
         #elif defined(CONV1D)
-        uint4 readW = (topX + dx - Pad.x) / _Stride.x;
+        uint4 readW = (topX + dx - Pad.x) / Stride.x;
 
-        maskX.x = (readW.x < X_width) && ((topX.x + dx - Pad.x) % _Stride.x == 0);
-        maskX.y = (readW.y < X_width) && ((topX.y + dx - Pad.x) % _Stride.x == 0);
-        maskX.z = (readW.z < X_width) && ((topX.z + dx - Pad.x) % _Stride.x == 0);
-        maskX.w = (readW.w < X_width) && ((topX.w + dx - Pad.x) % _Stride.x == 0);
+        maskX.x = (readW.x < widthX) && ((topX.x + dx - Pad.x) % Stride.x == 0);
+        maskX.y = (readW.y < widthX) && ((topX.y + dx - Pad.x) % Stride.x == 0);
+        maskX.z = (readW.z < widthX) && ((topX.z + dx - Pad.x) % Stride.x == 0);
+        maskX.w = (readW.w < widthX) && ((topX.w + dx - Pad.x) % Stride.x == 0);
 
         kernelOffsetX = readX + readW;
         #endif
 
-        for (uint i = 0; i < X_channels; i += CACHE_DEPTH)
+        for (uint i = 0; i < channelsX; i += CACHE_DEPTH)
         {
-            bool maskChannelsX = (i + (ti & 15)) < X_channels;
-            bool maskChannelsK = (i + (ti >> 4)) < X_channels;
+            bool maskChannelsX = (i + (ti & 15)) < channelsX;
+            bool maskChannelsK = (i + (ti >> 4)) < channelsX;
 
-            LDS_[X_OFFSET + (0 * 256 | ti)] = maskChannelsX && maskX.x ? Xptr[min(i * strideX + kernelOffsetX.x, maxXIndex)] : 0.0f;
-            LDS_[X_OFFSET + (1 * 256 | ti)] = maskChannelsX && maskX.y ? Xptr[min(i * strideX + kernelOffsetX.y, maxXIndex)] : 0.0f;
-            LDS_[X_OFFSET + (2 * 256 | ti)] = maskChannelsX && maskX.z ? Xptr[min(i * strideX + kernelOffsetX.z, maxXIndex)] : 0.0f;
-            LDS_[X_OFFSET + (3 * 256 | ti)] = maskChannelsX && maskX.w ? Xptr[min(i * strideX + kernelOffsetX.w, maxXIndex)] : 0.0f;
+            LDS_[X_OFFSET + (0 * 256 | ti)] = maskChannelsX && maskX.x ? Xptr[min(i * strideX + kernelOffsetX.x, lengthX)] : 0.0f;
+            LDS_[X_OFFSET + (1 * 256 | ti)] = maskChannelsX && maskX.y ? Xptr[min(i * strideX + kernelOffsetX.y, lengthX)] : 0.0f;
+            LDS_[X_OFFSET + (2 * 256 | ti)] = maskChannelsX && maskX.z ? Xptr[min(i * strideX + kernelOffsetX.z, lengthX)] : 0.0f;
+            LDS_[X_OFFSET + (3 * 256 | ti)] = maskChannelsX && maskX.w ? Xptr[min(i * strideX + kernelOffsetX.w, lengthX)] : 0.0f;
 
-            LDS_[W_OFFSET + 0 * 256 + (ti % 16) * 16 + (ti / 16)] = maskChannelsK ? Kptr[min(readK.x + i * strideK - weightOffsetK, maxKIndex)] : 0.0f;
-            LDS_[W_OFFSET + 1 * 256 + (ti % 16) * 16 + (ti / 16)] = maskChannelsK ? Kptr[min(readK.y + i * strideK - weightOffsetK, maxKIndex)] : 0.0f;
-            LDS_[W_OFFSET + 2 * 256 + (ti % 16) * 16 + (ti / 16)] = maskChannelsK ? Kptr[min(readK.z + i * strideK - weightOffsetK, maxKIndex)] : 0.0f;
-            LDS_[W_OFFSET + 3 * 256 + (ti % 16) * 16 + (ti / 16)] = maskChannelsK ? Kptr[min(readK.w + i * strideK - weightOffsetK, maxKIndex)] : 0.0f;
+            LDS_[W_OFFSET + 0 * 256 + (ti % 16) * 16 + (ti / 16)] = maskChannelsK ? Kptr[min(readK.x + i * strideK - weightOffsetK, lengthK)] : 0.0f;
+            LDS_[W_OFFSET + 1 * 256 + (ti % 16) * 16 + (ti / 16)] = maskChannelsK ? Kptr[min(readK.y + i * strideK - weightOffsetK, lengthK)] : 0.0f;
+            LDS_[W_OFFSET + 2 * 256 + (ti % 16) * 16 + (ti / 16)] = maskChannelsK ? Kptr[min(readK.z + i * strideK - weightOffsetK, lengthK)] : 0.0f;
+            LDS_[W_OFFSET + 3 * 256 + (ti % 16) * 16 + (ti / 16)] = maskChannelsK ? Kptr[min(readK.w + i * strideK - weightOffsetK, lengthK)] : 0.0f;
 
             GroupMemoryBarrierWithGroupSync();
 

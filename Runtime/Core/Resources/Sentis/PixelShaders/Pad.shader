@@ -11,8 +11,8 @@ Shader "Hidden/Sentis/Pad"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile _ INT
-            #pragma multi_compile CONSTANT REFLECT EDGE WRAP
+            #pragma multi_compile_local _ INT
+            #pragma multi_compile_local CONSTANT REFLECT EDGE WRAP
 
             #pragma vertex vert
             #pragma fragment frag

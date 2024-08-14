@@ -6,8 +6,8 @@ Tensors can have up to eight dimensions. If a tensor has zero dimensions, it con
 
 You can create the following types of tensor:
 
-- `TensorFloat`, which stores the data as floats.
-- `TensorInt`, which stores the data as ints.
+- [`Tensor<float>`](xref:Unity.Sentis.Tensor`1), which stores the data as floats.
+- [`Tensor<int>`](xref:Unity.Sentis.Tensor`1), which stores the data as ints.
 
 For more information, refer to [Create and modify tensors](do-basic-tensor-operations.md).
 
@@ -34,11 +34,9 @@ To convert a texture to a tensor in a specific format, refer to [Create input fo
 
 ## Memory location
 
-Sentis stores tensor data in either graphics processing unit (GPU) memory or central processing unit (CPU) memory, depending on the [backend type](create-an-engine.md#back-end-types) you select. For example, if you use the `BackendType.GPUCompute` backend type, tensors are typically stored in GPU memory.
+Sentis stores tensor data in either graphics processing unit (GPU) memory or central processing unit (CPU) memory, depending on the [backend type](create-an-engine.md#back-end-types) you select. For example, if you use the [`BackendType.GPUCompute`](xref:Unity.Sentis.BackendType.GPUCompute) backend type, tensors are typically stored in GPU memory.
 
 Directly reading from and writing to tensor elements is only possible when the tensor is on the CPU, which can be slow. For better performance, it's more efficient to modify your model using the functional API.
-
-To read from and write to the elements of a tensor directly, use [`ReadbackAndClone`](xref:Unity.Sentis.Tensor.ReadbackAndClone) or [`ToReadOnlyArray`](xref:Unity.Sentis.Tensor.ToReadOnlyArray). Sentis performs a blocking readback of the tensor to the CPU and then automatically uploads the tensor back to the GPU when it's next used in a model or operation.
 
 To prevent Sentis from performing a blocking readback and upload, use a compute shader, Burst, or a native array. This allows you to read from and write to the tensor data directly in memory. For more information, refer to [Access tensor data directly](access-tensor-data-directly.md).
 

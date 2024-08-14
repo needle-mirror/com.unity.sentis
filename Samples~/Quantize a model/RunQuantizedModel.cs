@@ -10,7 +10,7 @@ public class RunQuantizedModel : MonoBehaviour
     // Reference your quantized tiny stories here in the RunQuantizedModel scene.
     [SerializeField]
     ModelAsset modelAsset;
-    IWorker m_Engine;
+    Worker m_Worker;
     Tensor m_Input;
 
     const int maxTokens = 100;
@@ -19,23 +19,23 @@ public class RunQuantizedModel : MonoBehaviour
     {
         // Load the quantized model as any other Sentis model.
         var model = ModelLoader.Load(modelAsset);
-        m_Engine = WorkerFactory.CreateWorker(BackendType.GPUCompute, model);
+        m_Worker = new Worker(model, BackendType.GPUCompute);
 
         // Initialize input for tiny stories, see https://huggingface.co/unity/sentis-tiny-stories/tree/main for full tinystories example.
-        m_Input = TensorInt.AllocZeros(new TensorShape(1, maxTokens));
+        m_Input = new Tensor<int>(new TensorShape(1, maxTokens));
     }
 
     void Update()
     {
         // Execute worker and peek output as with any other Sentis model.
-        m_Engine.Execute(m_Input);
-        var output = m_Engine.PeekOutput() as TensorFloat;
+        m_Worker.Schedule(m_Input);
+        var output = m_Worker.PeekOutput() as Tensor<float>;
     }
 
     void OnDisable()
     {
         // Clean up Sentis resources.
-        m_Engine.Dispose();
+        m_Worker.Dispose();
         m_Input.Dispose();
     }
 }

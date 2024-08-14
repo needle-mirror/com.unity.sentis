@@ -1,4 +1,0 @@
-{
-  "displayName": "Do an operation on a tensor",
-  "description": "An example of using `IBackend` to do an operation on a tensor."
-}

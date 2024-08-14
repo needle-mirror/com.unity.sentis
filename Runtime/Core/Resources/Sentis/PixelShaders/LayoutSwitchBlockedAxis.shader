@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/LayoutSwitchBlockedAxis"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile TENSORFLOAT TENSORINT
+            #pragma multi_compile_local TENSORFLOAT TENSORINT
             #pragma vertex vert
             #pragma fragment frag
 

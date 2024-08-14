@@ -23,10 +23,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             foreach (var constant in model.constants)
                 constTensors.Add(constant.index, constant.WeightsToTensor());
 
-            var layerDownstream = new Dictionary<int, List<Layers.Layer>>();
+            var layerDownstream = new Dictionary<int, List<Layer>>();
             for (int l = 0; l < model.layers.Count; ++l)
             {
-                Layers.Layer layer = model.layers[l];
+                Layer layer = model.layers[l];
 
                 foreach (var input in layer.inputs)
                 {
@@ -40,7 +40,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     if (output == -1)
                         continue;
                     if (!layerDownstream.ContainsKey(output))
-                        layerDownstream.Add(output, new List<Layers.Layer>());
+                        layerDownstream.Add(output, new List<Layer>());
                 }
             }
 
@@ -49,7 +49,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
             for (int l = 0; l < model.layers.Count - 1; ++l)
             {
-                Layers.Layer layer = model.layers[l];
+                Layer layer = model.layers[l];
                 if (!(layer is Layers.MatMul || (layer is Layers.MatMul2D && (layer as Layers.MatMul2D).transposeA != true)))
                     continue;
 
@@ -59,13 +59,13 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     continue;
 
                 // const bias of rank 1
-                List<Layers.Layer> downStreamLayers = layerDownstream[layer.outputs[0]];
+                List<Layer> downStreamLayers = layerDownstream[layer.outputs[0]];
                 if (!downStreamLayers.Any(x => x is Layers.Add) && !downStreamLayers.Any(x => x is Layers.ScalarMad))
                     continue;
 
                 bool transposeWeights = layer is Layers.MatMul2D && (layer as Layers.MatMul2D).transposeB;
 
-                Layers.Layer bias;
+                Layer bias;
                 int biasIndex;
                 if (downStreamLayers.Any(x => x is Layers.ScalarMad))
                 {
@@ -74,10 +74,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     if (biasMad.dataType == DataType.Int || biasMad.sFloat != 1)
                         continue;
                     var biasS = biasMad.bFloat;
-                    using TensorFloat biasT = ops.ConstantOfShape(new TensorShape(constTensors[weightsIndex].shape[transposeWeights ? -2 : -1]), biasS);
+                    using Tensor<float> biasT = ops.ConstantOfShape(new TensorShape(constTensors[weightsIndex].shape[transposeWeights ? -2 : -1]), biasS);
                     biasIndex = model.GetUniqueIndex();
                     constTensors.Add(biasIndex, biasT);
-                    model.constants.Add(new Layers.Constant(biasIndex, biasT.shape, biasT.ToReadOnlyArray()));
+                    model.constants.Add(new Constant(biasIndex, biasT.shape, biasT.DownloadToArray()));
                 }
                 else
                 {
@@ -92,7 +92,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 if (preserve.Contains(bias.outputs[0]))
                     continue;
 
-                TensorFloat weightT = constTensors[weightsIndex] as TensorFloat;
+                Tensor<float> weightT = constTensors[weightsIndex] as Tensor<float>;
 
                 removeLayers.Add(weightsIndex);
                 removeLayers.Add(bias.outputs[0]);
@@ -101,7 +101,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 {
                     weightsIndex = model.GetUniqueIndex();
                     using var transposed = ops.Transpose(weightT);
-                    model.constants.Add(new Layers.Constant(weightsIndex, transposed.shape, transposed.ToReadOnlyArray()));
+                    model.constants.Add(new Constant(weightsIndex, transposed.shape, transposed.DownloadToArray()));
                 }
 
                 model.layers[l] = new Layers.Dense(layer.outputs[0], layer.inputs[0], weightsIndex, biasIndex);
@@ -112,7 +112,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
             for (int l = 0; l < model.layers.Count; ++l)
             {
-                Layers.Layer layer = model.layers[l];
+                Layer layer = model.layers[l];
                 for (int i = 0; i < layer.inputs.Length; i++)
                 {
                     var input = layer.inputs[i];

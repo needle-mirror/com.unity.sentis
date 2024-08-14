@@ -153,7 +153,7 @@ namespace Unity.Sentis
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator /(FunctionalTensor a, int b) => a.DataType == DataType.Float ? a / (float)b : Functional.Div(a, Functional.Tensor(b));
+        public static FunctionalTensor operator /(FunctionalTensor a, int b) => a.dataType == DataType.Float ? a / (float)b : Functional.Div(a, Functional.Constant(b));
 
         /// <summary>
         /// Division operator.
@@ -161,7 +161,7 @@ namespace Unity.Sentis
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator /(int a, FunctionalTensor b) => b.DataType == DataType.Float ? (float)a / b : Functional.Div(Functional.Tensor(a), b);
+        public static FunctionalTensor operator /(int a, FunctionalTensor b) => b.dataType == DataType.Float ? (float)a / b : Functional.Div(Functional.Constant(a), b);
 
         /// <summary>
         /// Division operator.
@@ -193,7 +193,7 @@ namespace Unity.Sentis
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator %(FunctionalTensor a, int b) => Functional.Remainder(a, Functional.Tensor(b));
+        public static FunctionalTensor operator %(FunctionalTensor a, int b) => Functional.Remainder(a, Functional.Constant(b));
 
         /// <summary>
         /// Remainder operator.
@@ -201,7 +201,7 @@ namespace Unity.Sentis
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator %(int a, FunctionalTensor b) => Functional.Remainder(Functional.Tensor(a), b);
+        public static FunctionalTensor operator %(int a, FunctionalTensor b) => Functional.Remainder(Functional.Constant(a), b);
 
         /// <summary>
         /// Remainder operator.
@@ -209,7 +209,7 @@ namespace Unity.Sentis
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator %(FunctionalTensor a, float b) => Functional.Remainder(a, Functional.Tensor(b));
+        public static FunctionalTensor operator %(FunctionalTensor a, float b) => Functional.Remainder(a, Functional.Constant(b));
 
         /// <summary>
         /// Remainder operator.
@@ -217,7 +217,7 @@ namespace Unity.Sentis
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator %(float a, FunctionalTensor b) => Functional.Remainder(Functional.Tensor(a), b);
+        public static FunctionalTensor operator %(float a, FunctionalTensor b) => Functional.Remainder(Functional.Constant(a), b);
 
         /// <summary>
         /// Greater than operator.
@@ -233,7 +233,7 @@ namespace Unity.Sentis
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator >(FunctionalTensor a, int b) => a.DataType == DataType.Float ? a > (float)b : a > Functional.Tensor(b);
+        public static FunctionalTensor operator >(FunctionalTensor a, int b) => a.dataType == DataType.Float ? a > (float)b : a > Functional.Constant(b);
 
         /// <summary>
         /// Greater than operator.
@@ -241,7 +241,7 @@ namespace Unity.Sentis
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator >(FunctionalTensor a, float b) => a.DataType == DataType.Int ? a > Mathf.FloorToInt(b) : a > Functional.Tensor(b);
+        public static FunctionalTensor operator >(FunctionalTensor a, float b) => a.dataType == DataType.Int ? a > Mathf.FloorToInt(b) : a > Functional.Constant(b);
 
         /// <summary>
         /// Greater than operator.
@@ -273,7 +273,7 @@ namespace Unity.Sentis
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator <(FunctionalTensor a, int b) => a.DataType == DataType.Float ? a < (float)b : a < Functional.Tensor(b);
+        public static FunctionalTensor operator <(FunctionalTensor a, int b) => a.dataType == DataType.Float ? a < (float)b : a < Functional.Constant(b);
 
         /// <summary>
         /// Less than operator.
@@ -281,7 +281,7 @@ namespace Unity.Sentis
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator <(FunctionalTensor a, float b) => a.DataType == DataType.Int ? a < Mathf.CeilToInt(b) : a < Functional.Tensor(b);
+        public static FunctionalTensor operator <(FunctionalTensor a, float b) => a.dataType == DataType.Int ? a < Mathf.CeilToInt(b) : a < Functional.Constant(b);
 
         /// <summary>
         /// Less than operator.
@@ -313,7 +313,7 @@ namespace Unity.Sentis
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator >=(FunctionalTensor a, int b) => a.DataType == DataType.Float ? a >= (float)b : a >= Functional.Tensor(b);
+        public static FunctionalTensor operator >=(FunctionalTensor a, int b) => a.dataType == DataType.Float ? a >= (float)b : a >= Functional.Constant(b);
 
         /// <summary>
         /// Greater than or equal operator.
@@ -321,7 +321,7 @@ namespace Unity.Sentis
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator >=(FunctionalTensor a, float b) => a.DataType == DataType.Int ? a >= Mathf.CeilToInt(b) : a >= Functional.Tensor(b);
+        public static FunctionalTensor operator >=(FunctionalTensor a, float b) => a.dataType == DataType.Int ? a >= Mathf.CeilToInt(b) : a >= Functional.Constant(b);
 
         /// <summary>
         /// Greater than or equal operator.
@@ -353,7 +353,7 @@ namespace Unity.Sentis
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator <=(FunctionalTensor a, int b) => a.DataType == DataType.Float ? a <= (float)b : a <= Functional.Tensor(b);
+        public static FunctionalTensor operator <=(FunctionalTensor a, int b) => a.dataType == DataType.Float ? a <= (float)b : a <= Functional.Constant(b);
 
         /// <summary>
         /// Less than or equal operator.
@@ -361,7 +361,7 @@ namespace Unity.Sentis
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator <=(FunctionalTensor a, float b) => a.DataType == DataType.Int ? a <= Mathf.FloorToInt(b) : a <= Functional.Tensor(b);
+        public static FunctionalTensor operator <=(FunctionalTensor a, float b) => a.dataType == DataType.Int ? a <= Mathf.FloorToInt(b) : a <= Functional.Constant(b);
 
         /// <summary>
         /// Less than or equal operator.
@@ -400,7 +400,7 @@ namespace Unity.Sentis
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator ^(FunctionalTensor a, bool b) => a ^ Functional.Tensor(b ? 1 : 0);
+        public static FunctionalTensor operator ^(FunctionalTensor a, bool b) => a ^ Functional.Constant(b ? 1 : 0);
 
         /// <summary>
         /// Xor operator.
@@ -424,7 +424,7 @@ namespace Unity.Sentis
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator &(FunctionalTensor a, bool b) => a & Functional.Tensor(b ? 1 : 0);
+        public static FunctionalTensor operator &(FunctionalTensor a, bool b) => a & Functional.Constant(b ? 1 : 0);
 
         /// <summary>
         /// And operator.
@@ -448,7 +448,7 @@ namespace Unity.Sentis
         /// <param name="a">The first operand.</param>
         /// <param name="b">The second operand.</param>
         /// <returns>The output tensor.</returns>
-        public static FunctionalTensor operator |(FunctionalTensor a, bool b) => a | Functional.Tensor(b ? 1 : 0);
+        public static FunctionalTensor operator |(FunctionalTensor a, bool b) => a | Functional.Constant(b ? 1 : 0);
 
         /// <summary>
         /// Or operator.
@@ -462,15 +462,21 @@ namespace Unity.Sentis
         static FunctionalTensor ScalarMad(FunctionalTensor input, float s, float b)
         {
             input = input.Float();
-            return FromLayer(new Layers.ScalarMad(-1, -1, s, b), DataType.Float, new[] { input });
+            var output = Functional.FromLayer(new Layers.ScalarMad(-1, -1, s, b), DataType.Float, new[] { input });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         // helper for operators with int values, type promotion to floats if needed
         static FunctionalTensor ScalarMad(FunctionalTensor input, int s, int b)
         {
-            if (input.DataType == DataType.Float)
+            if (input.dataType == DataType.Float)
                 return ScalarMad(input, (float)s, b);
-            return FromLayer(new Layers.ScalarMad(-1, -1, s, b), DataType.Int, new[] { input });
+            var output = Functional.FromLayer(new Layers.ScalarMad(-1, -1, s, b), DataType.Int, new[] { input });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
     }
 }

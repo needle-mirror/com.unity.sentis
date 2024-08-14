@@ -16,7 +16,7 @@ using Unity.Mathematics;
 using static Unity.Mathematics.math;
 
 namespace Unity.Sentis {
-public partial class CPUBackend
+partial class CPUBackend
 {
 #if UNITY_WEBGL || WEBGL_MATMUL_OVERRIDE
     // Note: This is a copy of an older version of the kernel that did not use v256. The inline expansion

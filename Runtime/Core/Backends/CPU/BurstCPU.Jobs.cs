@@ -13,13 +13,12 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Mathematics;
-using Constant = Unity.Burst.CompilerServices.Constant;
 
 [assembly: BurstCompile(OptimizeFor = OptimizeFor.FastCompilation)]
 
 namespace Unity.Sentis
 {
-    public partial class CPUBackend
+    partial class CPUBackend
     {
         internal static readonly Thread MainThread = Thread.CurrentThread;
 
@@ -655,7 +654,7 @@ namespace Unity.Sentis
                 // elements. For convolutions where `inputWidth` is small (such as the resnet50v1 blocks
                 // with 7/14 elements), this results in too much time looping. Manually unroll the copy
                 // loop here to reduce the total number of instructions for these smaller spatial sizes.
-                if (Constant.IsConstantExpression(strideWidth) && strideWidth == 1)
+                if (Unity.Burst.CompilerServices.Constant.IsConstantExpression(strideWidth) && strideWidth == 1)
                 {
                     uint i = 0;
 

@@ -8,7 +8,7 @@ To encrypt a model and save it to disk, follow these steps, typically in the Uni
 
 1. Get a Sentis model by importing an ONNX file or using the Sentis model API.
 2. Create a `Stream` object for the encrypted model using a cryptography API with your key.
-3. Encrypt and write the serialized model to the stream using the [`ModelWriter.Save`](xref:Unity.Sentis.ModelWriter.Save(Stream,Unity.Sentis.Model)) method.
+3. Encrypt and write the serialized model to the stream using the [`ModelWriter.Save`](xref:Unity.Sentis.ModelWriter.Save*) method.
 
 Certain types of streams such as `MemoryStream` may not be compatible with large models over 2GB.
 
@@ -17,7 +17,7 @@ Certain types of streams such as `MemoryStream` may not be compatible with large
 To decrypt a model from disk, follow these steps, usually before running the model:
 
 1. Create a `Stream` object for the encrypted model using a cryptography API with your key.
-2. Decrypt and deserialize the model using the [`ModelLoader.Load`](xref:Unity.Sentis.ModelLoader.Load(Stream)) method.
+2. Decrypt and deserialize the model using the [`ModelLoader.Load`](Unity.Sentis.ModelLoader.Load*) method.
 
 ## Example using AES Encryption
 

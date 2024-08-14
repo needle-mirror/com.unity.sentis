@@ -322,6 +322,18 @@ namespace Unity.Sentis
             return shape.Unsqueeze(axes);
         }
 
+        public static TensorShape Pad(TensorShape shape, int[] pads, int[] axes)
+        {
+            Logger.AssertAreEqual(axes.Length * 2, pads.Length, "ValueError: axes length and pad length do not match {0}, {1}", axes.Length, pads.Length);
+            var output = new TensorShape(shape);
+            for (var i = 0; i < axes.Length; i++)
+            {
+                int axis = axes[i];
+                output[axis] = output[axis] + pads[2 * i] + pads[2 * i + 1];
+            }
+            return output;
+        }
+
         public static TensorShape Resize(TensorShape shape, ReadOnlySpan<float> scale)
         {
             Logger.AssertIsTrue(!shape.HasZeroDims(), "Resize.InputError: zero dimensions are not supported");
@@ -362,6 +374,20 @@ namespace Unity.Sentis
             Logger.AssertAreEqual(0, shape[3] % blocksize, "SpaceToDepth.ValueError: input width {0}, must be modulus of blocksize {1}", shape[3], blocksize);
 
             return new TensorShape(shape[0], shape[1] * (blocksize * blocksize), shape[2] / blocksize, shape[3] / blocksize);
+        }
+
+        public static TensorShape GridSample(TensorShape shape, TensorShape grid)
+        {
+            Logger.AssertIsTrue(shape.rank >= 2, "GridSample.RankError: incorrect rank for input, expecting > 2, got {0}", shape.rank);
+            Logger.AssertIsTrue(grid.rank >= 3, "GridSample.RankError: incorrect rank for input, expecting > 3, got {0}", shape.rank);
+            Logger.AssertAreEqual(shape.rank - 2, grid[-1], "GridSample.ValueError: input spatial dims {0}, must equal to grid last dim {1}", shape.rank - 2, grid[-1]);
+
+            var output = TensorShape.Ones(shape.rank);
+            output[0] = shape[0];
+            output[1] = shape[1];
+            for (var i = 2; i < output.rank; i++)
+                output[i] = grid[i - 1];
+            return output;
         }
 
         public static TensorShape GlobalPool(TensorShape shape)
@@ -460,7 +486,7 @@ namespace Unity.Sentis
             return new TensorShape(shape[0], count);
         }
 
-        public static TensorShape LSTM(TensorShape X, TensorShape W, TensorShape R, Layers.RnnLayout layout, out TensorShape Y, out TensorShape Y_h, out TensorShape Y_c)
+        public static void LSTM(TensorShape X, TensorShape W, TensorShape R, Layers.RnnLayout layout, out TensorShape Y, out TensorShape Y_h, out TensorShape Y_c)
         {
             Logger.AssertAreEqual(3, X.rank, "LSTM.RankError: incorrect rank for X, expecting 3, got {0}", X.rank);
             Logger.AssertAreEqual(3, W.rank, "LSTM.RankError: incorrect rank for W, expecting 3, got {0}", W.rank);
@@ -486,7 +512,6 @@ namespace Unity.Sentis
                 default:
                     throw new ArgumentOutOfRangeException(nameof(layout), layout, null);
             }
-            return Y;
         }
 
         public static TensorShape Range(float start, float limit, float delta)
@@ -494,43 +519,78 @@ namespace Unity.Sentis
             return new TensorShape(Mathf.Max(Mathf.CeilToInt((limit - start) / delta), 0));
         }
 
-        public static int SliceDim(int dim, int start, int end, int step)
+        /// <summary>
+        /// Calculations the permutations given the shape and source and destination.
+        /// </summary>
+        public static void MoveDim(TensorShape shape, ReadOnlySpan<int> source, ReadOnlySpan<int> destination, ref Span<int> permutations)
         {
-            if (dim == 0)
-                return 0;
+            // move given dims
+            uint srcAxesBitMask = 0;
+            uint dstAxesBitMask = 0;
+            for (var i = 0; i < source.Length; i++)
+            {
+                var srcAxis = shape.Axis(source[i]);
+                var dstAxis = shape.Axis(destination[i]);
+                Logger.AssertIsTrue(((srcAxesBitMask >> srcAxis) & 1U) == 0, "MoveDim.ValueError: source dims may not repeat");
+                Logger.AssertIsTrue(((dstAxesBitMask >> dstAxis) & 1U) == 0, "MoveDim.ValueError: destination dims may not repeat");
+                srcAxesBitMask |= 1U << srcAxis;
+                dstAxesBitMask |= 1U << dstAxis;
+                permutations[dstAxis] = srcAxis;
+            }
 
-            int clampAdjustDirection = step < 0 ? -1 : 0;
-
-            start = start < 0 ? dim + start : start;
-            start = Mathf.Clamp(start, 0, dim + clampAdjustDirection);
-
-            end = end < 0 ? dim + end : end;
-            end = Mathf.Clamp(end, clampAdjustDirection, dim);
-
-            int outputDim = (int)Math.Ceiling((double)(end - start) / (double)step);
-            return Mathf.Max(outputDim, 0);
+            // fill remaining dims in order
+            for (int srcAxis = 0, dstAxis = 0; srcAxis < shape.rank; srcAxis++)
+            {
+                if (((srcAxesBitMask >> srcAxis) & 1U) != 0)
+                    continue;
+                while (((dstAxesBitMask >> dstAxis) & 1U) != 0)
+                    dstAxis++;
+                srcAxesBitMask |= 1U << srcAxis;
+                dstAxesBitMask |= 1U << dstAxis;
+                permutations[dstAxis] = srcAxis;
+                dstAxis++;
+            }
         }
 
-        public static bool AreBroadcastable(TensorShape a, TensorShape b)
+        public static TensorShape MoveDim(TensorShape shape, ref int dim, ref int start, ref int length)
         {
-            if (!((a.UnsafeGet(0) == b.UnsafeGet(0)) || (a.UnsafeGet(0) == 1) || (b.UnsafeGet(0) == 1) || (a.UnsafeGet(0) == 0 && b.UnsafeGet(0) != 0) || (b.UnsafeGet(0) == 0 && a.UnsafeGet(0) != 0)))
-                return false;
-            if (!((a.UnsafeGet(1) == b.UnsafeGet(1)) || (a.UnsafeGet(1) == 1) || (b.UnsafeGet(1) == 1) || (a.UnsafeGet(1) == 0 && b.UnsafeGet(1) != 0) || (b.UnsafeGet(1) == 0 && a.UnsafeGet(1) != 0)))
-                return false;
-            if (!((a.UnsafeGet(2) == b.UnsafeGet(2)) || (a.UnsafeGet(2) == 1) || (b.UnsafeGet(2) == 1) || (a.UnsafeGet(2) == 0 && b.UnsafeGet(2) != 0) || (b.UnsafeGet(2) == 0 && a.UnsafeGet(2) != 0)))
-                return false;
-            if (!((a.UnsafeGet(3) == b.UnsafeGet(3)) || (a.UnsafeGet(3) == 1) || (b.UnsafeGet(3) == 1) || (a.UnsafeGet(3) == 0 && b.UnsafeGet(3) != 0) || (b.UnsafeGet(3) == 0 && a.UnsafeGet(3) != 0)))
-                return false;
-            if (!((a.UnsafeGet(4) == b.UnsafeGet(4)) || (a.UnsafeGet(4) == 1) || (b.UnsafeGet(4) == 1) || (a.UnsafeGet(4) == 0 && b.UnsafeGet(4) != 0) || (b.UnsafeGet(4) == 0 && a.UnsafeGet(4) != 0)))
-                return false;
-            if (!((a.UnsafeGet(5) == b.UnsafeGet(5)) || (a.UnsafeGet(5) == 1) || (b.UnsafeGet(5) == 1) || (a.UnsafeGet(5) == 0 && b.UnsafeGet(5) != 0) || (b.UnsafeGet(5) == 0 && a.UnsafeGet(5) != 0)))
-                return false;
-            if (!((a.UnsafeGet(6) == b.UnsafeGet(6)) || (a.UnsafeGet(6) == 1) || (b.UnsafeGet(6) == 1) || (a.UnsafeGet(6) == 0 && b.UnsafeGet(6) != 0) || (b.UnsafeGet(6) == 0 && a.UnsafeGet(6) != 0)))
-                return false;
-            if (!((a.UnsafeGet(7) == b.UnsafeGet(7)) || (a.UnsafeGet(7) == 1) || (b.UnsafeGet(7) == 1) || (a.UnsafeGet(7) == 0 && b.UnsafeGet(7) != 0) || (b.UnsafeGet(7) == 0 && a.UnsafeGet(7) != 0)))
-                return false;
+            dim = shape.Axis(dim);
+            var dimSize = shape[dim];
+            start = (start + dimSize) % dimSize;
+            var end = Mathf.Min(start + length, dimSize);
+            length = end - start;
+            var output = new TensorShape(shape);
+            output[dim] = length;
+            return output;
+        }
 
-            return true;
+        /// <summary>
+        /// Calculates the starts, ends, axes and steps restricted to the shape.
+        /// </summary>
+        public static void Slice(TensorShape shape, ReadOnlySpan<int> startsIn, ReadOnlySpan<int> endsIn, ReadOnlySpan<int> axesIn, ReadOnlySpan<int> stepsIn, ref Span<int> startsOut, ref Span<int> endsOut, ref Span<int> axesOut, ref Span<int> stepsOut)
+        {
+            for (var i = 0; i < startsIn.Length; i++)
+            {
+                var axis = axesIn == null ? i : shape.Axis(axesIn[i]);
+                var start = startsIn[i];
+                var end = endsIn[i];
+                var step = stepsIn == null ? 1 : stepsIn[i];
+
+                stepsOut[i] = step;
+                axesOut[i] = axis;
+
+                var dim = shape[axis];
+                var clampAdjustDirection = step < 0 ? -1 : 0;
+
+                start = start < 0 ? dim + start : start;
+                start = Mathf.Clamp(start, 0, dim + clampAdjustDirection);
+
+                end = end < 0 ? dim + end : end;
+                end = Mathf.Clamp(end, clampAdjustDirection, dim);
+
+                startsOut[i] = dim == 0 ? 0 : start;
+                endsOut[i] = dim == 0 ? 0 : end;
+            }
         }
 
         public static bool IsTranspose2D(TensorShape X, ReadOnlySpan<int> permutations, out int Height, out int Width)

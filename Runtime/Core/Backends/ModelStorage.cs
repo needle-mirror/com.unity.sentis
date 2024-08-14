@@ -82,53 +82,62 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public int GetInt(int tensorIndex, int defaultValue)
         {
-            var tensor = GetTensor(tensorIndex) as TensorInt;
+            var tensor = GetTensor(tensorIndex) as Tensor<int>;
             if (tensor is null)
                 return defaultValue;
 
-            if (tensor.dataOnBackend is IReadableTensorData readableTensorData)
-                return readableTensorData.Get<int>(0);
+            if (tensor.dataOnBackend is CPUTensorData readableTensorData && readableTensorData.IsReadbackRequestDone())
+                return readableTensorData.array.Get<int>(0);
 
-            D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Sentis will download the tensor data which may be slow.");
+            //D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Sentis will download the tensor data which may be slow.");
             return tensor.dataOnBackend.Download<int>(1)[0];
         }
 
         /// <inheritdoc/>
         public float GetFloat(int tensorIndex, float defaultValue)
         {
-            var tensor = GetTensor(tensorIndex) as TensorFloat;
+            var tensor = GetTensor(tensorIndex) as Tensor<float>;
             if (tensor is null)
                 return defaultValue;
-            if (tensor.dataOnBackend is IReadableTensorData readableTensorData)
-                return readableTensorData.Get<float>(0);
 
-            D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Sentis will download the tensor data which may be slow.");
+            if (tensor.dataOnBackend is CPUTensorData readableTensorData && readableTensorData.IsReadbackRequestDone())
+                return readableTensorData.array.Get<float>(0);
+
+            //D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Sentis will download the tensor data which may be slow.");
             return tensor.dataOnBackend.Download<float>(1)[0];
         }
 
         /// <inheritdoc/>
         public ReadOnlySpan<int> GetInts(int tensorIndex, ReadOnlySpan<int> defaultValue)
         {
-            var tensor = GetTensor(tensorIndex) as TensorInt;
+            var tensor = GetTensor(tensorIndex) as Tensor<int>;
             if (tensor is null)
                 return defaultValue;
-            if (tensor.dataOnBackend is IReadableTensorData readableTensorData)
-                return readableTensorData.ToReadOnlySpan<int>(tensor.shape.length);
 
-            D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Sentis will download the tensor data which may be slow.");
+            if (tensor.dataOnBackend.maxCapacity == 0)
+                return ReadOnlySpan<int>.Empty;
+
+            if (tensor.dataOnBackend is CPUTensorData readableTensorData && readableTensorData.IsReadbackRequestDone())
+                return readableTensorData.array.AsReadOnlySpan<int>(tensor.shape.length);
+
+            //D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Sentis will download the tensor data which may be slow.");
             return tensor.dataOnBackend.Download<int>(tensor.shape.length).AsReadOnlySpan();
         }
 
         /// <inheritdoc/>
         public ReadOnlySpan<float> GetFloats(int tensorIndex, ReadOnlySpan<float> defaultValue)
         {
-            var tensor = GetTensor(tensorIndex) as TensorFloat;
+            var tensor = GetTensor(tensorIndex) as Tensor<float>;
             if (tensor is null)
                 return defaultValue;
-            if (tensor.dataOnBackend is IReadableTensorData readableTensorData)
-                return readableTensorData.ToReadOnlySpan<float>(tensor.shape.length);
 
-            D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Sentis will download the tensor data which may be slow.");
+            if (tensor.dataOnBackend.maxCapacity == 0)
+                return ReadOnlySpan<float>.Empty;
+
+            if (tensor.dataOnBackend is CPUTensorData readableTensorData && readableTensorData.IsReadbackRequestDone())
+                return readableTensorData.array.AsReadOnlySpan<float>(tensor.shape.length);
+
+            //D.LogWarning($"Tensor {tensorIndex} needs to be read on the CPU however is on the {tensor.backendType} backend, Sentis will download the tensor data which may be slow.");
             return tensor.dataOnBackend.Download<float>(tensor.shape.length).AsReadOnlySpan();
         }
 
@@ -223,7 +232,7 @@ namespace Unity.Sentis
             {
                 // TODO<Allocator> consider moving constants in memory pool to get disposed
                 var constant = model.constants[i];
-                Tensor tensor = AllocatorUtils.AllocTensor(constant.dataType, constant.shape, new BurstTensorData(constant.weights));
+                Tensor tensor = AllocatorUtils.AllocTensor(constant.dataType, constant.shape, new CPUTensorData(constant.weights));
 
                 m_InUseTensorsPool[constant.index] = tensor;
                 constants.Add(constant.index);
@@ -300,7 +309,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void DisposeAfterLayer(Layers.Layer layer)
+        public void DisposeAfterLayer(Layer layer)
         {
             if (!m_TensorsToDisposeWhenLayerDone.ContainsKey(layer.outputs[0]))
                 return;

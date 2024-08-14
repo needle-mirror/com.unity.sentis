@@ -17,7 +17,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 
             for (int l = 0; l < model.layers.Count; ++l)
             {
-                Layers.Layer layer = model.layers[l];
+                Layer layer = model.layers[l];
 
                 layerDownstreamCounts[layer.outputs[0]] = 0;
 

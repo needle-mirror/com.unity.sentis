@@ -5,7 +5,7 @@ namespace Unity.Sentis.Compiler.Passes.Cleanup
 {
     class RemoveUnusedPass : IModelPass
     {
-        bool IsOutputUsed(Layers.Layer layer, HashSet<int> outputsUsed)
+        bool IsOutputUsed(Layer layer, HashSet<int> outputsUsed)
         {
             foreach (var lo in layer.outputs)
             {

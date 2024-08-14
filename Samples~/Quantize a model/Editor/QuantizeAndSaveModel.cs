@@ -3,7 +3,6 @@ using System;
 using Unity.Sentis;
 using UnityEditor;
 using UnityEngine;
-using Unity.Sentis.Quantization;
 
 // A custom editor window to demonstrate saving an onnx model as an Quantized Sentis model
 public class QuantizeAndSaveModel : EditorWindow

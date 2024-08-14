@@ -4,6 +4,35 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2024-08-14
+
+### Added
+- Callbacks for retrieving the ONNX metadata at import time.
+- `Upload` method to `Tensor` to allow for direct upload of data.
+- `IndexSelect` functional operator.
+- `scoreThreshold` parameter for `NMS` functional method.
+- `Tensor.Reshape` accepts tensor shapes of different lengths, provided the capacity of the tensor data is large enough.
+- `Worker.CopyOutput` method for copying outputs into allocated tensors.
+- `FunctionalTensor.ToString` shows the data type and shape (if known) for debugging when using the functional API.
+
+### Changed
+- Made a generic `Tensor` class so that you can declare `Tensor<float>` and `Tensor<int>` rather than `TensorFloat` and `TensorInt`.
+- Reworked and unified the `Worker` methods for setting inputs and scheduling.
+- `IWorker` and `GenericWorker` to be an instantiable `Worker` class.
+- Renamed `Execute` to `Schedule` throughout for clarity.
+- Renamed `BurstTensorData` to `CPUTensorData` for consistency.
+- Renamed and reworked `SymbolicTensorShape` as `DynamicTensorShape` for clarity and ease of use.
+- Reworked the `Functional.Compile` method as methods on a `FunctionalGraph` object, for clearer declaration of inputs and outputs.
+
+### Fixed
+- Issues with the `Slice` operator on zero-length dimensions.
+- Compilation of the `GridSample` shaders on consoles.
+
+### Removed
+- `GPUCommandBuffer` backend, in favour of a unified GPUCompute backend using command buffers.
+- `IBackend` methods, use the functional API to create and edit models instead.
+- Many methods and classes from the public API to keep it clear and maintainable.
+
 ## [1.6.0-pre.1] - 2024-07-18
 
 ### Added
@@ -35,6 +64,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Constructor for Constant with a tensor argument.
 - CompleteOperationsAndDownload and similar methods from Tensor.
 
+## [1.5.0-pre.3] - 2024-06-10
+
+## [1.5.0-pre.2] - 2024-05-21
+### Fixed
+- Fix linker error when doing a build
+
 ## [1.5.0-pre.1] - 2024-05-08
 
 ### Changed
@@ -45,7 +80,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Reworked project dependencies to reduce build size
 - Unconnected input tensors are handled properly
-- Better ONNX opset 18 support 
+- Better ONNX opset 18 support
 - Multinomial randomness is coherent across frames
 - Fixed shader compilation errors on XBOX and Switch
 

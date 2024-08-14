@@ -2,7 +2,7 @@ using System;
 using System.Reflection;
 using UnityEngine;
 
-namespace Unity.Sentis.Layers
+namespace Unity.Sentis
 {
     /// <summary>
     /// Represents the base class for all model layers.
@@ -18,7 +18,6 @@ namespace Unity.Sentis.Layers
         /// The indices to use for all of the output tensors for a layer.
         /// </summary>
         public int[] outputs;
-
 
         /// <summary>
         /// Initializes and returns a `Layer` from given arrays of input and output indices
@@ -42,7 +41,7 @@ namespace Unity.Sentis.Layers
         /// Executes the layer using the operations and variables from the `ExecutionContext`.
         /// </summary>
         /// <param name="ctx">The execution context with the backend and variables for the execution.</param>
-        public abstract void Execute(ExecutionContext ctx);
+        internal abstract void Execute(ExecutionContext ctx);
 
         internal virtual string profilerTag => MethodBase.GetCurrentMethod()?.DeclaringType?.Name;
 
@@ -55,11 +54,14 @@ namespace Unity.Sentis.Layers
             return $"{profilerTag} - index: {outputs[0]}, inputs: [{string.Join(", ", inputs)}]";
         }
     }
+}
 
+namespace Unity.Sentis.Layers
+{
     /// <summary>
     /// Options for applying an activation at the end of executing a `FusedActivation` layer.
     /// </summary>
-    public enum FusableActivation
+    enum FusableActivation
     {
         /// <summary>
         /// Use no activation function.
@@ -107,7 +109,7 @@ namespace Unity.Sentis.Layers
                 return;
             }
 
-            SymbolicTensorShape shapeOut;
+            DynamicTensorShape shapeOut;
 
             if (inputTensors.Length == 2)
             {
@@ -115,7 +117,7 @@ namespace Unity.Sentis.Layers
                 var tensorOut = new PartialTensor(dataType, shapeOut);
                 var op = InferPartialOp;
 
-                if (op != null && shapeOut.IsFullyKnown() && shapeOut.rank <= 1 && inputTensors[0].isPartiallyKnown && inputTensors[1].isPartiallyKnown)
+                if (op != null && shapeOut.IsStatic() && shapeOut.rank <= 1 && inputTensors[0].isPartiallyKnown && inputTensors[1].isPartiallyKnown)
                 {
                     for (var i = 0; i < tensorOut.length; i++)
                     {
@@ -139,13 +141,13 @@ namespace Unity.Sentis.Layers
                 outRank = Mathf.Max(outRank, input.shape.rank);
             }
 
-            shapeOut = SymbolicTensorShape.Ones(outRank);
+            shapeOut = DynamicTensorShape.Ones(outRank);
 
             foreach (var tensorInput in inputTensors)
             {
                 for (var j = 0; j < tensorInput.shape.rank; j++)
                 {
-                    shapeOut[shapeOut.rank - tensorInput.shape.rank + j] = SymbolicTensorDim.Broadcast(shapeOut[shapeOut.rank - tensorInput.shape.rank + j], tensorInput.shape[j]);
+                    shapeOut[shapeOut.rank - tensorInput.shape.rank + j] = DynamicTensorDim.Broadcast(shapeOut[shapeOut.rank - tensorInput.shape.rank + j], tensorInput.shape[j]);
                 }
             }
 

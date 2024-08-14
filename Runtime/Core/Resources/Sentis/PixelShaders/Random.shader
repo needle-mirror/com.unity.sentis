@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/Random"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile RandomUniform RandomNormal Bernoulli BernoulliInt
+            #pragma multi_compile_local RandomUniform RandomNormal Bernoulli BernoulliInt
 
             #pragma vertex vert
             #pragma fragment frag

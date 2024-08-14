@@ -62,6 +62,7 @@ The input parameters and outputs will not exactly match the PyTorch version; che
 | FullLike          | full_like           | Shape, ConstantOfShape     |
 | Concat            | concat              | Concat                     |
 | Gather            | gather              | GatherElements             |
+| IndexSelect       | index_select        | Gather                     |
 | MoveDim           | movedim             | MoveDim                    |
 | Narrow            | narrow              | Narrow                     |
 | NonZero           | nonzero             | NonZero                    |
@@ -83,12 +84,14 @@ The input parameters and outputs will not exactly match the PyTorch version; che
 | Bernoulli         | bernoulli           | Bernoulli                  |
 | Multinomial       | multinomial         | Multinomial                |
 | Normal            | normal              | RandomNormal               |
+| NormalLike        | normal_like         | RandomNormalLike           |
 | Rand              | rand                | RandomUniform              |
 | RandLike          | rand_like           | RandomUniformLike          |
 | RandInt           | rand_int            | Floor, RandomUniform       |
 | RandIntLike       | randint_like        | Floor, RandomUniformLike   |
 | RandN             | randn               | RandomNormal               |
 | RandNLike         | randn_like          | RandomNormalLike           |
+| RandomChoice      | numpy.random.choice | RandomChoice               |
 | Abs               | abs                 | Abs                        |
 | Acos              | acos                | Acos                       |
 | Acosh             | acosh               | Acosh                      |
@@ -206,4 +209,5 @@ The input parameters and outputs will not exactly match the PyTorch version; che
 | PixelShuffle      | pixel_shuffle       | DepthToSpace               |
 | PixelUnshuffle    | pixel_unshuffle     | SpaceToDepth               |
 | Interpolate       | interpolate         | Resize                     |
+| GridSample        | grid_sample         | GridSample                 |
 | NMS               | nms                 | NonMaxSuppression          |

@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/Where"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile WhereFloat WhereInt
+            #pragma multi_compile_local WhereFloat WhereInt
 
             #pragma vertex vert
             #pragma fragment frag

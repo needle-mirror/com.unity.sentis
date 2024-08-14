@@ -12,9 +12,12 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Type(this FunctionalTensor input, DataType dataType)
         {
-            if (input.DataType == dataType)
+            if (input.dataType == dataType)
                 return input;
-            return FunctionalTensor.FromLayer(new Layers.Cast(-1, -1, dataType), dataType, input);
+            var output = FromLayer(new Layers.Cast(-1, -1, dataType), dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -40,15 +43,15 @@ namespace Unity.Sentis
         // Promotes a and b to the same type that is the lowest type compatible with both.
         static (FunctionalTensor, FunctionalTensor) PromoteTypes(FunctionalTensor a, FunctionalTensor b)
         {
-            return a.DataType == b.DataType ? (a, b) : (a.Float(), b.Float());
+            return a.dataType == b.dataType ? (a, b) : (a.Float(), b.Float());
         }
 
         // Returns the common type of all of the input tensors, asserts if any pair of input tensors have different types.
         internal static DataType CommonType(params FunctionalTensor[] tensors)
         {
-            var type = tensors[0].DataType;
+            var type = tensors[0].dataType;
             for (var i = 1; i < tensors.Length; i++)
-                Logger.AssertIsTrue(type == tensors[i].DataType, "FunctionalTensors must have same type.");
+                Logger.AssertIsTrue(type == tensors[i].dataType, "FunctionalTensors must have same type.");
             return type;
         }
 
@@ -56,7 +59,13 @@ namespace Unity.Sentis
         static void DeclareType(DataType dataType, params FunctionalTensor[] tensors)
         {
             for (var i = 0; i < tensors.Length; i++)
-                Logger.AssertIsTrue(tensors[i].DataType == dataType, "FunctionalTensor has incorrect type.");
+                Logger.AssertIsTrue(tensors[i].dataType == dataType, "FunctionalTensor has incorrect type.");
+        }
+
+        static void DeclareRank(FunctionalTensor tensor, int rank)
+        {
+            if (tensor.isShapeKnown)
+                Logger.AssertIsTrue(tensor.shape.rank == rank, "FunctionalTensor has incorrect rank, received {0} expected {1}.", tensor.shape.rank, rank);
         }
     }
 }

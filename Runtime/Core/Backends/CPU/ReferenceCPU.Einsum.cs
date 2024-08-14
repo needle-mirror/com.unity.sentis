@@ -2,16 +2,16 @@ using System;
 
 namespace Unity.Sentis
 {
-    public partial class CPUBackend
+    partial class CPUBackend
     {
-        internal static void EinsumND(TensorFloat[] inputTensors, TensorFloat O, TensorShape[] operandShapes, TensorIndex[] operandIndices, TensorIndex outputIndices, TensorShape outputShape, TensorIndex sumIndices, TensorShape sumShape, int numIndices)
+        internal static void EinsumND(Tensor<float>[] inputTensors, Tensor<float> O, TensorShape[] operandShapes, TensorIndex[] operandIndices, TensorIndex outputIndices, TensorShape outputShape, TensorIndex sumIndices, TensorShape sumShape, int numIndices)
         {
             for (var i = 0; i < inputTensors.Length; i++)
             {
-                BurstTensorData.Pin(inputTensors[i]);
+                CPUTensorData.Pin(inputTensors[i]);
             }
 
-            BurstTensorData.Pin(O);
+            CPUTensorData.Pin(O);
 
             var outSize = O.shape.length;
             var sumSize = sumShape.length;

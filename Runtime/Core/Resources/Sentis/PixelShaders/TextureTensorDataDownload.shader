@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/TextureTensorDataDownload"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile TensorFloat TensorInt
+            #pragma multi_compile_local TensorFloat TensorInt
             #pragma vertex vert
             #pragma fragment frag
 

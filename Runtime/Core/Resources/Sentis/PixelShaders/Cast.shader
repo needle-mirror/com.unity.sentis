@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/Cast"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile FloatToInt IntToFloat
+            #pragma multi_compile_local FloatToInt IntToFloat
 
             #pragma vertex vert
             #pragma fragment frag

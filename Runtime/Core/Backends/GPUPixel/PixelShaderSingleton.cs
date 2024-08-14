@@ -8,7 +8,7 @@ namespace Unity.Sentis
     /// <summary>
     /// Represents the compute kernel cache for backends that use GPU pixel shaders.
     /// </summary>
-    public sealed class PixelShaderSingleton
+    sealed class PixelShaderSingleton
     {
         /// <summary>
         /// Whether kernel usage tracking is enabled.

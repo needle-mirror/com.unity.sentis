@@ -12,10 +12,10 @@ public class UsingComputeBuffers : MonoBehaviour
     [SerializeField]
     Texture2D textureInput;
 
-    TensorFloat m_TensorA;
-    TensorFloat m_TensorB;
-    Dictionary<string, Tensor> m_Inputs;
-    IWorker m_Engine;
+    Tensor<float> m_TensorA;
+    Tensor<float> m_TensorB;
+    Tensor[] m_Inputs;
+    Worker m_Worker;
     int m_ComputeKernelIndex;
     int m_ComputeResultIndex;
 
@@ -26,7 +26,7 @@ public class UsingComputeBuffers : MonoBehaviour
         var model = ModelLoader.Load(modelAsset);
 
         // The first input to the Adder, using 32*32*3 because that's how many values are in the texture.
-        m_TensorA = TensorFloat.AllocZeros(new TensorShape(1, 3, textureInput.height, textureInput.width));
+        m_TensorA = new Tensor<float>(new TensorShape(1, 3, textureInput.height, textureInput.width));
 
         // The values of B will be added to all values of A.
         m_TensorB = TextureConverter.ToTensor(textureInput);
@@ -35,16 +35,12 @@ public class UsingComputeBuffers : MonoBehaviour
         Debug.Assert(m_TensorB.shape[-1] == textureInput.width);
         Debug.Assert(m_TensorB.shape[-2] == textureInput.height);
 
-        m_Inputs = new Dictionary<string, Tensor>
-        {
-            { "A", m_TensorA },
-            { "B", m_TensorB },
-        };
+        m_Inputs = new Tensor[] { m_TensorA, m_TensorB };
 
         m_ComputeKernelIndex = computeProducer.FindKernel("CSMain");
         m_ComputeResultIndex = Shader.PropertyToID("Result");
 
-        m_Engine = WorkerFactory.CreateWorker(BackendType.GPUCompute, model);
+        m_Worker = new Worker(model, BackendType.GPUCompute);
 
         Debug.Assert(m_TensorA.shape.length == 3 * textureInput.width * textureInput.height);
     }
@@ -53,7 +49,7 @@ public class UsingComputeBuffers : MonoBehaviour
     {
         m_TensorA.Dispose();
         m_TensorB.Dispose();
-        m_Engine.Dispose();
+        m_Worker.Dispose();
     }
 
     void Update()
@@ -67,13 +63,13 @@ public class UsingComputeBuffers : MonoBehaviour
         // For simplicity, the shader is setup to index only using id.x, so dispatch must be (x=m_TensorX.shape.length, y=1, z=1).
         computeProducer.Dispatch(m_ComputeKernelIndex, m_TensorA.shape.length, 1, 1);
 
-        // Sentis executes the Adder model, which takes two tensors and adds them.
+        // Sentis schedules execution of the Adder model, which takes two tensors and adds them.
         // In this case, all elements of tensor X are set to 41 and the value of tensor Y is set to 1 (from the white texture, where all values are 1.0).
         // The expected output of this call is 42.
-        m_Engine.Execute(m_Inputs);
+        m_Worker.Schedule(m_Inputs);
 
         // Peek the value from Sentis, without taking ownership of the Tensor (see PeekOutput docs for details).
-        var outputTensor = m_Engine.PeekOutput() as TensorFloat;
+        var outputTensor = m_Worker.PeekOutput() as Tensor<float>;
 
         // Calling MakeReadable will trigger a blocking download of the data to the CPU cache.
         // See the AsyncReadback sample for how to access the data in a non-blocking way.

@@ -1,14 +1,14 @@
 {
     "ErrorExceptions": [
         {
-            "ValidationTest": "API Validation",
-            "ExceptionMessage": "Breaking changes require a new major version.",
-            "PackageVersion": "1.6.0-pre.1"
+          "ValidationTest": "API Validation",
+          "ExceptionMessage": "Breaking changes require a new major version.",
+          "PackageVersion": "2.0.0"
         },
-        {
-            "ValidationTest": "API Validation",
-            "ExceptionMessage": "Adding the first entry in includePlatforms requires a new major version. Was:\"\" Now:\"Editor\"",
-            "PackageVersion": "1.6.0-pre.1"
+      {
+        "ValidationTest": "API Validation",
+        "ExceptionMessage": "Adding the first entry in includePlatforms requires a new major version. Was:\"\" Now:\"Editor\"",
+        "PackageVersion": "2.0.0"
         }
     ],
     "WarningExceptions": []

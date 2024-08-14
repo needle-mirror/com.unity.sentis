@@ -9,22 +9,22 @@ using UnityEngine.Assertions;
 namespace Unity.Sentis
 {
     /// <summary>
-    /// An interface that provides methods for converting custom tensor data to `BurstTensorData`.
+    /// An interface that provides methods for converting custom tensor data to `CPUTensorData`.
     /// </summary>
-    public interface IConvertibleToBurstTensorData
+    interface IConvertibleToCPUTensorData
     {
         /// <summary>
-        /// Implement this method to convert to `BurstTensorData`.
+        /// Implement this method to convert to `CPUTensorData`.
         /// </summary>
         /// <param name="dstCount">The number of elements.</param>
-        /// <returns>Converted `BurstTensorData`.</returns>
-        BurstTensorData ConvertToBurstTensorData(int dstCount);
+        /// <returns>Converted `CPUTensorData`.</returns>
+        CPUTensorData ConvertToCPUTensorData(int dstCount);
     }
 
     /// <summary>
     /// An interface that provides Job system dependency fences for the memory resource.
     /// </summary>
-    public interface IDependableMemoryResource
+    interface IDependableMemoryResource
     {
         /// <summary>
         /// A read fence job handle. You can use `fence` as a `dependsOn` argument when you schedule a job that reads data. The job will start when the tensor data is ready for read access.
@@ -43,7 +43,7 @@ namespace Unity.Sentis
     /// <summary>
     /// Represents Burst-specific internal data storage for a `Tensor`.
     /// </summary>
-    public class BurstTensorData : ITensorData, IDependableMemoryResource, IConvertibleToComputeTensorData, IReadableTensorData
+    public class CPUTensorData : ITensorData, IDependableMemoryResource, IConvertibleToComputeTensorData
     {
         JobHandle m_ReadFence;
         JobHandle m_WriteFence;
@@ -69,11 +69,11 @@ namespace Unity.Sentis
         public unsafe void* rawPtr => m_Array.AddressAt<float>(0);
 
         /// <summary>
-        /// Initializes and returns an instance of `BurstTensorData`, and allocates storage for a tensor with the shape of `shape`.
+        /// Initializes and returns an instance of `CPUTensorData`, and allocates storage for a tensor with the shape of `shape`.
         /// </summary>
         /// <param name="count">The number of elements.</param>
         /// <param name="clearOnInit">Whether to zero the data on allocation. The default value is `false`.</param>
-        public BurstTensorData(int count, bool clearOnInit = false)
+        public CPUTensorData(int count, bool clearOnInit = false)
         {
             m_Count = count;
             if (m_Count == 0)
@@ -82,10 +82,10 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `BurstTensorData` from a `NativeTensorArray`.
+        /// Initializes and returns an instance of `CPUTensorData` from a `NativeTensorArray`.
         /// </summary>
         /// <param name="data">The elements of the tensor data as a `NativeTensorArray`.</param>
-        public BurstTensorData(NativeTensorArray data)
+        public CPUTensorData(NativeTensorArray data)
         {
             if (data == null)
             {
@@ -96,27 +96,17 @@ namespace Unity.Sentis
             m_Array = data;
         }
 
-        /// <inheritdoc/>
-        public ITensorData Clone()
-        {
-            if (m_Count == 0)
-                return new BurstTensorData(0);
-            var data = new NativeTensorArray(m_Count);
-            NativeTensorArray.Copy(m_Array, data);
-            return new BurstTensorData(data);
-        }
-
         /// <summary>
-        /// Finalizes the `BurstTensorData`.
+        /// Finalizes the `CPUTensorData`.
         /// </summary>
-        ~BurstTensorData()
+        ~CPUTensorData()
         {
             if (!m_SafeToDispose)
-                D.LogWarning($"Found unreferenced, but undisposed BurstTensorData that potentially participates in an unfinished job and might lead to hazardous memory overwrites");
+                D.LogWarning($"Found unreferenced, but undisposed CPUTensorData that potentially participates in an unfinished job and might lead to hazardous memory overwrites");
         }
 
         /// <summary>
-        /// Disposes of the `BurstTensorData` and any associated memory.
+        /// Disposes of the `CPUTensorData` and any associated memory.
         /// </summary>
         public void Dispose()
         {
@@ -133,41 +123,24 @@ namespace Unity.Sentis
             m_SafeToDispose = true;
         }
 
-        /// <summary>
-        /// Uploads data to internal storage.
-        /// </summary>
-        /// <param name="data">The data to upload as a native array.</param>
-        /// <param name="srcCount">The number of elements to upload.</param>
-        /// <typeparam name="T">The data type of the elements.</typeparam>
+        /// <inheritdoc/>
         public void Upload<T>(NativeArray<T> data, int srcCount) where T : unmanaged
         {
             CompleteAllPendingOperations();
-
-            var numItemToCopy = srcCount;
-            var numItemAvailableInData = data.Length;
-            Assert.IsTrue(numItemToCopy <= numItemAvailableInData);
-
-            NativeTensorArray.Copy(data, 0, m_Array, 0, numItemToCopy);
+            NativeTensorArray.Copy(data, 0, m_Array, 0, srcCount);
         }
 
-        /// <summary>
-        /// Returns data from internal storage.
-        /// </summary>
-        /// <param name="dstCount">The number of elements to download.</param>
-        /// <typeparam name="T">The data type of the elements.</typeparam>
-        /// <returns>The downloaded data as a native array.</returns>
+        /// <inheritdoc/>
         public NativeArray<T> Download<T>(int dstCount) where T : unmanaged
         {
+            if (dstCount == 0)
+                return new NativeArray<T>();
+
             // Download() as optimization gives direct access to the internal buffer
             // thus need to prepare internal buffer for potential writes
             CompleteAllPendingOperations();
-
-            var downloadCount = dstCount;
-            Logger.AssertIsTrue(m_Count >= downloadCount, "BurstTensorData.Download.ValueError: cannot download {0} items from tensor of size {1}", downloadCount, m_Count);
-
-            var dest = new NativeArray<T>(downloadCount, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
-
-            NativeTensorArray.Copy(m_Array, 0, dest, 0, downloadCount);
+            var dest = new NativeArray<T>(dstCount, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+            NativeTensorArray.Copy(m_Array, 0, dest, 0, dstCount);
             return dest;
         }
 
@@ -175,57 +148,21 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public async Awaitable<NativeArray<T>> DownloadAsync<T>(int dstCount) where T : unmanaged
         {
+            if (dstCount == 0)
+                return new NativeArray<T>();
+
             while (!fence.IsCompleted)
             {
                 await Awaitable.NextFrameAsync();
             }
+            // Download() as optimization gives direct access to the internal buffer
+            // thus need to prepare internal buffer for potential writes
             CompleteAllPendingOperations();
             var dest = new NativeArray<T>(dstCount, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
             NativeTensorArray.Copy(m_Array, 0, dest, 0, dstCount);
             return dest;
         }
         #endif
-
-        /// <inheritdoc/>
-        public T Get<T>(int index) where T : unmanaged
-        {
-            CompleteAllPendingOperations();
-            return m_Array.Get<T>(index);
-        }
-
-        /// <inheritdoc/>
-        public void Set<T>(int index, T value) where T : unmanaged
-        {
-            CompleteAllPendingOperations();
-            m_Array.Set<T>(index, value);
-        }
-
-        /// <inheritdoc/>
-        public ReadOnlySpan<T> ToReadOnlySpan<T>(int dstCount) where T : unmanaged
-        {
-            if (m_Count == 0)
-                return ReadOnlySpan<T>.Empty;
-            CompleteAllPendingOperations();
-            return m_Array.AsReadOnlySpan<T>(dstCount);
-        }
-
-        /// <inheritdoc/>
-        public NativeArray<T>.ReadOnly GetReadOnlyNativeArrayHandle<T>(int dstCount) where T : unmanaged
-        {
-            if (m_Count == 0)
-                return new NativeArray<T>.ReadOnly();
-            CompleteAllPendingOperations();
-            return m_Array.GetReadOnlyNativeArrayHandle<T>(dstCount);
-        }
-
-        /// <inheritdoc/>
-        public T[] ToArray<T>(int dstCount) where T : unmanaged
-        {
-            if (m_Count == 0)
-                return Array.Empty<T>();
-            CompleteAllPendingOperations();
-            return m_Array.ToArray<T>(dstCount);
-        }
 
         /// <inheritdoc/>
         public ComputeTensorData ConvertToComputeTensorData(int count)
@@ -254,9 +191,9 @@ namespace Unity.Sentis
         public void ReadbackRequest() {}
 
         /// <summary>
-        /// Returns a string that represents the `BurstTensorData`.
+        /// Returns a string that represents the `CPUTensorData`.
         /// </summary>
-        /// <returns>The string summary of the `BurstTensorData`.</returns>
+        /// <returns>The string summary of the `CPUTensorData`.</returns>
         public override string ToString()
         {
             return string.Format("(CPU burst: [{0}], uploaded: {1})", m_Array?.Length, m_Count);
@@ -267,32 +204,31 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="X">The `Tensor` to move to the CPU.</param>
         /// <param name="clearOnInit">Whether to initialize the backend data. The default value is `true`.</param>
-        /// <returns>The pinned `BurstTensorData`.</returns>
-        public static BurstTensorData Pin(Tensor X, bool clearOnInit = false)
+        /// <returns>The pinned `CPUTensorData`.</returns>
+        public static CPUTensorData Pin(Tensor X, bool clearOnInit = false)
         {
             var onDevice = X.dataOnBackend;
             if (onDevice == null)
             {
-                X.AttachToDevice(new BurstTensorData(X.count, clearOnInit));
-                return X.dataOnBackend as BurstTensorData;
+                X.AdoptTensorData(new CPUTensorData(X.count, clearOnInit));
+                return X.dataOnBackend as CPUTensorData;
             }
 
-            if (onDevice is BurstTensorData)
-                return onDevice as BurstTensorData;
-
-            BurstTensorData dataOnBackend;
-            if (onDevice is IConvertibleToBurstTensorData asConvertible)
+            if (onDevice is CPUTensorData)
+                return onDevice as CPUTensorData;
+            CPUTensorData dataOnBackend;
+            if (onDevice is IConvertibleToCPUTensorData asConvertible)
             {
-                dataOnBackend = asConvertible.ConvertToBurstTensorData(X.count);
+                dataOnBackend = asConvertible.ConvertToCPUTensorData(X.count);
             }
             else
             {
-                dataOnBackend = new BurstTensorData(X.count, clearOnInit: false);
+                dataOnBackend = new CPUTensorData(X.count, clearOnInit: false);
                 dataOnBackend.Upload<int>(onDevice.Download<int>(X.count), X.count);
             }
-            X.AttachToDevice(dataOnBackend);
+            X.AdoptTensorData(dataOnBackend);
 
-            return X.dataOnBackend as BurstTensorData;
+            return X.dataOnBackend as CPUTensorData;
         }
     }
 }

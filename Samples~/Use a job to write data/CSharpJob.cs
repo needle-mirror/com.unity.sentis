@@ -10,20 +10,20 @@ public class CSharpJob : MonoBehaviour
     ModelAsset modelAsset;
 
     Tensor m_Input;
-    IWorker m_Engine;
+    Worker m_Worker;
 
     void OnEnable()
     {
         // Everything that can be statically assigned is setup during Start to avoid memory churn.
         var model = ModelLoader.Load(modelAsset);
-        m_Input = TensorFloat.AllocZeros(new TensorShape(1024));
-        m_Engine = WorkerFactory.CreateWorker(BackendType.CPU, model);
+        m_Input = new Tensor<float>(new TensorShape(1024));
+        m_Worker = new Worker(model, BackendType.CPU);
     }
 
     void OnDisable()
     {
         m_Input.Dispose();
-        m_Engine.Dispose();
+        m_Worker.Dispose();
     }
 
     [BurstCompile]
@@ -39,17 +39,18 @@ public class CSharpJob : MonoBehaviour
 
     void Update()
     {
-        var burstTensorDataX = BurstTensorData.Pin(m_Input);
-        SimpleJob job = new SimpleJob() { data = burstTensorDataX.array.GetNativeArrayHandle<float>() };
+        var CPUTensorDataX = CPUTensorData.Pin(m_Input);
+        SimpleJob job = new SimpleJob() { data = CPUTensorDataX.array.GetNativeArrayHandle<float>() };
 
         // Set the fence on the input so Sentis doesn't execute until the job is complete.
-        burstTensorDataX.fence = job.Schedule(m_Input.shape.length, 64);
+        CPUTensorDataX.fence = job.Schedule(m_Input.shape.length, 64);
 
-        m_Engine.Execute(m_Input);
+        m_Worker.Schedule(m_Input);
 
         // Peek the value from Sentis, without taking ownership of the Tensor (see PeekOutput docs for details).
-        var outputTensor = m_Engine.PeekOutput() as TensorFloat;
+        var outputTensor = m_Worker.PeekOutput() as Tensor<float>;
 
+        outputTensor.CompleteAllPendingOperations();
         // Note that accessing the data via [] operator will block until all work is complete.
         // See the AsyncReadback samples for details on how to avoid blocking.
         Debug.Assert(outputTensor[1023] == 42.0f);

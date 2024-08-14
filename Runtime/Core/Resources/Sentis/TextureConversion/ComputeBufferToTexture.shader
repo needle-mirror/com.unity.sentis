@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/TextureConversion/ComputeBufferToTexture"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile EXACT LINEAR
+            #pragma multi_compile_local EXACT LINEAR
 
             #pragma vertex vert
             #pragma fragment frag

@@ -12,7 +12,7 @@ namespace Unity.Sentis
     /// Represents a set of indices corresponding to each axis of a tensor
     /// </summary>
     [Serializable]
-    public unsafe struct TensorIndex
+    unsafe struct TensorIndex
     {
         /// <summary>
         /// TensorIndex cannot have a bigger rank than maxRank
@@ -230,7 +230,7 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Instantiates and returns a copy of another `TensorIndex`.
+        /// Initializes and returns a copy of another `TensorIndex`.
         /// </summary>
         /// <param name="index">The `TensorIndex` to copy.</param>
         public TensorIndex(TensorIndex index)

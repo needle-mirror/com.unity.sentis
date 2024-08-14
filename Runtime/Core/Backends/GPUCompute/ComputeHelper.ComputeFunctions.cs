@@ -1,3 +1,4 @@
+using Unity.Profiling;
 using UnityEngine;
 
 namespace Unity.Sentis
@@ -376,12 +377,14 @@ namespace Unity.Sentis
         public uint threadGroupSizeX;
         public uint threadGroupSizeY;
         public uint threadGroupSizeZ;
+        public ProfilerMarker profilerMarker;
 
         public ComputeFunction(ComputeShader shader, string kernelName)
         {
             this.shader = shader;
             this.kernelIndex = shader.FindKernel(kernelName);
             this.shader.GetKernelThreadGroupSizes(kernelIndex, out threadGroupSizeX, out threadGroupSizeY, out threadGroupSizeZ);
+            this.profilerMarker = new ProfilerMarker(kernelName);
         }
     }
 }

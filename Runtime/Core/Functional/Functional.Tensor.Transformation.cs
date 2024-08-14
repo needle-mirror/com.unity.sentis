@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace Unity.Sentis
 {
@@ -12,7 +13,18 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Concat(FunctionalTensor[] tensors, int dim = 0)
         {
-            return FunctionalTensor.FromLayer(new Layers.Concat(-1, new int[tensors.Length], dim), CommonType(tensors), tensors);
+            var output = FromLayer(new Layers.Concat(-1, new int[tensors.Length], dim), CommonType(tensors), tensors);
+            if (!tensors[0].isShapeKnown)
+                return output;
+            var shape = tensors[0].shape;
+            for (int i = 1; i < tensors.Length; i++)
+            {
+                if (!tensors[i].isShapeKnown)
+                    return output;
+                shape = shape.Concat(tensors[i].shape, dim);
+            }
+            output.SetShape(shape);
+            return output;
         }
 
         /// <summary>
@@ -25,7 +37,26 @@ namespace Unity.Sentis
         public static FunctionalTensor Gather(this FunctionalTensor input, int dim, FunctionalTensor index)
         {
             DeclareType(DataType.Int, index);
-            return FunctionalTensor.FromLayer(new Layers.GatherElements(-1, -1, -1, dim), input.DataType, new[] { input, index });
+            var output = FromLayer(new Layers.GatherElements(-1, -1, -1, dim), input.dataType, new[] { input, index });
+            if (index.isShapeKnown)
+                output.SetShape(index.shape);
+            return output;
+        }
+
+        /// <summary>
+        /// Returns the input tensor indexed along a dimension with entries in a 1D index tensor.
+        /// </summary>
+        /// <param name="input">The input tensor.</param>
+        /// <param name="dim">The dimension along which to select.</param>
+        /// <param name="index">The indices tensor.</param>
+        /// <returns>The output tensor.</returns>
+        public static FunctionalTensor IndexSelect(this FunctionalTensor input, int dim, FunctionalTensor index)
+        {
+            DeclareType(DataType.Int, index);
+            var output = FromLayer(new Layers.Gather(-1, -1, -1, dim), input.dataType, new[] { input, index });
+            if (input.isShapeKnown && index.isShapeKnown)
+                output.SetShape(ShapeInference.Gather(input.shape, index.shape, dim));
+            return output;
         }
 
         /// <summary>
@@ -37,7 +68,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor MoveDim(this FunctionalTensor input, int source, int destination)
         {
-            return FunctionalTensor.FromLayer(new Layers.MoveDim(-1, -1, new[] { source }, new[] { destination }), input.DataType, input);
+            return MoveDim(input, new[] { source }, new[] { destination });
         }
 
         /// <summary>
@@ -49,7 +80,14 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor MoveDim(this FunctionalTensor input, int[] source, int[] destination)
         {
-            return FunctionalTensor.FromLayer(new Layers.MoveDim(-1, -1, source, destination), input.DataType, input);
+            var output = FromLayer(new Layers.MoveDim(-1, -1, source, destination), input.dataType, input);
+            if (input.isShapeKnown)
+            {
+                Span<int> permutations = stackalloc int[input.shape.rank];
+                ShapeInference.MoveDim(input.shape, source, destination, ref permutations);
+                output.SetShape(input.shape.Transpose(permutations));
+            }
+            return output;
         }
 
         /// <summary>
@@ -62,7 +100,13 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Narrow(this FunctionalTensor input, int dim, int start, int length)
         {
-            return FunctionalTensor.FromLayer(new Layers.Narrow(-1, -1, -1, -1, -1), input.DataType, new[] { input, Tensor(dim), Tensor(start), Tensor(length) });
+            var output = FromLayer(new Layers.Narrow(-1, -1, -1, -1, -1), input.dataType, new[] { input, Constant(dim), Constant(start), Constant(length) });
+            if (input.isShapeKnown)
+            {
+                output.SetShape(ShapeInference.MoveDim(input.shape, ref dim, ref start, ref length));
+            }
+
+            return output;
         }
 
         /// <summary>
@@ -76,7 +120,7 @@ namespace Unity.Sentis
         public static FunctionalTensor Narrow(this FunctionalTensor input, int dim, FunctionalTensor start, FunctionalTensor length)
         {
             DeclareType(DataType.Int, start, length);
-            return FunctionalTensor.FromLayer(new Layers.Narrow(-1, -1, -1, -1, -1), input.DataType, new[] { input, Tensor(dim), start, length });
+            return FromLayer(new Layers.Narrow(-1, -1, -1, -1, -1), input.dataType, new[] { input, Constant(dim), start, length });
         }
 
         /// <summary>
@@ -87,7 +131,7 @@ namespace Unity.Sentis
         public static FunctionalTensor NonZero(FunctionalTensor input)
         {
             // TODO support asTuple
-            return Transpose(FunctionalTensor.FromLayer(new Layers.NonZero(-1, -1), DataType.Int, input), 0, 1);
+            return Transpose(FromLayer(new Layers.NonZero(-1, -1), DataType.Int, input), 0, 1);
         }
 
         /// <summary>
@@ -115,7 +159,12 @@ namespace Unity.Sentis
                 pads[i] = pad[2 * i];
                 pads[i + axes.Length] = pad[2 * i + 1];
             }
-            return FunctionalTensor.FromLayer(new Layers.Pad(-1, -1, -1, -1, -1, padMode), input.DataType, new[] { input, Tensor(pads), null, Tensor(axes) });
+            var output = FromLayer(new Layers.Pad(-1, -1, -1, -1, -1, padMode), input.dataType, new[] { input, Constant(pads), null, Constant(axes) });
+            if (input.isShapeKnown)
+            {
+                output.SetShape(ShapeInference.Pad(input.shape, pad, axes));
+            }
+            return output;
         }
 
         /// <summary>
@@ -127,7 +176,7 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Pad(this FunctionalTensor input, int[] pad, int value)
         {
-            if (input.DataType == DataType.Float)
+            if (input.dataType == DataType.Float)
                 return Pad(input, pad, (float)value);
             var axes = new int[pad.Length / 2];
             var pads = new int[pad.Length];
@@ -137,7 +186,12 @@ namespace Unity.Sentis
                 pads[i] = pad[2 * i];
                 pads[i + axes.Length] = pad[2 * i + 1];
             }
-            return FunctionalTensor.FromLayer(new Layers.Pad(-1, -1, -1, -1, -1, Layers.PadMode.Constant), input.DataType, new[] { input, Tensor(pads), Tensor(value), Tensor(axes) });
+            var output = FromLayer(new Layers.Pad(-1, -1, -1, -1, -1, Layers.PadMode.Constant), input.dataType, new[] { input, Constant(pads), Constant(value), Constant(axes) });
+            if (input.isShapeKnown)
+            {
+                output.SetShape(ShapeInference.Pad(input.shape, pad, axes));
+            }
+            return output;
         }
 
         /// <summary>
@@ -158,7 +212,12 @@ namespace Unity.Sentis
                 pads[i] = pad[2 * i];
                 pads[i + axes.Length] = pad[2 * i + 1];
             }
-            return FunctionalTensor.FromLayer(new Layers.Pad(-1, -1, -1, -1, -1, Layers.PadMode.Constant), input.DataType, new[] { input, Tensor(pads), Tensor(value), Tensor(axes) });
+            var output = FromLayer(new Layers.Pad(-1, -1, -1, -1, -1, Layers.PadMode.Constant), input.dataType, new[] { input, Constant(pads), Constant(value), Constant(axes) });
+            if (input.isShapeKnown)
+            {
+                output.SetShape(ShapeInference.Pad(input.shape, pad, axes));
+            }
+            return output;
         }
 
         /// <summary>
@@ -169,7 +228,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Permute(this FunctionalTensor input, int[] dims)
         {
-            return FunctionalTensor.FromLayer(new Layers.Transpose(-1, -1, dims), input.DataType, input);
+            var output = FromLayer(new Layers.Transpose(-1, -1, dims), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Transpose(dims));
+            return output;
         }
 
         /// <summary>
@@ -180,7 +242,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Reshape(this FunctionalTensor input, int[] shape)
         {
-            return FunctionalTensor.FromLayer(new Layers.Reshape(-1, -1, -1), input.DataType, new[] { input, Tensor(shape) });
+            var output = FromLayer(new Layers.Reshape(-1, -1, -1), input.dataType, new[] { input, Constant(shape) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Reshape(shape));
+            return output;
         }
 
         /// <summary>
@@ -192,7 +257,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Select(this FunctionalTensor input, int dim, int index)
         {
-            return FunctionalTensor.FromLayer(new Layers.Select(-1, -1, -1, -1), input.DataType, new[] { input, Tensor(dim), Tensor(index) });
+            var output = FromLayer(new Layers.Select(-1, -1, -1, -1), input.dataType, new[] { input, Constant(dim), Constant(index) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Reduce(dim, false));
+            return output;
         }
 
         /// <summary>
@@ -205,7 +273,10 @@ namespace Unity.Sentis
         public static FunctionalTensor Select(this FunctionalTensor input, int dim, FunctionalTensor index)
         {
             DeclareType(DataType.Int, index);
-            return FunctionalTensor.FromLayer(new Layers.Select(-1, -1, -1, -1), input.DataType, new[] { input, Tensor(dim), index });
+            var output = FromLayer(new Layers.Select(-1, -1, -1, -1), input.dataType, new[] { input, Constant(dim), index });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Reduce(dim, false));
+            return output;
         }
 
         /// <summary>
@@ -220,10 +291,12 @@ namespace Unity.Sentis
         {
             // TODO add reduction
             DeclareType(DataType.Int, index);
-            return FunctionalTensor.FromLayer(new Layers.ScatterElements(-1, -1, -1, -1, dim, Layers.ScatterReductionMode.None), CommonType(input, src), new[] { input, index, src });
+            var output = FromLayer(new Layers.ScatterElements(-1, -1, -1, -1, dim, Layers.ScatterReductionMode.None), CommonType(input, src), new[] { input, index, src });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
-        // Embeds the values of the src tensor into input at the given index.
         /// <summary>
         /// Returns a copy of the input with the elements replaced by those from source at a dimension and index.
         /// </summary>
@@ -234,7 +307,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor SelectScatter(FunctionalTensor input, FunctionalTensor src, int dim, int index)
         {
-            return FunctionalTensor.FromLayer(new Layers.SliceSet(-1, -1, -1, -1, -1, -1, -1), CommonType(input, src), new[] { input, Unsqueeze(src, dim), Tensor(new[] { index }), Tensor(new[] { index + 1 }), Tensor(new[] { dim }), null });
+            var output = FromLayer(new Layers.SliceSet(-1, -1, -1, -1, -1, -1, -1), CommonType(input, src), new[] { input, Unsqueeze(src, dim), Constant(new[] { index }), Constant(new[] { index + 1 }), Constant(new[] { dim }), null });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -249,7 +325,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor SliceScatter(FunctionalTensor input, FunctionalTensor src, int dim = 0, int start = 0, int end = int.MaxValue, int step = 1)
         {
-            return FunctionalTensor.FromLayer(new Layers.SliceSet(-1, -1, -1, -1, -1, -1, -1), CommonType(input, src), new[] { input, src, Tensor(new[] { start }), Tensor(new[] { end }), Tensor(new[] { dim }), Tensor(new[] { step }) });
+            var output = FromLayer(new Layers.SliceSet(-1, -1, -1, -1, -1, -1, -1), CommonType(input, src), new[] { input, src, Constant(new[] { start }), Constant(new[] { end }), Constant(new[] { dim }), Constant(new[] { step }) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -262,7 +341,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor ScatterAdd(FunctionalTensor input, int dim, FunctionalTensor index, FunctionalTensor src)
         {
-            return FunctionalTensor.FromLayer(new Layers.ScatterElements(-1, -1, -1, -1, dim, Layers.ScatterReductionMode.Add), CommonType(input, src), new[] { input, index, src });
+            var output = FromLayer(new Layers.ScatterElements(-1, -1, -1, -1, dim, Layers.ScatterReductionMode.Add), CommonType(input, src), new[] { input, index, src });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -276,8 +358,18 @@ namespace Unity.Sentis
         {
             var dataTypes = new DataType[sections.Length];
             for (var i = 0; i < dataTypes.Length; i++)
-                dataTypes[i] = input.DataType;
-            return FunctionalTensor.FromLayerMultiOutputs(new Layers.Split(new int[sections.Length], -1, -1, dim, sections.Length), dataTypes, new[] { input, Tensor(sections) });
+                dataTypes[i] = input.dataType;
+            var outputs = FromLayer(new Layers.Split(new int[sections.Length], -1, -1, dim, sections.Length), dataTypes, new[] { input, Constant(sections) });
+            if (!input.isShapeKnown)
+                return outputs;
+
+            for (var i = 0; i < outputs.Length; i++)
+            {
+                var oShape = new TensorShape(input.shape);
+                oShape[dim] = sections[i];
+                outputs[i].SetShape(oShape);
+            }
+            return outputs;
         }
 
         /// <summary>
@@ -287,7 +379,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Squeeze(this FunctionalTensor input)
         {
-            return FunctionalTensor.FromLayer(new Layers.Squeeze(-1, -1, -1), input.DataType, new[] { input, null });
+            var output = FromLayer(new Layers.Squeeze(-1, -1, -1), input.dataType, new[] { input, null });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Squeeze());
+            return output;
         }
 
         /// <summary>
@@ -298,7 +393,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Squeeze(this FunctionalTensor input, int[] dim)
         {
-            return FunctionalTensor.FromLayer(new Layers.Squeeze(-1, -1, -1), input.DataType, new[] { input, Tensor(dim) });
+            var output = FromLayer(new Layers.Squeeze(-1, -1, -1), input.dataType, new[] { input, Constant(dim) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Squeeze(dim));
+            return output;
         }
 
         /// <summary>
@@ -336,7 +434,10 @@ namespace Unity.Sentis
         public static FunctionalTensor Tile(this FunctionalTensor input, int[] dims)
         {
             // TODO deal with cases where dims.length != input.shape.rank
-            return FunctionalTensor.FromLayer(new Layers.Tile(-1, -1, -1), input.DataType, new[] { input, Tensor(dims) });
+            var output = FromLayer(new Layers.Tile(-1, -1, -1), input.dataType, new[] { input, Constant(dims) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Tile(dims));
+            return output;
         }
 
         /// <summary>
@@ -359,7 +460,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Unsqueeze(this FunctionalTensor input, int dim)
         {
-            return FunctionalTensor.FromLayer(new Layers.Unsqueeze(-1, -1, -1), input.DataType, new[] { input, Tensor(new[] { dim }) });
+            var output = FromLayer(new Layers.Unsqueeze(-1, -1, -1), input.dataType, new[] { input, Constant(new[] { dim }) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Unsqueeze(dim));
+            return output;
         }
 
         /// <summary>
@@ -372,7 +476,10 @@ namespace Unity.Sentis
         public static FunctionalTensor Where(FunctionalTensor condition, FunctionalTensor input, FunctionalTensor other)
         {
             DeclareType(DataType.Int, condition);
-            return FunctionalTensor.FromLayer(new Layers.Where(-1, -1, -1, -1), CommonType(input, other), new[] { condition, input, other });
+            var output = FromLayer(new Layers.Where(-1, -1, -1, -1), CommonType(input, other), new[] { condition, input, other });
+            if (condition.isShapeKnown && input.isShapeKnown && other.isShapeKnown)
+                output.SetShape(input.shape.Broadcast(other.shape.Broadcast(condition.shape)));
+            return output;
         }
     }
 }

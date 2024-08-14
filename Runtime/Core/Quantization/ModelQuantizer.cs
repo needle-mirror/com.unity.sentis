@@ -1,4 +1,4 @@
-namespace Unity.Sentis.Quantization
+namespace Unity.Sentis
 {
     /// <summary>
     /// Type of quantization for float weights.

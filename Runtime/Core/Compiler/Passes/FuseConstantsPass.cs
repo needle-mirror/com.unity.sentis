@@ -57,7 +57,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     for (var i = 0; i < layer.outputs.Length; i++)
                     {
                         var outputPartialTensor = ctx.GetPartialTensor(layer.outputs[i]);
-                        if (outputPartialTensor.IsFullyKnown())
+                        if (outputPartialTensor.IsStatic())
                             calculatedTensors.Add(layer.outputs[i], outputPartialTensor.ToTensor());
                     }
                     continue;
@@ -82,6 +82,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 for (var i = 0; i < layer.outputs.Length; i++)
                 {
                     var outputTensor = executionContext.storage.GetTensor(layer.outputs[i]);
+                    outputTensor.CompleteAllPendingOperations();
                     calculatedTensors.Add(layer.outputs[i], outputTensor);
                     ctx.AddPartialTensor(layer.outputs[i], PartialTensor.FromTensor(outputTensor));
                 }
@@ -105,9 +106,9 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             {
                 var tensor = kvp.Value;
                 if (tensor.shape.HasZeroDims())
-                    model.constants.Add(new Layers.Constant(kvp.Key, tensor.shape, tensor.dataType, 0));
+                    model.constants.Add(new Constant(kvp.Key, tensor.shape, tensor.dataType, 0));
                 else
-                    model.constants.Add(new Layers.Constant(kvp.Key, tensor.shape, tensor.dataType, (tensor.dataOnBackend as BurstTensorData).array));
+                    model.constants.Add(new Constant(kvp.Key, tensor.shape, tensor.dataType, (tensor.dataOnBackend as CPUTensorData).array));
             }
 
             // remove unused constants

@@ -59,5 +59,11 @@ namespace Unity.Sentis
             if (!condition)
                 Assert.IsTrue(condition, string.Format(msg, msgParam0, msgParam1));
         }
+        [Conditional("UNITY_ASSERTIONS")]
+        public static void AssertIsTrue<TP0, TP1, TP2>(bool condition, string msg, TP0 msgParam0, TP1 msgParam1, TP2 msgParam2)
+        {
+            if (!condition)
+                Assert.IsTrue(condition, string.Format(msg, msgParam0, msgParam1, msgParam2));
+        }
     }
 }

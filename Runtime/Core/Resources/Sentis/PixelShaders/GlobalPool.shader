@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/GlobalPool"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile AVGPOOL MAXPOOL AVGSQUAREPOOL
+            #pragma multi_compile_local AVGPOOL MAXPOOL AVGSQUAREPOOL
 
             #pragma vertex vert
             #pragma fragment frag

@@ -13,7 +13,7 @@ namespace Unity.Sentis
     }
 
     /// <summary>
-    /// Represents a single element of a SymbolicTensorShape, can be an int value, float value, byte param or unknown
+    /// Represents a single element of a DynamicTensorShape, can be an int value, float value, byte param or unknown
     /// </summary>
     [Serializable]
     struct PartialTensorElement
@@ -101,7 +101,7 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Whether the current 'SymbolicTensorDim' is 'ElementType.Value' and is equal to the specified element.
+        /// Whether the current 'DynamicTensorDim' is 'ElementType.Value' and is equal to the specified element.
         /// </summary>
         public bool EqualsIntValue(PartialTensorElement other)
         {
@@ -116,19 +116,19 @@ namespace Unity.Sentis
             return m_ElementType == ElementType.Param && other.m_ElementType == ElementType.Param && m_Param == other.m_Param;
         }
 
-        public static explicit operator SymbolicTensorDim(PartialTensorElement v)
+        public static explicit operator DynamicTensorDim(PartialTensorElement v)
         {
             return v.m_ElementType switch
             {
-                ElementType.Unknown => SymbolicTensorDim.Unknown,
-                ElementType.IntValue => v.m_IntValue < 0 ? SymbolicTensorDim.Unknown : SymbolicTensorDim.Int(v.m_IntValue),
-                ElementType.Param => SymbolicTensorDim.Param(v.m_Param),
-                ElementType.FloatValue => SymbolicTensorDim.Unknown,
+                ElementType.Unknown => DynamicTensorDim.Unknown,
+                ElementType.IntValue => v.m_IntValue < 0 ? DynamicTensorDim.Unknown : DynamicTensorDim.Int(v.m_IntValue),
+                ElementType.Param => DynamicTensorDim.Param(v.m_Param),
+                ElementType.FloatValue => DynamicTensorDim.Unknown,
                 _ => throw new ArgumentOutOfRangeException()
             };
         }
 
-        public static explicit operator PartialTensorElement(SymbolicTensorDim d)
+        public static explicit operator PartialTensorElement(DynamicTensorDim d)
         {
             if (d.isValue)
                 return IntValue(d.value);
@@ -272,7 +272,7 @@ namespace Unity.Sentis
 
         /// <summary>
         ///
-        /// Compares element to symbolic tensor dim
+        /// Compares element to dynamic tensor dim
         /// ==
         ///   | 0   1   A   B   ?
         /// --|---------------------
@@ -282,7 +282,7 @@ namespace Unity.Sentis
         /// ? | F   F   F   F   F
         ///
         /// </summary>
-        public static bool operator ==(PartialTensorElement a, SymbolicTensorDim b)
+        public static bool operator ==(PartialTensorElement a, DynamicTensorDim b)
         {
             if (a.isParam && b.isParam)
                 return a.param == b.param;
@@ -293,7 +293,7 @@ namespace Unity.Sentis
 
         /// <summary>
         ///
-        /// Compares element to symbolic tensor dim
+        /// Compares element to dynamic tensor dim
         /// !=
         ///   | 0   1   A   B   ?
         /// --|---------------------
@@ -303,7 +303,7 @@ namespace Unity.Sentis
         /// ? | T   T   T   T   T
         ///
         /// </summary>
-        public static bool operator !=(PartialTensorElement a, SymbolicTensorDim b)
+        public static bool operator !=(PartialTensorElement a, DynamicTensorDim b)
         {
             return !(a == b);
         }
@@ -344,7 +344,7 @@ namespace Unity.Sentis
 
         /// <summary>
         ///
-        /// Compares element to symbolic tensor dim
+        /// Compares element to dynamic tensor dim
         /// >
         ///   | 0   1   A   B   ?
         /// --|---------------------
@@ -354,7 +354,7 @@ namespace Unity.Sentis
         /// ? | F   F   F   F   F
         ///
         /// </summary>
-        public static bool operator >(PartialTensorElement a, SymbolicTensorDim b)
+        public static bool operator >(PartialTensorElement a, DynamicTensorDim b)
         {
             if (!a.isIntValue || !b.isValue)
                 return false;
@@ -363,7 +363,7 @@ namespace Unity.Sentis
 
         /// <summary>
         ///
-        /// Compares element to symbolic tensor dim
+        /// Compares element to dynamic tensor dim
         /// <
         ///   | 0   1   A   B   ?
         /// --|---------------------
@@ -373,7 +373,7 @@ namespace Unity.Sentis
         /// ? | F   F   F   F   F
         ///
         /// </summary>
-        public static bool operator <(PartialTensorElement a, SymbolicTensorDim b)
+        public static bool operator <(PartialTensorElement a, DynamicTensorDim b)
         {
             if (!a.isIntValue || !b.isValue)
                 return false;
@@ -382,7 +382,7 @@ namespace Unity.Sentis
 
         /// <summary>
         ///
-        /// Compares element to symbolic tensor dim
+        /// Compares element to dynamic tensor dim
         /// >=
         ///   | 0   1   A   B   ?
         /// --|---------------------
@@ -392,7 +392,7 @@ namespace Unity.Sentis
         /// ? | F   F   F   F   F
         ///
         /// </summary>
-        public static bool operator >=(PartialTensorElement a, SymbolicTensorDim b)
+        public static bool operator >=(PartialTensorElement a, DynamicTensorDim b)
         {
             if (a.isParam && b.isParam)
                 return a.param == b.param;
@@ -403,7 +403,7 @@ namespace Unity.Sentis
 
         /// <summary>
         ///
-        /// Compares element to symbolic tensor dim
+        /// Compares element to dynamic tensor dim
         /// <=
         ///   | 0   1   A   B   ?
         /// --|---------------------
@@ -413,7 +413,7 @@ namespace Unity.Sentis
         /// ? | F   F   F   F   F
         ///
         /// </summary>
-        public static bool operator <=(PartialTensorElement a, SymbolicTensorDim b)
+        public static bool operator <=(PartialTensorElement a, DynamicTensorDim b)
         {
             if (a.isParam && b.isParam)
                 return a.param == b.param;
@@ -424,7 +424,7 @@ namespace Unity.Sentis
 
         /// <summary>
         ///
-        /// Compares symbolic tensor dim to element
+        /// Compares dynamic tensor dim to element
         /// >=
         ///   | 0   1   A   B   ?
         /// --|---------------------
@@ -434,7 +434,7 @@ namespace Unity.Sentis
         /// ? | F   F   F   F   F
         ///
         /// </summary>
-        public static bool operator >=(SymbolicTensorDim a, PartialTensorElement b)
+        public static bool operator >=(DynamicTensorDim a, PartialTensorElement b)
         {
             if (a.isParam && b.isParam)
                 return a.param == b.param;
@@ -447,7 +447,7 @@ namespace Unity.Sentis
 
         /// <summary>
         ///
-        /// Compares symbolic tensor dim to element
+        /// Compares dynamic tensor dim to element
         /// <=
         ///   | 0   1   A   B   ?
         /// --|---------------------
@@ -457,7 +457,7 @@ namespace Unity.Sentis
         /// ? | F   F   F   F   F
         ///
         /// </summary>
-        public static bool operator <=(SymbolicTensorDim a, PartialTensorElement b)
+        public static bool operator <=(DynamicTensorDim a, PartialTensorElement b)
         {
             if (a.isParam && b.isParam)
                 return a.param == b.param;

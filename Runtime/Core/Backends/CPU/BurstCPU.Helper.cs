@@ -198,9 +198,9 @@ namespace Unity.Sentis
         }
 
         static JobHandle GetFenceBeforeJobStartXBO(
-            BurstTensorData pinX,
-            BurstTensorData pinB,
-            BurstTensorData pinO)
+            CPUTensorData pinX,
+            CPUTensorData pinB,
+            CPUTensorData pinO)
         {
             return JobHandle.CombineDependencies(pinX.fence, pinB.fence, pinO.reuse);
         }
@@ -383,7 +383,7 @@ namespace Unity.Sentis
         }
 
         public static unsafe JobHandle ScheduleO<T>(ref this T jobData,
-            BurstTensorData pinO,
+            CPUTensorData pinO,
             int arrayLength, int innerloopBatchCount)
             where T : struct, IJobParallelFor, CPUBackend.IJobResourceDeclarationO
         {
@@ -453,7 +453,7 @@ namespace Unity.Sentis
         public FencedMemoryAlloc() { }
     }
 
-    public partial class CPUBackend
+    partial class CPUBackend
     {
         /// <summary>
         /// Utility structure to iterate the tensor offset for a broadcast operation.
@@ -874,40 +874,10 @@ namespace Unity.Sentis
 
                 for (int i = 0; i < starts.Length; i++)
                 {
-                    var axis = axes == null ? i : shapeX.Axis(axes[i]);
-                    var step = steps != null ? steps[i] : 1;
-                    var dim = shapeX[axis];
-
-                    var clampAdjustDirection = step < 0 ? -1 : 0;
-
-                    var start = starts[i];
-                    start = start < 0 ? dim + start : start;
-                    start = Mathf.Clamp(start, 0, dim + clampAdjustDirection);
-
-                    startsLocal[axis] = start;
-                    stepsLocal[axis] = step;
+                    var axis = axes[i];
+                    startsLocal[axis] = starts[i];
+                    stepsLocal[axis] = steps[i];
                 }
-
-                PrepareWithLocals(shapeX, shapeO, startsLocal, stepsLocal);
-            }
-
-            /// <summary>
-            /// Prepare for slice on single axis with start value between 0 and the size of the slice axis.
-            /// </summary>
-            internal void Prepare(TensorShape shapeX, TensorShape shapeO, int axis, int start, int step = 1)
-            {
-                int* startsLocal = stackalloc int[TensorShape.maxRank];
-                int* stepsLocal = stackalloc int[TensorShape.maxRank];
-
-                for (var i = 0; i < TensorShape.maxRank; i++)
-                {
-                    startsLocal[i] = 0;
-                    stepsLocal[i] = 1;
-                }
-
-                axis = shapeX.Axis(axis);
-                startsLocal[axis] = start;
-                stepsLocal[axis] = step;
 
                 PrepareWithLocals(shapeX, shapeO, startsLocal, stepsLocal);
             }

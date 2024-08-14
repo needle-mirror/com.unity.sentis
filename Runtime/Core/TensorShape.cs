@@ -57,166 +57,166 @@ namespace Unity.Sentis
         public int length => rank == 0 ? 1 : m_Length;
 
         /// <summary>
-        /// Initializes and returns an instance of `TensorShape` with a rank of 8: (d7, d6, d5, d4, d3, d2, d1, d0).
+        /// Initializes and returns an instance of `TensorShape` with a rank of 8: (d0, d1, d2, d3, d4, d5, d6, d7).
         ///
         /// For example (2, 3, 4, 5, 6, 7, 8, 9).
         /// </summary>
-        /// <param name="d7">Length of axis 7.</param>
-        /// <param name="d6">Length of axis 6.</param>
-        /// <param name="d5">Length of axis 5.</param>
-        /// <param name="d4">Length of axis 4.</param>
-        /// <param name="d3">Length of axis 3.</param>
-        /// <param name="d2">Length of axis 2.</param>
-        /// <param name="d1">Length of axis 1.</param>
         /// <param name="d0">Length of axis 0.</param>
-        public TensorShape(int d7, int d6, int d5, int d4, int d3, int d2, int d1, int d0)
+        /// <param name="d1">Length of axis 1.</param>
+        /// <param name="d2">Length of axis 2.</param>
+        /// <param name="d3">Length of axis 3.</param>
+        /// <param name="d4">Length of axis 4.</param>
+        /// <param name="d5">Length of axis 5.</param>
+        /// <param name="d6">Length of axis 6.</param>
+        /// <param name="d7">Length of axis 7.</param>
+        public TensorShape(int d0, int d1, int d2, int d3, int d4, int d5, int d6, int d7)
         {
-            m_D7 = d7 >= 0 ? d7 : 0;
-            m_D6 = d6 >= 0 ? d6 : 0;
-            m_D5 = d5 >= 0 ? d5 : 0;
-            m_D4 = d4 >= 0 ? d4 : 0;
-            m_D3 = d3 >= 0 ? d3 : 0;
-            m_D2 = d2 >= 0 ? d2 : 0;
-            m_D1 = d1 >= 0 ? d1 : 0;
-            m_D0 = d0 >= 0 ? d0 : 0;
+            m_D7 = d0 >= 0 ? d0 : 0;
+            m_D6 = d1 >= 0 ? d1 : 0;
+            m_D5 = d2 >= 0 ? d2 : 0;
+            m_D4 = d3 >= 0 ? d3 : 0;
+            m_D3 = d4 >= 0 ? d4 : 0;
+            m_D2 = d5 >= 0 ? d5 : 0;
+            m_D1 = d6 >= 0 ? d6 : 0;
+            m_D0 = d7 >= 0 ? d7 : 0;
 
             m_Rank = 8;
             m_Length = d7 * d6 * d5 * d4 * d3 * d2 * d1 * d0;
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `TensorShape` with a rank of 7: (d6, d5, d4, d3, d2, d1, d0).
+        /// Initializes and returns an instance of `TensorShape` with a rank of 7: (d0, d1, d2, d3, d4, d5, d6).
         ///
         /// For example (3, 4, 5, 6, 7, 8, 9).
         /// </summary>
-        /// <param name="d6">Length of axis 6.</param>
-        /// <param name="d5">Length of axis 5.</param>
-        /// <param name="d4">Length of axis 4.</param>
-        /// <param name="d3">Length of axis 3.</param>
-        /// <param name="d2">Length of axis 2.</param>
-        /// <param name="d1">Length of axis 1.</param>
         /// <param name="d0">Length of axis 0.</param>
-        public TensorShape(int d6, int d5, int d4, int d3, int d2, int d1, int d0)
+        /// <param name="d1">Length of axis 1.</param>
+        /// <param name="d2">Length of axis 2.</param>
+        /// <param name="d3">Length of axis 3.</param>
+        /// <param name="d4">Length of axis 4.</param>
+        /// <param name="d5">Length of axis 5.</param>
+        /// <param name="d6">Length of axis 6.</param>
+        public TensorShape(int d0, int d1, int d2, int d3, int d4, int d5, int d6)
         {
             m_D7 = 0;
-            m_D6 = d6 >= 0 ? d6 : 0;
-            m_D5 = d5 >= 0 ? d5 : 0;
-            m_D4 = d4 >= 0 ? d4 : 0;
+            m_D6 = d0 >= 0 ? d0 : 0;
+            m_D5 = d1 >= 0 ? d1 : 0;
+            m_D4 = d2 >= 0 ? d2 : 0;
             m_D3 = d3 >= 0 ? d3 : 0;
-            m_D2 = d2 >= 0 ? d2 : 0;
-            m_D1 = d1 >= 0 ? d1 : 0;
-            m_D0 = d0 >= 0 ? d0 : 0;
+            m_D2 = d4 >= 0 ? d4 : 0;
+            m_D1 = d5 >= 0 ? d5 : 0;
+            m_D0 = d6 >= 0 ? d6 : 0;
 
             m_Rank = 7;
             m_Length = d6 * d5 * d4 * d3 * d2 * d1 * d0;
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `TensorShape` with a rank of 6: (d5, d4, d3, d2, d1, d0).
+        /// Initializes and returns an instance of `TensorShape` with a rank of 6: (d0, d1, d2, d3, d4, d5).
         ///
         /// For example (4, 5, 6, 7, 8, 9).
         /// </summary>
-        /// <param name="d5">Length of axis 5.</param>
-        /// <param name="d4">Length of axis 4.</param>
-        /// <param name="d3">Length of axis 3.</param>
-        /// <param name="d2">Length of axis 2.</param>
-        /// <param name="d1">Length of axis 1.</param>
         /// <param name="d0">Length of axis 0.</param>
-        public TensorShape(int d5, int d4, int d3, int d2, int d1, int d0)
+        /// <param name="d1">Length of axis 1.</param>
+        /// <param name="d2">Length of axis 2.</param>
+        /// <param name="d3">Length of axis 3.</param>
+        /// <param name="d4">Length of axis 4.</param>
+        /// <param name="d5">Length of axis 5.</param>
+        public TensorShape(int d0, int d1, int d2, int d3, int d4, int d5)
         {
             m_D7 = 0;
             m_D6 = 0;
-            m_D5 = d5 >= 0 ? d5 : 0;
-            m_D4 = d4 >= 0 ? d4 : 0;
-            m_D3 = d3 >= 0 ? d3 : 0;
-            m_D2 = d2 >= 0 ? d2 : 0;
-            m_D1 = d1 >= 0 ? d1 : 0;
-            m_D0 = d0 >= 0 ? d0 : 0;
+            m_D5 = d0 >= 0 ? d0 : 0;
+            m_D4 = d1 >= 0 ? d1 : 0;
+            m_D3 = d2 >= 0 ? d2 : 0;
+            m_D2 = d3 >= 0 ? d3 : 0;
+            m_D1 = d4 >= 0 ? d4 : 0;
+            m_D0 = d5 >= 0 ? d5 : 0;
 
             m_Rank = 6;
             m_Length = d5 * d4 * d3 * d2 * d1 * d0;
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `TensorShape` with a rank of 5: (d4, d3, d2, d1, d0).
+        /// Initializes and returns an instance of `TensorShape` with a rank of 5: (d0, d1, d2, d3, d4).
         ///
         /// For example (5, 6, 7, 8, 9).
         /// </summary>
-        /// <param name="d4">Length of axis 4.</param>
-        /// <param name="d3">Length of axis 3.</param>
-        /// <param name="d2">Length of axis 2.</param>
-        /// <param name="d1">Length of axis 1.</param>
         /// <param name="d0">Length of axis 0.</param>
-        public TensorShape(int d4, int d3, int d2, int d1, int d0)
+        /// <param name="d1">Length of axis 1.</param>
+        /// <param name="d2">Length of axis 2.</param>
+        /// <param name="d3">Length of axis 3.</param>
+        /// <param name="d4">Length of axis 4.</param>
+        public TensorShape(int d0, int d1, int d2, int d3, int d4)
         {
             m_D7 = 0;
             m_D6 = 0;
             m_D5 = 0;
-            m_D4 = d4 >= 0 ? d4 : 0;
-            m_D3 = d3 >= 0 ? d3 : 0;
+            m_D4 = d0 >= 0 ? d0 : 0;
+            m_D3 = d1 >= 0 ? d1 : 0;
             m_D2 = d2 >= 0 ? d2 : 0;
-            m_D1 = d1 >= 0 ? d1 : 0;
-            m_D0 = d0 >= 0 ? d0 : 0;
+            m_D1 = d3 >= 0 ? d3 : 0;
+            m_D0 = d4 >= 0 ? d4 : 0;
 
             m_Rank = 5;
             m_Length = d4 * d3 * d2 * d1 * d0;
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `TensorShape` with a rank of 4: (d3, d2, d1, d0).
+        /// Initializes and returns an instance of `TensorShape` with a rank of 4: (d0, d1, d2, d3).
         ///
         /// For example (6, 7, 8, 9).
         /// </summary>
-        /// <param name="d3">Length of axis 3.</param>
-        /// <param name="d2">Length of axis 2.</param>
-        /// <param name="d1">Length of axis 1.</param>
         /// <param name="d0">Length of axis 0.</param>
-        public TensorShape(int d3, int d2, int d1, int d0)
+        /// <param name="d1">Length of axis 1.</param>
+        /// <param name="d2">Length of axis 2.</param>
+        /// <param name="d3">Length of axis 3.</param>
+        public TensorShape(int d0, int d1, int d2, int d3)
         {
             m_D7 = 0;
             m_D6 = 0;
             m_D5 = 0;
             m_D4 = 0;
-            m_D3 = d3 >= 0 ? d3 : 0;
-            m_D2 = d2 >= 0 ? d2 : 0;
-            m_D1 = d1 >= 0 ? d1 : 0;
-            m_D0 = d0 >= 0 ? d0 : 0;
+            m_D3 = d0 >= 0 ? d0 : 0;
+            m_D2 = d1 >= 0 ? d1 : 0;
+            m_D1 = d2 >= 0 ? d2 : 0;
+            m_D0 = d3 >= 0 ? d3 : 0;
 
             m_Rank = 4;
             m_Length = d3 * d2 * d1 * d0;
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `TensorShape` with a rank of 3: (d2, d1, d0).
+        /// Initializes and returns an instance of `TensorShape` with a rank of 3: (d0, d1, d2).
         ///
         /// For example (7, 8, 9).
         /// </summary>
-        /// <param name="d2">Length of axis 2.</param>
-        /// <param name="d1">Length of axis 1.</param>
         /// <param name="d0">Length of axis 0.</param>
-        public TensorShape(int d2, int d1, int d0)
+        /// <param name="d1">Length of axis 1.</param>
+        /// <param name="d2">Length of axis 2.</param>
+        public TensorShape(int d0, int d1, int d2)
         {
             m_D7 = 0;
             m_D6 = 0;
             m_D5 = 0;
             m_D4 = 0;
             m_D3 = 0;
-            m_D2 = d2 >= 0 ? d2 : 0;
+            m_D2 = d0 >= 0 ? d0 : 0;
             m_D1 = d1 >= 0 ? d1 : 0;
-            m_D0 = d0 >= 0 ? d0 : 0;
+            m_D0 = d2 >= 0 ? d2 : 0;
 
             m_Rank = 3;
             m_Length = d2 * d1 * d0;
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `TensorShape` with a rank of 2: (d1, d0).
+        /// Initializes and returns an instance of `TensorShape` with a rank of 2: (d0, d1).
         ///
         /// For example (8, 9).
         /// </summary>
-        /// <param name="d1">Length of axis 1.</param>
         /// <param name="d0">Length of axis 0.</param>
-        public TensorShape(int d1, int d0)
+        /// <param name="d1">Length of axis 1.</param>
+        public TensorShape(int d0, int d1)
         {
             m_D7 = 0;
             m_D6 = 0;
@@ -224,8 +224,8 @@ namespace Unity.Sentis
             m_D4 = 0;
             m_D3 = 0;
             m_D2 = 0;
-            m_D1 = d1 >= 0 ? d1 : 0;
-            m_D0 = d0 >= 0 ? d0 : 0;
+            m_D1 = d0 >= 0 ? d0 : 0;
+            m_D0 = d1 >= 0 ? d1 : 0;
 
             m_Rank = 2;
             m_Length = d1 * d0;
@@ -282,7 +282,7 @@ namespace Unity.Sentis
         /// Returns a copy of another `TensorShape`.
         /// </summary>
         /// <param name="shape">The shape to copy.</param>
-        public TensorShape(TensorShape shape)
+        internal TensorShape(TensorShape shape)
         {
             m_Rank = shape.rank;
             m_Length = shape.length;
@@ -463,7 +463,7 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="axis">The axis to wrap.</param>
         /// <returns>The positive axis.</returns>
-        public int Axis(int axis)
+        internal int Axis(int axis)
         {
             Logger.AssertIsTrue(axis >= -rank && axis < rank, "IndexError: axis {0} is out of bounds shape of rank, {1}", axis, rank);
             return axis >= 0 ? axis : rank + axis;
@@ -476,7 +476,7 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="axis">The axis to calculate the stride length at.</param>
         /// <returns>The stride length at the axis.</returns>
-        public int Strides(int axis)
+        internal int Strides(int axis)
         {
             axis = Axis(axis);
 
@@ -587,7 +587,7 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="axes">The axes to squeeze.</param>
         /// <returns>The squeezed tensor shape.</returns>
-        public TensorShape Squeeze(ReadOnlySpan<int> axes)
+        internal TensorShape Squeeze(ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
                 return Squeeze();
@@ -671,7 +671,7 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="axes">The axes at which to unsqueeze.</param>
         /// <returns>The unsqueezed tensor shape.</returns>
-        public TensorShape Unsqueeze(ReadOnlySpan<int> axes)
+        internal TensorShape Unsqueeze(ReadOnlySpan<int> axes)
         {
             Logger.AssertIsTrue(rank + axes.Length <= maxRank, "ValueError: TensorShape are capped to rank=8, cannot unsqueeze tensorshape {0} to rank greater than 8", this);
 
@@ -714,7 +714,7 @@ namespace Unity.Sentis
         /// <param name="shape">The new shape as a span of integers.</param>
         /// <param name="allowZero">When the value is `true`, Sentis sets a dimension to zero if the new shape includes a zero. Otherwise Sentis retains the corresponding size at that axis from the original shape.</param>
         /// <returns>The reshape tensor shape.</returns>
-        public TensorShape Reshape(ReadOnlySpan<int> shape, bool allowZero = false)
+        internal TensorShape Reshape(ReadOnlySpan<int> shape, bool allowZero = false)
         {
             Logger.AssertIsTrue(shape.Length <= maxRank, "ValueError: TensorShape are capped to rank=8, cannot create tensorshape of rank {0}", shape.Length);
 
@@ -771,7 +771,7 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="axis">The axis at which to flatten.</param>
         /// <returns>The flattened tensor shape.</returns>
-        public TensorShape Flatten(int axis = 1)
+        internal TensorShape Flatten(int axis)
         {
             axis = axis >= 0 ? axis : rank + axis;
             var flatten = new TensorShape();
@@ -798,6 +798,17 @@ namespace Unity.Sentis
             }
 
             return flatten;
+        }
+
+        /// <summary>
+        /// Creates a `TensorShape` by duplicating `this` and flattening to a 1D shape of the same length.
+        ///
+        /// For example, if `this` is (2, 3, 4), the method returns (2 * 3 * 4).
+        /// </summary>
+        /// <returns>The flattened tensor shape.</returns>
+        public TensorShape Flatten()
+        {
+            return new TensorShape(length);
         }
 
         /// <summary>
@@ -868,7 +879,7 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="rank">The rank to which to broadcast to.</param>
         /// <returns>The broadcast tensor shape.</returns>
-        public TensorShape BroadcastToRank(int rank)
+        internal TensorShape BroadcastToRank(int rank)
         {
             Logger.AssertIsTrue(rank >= this.rank, "ValueError: broadcasting to lower rank tensor {0}, {1}", this.rank, rank);
             Logger.AssertIsTrue(rank <= maxRank, "ValueError: TensorShape are capped to rank=8, cannot broadcast shape {0} to rank > 8", this);
@@ -900,7 +911,7 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="repeats">The repeat counts along each axis as a span of integers.</param>
         /// <returns>The tiled tensor shape.</returns>
-        public TensorShape Tile(ReadOnlySpan<int> repeats)
+        internal TensorShape Tile(ReadOnlySpan<int> repeats)
         {
             TensorShape mul = new TensorShape();
             mul.m_Rank = Math.Max(rank, repeats.Length);
@@ -927,7 +938,7 @@ namespace Unity.Sentis
         /// <param name="other">The other tensor shape which which to concatenate.</param>
         /// <param name="axis">The axis along which to concatenate.</param>
         /// <returns>The concatenated tensor shape.</returns>
-        public TensorShape Concat(TensorShape other, int axis)
+        internal TensorShape Concat(TensorShape other, int axis)
         {
             TensorShape concat = new TensorShape(this);
             axis = other.Axis(axis);
@@ -989,7 +1000,7 @@ namespace Unity.Sentis
         /// <param name="axes">The axes along which to reduce.</param>
         /// <param name="keepDim">When the value is `true`, Sentis replaces the reduced axes with 1. Otherwise Sentis removes the reduced axes.</param>
         /// <returns>The reduced tensor shape.</returns>
-        public TensorShape Reduce(ReadOnlySpan<int> axes, bool keepDim = true)
+        internal TensorShape Reduce(ReadOnlySpan<int> axes, bool keepDim = true)
         {
             if (axes == null || axes.Length == 0)
                 return keepDim ? Ones(rank) : new TensorShape();
@@ -1020,7 +1031,7 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="permutations">An array indexing the new tensor axis from the old ones.</param>
         /// <returns>The transposed tensor shape.</returns>
-        public TensorShape Transpose(ReadOnlySpan<int> permutations)
+        internal TensorShape Transpose(ReadOnlySpan<int> permutations)
         {
             Logger.AssertAreEqual(rank, permutations.Length, "ValueError: shape ranks and permutations length do not match {0}, {1}", this, permutations.Length);
 
@@ -1049,7 +1060,7 @@ namespace Unity.Sentis
         /// Creates a `TensorShape` by reversing axes. For example, if `this` is (6, 7, 8, 9), the method returns (9, 8, 7, 6).
         /// </summary>
         /// <returns>The transposed tensor shape.</returns>
-        public TensorShape Transpose()
+        internal TensorShape Transpose()
         {
             TensorShape transposed = new TensorShape();
             transposed.m_Rank = rank;
@@ -1070,7 +1081,7 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="pads">The lower and upper padding values for each dimension. For example [pad_left, pad_right] for 1D, or [pad_top, pad_bottom, pad_left, pad_right] for 2D.</param>
         /// <returns>The padded tensor shape.</returns>
-        public TensorShape Pad(ReadOnlySpan<int> pads)
+        internal TensorShape Pad(ReadOnlySpan<int> pads)
         {
             Logger.AssertAreEqual(rank * 2, pads.Length, "ValueError: shape ranks and pad length do not match {0}, {1}", this, pads.Length);
 
@@ -1090,7 +1101,7 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="other">The right hand tensor shape for the MatMul.</param>
         /// <returns>The resultant tensor shape.</returns>
-        public TensorShape MatMul(TensorShape other)
+        internal TensorShape MatMul(TensorShape other)
         {
             if (other.rank == 1)
                 return MatMul(new TensorShape(other[0], 1)).Squeeze(-1);
@@ -1133,16 +1144,14 @@ namespace Unity.Sentis
         /// </summary>
         /// <param name="starts">The start indices along each of the `axes`.</param>
         /// <param name="ends">The end indices along each of the `axes`.</param>
-        /// <param name="axes">The optional axes along which to slice. The default value is [0, 1, 2...rank-1].</param>
-        /// <param name="steps">The optional step sizes for each of the `axes`. The default value is [1, 1, 1...1]</param>
+        /// <param name="axes">The axes along which to slice.</param>
+        /// <param name="steps">The step sizes for each of the `axes`.</param>
         /// <returns>The sliced tensor shape.</returns>
-        public TensorShape Slice(ReadOnlySpan<int> starts, ReadOnlySpan<int> ends, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps)
+        internal TensorShape Slice(ReadOnlySpan<int> starts, ReadOnlySpan<int> ends, ReadOnlySpan<int> axes, ReadOnlySpan<int> steps)
         {
             Logger.AssertAreEqual(starts.Length, ends.Length, "ValueError: starts and ends length do not match {0}, {1}", starts.Length, ends.Length);
-            if (axes != null)
-                Logger.AssertAreEqual(starts.Length, axes.Length, "ValueError: starts and axes length do not match {0}, {1}", starts.Length, axes.Length);
-            if (steps != null)
-                Logger.AssertAreEqual(starts.Length, steps.Length, "ValueError: starts and steps length do not match {0}, {1}", starts.Length, steps.Length);
+            Logger.AssertAreEqual(starts.Length, axes.Length, "ValueError: starts and axes length do not match {0}, {1}", starts.Length, axes.Length);
+            Logger.AssertAreEqual(starts.Length, steps.Length, "ValueError: starts and steps length do not match {0}, {1}", starts.Length, steps.Length);
 
             TensorShape strided = new TensorShape(this);
 
@@ -1150,10 +1159,8 @@ namespace Unity.Sentis
 
             for (int i = 0; i < starts.Length; i++)
             {
-                int axis = axes != null ? Axis(axes[i]) : i;
-                int step = steps != null ? steps[i] : 1;
-
-                dst[(maxRank - rank) + axis] = ShapeInference.SliceDim(dst[(maxRank - rank) + axis], starts[i], ends[i], step);
+                int outputDim = (int)Math.Ceiling((double)(ends[i] - starts[i]) / (double)steps[i]);
+                dst[(maxRank - rank) + axes[i]] = Mathf.Max(outputDim, 0);
             }
 
             strided.RecomputeLength();
@@ -1301,128 +1308,37 @@ namespace Unity.Sentis
             return m_Rank ^ m_D7 ^ m_D6 ^ m_D5 ^ m_D4 ^ m_D3 ^ m_D2 ^ m_D1 ^ m_D0;
         }
 
-        /// <summary>
-        /// Converts the indexes of the `TensorShape` into a flat index.
-        ///
-        /// shape: (5,1,2,3,4,5,6,7) =&gt; 2 * (1*2*3*4*5*6*7) + 0 * (2*3*4*5*6*7) + 1 * (3*4*5*6*7) + 0 * (4*5*6*7) + 3 * (5*6*7) + 2 * (6*7) + 1 * (7) + 5 = 13326
-        ///
-        /// index: (2,0,1,0,3,2,1,5)
-        /// </summary>
-        /// <param name="d7">The index along axis 7.</param>
-        /// <param name="d6">The index along axis 6.</param>
-        /// <param name="d5">The index along axis 5.</param>
-        /// <param name="d4">The index along axis 4.</param>
-        /// <param name="d3">The index along axis 3.</param>
-        /// <param name="d2">The index along axis 2.</param>
-        /// <param name="d1">The index along axis 1.</param>
-        /// <param name="d0">The index along axis 0.</param>
-        /// <returns>The raveled index.</returns>
-        public int RavelIndex(int d7, int d6, int d5, int d4, int d3, int d2, int d1, int d0)
+        internal int RavelIndex(int d7, int d6, int d5, int d4, int d3, int d2, int d1, int d0)
         {
             return (((((((d7 * m_D6 + d6) * m_D5 + d5) * m_D4 + d4) * m_D3 + d3) * m_D2 + d2) * m_D1 + d1) * m_D0) + d0;
         }
 
-        /// <summary>
-        /// Converts the indexes of the `TensorShape` into a flat index.
-        ///
-        /// shape: (1,2,3,4,5,6,7) => 0 * (2*3*4*5*6*7) + 1 * (3*4*5*6*7) + 0 * (4*5*6*7) + 3 * (5*6*7) + 2 * (6*7) + 1 * (7) + 5 = 3246
-        ///
-        /// index: (0,1,0,3,2,1,5)
-        /// </summary>
-        /// <param name="d6">The index along axis 6.</param>
-        /// <param name="d5">The index along axis 5.</param>
-        /// <param name="d4">The index along axis 4.</param>
-        /// <param name="d3">The index along axis 3.</param>
-        /// <param name="d2">The index along axis 2.</param>
-        /// <param name="d1">The index along axis 1.</param>
-        /// <param name="d0">The index along axis 0.</param>
-        /// <returns>The raveled index.</returns>
-        public int RavelIndex(int d6, int d5, int d4, int d3, int d2, int d1, int d0)
+        internal int RavelIndex(int d6, int d5, int d4, int d3, int d2, int d1, int d0)
         {
             return ((((((d6 * m_D5 + d5) * m_D4 + d4) * m_D3 + d3) * m_D2 + d2) * m_D1 + d1) * m_D0) + d0;
         }
 
-        /// <summary>
-        /// Converts the indexes of the `TensorShape` into a flat index.
-        ///
-        /// shape: (2,3,4,5,6,7) => 1 * (3*4*5*6*7) + 0 * (4*5*6*7) + 3 * (5*6*7) + 2 * (6*7) + 1 * (7) + 5 = 3246
-        ///
-        /// index: (1,0,3,2,1,5)
-        /// </summary>
-        /// <param name="d5">The index along axis 5.</param>
-        /// <param name="d4">The index along axis 4.</param>
-        /// <param name="d3">The index along axis 3.</param>
-        /// <param name="d2">The index along axis 2.</param>
-        /// <param name="d1">The index along axis 1.</param>
-        /// <param name="d0">The index along axis 0.</param>
-        /// <returns>The raveled index.</returns>
-        public int RavelIndex(int d5, int d4, int d3, int d2, int d1, int d0)
+        internal int RavelIndex(int d5, int d4, int d3, int d2, int d1, int d0)
         {
             return ((((d5 * m_D4 + d4) * m_D3 + d3) * m_D2 + d2) * m_D1 + d1) * m_D0 + d0;
         }
 
-        /// <summary>
-        /// Converts the indexes of the `TensorShape` into a flat index.
-        ///
-        /// shape: (3,4,5,6,7) => 0 * (4*5*6*7) + 3 * (5*6*7) + 2 * (6*7) + 1 * (7) + 5 = 726
-        ///
-        /// index: (0,3,2,1,5)
-        /// </summary>
-        /// <param name="d4">The index along axis 4.</param>
-        /// <param name="d3">The index along axis 3.</param>
-        /// <param name="d2">The index along axis 2.</param>
-        /// <param name="d1">The index along axis 1.</param>
-        /// <param name="d0">The index along axis 0.</param>
-        /// <returns>The raveled index.</returns>
-        public int RavelIndex(int d4, int d3, int d2, int d1, int d0)
+        internal int RavelIndex(int d4, int d3, int d2, int d1, int d0)
         {
             return (((d4 * m_D3 + d3) * m_D2 + d2) * m_D1 + d1) * m_D0 + d0;
         }
 
-        /// <summary>
-        /// Converts the indexes of the `TensorShape` into a flat index.
-        ///
-        /// shape: (4,5,6,7) => 3 * (5*6*7) + 2 * (6*7) + 1 * (7) + 5 = 726
-        ///
-        /// index: (3,2,1,5)
-        /// </summary>
-        /// <param name="d3">The index along axis 3.</param>
-        /// <param name="d2">The index along axis 2.</param>
-        /// <param name="d1">The index along axis 1.</param>
-        /// <param name="d0">The index along axis 0.</param>
-        /// <returns>The raveled index.</returns>
-        public int RavelIndex(int d3, int d2, int d1, int d0)
+        internal int RavelIndex(int d3, int d2, int d1, int d0)
         {
             return ((d3 * m_D2 + d2) * m_D1 + d1) * m_D0 + d0;
         }
 
-        /// <summary>
-        /// Converts the indexes of the `TensorShape` into a flat index.
-        ///
-        /// shape: (5,6,7) => 2 * (6*7) + 1 * (7) + 5 = 96
-        ///
-        /// index: (2,1,5)
-        /// </summary>
-        /// <param name="d2">The index along axis 2.</param>
-        /// <param name="d1">The index along axis 1.</param>
-        /// <param name="d0">The index along axis 0.</param>
-        /// <returns>The raveled index.</returns>
-        public int RavelIndex(int d2, int d1, int d0)
+        internal int RavelIndex(int d2, int d1, int d0)
         {
             return (d2 * m_D1 + d1) * m_D0 + d0;
         }
 
-        /// <summary>
-        /// Converts the indexes of the `TensorShape` into a flat index.
-        ///
-        /// shape: (6,7) => 1 * (7) + 5 = 12
-        ///
-        /// index: (1,5)
-        /// </summary>
-        /// <param name="d1">The index along axis 1.</param>
-        /// <param name="d0">The index along axis 0.</param>
-        /// <returns>The raveled index.</returns>
-        public int RavelIndex(int d1, int d0)
+        internal int RavelIndex(int d1, int d0)
         {
             return d1 * m_D0 + d0;
         }

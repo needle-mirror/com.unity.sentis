@@ -1,8 +1,8 @@
 # How Sentis runs a model
 
-Sentis performs optimized tensor operations by scheduling the work across multiple threaded jobs on the central processing unit (CPU) or executing the task in parallel on the graphics processing unit (GPU) using pixel and compute shaders.
+Sentis performs optimized tensor operations by scheduling the work across multiple threaded jobs on the central processing unit (CPU) or scheduling the task in parallel on the graphics processing unit (GPU) using pixel and compute shaders.
 
-When the [engine](create-an-engine.md) executes a model, it steps through each layer of the model. It executes the layer operation on the input tensors to calculate one or more output tensors.
+When the [worker](create-an-engine.md) schedules a model, it steps through each layer of the model. It schedules the layer operation on the input tensors to calculate one or more output tensors.
 
 The [`BackendType`](xref:Unity.Sentis.BackendType) you choose determines how and when the worker performs each operation.
 
@@ -10,27 +10,29 @@ The following tables defines the types of backend available:
 
 |`BackendType`|Runs on|Description|
 |-|-|-|
-|`CPU`|CPU, using [Burst](https://docs.unity3d.com/Packages/com.unity.burst@latest/)|Sentis creates, sets up, and [schedules](https://docs.unity3d.com/Manual/JobSystemCreatingJobs.html) a Burst job for the operation. If the input tensors are output from other jobs, the engine creates a [job dependency](https://docs.unity3d.com/Manual/JobSystemJobDependencies.html) to ensure correct inference without blocking.|
-|`GPUCompute`|GPU, using Sentis compute shaders|Sentis creates, sets up, and [dispatches](https://docs.unity3d.com/ScriptReference/ComputeShader.Dispatch.html) a compute shader for the operation. The GPU queues the work to be executed in the correct order.|
-|`GPUCommandBuffer`|GPU, using Sentis compute shaders with [command buffers](https://docs.unity3d.com/ScriptReference/Rendering.CommandBuffer.html)|Sentis creates, sets up, and adds a compute shader the command buffer. You have to execute the command buffer manually to perform the operations.|
-|`GPUPixel`|GPU, using Sentis pixel shaders|Sentis creates, sets up, and executes a pixel shader by blitting.|
+|[`CPU`](xref:Unity.Sentis.BackendType.CPU)|CPU, using [Burst](https://docs.unity3d.com/Packages/com.unity.burst@latest/)|Sentis creates, sets up, and [schedules](https://docs.unity3d.com/Manual/JobSystemCreatingJobs.html) a Burst job for the operation. If the input tensors are output from other jobs, the worker creates a [job dependency](https://docs.unity3d.com/Manual/JobSystemJobDependencies.html) to ensure correct inference without blocking.|
+|[`GPUCompute`](xref:Unity.Sentis.BackendType.GPUCompute)|GPU, using Sentis compute shaders with [command buffers](xref:UnityEngine.Rendering.CommandBuffer)|Sentis creates, sets up, and adds a compute shader the command buffer. Sentis executes the command buffer to perform the operations.|
+|[`GPUPixel`](xref:Unity.Sentis.BackendType.GPUPixel)|GPU, using Sentis pixel shaders|Sentis creates, sets up, and executes a pixel shader by blitting.|
 
 ## Tensor outputs
 
-Sentis schedules all tensor operations on the main thread and returns output tensors synchronously. Depending on the backend, a native memory location on the CPU or GPU stores the tensor data.
 
 The tensor values might not be fully calculated when the tensor object is returned, as there might still be scheduled work pending. This allows you to schedule further tensor operations without waiting for or interrupting scheduled operations.
 
 To complete the execution of the work on the backend, move the tensor data to the CPU.
 
-Call [`ReadbackAndClone`](xref:Unity.Sentis.Tensor.ReadbackAndClone) to get a CPU copy of the tensor. This is a blocking call that waits synchronously for both the execution to complete and the data to be read back from the backend. Note that this process can be slow, especially when reading back from the GPU.
-Alternatively, use [`ReadbackAndCloneAsync`](xref:Unity.Sentis.Tensor.ReadbackAndCloneAsync) for an `Awaitable` version of this method.
+Call [`ReadbackAndClone`](xref:Unity.Sentis.Tensor.ReadbackAndClone*) to get a CPU copy of the tensor. This is a blocking call that waits synchronously for both the execution to complete and the data to be read back from the backend. Note that this process can be slow, especially when reading back from the GPU.
 
-To move the tensor data to the CPU with a non-blocking, non-destructive download:
+To avoid blocking calls on the main thread, use one of the following:
+* [`ReadbackAndCloneAsync`](xref:Unity.Sentis.Tensor.ReadbackAndCloneAsync*) for an `Awaitable` version of this method.
+* [`ReadbackRequest`](xref:Unity.Sentis.Tensor.ReadbackRequest*) to trigger an async download. When [`IsReadbackRequestDone`](xref:Unity.Sentis.Tensor.IsReadbackRequestDone*) return true, [`ReadbackAndClone`](xref:Unity.Sentis.Tensor.ReadbackAndClone*) is immediate.
 
-1. Do a [`ReadbackRequest`](xref:Unity.Sentis.Tensor.ReadbackRequest) on your tensor.
-2. Use `ReadbackAndCloneAsync` on your tensor.
-3. Use `tensor.dataOnBackend.Download`.
+To move the tensor data to the CPU with a non-blocking, non-destructive download, use one of the following:
+
+* [`ReadbackRequest`](xref:Unity.Sentis.Tensor.ReadbackRequest*) on your tensor.
+* [`ReadbackAndCloneAsync`](xref:Unity.Sentis.Tensor.ReadbackAndCloneAsync*) on your tensor.
+* [`DownloadToNativeArray`](xref:Unity.Sentis.Tensor`1.DownloadToNativeArray*) or [`DownloadToArray`](xref:Unity.Sentis.Tensor`1.DownloadToArray*).
+* [`Download`](xref:Unity.Sentis.ITensorData.Download*) on the [`dataOnBackend`](xref:Unity.Sentis.Tensor.dataOnBackend) of your tensor.
 
 ## CPU fallback
 

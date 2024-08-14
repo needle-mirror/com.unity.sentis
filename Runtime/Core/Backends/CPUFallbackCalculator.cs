@@ -76,7 +76,7 @@ namespace Unity.Sentis
             return layerCPUFallback;
         }
 
-        static bool IsInputCPURead(Layers.Layer layer, int inputIndex)
+        static bool IsInputCPURead(Layer layer, int inputIndex)
         {
             return layer switch
             {
@@ -105,7 +105,7 @@ namespace Unity.Sentis
             };
         }
 
-        static bool IsInputDataDependency(Layers.Layer layer, int inputIndex)
+        static bool IsInputDataDependency(Layer layer, int inputIndex)
         {
             return layer switch
             {

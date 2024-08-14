@@ -70,7 +70,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                 if (numMinusOne == 0 && numUnknown == 1 && (!reshapeLayer.allowZero || numZero == 0))
                     newShape[unknownIndex] = PartialTensorElement.IntValue(-1);
 
-                if (!newShape.IsFullyKnown())
+                if (!newShape.IsStatic())
                     continue;
 
                 var shapeIndex = model.GetUniqueIndex();

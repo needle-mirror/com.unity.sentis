@@ -5,7 +5,7 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Options for the direction of a recurrent layer.
     /// </summary>
-    public enum RnnDirection
+    enum RnnDirection
     {
         /// <summary>
         /// Use only forward direction in the calculation.
@@ -24,7 +24,7 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Options for activation functions to apply in a recurrent layer.
     /// </summary>
-    public enum RnnActivation
+    enum RnnActivation
     {
         /// <summary>
         /// Use `Relu` activation: f(x) = max(0, x).
@@ -75,7 +75,7 @@ namespace Unity.Sentis.Layers
     /// <summary>
     /// Options for the layout of the tensor in a recurrent layer.
     /// </summary>
-    public enum RnnLayout
+    enum RnnLayout
     {
         /// <summary>
         /// Use layout with sequence as the first dimension of the tensors.
@@ -156,15 +156,15 @@ namespace Unity.Sentis.Layers
             var shapeW = inputTensors[1].shape;
             var shapeR = inputTensors[2].shape;
 
-            var seqLength = SymbolicTensorDim.Unknown;
-            var batchSize = SymbolicTensorDim.Unknown;
+            var seqLength = DynamicTensorDim.Unknown;
+            var batchSize = DynamicTensorDim.Unknown;
 
             shapeX.DeclareRank(3);
             shapeW.DeclareRank(3);
             shapeR.DeclareRank(3);
 
-            seqLength = SymbolicTensorDim.MaxDefinedDim(seqLength, layout == RnnLayout.SequenceFirst ? shapeX[0] : shapeX[1]);
-            batchSize = SymbolicTensorDim.MaxDefinedDim(batchSize, layout == RnnLayout.SequenceFirst ? shapeX[1] : shapeX[0]);
+            seqLength = DynamicTensorDim.MaxDefinedDim(seqLength, layout == RnnLayout.SequenceFirst ? shapeX[0] : shapeX[1]);
+            batchSize = DynamicTensorDim.MaxDefinedDim(batchSize, layout == RnnLayout.SequenceFirst ? shapeX[1] : shapeX[0]);
 
             if (inputTensors[3] != null && inputTensors[3].shape is var shapeB)
                 shapeB.DeclareRank(2);
@@ -172,56 +172,56 @@ namespace Unity.Sentis.Layers
             if (inputTensors[4] != null && inputTensors[4].shape is var shapeSequenceLens)
             {
                 shapeSequenceLens.DeclareRank(1);
-                batchSize = SymbolicTensorDim.MaxDefinedDim(batchSize, shapeSequenceLens[0]);
+                batchSize = DynamicTensorDim.MaxDefinedDim(batchSize, shapeSequenceLens[0]);
             }
 
             if (inputTensors[5] != null && inputTensors[5].shape is var shapeInitialH)
             {
                 shapeInitialH.DeclareRank(3);
-                batchSize = SymbolicTensorDim.MaxDefinedDim(batchSize, layout == RnnLayout.SequenceFirst ? shapeInitialH[1] : shapeInitialH[0]);
+                batchSize = DynamicTensorDim.MaxDefinedDim(batchSize, layout == RnnLayout.SequenceFirst ? shapeInitialH[1] : shapeInitialH[0]);
             }
 
             if (inputTensors[6] != null && inputTensors[6].shape is var shapeInitialC)
             {
                 shapeInitialC.DeclareRank(3);
-                batchSize = SymbolicTensorDim.MaxDefinedDim(batchSize, layout == RnnLayout.SequenceFirst ? shapeInitialC[1] : shapeInitialC[0]);
+                batchSize = DynamicTensorDim.MaxDefinedDim(batchSize, layout == RnnLayout.SequenceFirst ? shapeInitialC[1] : shapeInitialC[0]);
             }
 
             if (inputTensors[7] != null && inputTensors[7].shape is var shapeP)
                 shapeP.DeclareRank(2);
 
-            var numDirectionsDim = SymbolicTensorDim.Int(NumDirections);
-            var hiddenSizeDim = SymbolicTensorDim.Int(hiddenSize);
+            var numDirectionsDim = DynamicTensorDim.Int(NumDirections);
+            var hiddenSizeDim = DynamicTensorDim.Int(hiddenSize);
 
             if (layout == RnnLayout.SequenceFirst)
             {
-                ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Float, new SymbolicTensorShape(seqLength, numDirectionsDim, batchSize, hiddenSizeDim)));
-                ctx.AddPartialTensor(outputs[1], new PartialTensor(DataType.Float, new SymbolicTensorShape(numDirectionsDim, batchSize, hiddenSizeDim)));
-                ctx.AddPartialTensor(outputs[2], new PartialTensor(DataType.Float, new SymbolicTensorShape(numDirectionsDim, batchSize, hiddenSizeDim)));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Float, new DynamicTensorShape(seqLength, numDirectionsDim, batchSize, hiddenSizeDim)));
+                ctx.AddPartialTensor(outputs[1], new PartialTensor(DataType.Float, new DynamicTensorShape(numDirectionsDim, batchSize, hiddenSizeDim)));
+                ctx.AddPartialTensor(outputs[2], new PartialTensor(DataType.Float, new DynamicTensorShape(numDirectionsDim, batchSize, hiddenSizeDim)));
             }
             else
             {
-                ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Float, new SymbolicTensorShape(batchSize, seqLength, numDirectionsDim, hiddenSizeDim)));
-                ctx.AddPartialTensor(outputs[1], new PartialTensor(DataType.Float, new SymbolicTensorShape(batchSize, numDirectionsDim, hiddenSizeDim)));
-                ctx.AddPartialTensor(outputs[2], new PartialTensor(DataType.Float, new SymbolicTensorShape(batchSize, numDirectionsDim, hiddenSizeDim)));
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Float, new DynamicTensorShape(batchSize, seqLength, numDirectionsDim, hiddenSizeDim)));
+                ctx.AddPartialTensor(outputs[1], new PartialTensor(DataType.Float, new DynamicTensorShape(batchSize, numDirectionsDim, hiddenSizeDim)));
+                ctx.AddPartialTensor(outputs[2], new PartialTensor(DataType.Float, new DynamicTensorShape(batchSize, numDirectionsDim, hiddenSizeDim)));
             }
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var W = ctx.storage.GetTensor(inputs[1]) as TensorFloat;
-            var R = ctx.storage.GetTensor(inputs[2]) as TensorFloat;
-            var B = ctx.storage.GetTensor(inputs[3]) as TensorFloat;
-            var sequenceLens = ctx.storage.GetTensor(inputs[4]) as TensorInt;
-            var initialH = ctx.storage.GetTensor(inputs[5]) as TensorFloat;
-            var initialC = ctx.storage.GetTensor(inputs[6]) as TensorFloat;
-            var P = ctx.storage.GetTensor(inputs[7]) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var W = ctx.storage.GetTensor(inputs[1]) as Tensor<float>;
+            var R = ctx.storage.GetTensor(inputs[2]) as Tensor<float>;
+            var B = ctx.storage.GetTensor(inputs[3]) as Tensor<float>;
+            var sequenceLens = ctx.storage.GetTensor(inputs[4]) as Tensor<int>;
+            var initialH = ctx.storage.GetTensor(inputs[5]) as Tensor<float>;
+            var initialC = ctx.storage.GetTensor(inputs[6]) as Tensor<float>;
+            var P = ctx.storage.GetTensor(inputs[7]) as Tensor<float>;
 
             ShapeInference.LSTM(X.shape, W.shape, R.shape, layout, out var shapeY, out var shapeY_h, out var shapeY_c);
-            var Y = ctx.storage.AllocateTensorAndStore(outputs[0], shapeY, DataType.Float, ctx.backend.backendType) as TensorFloat;
-            var Y_h = ctx.storage.AllocateTensorAndStore(outputs[1], shapeY_h, DataType.Float, ctx.backend.backendType) as TensorFloat;
-            var Y_c = ctx.storage.AllocateTensorAndStore(outputs[2], shapeY_c, DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var Y = ctx.storage.AllocateTensorAndStore(outputs[0], shapeY, DataType.Float, ctx.backend.backendType) as Tensor<float>;
+            var Y_h = ctx.storage.AllocateTensorAndStore(outputs[1], shapeY_h, DataType.Float, ctx.backend.backendType) as Tensor<float>;
+            var Y_c = ctx.storage.AllocateTensorAndStore(outputs[2], shapeY_c, DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (Y.shape.HasZeroDims())
                 return;
 

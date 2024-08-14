@@ -12,7 +12,10 @@ namespace Unity.Sentis
         public static FunctionalTensor Relu(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Relu(-1, -1), input.DataType, input);
+            var output = FromLayer(new Layers.Relu(-1, -1), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -23,7 +26,10 @@ namespace Unity.Sentis
         public static FunctionalTensor HardSwish(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.HardSwish(-1, -1), input.DataType, input);
+            var output = FromLayer(new Layers.HardSwish(-1, -1), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -34,7 +40,10 @@ namespace Unity.Sentis
         public static FunctionalTensor Relu6(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Relu6(-1, -1), input.DataType, input);
+            var output = FromLayer(new Layers.Relu6(-1, -1), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -46,7 +55,10 @@ namespace Unity.Sentis
         public static FunctionalTensor Elu(FunctionalTensor input, float alpha = 1.0f)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Elu(-1, -1, alpha), input.DataType, input);
+            var output = FromLayer(new Layers.Elu(-1, -1, alpha), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -57,7 +69,10 @@ namespace Unity.Sentis
         public static FunctionalTensor Selu(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Selu(-1, -1, 1.67326319217681884765625f, 1.05070102214813232421875f), input.DataType, input);
+            var output = FromLayer(new Layers.Selu(-1, -1, 1.67326319217681884765625f, 1.05070102214813232421875f), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -69,7 +84,10 @@ namespace Unity.Sentis
         public static FunctionalTensor Celu(FunctionalTensor input, float alpha = 1.0f)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Celu(-1, -1, alpha), input.DataType, input);
+            var output = FromLayer(new Layers.Celu(-1, -1, alpha), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -81,7 +99,10 @@ namespace Unity.Sentis
         public static FunctionalTensor LeakyRelu(FunctionalTensor input, float negativeSlope = 0.01f)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.LeakyRelu(-1, -1, negativeSlope), input.DataType, input);
+            var output = FromLayer(new Layers.LeakyRelu(-1, -1, negativeSlope), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -94,7 +115,10 @@ namespace Unity.Sentis
         {
             input = input.Float();
             weight = weight.Float();
-            return FunctionalTensor.FromLayer(new Layers.PRelu(-1, -1, -1), input.DataType, new[] { input, weight });
+            var output = FromLayer(new Layers.PRelu(-1, -1, -1), input.dataType, new[] { input, weight });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -105,7 +129,10 @@ namespace Unity.Sentis
         public static FunctionalTensor Gelu(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Gelu(-1, -1), input.DataType, input);
+            var output = FromLayer(new Layers.Gelu(-1, -1), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -116,7 +143,10 @@ namespace Unity.Sentis
         public static FunctionalTensor Softsign(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Softsign(-1, -1), input.DataType, input);
+            var output = FromLayer(new Layers.Softsign(-1, -1), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -127,7 +157,10 @@ namespace Unity.Sentis
         public static FunctionalTensor Softplus(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Softplus(-1, -1), input.DataType, input);
+            var output = FromLayer(new Layers.Softplus(-1, -1), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -139,7 +172,10 @@ namespace Unity.Sentis
         public static FunctionalTensor Softmax(FunctionalTensor input, int dim = -1)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Softmax(-1, -1, dim), input.DataType, input);
+            var output = FromLayer(new Layers.Softmax(-1, -1, dim), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -151,7 +187,10 @@ namespace Unity.Sentis
         public static FunctionalTensor LogSoftmax(FunctionalTensor input, int dim = -1)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.LogSoftmax(-1, -1, dim), input.DataType, input);
+            var output = FromLayer(new Layers.LogSoftmax(-1, -1, dim), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -162,7 +201,10 @@ namespace Unity.Sentis
         public static FunctionalTensor Sigmoid(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.Sigmoid(-1, -1), input.DataType, input);
+            var output = FromLayer(new Layers.Sigmoid(-1, -1), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -173,7 +215,10 @@ namespace Unity.Sentis
         public static FunctionalTensor HardSigmoid(FunctionalTensor input)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.HardSigmoid(-1, -1, 1 / 6f), input.DataType, input);
+            var output = FromLayer(new Layers.HardSigmoid(-1, -1, 1 / 6f), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -193,7 +238,10 @@ namespace Unity.Sentis
             runningVar = runningVar.Float();
             weight = weight.Float();
             bias = bias.Float();
-            return FunctionalTensor.FromLayer(new Layers.BatchNormalization(-1, -1, -1, -1, -1, -1, eps), input.DataType, new[] { input, weight, bias, runningMean, runningVar });
+            var output = FromLayer(new Layers.BatchNormalization(-1, -1, -1, -1, -1, -1, eps), input.dataType, new[] { input, weight, bias, runningMean, runningVar });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -209,7 +257,10 @@ namespace Unity.Sentis
             input = input.Float();
             weight = weight.Float();
             bias = bias.Float();
-            return FunctionalTensor.FromLayer(new Layers.InstanceNormalization(-1, -1, -1, -1, eps), input.DataType, new[] { input, weight, bias });
+            var output = FromLayer(new Layers.InstanceNormalization(-1, -1, -1, -1, eps), input.dataType, new[] { input, weight, bias });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -224,7 +275,10 @@ namespace Unity.Sentis
         public static FunctionalTensor LocalResponseNorm(FunctionalTensor input, int size, float alpha = 0.0001f, float beta = 0.75f, float k = 1.0f)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.LRN(-1, -1, alpha, beta, k, size), input.DataType, input);
+            var output = FromLayer(new Layers.LRN(-1, -1, alpha, beta, k, size), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
     }
 }

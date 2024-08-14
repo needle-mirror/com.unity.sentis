@@ -8,926 +8,926 @@ using static Unity.Sentis.ShaderPropertyID;
 
 namespace Unity.Sentis
 {
-    public partial class GPUComputeBackend
+    partial class GPUComputeBackend
     {
         // Binary Broadcast
 
         /// <inheritdoc/>
-        public void PRelu(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void PRelu(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastPRelu;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastPRelu;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwisePRelu;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void Pow(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Pow(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastPowFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastPowFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwisePowFloat;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void Add(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Add(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastAddFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastAddFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwiseAddFloat;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void Sub(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Sub(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastSubFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastSubFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwiseSubFloat;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void Mul(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Mul(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastMulFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastMulFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwiseMulFloat;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void Div(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Div(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastDivFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastDivFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwiseDivFloat;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void Mod(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Mod(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastModFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastModFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwiseModFloat;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void FMod(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void FMod(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastFModFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastFModFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwiseFModFloat;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void Pow(TensorFloat A, TensorInt B, TensorFloat O)
+        public void Pow(Tensor<float> A, Tensor<int> B, Tensor<float> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastPowInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastPowInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwisePowInt;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void Add(TensorInt A, TensorInt B, TensorInt O)
+        public void Add(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastAddInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastAddInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwiseAddInt;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void Sub(TensorInt A, TensorInt B, TensorInt O)
+        public void Sub(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastSubInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastSubInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwiseSubInt;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void Mul(TensorInt A, TensorInt B, TensorInt O)
+        public void Mul(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastMulInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastMulInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwiseMulInt;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void Div(TensorInt A, TensorInt B, TensorInt O)
+        public void Div(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastDivInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastDivInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwiseDivInt;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void Mod(TensorInt A, TensorInt B, TensorInt O)
+        public void Mod(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastModInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastModInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwiseModInt;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void FMod(TensorInt A, TensorInt B, TensorInt O)
+        public void FMod(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastFModInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastFModInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwiseFModInt;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void Min(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Min(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastMinFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastMinFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwiseMinFloat;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void Max(TensorFloat A, TensorFloat B, TensorFloat O)
+        public void Max(Tensor<float> A, Tensor<float> B, Tensor<float> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastMaxFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastMaxFloat;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwiseMaxFloat;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void Min(TensorInt A, TensorInt B, TensorInt O)
+        public void Min(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastMinInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastMinInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwiseMinInt;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void Max(TensorInt A, TensorInt B, TensorInt O)
+        public void Max(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             if (A.shape == O.shape && B.shape.length == 1)
             {
                 var fn = ComputeFunctions.k_ScalarBroadcastMaxInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else if (A.shape == O.shape && B.shape == O.shape)
             {
                 var fn = ComputeFunctions.k_BroadcastMaxInt;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_LengthO, O.shape.length - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length - 1);
                 var numThreads = ComputeHelper.IDivC(O.shape.length, 4);
                 var numBlocksY = ComputeHelper.IDivC(numThreads, (int)ComputeHelper.SafeDispatchLimit);
                 var numBlocksX = ComputeHelper.IDivC(numThreads, numBlocksY);
-                fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX * 4);
-                fn.Dispatch(numBlocksX, numBlocksY, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX * 4);
+                cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
             }
             else
             {
                 var fn = ComputeFunctions.k_ElementwiseMaxInt;
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, A.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeY, k_ID_stridesY, B.shape);
-                fn.SetInt(k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, A.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeY, k_ID_stridesY, B.shape);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, (TensorShape.maxRank - 1) - O.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
         }
 
 
         // Pool ops
         /// <inheritdoc/>
-        public void MaxPool(TensorFloat X, TensorFloat O, int[] kernelShape, int[] strides, int[] pads)
+        public void MaxPool(Tensor<float> X, Tensor<float> O, int[] kernelShape, int[] strides, int[] pads)
         {
             ComputeFunction fn;
             switch (X.shape.rank)
             {
                 case 3:
                     fn = ComputeFunctions.k_MaxPool1D;
-                    fn.SetInt(k_ID_stride, strides[0]);
-                    fn.SetInt(k_ID_pad, pads[0]);
-                    fn.SetInt(k_ID_inHeight, X.shape[2]);
-                    fn.SetInt(k_ID_pool, kernelShape[0]);
-                    fn.SetInt(k_ID_outHeight, O.shape[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_stride, strides[0]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_pad, pads[0]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_inHeight, X.shape[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_pool, kernelShape[0]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_outHeight, O.shape[2]);
                     break;
                 case 4:
                     fn = ComputeFunctions.k_MaxPool2D;
-                    fn.SetInt(k_ID_strideX, strides[1]);
-                    fn.SetInt(k_ID_strideY, strides[0]);
-                    fn.SetInt(k_ID_padX, pads[1]);
-                    fn.SetInt(k_ID_padY, pads[0]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_strideX, strides[1]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_strideY, strides[0]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_padX, pads[1]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_padY, pads[0]);
 
-                    fn.SetInt(k_ID_inHeight, X.shape[2]);
-                    fn.SetInt(k_ID_inWidth, X.shape[3]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_inHeight, X.shape[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_inWidth, X.shape[3]);
 
-                    fn.SetInt(k_ID_poolX, kernelShape[1]);
-                    fn.SetInt(k_ID_poolY, kernelShape[0]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_poolX, kernelShape[1]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_poolY, kernelShape[0]);
 
-                    fn.SetInt(k_ID_outHeight, O.shape[2]);
-                    fn.SetInt(k_ID_outWidth, O.shape[3]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_outHeight, O.shape[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_outWidth, O.shape[3]);
                     break;
                 default:
                     throw new NotImplementedException();
             }
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
         /// <inheritdoc/>
-        public void AveragePool(TensorFloat X, TensorFloat O, int[] kernelShape, int[] strides, int[] pads)
+        public void AveragePool(Tensor<float> X, Tensor<float> O, int[] kernelShape, int[] strides, int[] pads)
         {
             ComputeFunction fn;
             switch (X.shape.rank)
             {
                 case 3:
                     fn = ComputeFunctions.k_AveragePool1D;
-                    fn.SetInt(k_ID_stride, strides[0]);
-                    fn.SetInt(k_ID_pad, pads[0]);
-                    fn.SetInt(k_ID_inHeight, X.shape[2]);
-                    fn.SetInt(k_ID_pool, kernelShape[0]);
-                    fn.SetInt(k_ID_outHeight, O.shape[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_stride, strides[0]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_pad, pads[0]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_inHeight, X.shape[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_pool, kernelShape[0]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_outHeight, O.shape[2]);
                     break;
                 case 4:
                     fn = ComputeFunctions.k_AveragePool2D;
-                    fn.SetInt(k_ID_strideX, strides[1]);
-                    fn.SetInt(k_ID_strideY, strides[0]);
-                    fn.SetInt(k_ID_padX, pads[1]);
-                    fn.SetInt(k_ID_padY, pads[0]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_strideX, strides[1]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_strideY, strides[0]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_padX, pads[1]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_padY, pads[0]);
 
-                    fn.SetInt(k_ID_inHeight, X.shape[2]);
-                    fn.SetInt(k_ID_inWidth, X.shape[3]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_inHeight, X.shape[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_inWidth, X.shape[3]);
 
-                    fn.SetInt(k_ID_poolX, kernelShape[1]);
-                    fn.SetInt(k_ID_poolY, kernelShape[0]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_poolX, kernelShape[1]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_poolY, kernelShape[0]);
 
-                    fn.SetInt(k_ID_outHeight, O.shape[2]);
-                    fn.SetInt(k_ID_outWidth, O.shape[3]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_outHeight, O.shape[2]);
+                    cb.SetComputeIntParam(fn.shader, k_ID_outWidth, O.shape[3]);
                     break;
                 default:
                     throw new NotImplementedException();
             }
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
 
         // Global pool ops
         /// <inheritdoc/>
-        public void GlobalMaxPool(TensorFloat X, TensorFloat O)
+        public void GlobalMaxPool(Tensor<float> X, Tensor<float> O)
         {
             int globalSpatialDims = X.shape.Length(2);
             int globalNonSpatialLength = X.shape[0] * X.shape[1];
@@ -945,12 +945,12 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(Oshape);
 
                 var fnPool = ComputeFunctions.k_MaxPoolReduce;
-                fnPool.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fnPool.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                fnPool.SetInt(k_ID_SpatialDims, localSpatialLength);
-                fnPool.SetInt(k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetTensorAsBuffer(fnPool, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fnPool, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(fnPool.shader, k_ID_SpatialDims, localSpatialLength);
+                cb.SetComputeIntParam(fnPool.shader, k_ID_SpatialDimsO, spatialLengthO);
 
-                fnPool.Dispatch(globalNonSpatialLength, ComputeHelper.IDivC(localSpatialLength, 4), 1);
+                cb.Dispatch(fnPool, globalNonSpatialLength, ComputeHelper.IDivC(localSpatialLength, 4), 1);
 
                 if (isTempAlloc)
                     ReleaseTensorFloat(X);
@@ -960,18 +960,18 @@ namespace Unity.Sentis
             }
 
             var fn = ComputeFunctions.k_GlobalMaxPool;
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.SetInt(k_ID_SpatialDims, localSpatialLength);
-            fn.SetInt(k_ID_GlobalSpatialDims, globalSpatialDims);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_SpatialDims, localSpatialLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_GlobalSpatialDims, globalSpatialDims);
 
-            fn.Dispatch(globalNonSpatialLength, 1, 1);
+            cb.Dispatch(fn, globalNonSpatialLength, 1, 1);
 
             if (isTempAlloc)
                 ReleaseTensorFloat(X);
         }
         /// <inheritdoc/>
-        public void GlobalAveragePool(TensorFloat X, TensorFloat O)
+        public void GlobalAveragePool(Tensor<float> X, Tensor<float> O)
         {
             int globalSpatialDims = X.shape.Length(2);
             int globalNonSpatialLength = X.shape[0] * X.shape[1];
@@ -989,12 +989,12 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(Oshape);
 
                 var fnPool = ComputeFunctions.k_AveragePoolReduce;
-                fnPool.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fnPool.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                fnPool.SetInt(k_ID_SpatialDims, localSpatialLength);
-                fnPool.SetInt(k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetTensorAsBuffer(fnPool, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fnPool, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(fnPool.shader, k_ID_SpatialDims, localSpatialLength);
+                cb.SetComputeIntParam(fnPool.shader, k_ID_SpatialDimsO, spatialLengthO);
 
-                fnPool.Dispatch(globalNonSpatialLength, ComputeHelper.IDivC(localSpatialLength, 4), 1);
+                cb.Dispatch(fnPool, globalNonSpatialLength, ComputeHelper.IDivC(localSpatialLength, 4), 1);
 
                 if (isTempAlloc)
                     ReleaseTensorFloat(X);
@@ -1004,12 +1004,12 @@ namespace Unity.Sentis
             }
 
             var fn = ComputeFunctions.k_GlobalAveragePool;
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.SetInt(k_ID_SpatialDims, localSpatialLength);
-            fn.SetInt(k_ID_GlobalSpatialDims, globalSpatialDims);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_SpatialDims, localSpatialLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_GlobalSpatialDims, globalSpatialDims);
 
-            fn.Dispatch(globalNonSpatialLength, 1, 1);
+            cb.Dispatch(fn, globalNonSpatialLength, 1, 1);
 
             if (isTempAlloc)
                 ReleaseTensorFloat(X);
@@ -1017,201 +1017,203 @@ namespace Unity.Sentis
 
         // Compare ops
         /// <inheritdoc/>
-        public void Greater(TensorFloat A, TensorFloat B, TensorInt O)
+        public void Greater(Tensor<float> A, Tensor<float> B, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_GreaterFloat;
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeA, k_ID_stridesA, A.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
-            fn.SetInt(k_ID_rank, O.shape.rank);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeA, k_ID_stridesA, A.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeB, k_ID_stridesB, B.shape);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
         /// <inheritdoc/>
-        public void Greater(TensorInt A, TensorInt B, TensorInt O)
+        public void Greater(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_GreaterInt;
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeA, k_ID_stridesA, A.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
-            fn.SetInt(k_ID_rank, O.shape.rank);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeA, k_ID_stridesA, A.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeB, k_ID_stridesB, B.shape);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
         /// <inheritdoc/>
-        public void GreaterOrEqual(TensorFloat A, TensorFloat B, TensorInt O)
+        public void GreaterOrEqual(Tensor<float> A, Tensor<float> B, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_GreaterOrEqualFloat;
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeA, k_ID_stridesA, A.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
-            fn.SetInt(k_ID_rank, O.shape.rank);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeA, k_ID_stridesA, A.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeB, k_ID_stridesB, B.shape);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
         /// <inheritdoc/>
-        public void GreaterOrEqual(TensorInt A, TensorInt B, TensorInt O)
+        public void GreaterOrEqual(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_GreaterOrEqualInt;
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeA, k_ID_stridesA, A.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
-            fn.SetInt(k_ID_rank, O.shape.rank);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeA, k_ID_stridesA, A.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeB, k_ID_stridesB, B.shape);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
         /// <inheritdoc/>
-        public void Less(TensorFloat A, TensorFloat B, TensorInt O)
+        public void Less(Tensor<float> A, Tensor<float> B, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_LessFloat;
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeA, k_ID_stridesA, A.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
-            fn.SetInt(k_ID_rank, O.shape.rank);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeA, k_ID_stridesA, A.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeB, k_ID_stridesB, B.shape);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
         /// <inheritdoc/>
-        public void Less(TensorInt A, TensorInt B, TensorInt O)
+        public void Less(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_LessInt;
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeA, k_ID_stridesA, A.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
-            fn.SetInt(k_ID_rank, O.shape.rank);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeA, k_ID_stridesA, A.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeB, k_ID_stridesB, B.shape);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
         /// <inheritdoc/>
-        public void LessOrEqual(TensorFloat A, TensorFloat B, TensorInt O)
+        public void LessOrEqual(Tensor<float> A, Tensor<float> B, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_LessOrEqualFloat;
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeA, k_ID_stridesA, A.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
-            fn.SetInt(k_ID_rank, O.shape.rank);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeA, k_ID_stridesA, A.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeB, k_ID_stridesB, B.shape);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
         /// <inheritdoc/>
-        public void LessOrEqual(TensorInt A, TensorInt B, TensorInt O)
+        public void LessOrEqual(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_LessOrEqualInt;
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeA, k_ID_stridesA, A.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
-            fn.SetInt(k_ID_rank, O.shape.rank);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeA, k_ID_stridesA, A.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeB, k_ID_stridesB, B.shape);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
         /// <inheritdoc/>
-        public void Equal(TensorFloat A, TensorFloat B, TensorInt O)
+        public void Equal(Tensor<float> A, Tensor<float> B, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_EqualFloat;
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeA, k_ID_stridesA, A.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
-            fn.SetInt(k_ID_rank, O.shape.rank);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeA, k_ID_stridesA, A.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeB, k_ID_stridesB, B.shape);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
         /// <inheritdoc/>
-        public void Equal(TensorInt A, TensorInt B, TensorInt O)
+        public void Equal(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_EqualInt;
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeA, k_ID_stridesA, A.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
-            fn.SetInt(k_ID_rank, O.shape.rank);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeA, k_ID_stridesA, A.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeB, k_ID_stridesB, B.shape);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
         /// <inheritdoc/>
-        public void Or(TensorInt A, TensorInt B, TensorInt O)
+        public void Or(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_OrInt;
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeA, k_ID_stridesA, A.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
-            fn.SetInt(k_ID_rank, O.shape.rank);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeA, k_ID_stridesA, A.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeB, k_ID_stridesB, B.shape);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
         /// <inheritdoc/>
-        public void And(TensorInt A, TensorInt B, TensorInt O)
+        public void And(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_AndInt;
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeA, k_ID_stridesA, A.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
-            fn.SetInt(k_ID_rank, O.shape.rank);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeA, k_ID_stridesA, A.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeB, k_ID_stridesB, B.shape);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
         /// <inheritdoc/>
-        public void Xor(TensorInt A, TensorInt B, TensorInt O)
+        public void Xor(Tensor<int> A, Tensor<int> B, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_XorInt;
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeA, k_ID_stridesA, A.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
-            fn.SetInt(k_ID_rank, O.shape.rank);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeA, k_ID_stridesA, A.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeB, k_ID_stridesB, B.shape);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(A));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(A));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
 
         // Reduction
-        internal void ReduceMin(TensorFloat X, TensorFloat O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceMin(Tensor<float> X, Tensor<float> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceMinFloat;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -1228,14 +1230,14 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceMinFloat;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorFloat(X);
@@ -1246,30 +1248,32 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceMinFloat;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorFloat(X);
         }
-        internal void ReduceMax(TensorFloat X, TensorFloat O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceMax(Tensor<float> X, Tensor<float> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceMaxFloat;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -1286,14 +1290,14 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceMaxFloat;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorFloat(X);
@@ -1304,30 +1308,32 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceMaxFloat;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorFloat(X);
         }
-        internal void ReduceSum(TensorFloat X, TensorFloat O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceSum(Tensor<float> X, Tensor<float> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceSumFloat;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -1344,14 +1350,14 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceSumFloat;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorFloat(X);
@@ -1362,30 +1368,32 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceSumFloat;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorFloat(X);
         }
-        internal void ReduceSumSquare(TensorFloat X, TensorFloat O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceSumSquare(Tensor<float> X, Tensor<float> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceSumSquareFloat;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -1402,14 +1410,14 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceSumSquareFloat;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorFloat(X);
@@ -1420,30 +1428,32 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceSumSquareFloat;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorFloat(X);
         }
-        internal void ReduceMean(TensorFloat X, TensorFloat O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceMean(Tensor<float> X, Tensor<float> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceMeanFloat;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -1460,14 +1470,14 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceMeanFloat;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorFloat(X);
@@ -1478,30 +1488,32 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceMeanFloat;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorFloat(X);
         }
-        internal void ReduceProd(TensorFloat X, TensorFloat O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceProd(Tensor<float> X, Tensor<float> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceProdFloat;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -1518,14 +1530,14 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceProdFloat;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorFloat(X);
@@ -1536,30 +1548,32 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceProdFloat;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorFloat(X);
         }
-        internal void ReduceL1(TensorFloat X, TensorFloat O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceL1(Tensor<float> X, Tensor<float> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceL1Float;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -1576,14 +1590,14 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceL1Float;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorFloat(X);
@@ -1594,30 +1608,32 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceL1Float;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorFloat(X);
         }
-        internal void ReduceL2(TensorFloat X, TensorFloat O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceL2(Tensor<float> X, Tensor<float> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceL2Float;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -1634,14 +1650,14 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceL2Float;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorFloat(X);
@@ -1652,30 +1668,32 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceL2Float;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorFloat(X);
         }
-        internal void ReduceSqrt(TensorFloat X, TensorFloat O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceSqrt(Tensor<float> X, Tensor<float> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceSqrtFloat;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -1692,14 +1710,14 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceSqrtFloat;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorFloat(X);
@@ -1710,30 +1728,32 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceSqrtFloat;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorFloat(X);
         }
-        internal void ReduceLogSum(TensorFloat X, TensorFloat O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceLogSum(Tensor<float> X, Tensor<float> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceLogSumFloat;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -1750,14 +1770,14 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceLogSumFloat;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorFloat(X);
@@ -1768,31 +1788,33 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceLogSumFloat;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorFloat(X);
         }
-        internal void ReduceLogSum(TensorFloat X, TensorFloat Xmax, TensorFloat O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceLogSum(Tensor<float> X, Tensor<float> Xmax, Tensor<float> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceLogSumFloat;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Bptr, Pin(Xmax));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Bptr, Pin(Xmax));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -1809,15 +1831,15 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceLogSumFloat;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Bptr, Pin(Xmax));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Bptr, Pin(Xmax));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorFloat(X);
@@ -1828,32 +1850,34 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceLogSumFloat;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Bptr, Pin(Xmax));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Bptr, Pin(Xmax));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorFloat(X);
         }
-        internal void ReduceLogSumExp(TensorFloat X, TensorFloat Xmax, TensorFloat O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceLogSumExp(Tensor<float> X, Tensor<float> Xmax, Tensor<float> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceLogSumExpFloat;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Bptr, Pin(Xmax));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Bptr, Pin(Xmax));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -1870,15 +1894,15 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceLogSumExpFloat;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Bptr, Pin(Xmax));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Bptr, Pin(Xmax));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorFloat(X);
@@ -1889,31 +1913,33 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceLogSumExpFloat;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Bptr, Pin(Xmax));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Bptr, Pin(Xmax));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorFloat(X);
         }
-        internal void ReduceSumExp(TensorFloat X, TensorFloat O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceSumExp(Tensor<float> X, Tensor<float> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceSumExpFloat;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -1930,14 +1956,14 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceSumExpFloat;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorFloat(X);
@@ -1948,31 +1974,33 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceSumExpFloat;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorFloat(X);
         }
-        internal void ReduceSumExp(TensorFloat X, TensorFloat Xmax, TensorFloat O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceSumExp(Tensor<float> X, Tensor<float> Xmax, Tensor<float> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceSumExpFloat;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Bptr, Pin(Xmax));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Bptr, Pin(Xmax));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -1989,15 +2017,15 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorFloat(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceSumExpFloat;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Bptr, Pin(Xmax));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Bptr, Pin(Xmax));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorFloat(X);
@@ -2008,31 +2036,33 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceSumExpFloat;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Bptr, Pin(Xmax));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Bptr, Pin(Xmax));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorFloat(X);
         }
-        internal void ReduceMin(TensorInt X, TensorInt O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceMin(Tensor<int> X, Tensor<int> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceMinInt;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -2049,14 +2079,14 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorInt(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceMinInt;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorInt(X);
@@ -2067,30 +2097,32 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceMinInt;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorInt(X);
         }
-        internal void ReduceMax(TensorInt X, TensorInt O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceMax(Tensor<int> X, Tensor<int> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceMaxInt;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -2107,14 +2139,14 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorInt(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceMaxInt;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorInt(X);
@@ -2125,30 +2157,32 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceMaxInt;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorInt(X);
         }
-        internal void ReduceSum(TensorInt X, TensorInt O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceSum(Tensor<int> X, Tensor<int> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceSumInt;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -2165,14 +2199,14 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorInt(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceSumInt;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorInt(X);
@@ -2183,30 +2217,32 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceSumInt;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorInt(X);
         }
-        internal void ReduceSumSquare(TensorInt X, TensorInt O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceSumSquare(Tensor<int> X, Tensor<int> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceSumSquareInt;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -2223,14 +2259,14 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorInt(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceSumSquareInt;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorInt(X);
@@ -2241,30 +2277,32 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceSumSquareInt;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorInt(X);
         }
-        internal void ReduceProd(TensorInt X, TensorInt O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceProd(Tensor<int> X, Tensor<int> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceProdInt;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -2281,14 +2319,14 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorInt(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceProdInt;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorInt(X);
@@ -2299,30 +2337,32 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceProdInt;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorInt(X);
         }
-        internal void ReduceL1(TensorInt X, TensorInt O, int outerLength, int reduceLength, int innerLength)
+
+        /// <inheritdoc/>
+        internal void ReduceL1(Tensor<int> X, Tensor<int> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
             {
                 var fallbackKernel = ComputeFunctions.k_UnrolledReduceL1Int;
-                fallbackKernel.SetInt(k_ID_ReducedDim, reduceLength);
-                fallbackKernel.SetInt(k_ID_InnerDim, innerLength);
-                fallbackKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-                fallbackKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fallbackKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fallbackKernel.UnrolledDispatch(outerLength * innerLength);
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
                 return;
             }
 
@@ -2339,14 +2379,14 @@ namespace Unity.Sentis
                 var Otemp = AllocTensorInt(new TensorShape(outerLength * spatialLengthO * innerLength));
 
                 var localKernel = ComputeFunctions.k_ReduceL1Int;
-                localKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                localKernel.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                localKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-                localKernel.SetInt(k_ID_InnerDim, innerLength);
-                localKernel.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                localKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                localKernel.Dispatch(outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
 
                 if (!isFirstDispatch)
                     ReleaseTensorInt(X);
@@ -2357,21 +2397,21 @@ namespace Unity.Sentis
             }
 
             var globalKernel = ComputeFunctions.k_GlobalReduceL1Int;
-            globalKernel.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            globalKernel.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            globalKernel.SetInt(k_ID_ReducedDim, localReduceLength);
-            globalKernel.SetInt(k_ID_InnerDim, innerLength);
-            globalKernel.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
-            globalKernel.SetFloat(k_ID_Normalization, 1.0f / reduceLength);
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
 
-            globalKernel.Dispatch(outerLength, 1, innerLength);
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
 
             if (!isFirstDispatch)
                 ReleaseTensorInt(X);
         }
 
         /// <inheritdoc/>
-        public void ReduceMin(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceMin(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -2432,7 +2472,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceMax(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceMax(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -2493,7 +2533,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceSum(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -2554,7 +2594,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceSumSquare(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceSumSquare(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -2636,7 +2676,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceMean(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceMean(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -2697,7 +2737,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceProd(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceProd(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -2758,7 +2798,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceL1(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceL1(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -2840,7 +2880,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceL2(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceL2(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -2922,7 +2962,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceLogSum(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceLogSum(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -2983,7 +3023,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceLogSumExp(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceLogSumExp(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -3053,7 +3093,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceSumExp(TensorFloat X, TensorFloat O, ReadOnlySpan<int> axes)
+        public void ReduceSumExp(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -3114,7 +3154,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceMin(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
+        public void ReduceMin(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -3175,7 +3215,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceMax(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
+        public void ReduceMax(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -3236,7 +3276,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceSum(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
+        public void ReduceSum(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -3297,7 +3337,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceSumSquare(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
+        public void ReduceSumSquare(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -3379,7 +3419,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceProd(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
+        public void ReduceProd(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -3440,7 +3480,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceL1(TensorInt X, TensorInt O, ReadOnlySpan<int> axes)
+        public void ReduceL1(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {

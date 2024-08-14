@@ -23,18 +23,18 @@ namespace Unity.Sentis.Layers
             var dataType = X.dataType;
             var shapeX = X.shape;
             var axes = ctx.GetPartialTensor(inputs[1]);
-            var shapeAxes = axes?.shape ?? new SymbolicTensorShape(SymbolicTensorDim.Zero);
+            var shapeAxes = axes?.shape ?? new DynamicTensorShape(DynamicTensorDim.Zero);
             if (axes != null && axes.isPartiallyKnown && axes.length != 0)
             {
-                var reducedShape = new SymbolicTensorShape(shapeX);
-                if (!axes.IsFullyKnown() && reducedShape.hasRank)
+                var reducedShape = new DynamicTensorShape(shapeX);
+                if (!axes.IsStatic() && reducedShape.hasRank)
                 {
                     // replace any non 0 or 1 dims with unknown (0 and 1 stay the same whether reduced or not)
                     for (var i = 0; i < reducedShape.rank; i++)
                     {
                         if (reducedShape[i] == 0 || reducedShape[i] == 1)
                             continue;
-                        reducedShape[i] = SymbolicTensorDim.Unknown;
+                        reducedShape[i] = DynamicTensorDim.Unknown;
                     }
                 }
 
@@ -45,33 +45,33 @@ namespace Unity.Sentis.Layers
                     var axis = axes[i].intValue;
                     // reducing on a zero axis will result in a zero rather than a one
                     if (shapeX[axis].isValue)
-                        reducedShape[axis] = shapeX[axis].value == 0 ? SymbolicTensorDim.Zero : SymbolicTensorDim.One;
+                        reducedShape[axis] = shapeX[axis].value == 0 ? DynamicTensorDim.Zero : DynamicTensorDim.One;
                     else
-                        reducedShape[axis] = SymbolicTensorDim.Unknown;
+                        reducedShape[axis] = DynamicTensorDim.Unknown;
                 }
 
                 var tensorOut = new PartialTensor(dataType, reducedShape);
                 if (!keepdims)
                 {
-                    tensorOut = tensorOut.Reshape(!axes.IsFullyKnown() ? SymbolicTensorShape.UnknownOfRank(tensorOut.shape.rank - axes.length) : tensorOut.shape.Squeeze(axes));
+                    tensorOut = tensorOut.Reshape(!axes.IsStatic() ? DynamicTensorShape.DynamicOfRank(tensorOut.shape.rank - axes.length) : tensorOut.shape.Squeeze(axes));
                 }
 
                 ctx.AddPartialTensor(outputs[0], tensorOut);
                 return;
             }
 
-            if (shapeAxes.IsFullyKnown())
+            if (shapeAxes.IsStatic())
             {
                 if (shapeAxes[0].value != 0)
-                    ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, keepdims ? SymbolicTensorShape.UnknownOfRankLike(shapeX) : SymbolicTensorShape.UnknownShape));
+                    ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, keepdims ? DynamicTensorShape.DynamicOfRankLike(shapeX) : DynamicTensorShape.DynamicRank));
                 else if (noopWithEmptyAxes)
                     ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, shapeX));
                 else
-                    ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, keepdims ? SymbolicTensorShape.OnesLike(shapeX) : new SymbolicTensorShape()));
+                    ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, keepdims ? DynamicTensorShape.OnesLike(shapeX) : new DynamicTensorShape()));
                 return;
             }
 
-            ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, keepdims && !noopWithEmptyAxes ? SymbolicTensorShape.UnknownOfRankLike(shapeX) : SymbolicTensorShape.UnknownShape));
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, keepdims && !noopWithEmptyAxes ? DynamicTensorShape.DynamicOfRankLike(shapeX) : DynamicTensorShape.DynamicRank));
         }
 
         public override string ToString()
@@ -88,23 +88,23 @@ namespace Unity.Sentis.Layers
         public ReduceL1(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var axes = ctx.storage.GetInts(inputs[1], null);
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
             {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as TensorFloat;
+                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as Tensor<float>;
                 ctx.backend.MemCopy(X, copyX);
                 return;
             }
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (X is TensorInt)
-                ctx.backend.ReduceL1(X as TensorInt, O as TensorInt, axes);
+            if (X is Tensor<int>)
+                ctx.backend.ReduceL1(X as Tensor<int>, O as Tensor<int>, axes);
             else
-                ctx.backend.ReduceL1(X as TensorFloat, O as TensorFloat, axes);
+                ctx.backend.ReduceL1(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
         internal override string profilerTag => "ReduceL1";
@@ -118,20 +118,20 @@ namespace Unity.Sentis.Layers
         public ReduceL2(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
             var axes = ctx.storage.GetInts(inputs[1], null);
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
             {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
                 ctx.backend.MemCopy(X, copyX);
                 return;
             }
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
-            ctx.backend.ReduceL2(X, O as TensorFloat, axes);
+            ctx.backend.ReduceL2(X, O as Tensor<float>, axes);
         }
 
         internal override string profilerTag => "ReduceL2";
@@ -145,20 +145,20 @@ namespace Unity.Sentis.Layers
         public ReduceLogSum(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
             var axes = ctx.storage.GetInts(inputs[1], null);
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
             {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
                 ctx.backend.MemCopy(X, copyX);
                 return;
             }
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
-            ctx.backend.ReduceLogSum(X, O as TensorFloat, axes);
+            ctx.backend.ReduceLogSum(X, O as Tensor<float>, axes);
         }
 
         internal override string profilerTag => "ReduceLogSum";
@@ -172,20 +172,20 @@ namespace Unity.Sentis.Layers
         public ReduceLogSumExp(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
             var axes = ctx.storage.GetInts(inputs[1], null);
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
             {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
                 ctx.backend.MemCopy(X, copyX);
                 return;
             }
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
-            ctx.backend.ReduceLogSumExp(X, O as TensorFloat, axes);
+            ctx.backend.ReduceLogSumExp(X, O as Tensor<float>, axes);
         }
 
         internal override string profilerTag => "ReduceLogSumExp";
@@ -199,23 +199,23 @@ namespace Unity.Sentis.Layers
         public ReduceMax(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var axes = ctx.storage.GetInts(inputs[1], null);
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
             {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as TensorFloat;
+                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as Tensor<float>;
                 ctx.backend.MemCopy(X, copyX);
                 return;
             }
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (X is TensorInt)
-                ctx.backend.ReduceMax(X as TensorInt, O as TensorInt, axes);
+            if (X is Tensor<int>)
+                ctx.backend.ReduceMax(X as Tensor<int>, O as Tensor<int>, axes);
             else
-                ctx.backend.ReduceMax(X as TensorFloat, O as TensorFloat, axes);
+                ctx.backend.ReduceMax(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
         internal override string profilerTag => "ReduceMax";
@@ -229,20 +229,20 @@ namespace Unity.Sentis.Layers
         public ReduceMean(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
             var axes = ctx.storage.GetInts(inputs[1], null);
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
             {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as TensorFloat;
+                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
                 ctx.backend.MemCopy(X, copyX);
                 return;
             }
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
-            ctx.backend.ReduceMean(X, O as TensorFloat, axes);
+            ctx.backend.ReduceMean(X, O as Tensor<float>, axes);
         }
 
         internal override string profilerTag => "ReduceMean";
@@ -256,23 +256,23 @@ namespace Unity.Sentis.Layers
         public ReduceMin(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var axes = ctx.storage.GetInts(inputs[1], null);
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
             {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as TensorFloat;
+                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as Tensor<float>;
                 ctx.backend.MemCopy(X, copyX);
                 return;
             }
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (X is TensorInt)
-                ctx.backend.ReduceMin(X as TensorInt, O as TensorInt, axes);
+            if (X is Tensor<int>)
+                ctx.backend.ReduceMin(X as Tensor<int>, O as Tensor<int>, axes);
             else
-                ctx.backend.ReduceMin(X as TensorFloat, O as TensorFloat, axes);
+                ctx.backend.ReduceMin(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
         internal override string profilerTag => "ReduceMin";
@@ -286,23 +286,23 @@ namespace Unity.Sentis.Layers
         public ReduceProd(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var axes = ctx.storage.GetInts(inputs[1], null);
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
             {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as TensorFloat;
+                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as Tensor<float>;
                 ctx.backend.MemCopy(X, copyX);
                 return;
             }
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (X is TensorInt)
-                ctx.backend.ReduceProd(X as TensorInt, O as TensorInt, axes);
+            if (X is Tensor<int>)
+                ctx.backend.ReduceProd(X as Tensor<int>, O as Tensor<int>, axes);
             else
-                ctx.backend.ReduceProd(X as TensorFloat, O as TensorFloat, axes);
+                ctx.backend.ReduceProd(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
         internal override string profilerTag => "ReduceProd";
@@ -316,23 +316,23 @@ namespace Unity.Sentis.Layers
         public ReduceSum(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var axes = ctx.storage.GetInts(inputs[1], null);
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
             {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as TensorFloat;
+                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as Tensor<float>;
                 ctx.backend.MemCopy(X, copyX);
                 return;
             }
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (X is TensorInt)
-                ctx.backend.ReduceSum(X as TensorInt, O as TensorInt, axes);
+            if (X is Tensor<int>)
+                ctx.backend.ReduceSum(X as Tensor<int>, O as Tensor<int>, axes);
             else
-                ctx.backend.ReduceSum(X as TensorFloat, O as TensorFloat, axes);
+                ctx.backend.ReduceSum(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
         internal override string profilerTag => "ReduceSum";
@@ -346,23 +346,23 @@ namespace Unity.Sentis.Layers
         public ReduceSumSquare(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             var X = ctx.storage.GetTensor(inputs[0]);
             var axes = ctx.storage.GetInts(inputs[1], null);
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
             {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as TensorFloat;
+                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as Tensor<float>;
                 ctx.backend.MemCopy(X, copyX);
                 return;
             }
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.Reduce(axes, keepdims), X.dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
-            if (X is TensorInt)
-                ctx.backend.ReduceSumSquare(X as TensorInt, O as TensorInt, axes);
+            if (X is Tensor<int>)
+                ctx.backend.ReduceSumSquare(X as Tensor<int>, O as Tensor<int>, axes);
             else
-                ctx.backend.ReduceSumSquare(X as TensorFloat, O as TensorFloat, axes);
+                ctx.backend.ReduceSumSquare(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
         internal override string profilerTag => "ReduceSumSquare";

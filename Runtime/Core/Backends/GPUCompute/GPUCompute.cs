@@ -3,6 +3,7 @@ using UnityEngine.Assertions;
 using System;
 using System.Runtime.CompilerServices;
 using Unity.Mathematics;
+using UnityEngine.Rendering;
 using static Unity.Sentis.ComputeTensorData;
 using static Unity.Sentis.ShaderPropertyID;
 
@@ -14,62 +15,88 @@ namespace Unity.Sentis
     /// <summary>
     /// Represents a GPUCompute backend ops.
     /// </summary>
-    public partial class GPUComputeBackend : IBackend
+    partial class GPUComputeBackend : IBackend
     {
+        /// <summary>
+        /// The command buffer to use for scheduling.
+        /// </summary>
+        CommandBuffer cb;
+        bool m_InternalCommandBuffer;
+
         /// <summary>
         /// Initializes and returns an instance of `GPUComputeOps`.
         /// </summary>
-        public GPUComputeBackend() { }
+        public GPUComputeBackend()
+        {
+            cb = new CommandBuffer();
+            m_InternalCommandBuffer = true;
+        }
+
+        public void SetCommandBuffer(CommandBuffer commandBuffer)
+        {
+            cb = commandBuffer;
+            m_InternalCommandBuffer = false;
+        }
+
+        public bool InternalCommandBuffer() => m_InternalCommandBuffer;
+
+        public void ExecuteCommandBufferAndClear()
+        {
+            Graphics.ExecuteCommandBuffer(cb);
+            cb.Clear();
+        }
 
         // Do we need this class or operate on ComputeTensorData instead?
-        TensorClassPool<TensorFloat> m_TensorFloatPool = new TensorClassPool<TensorFloat>();
-        TensorClassPool<TensorInt> m_TensorIntPool = new TensorClassPool<TensorInt>();
+        TensorClassPool<Tensor<float>> m_TensorFloatPool = new TensorClassPool<Tensor<float>>();
+        TensorClassPool<Tensor<int>> m_TensorIntPool = new TensorClassPool<Tensor<int>>();
         TensorDataPool<ComputeTensorData> m_MemoryPool = new TensorDataPool<ComputeTensorData>();
 
-        TensorFloat AllocTensorFloat(TensorShape shape)
+        Tensor<float> AllocTensorFloat(TensorShape shape)
         {
             ComputeTensorData data = m_MemoryPool.AdoptFromPool(shape.length);
             if (data == null)
                 data = new ComputeTensorData(shape.length);
             var tensor = m_TensorFloatPool.AdoptFromPool();
             if (tensor == null)
-                tensor = TensorFloat.AllocNoData(shape);
+                tensor = new Tensor<float>(shape, data: null);
 
             tensor.shape = shape;
+            tensor.count = shape.length;
             tensor.dataOnBackend = data;
             return tensor;
         }
 
-        TensorInt AllocTensorInt(TensorShape shape)
+        Tensor<int> AllocTensorInt(TensorShape shape)
         {
             ComputeTensorData data = m_MemoryPool.AdoptFromPool(shape.length);
             if (data == null)
                 data = new ComputeTensorData(shape.length);
             var tensor = m_TensorIntPool.AdoptFromPool();
             if (tensor == null)
-                tensor = TensorInt.AllocNoData(shape);
+                tensor = new Tensor<int>(shape, data: null);
 
             tensor.shape = shape;
+            tensor.count = shape.length;
             tensor.dataOnBackend = data;
             return tensor;
         }
 
-        void ReleaseTensorFloat(TensorFloat tensor)
+        void ReleaseTensorFloat(Tensor<float> tensor)
         {
             if (tensor == null)
                 return;
             m_MemoryPool.ReleaseToPool(tensor.dataOnBackend as ComputeTensorData);
             tensor.dataOnBackend = null;
-            m_TensorFloatPool.ReleaseToPool(tensor as TensorFloat);
+            m_TensorFloatPool.ReleaseToPool(tensor as Tensor<float>);
         }
 
-        void ReleaseTensorInt(TensorInt tensor)
+        void ReleaseTensorInt(Tensor<int> tensor)
         {
             if (tensor == null)
                 return;
             m_MemoryPool.ReleaseToPool(tensor.dataOnBackend as ComputeTensorData);
             tensor.dataOnBackend = null;
-            m_TensorIntPool.ReleaseToPool(tensor as TensorInt);
+            m_TensorIntPool.ReleaseToPool(tensor as Tensor<int>);
         }
 
         /// <summary>
@@ -85,13 +112,13 @@ namespace Unity.Sentis
         public BackendType backendType => BackendType.GPUCompute;
 
         /// <inheritdoc/>
-        public void MatMul2D(TensorFloat X, TensorFloat Y, TensorFloat O, bool xTranspose, bool yTranspose)
+        public void MatMul2D(Tensor<float> X, Tensor<float> Y, Tensor<float> O, bool xTranspose, bool yTranspose)
         {
             Gemm(X, Y, O, O.shape[0], xTranspose ? X.shape[0] : X.shape[1], O.shape[1], xTranspose, yTranspose);
         }
 
         /// <inheritdoc/>
-        public void MatMul(TensorFloat X, TensorFloat Y, TensorFloat O)
+        public void MatMul(Tensor<float> X, Tensor<float> Y, Tensor<float> O)
         {
             var xShape = X.shape.rank == 1 ? new TensorShape(1, X.shape[0]) : X.shape;
             var yShape = Y.shape.rank == 1 ? new TensorShape(Y.shape[0], 1) : Y.shape;
@@ -126,30 +153,30 @@ namespace Unity.Sentis
                 var stridesO = stackalloc int[6];
                 OpsUtils.PinMatMulTensorShapeStrides(xShape, yShape, oShape, shapeA, stridesA, shapeB, stridesB, shapeO, stridesO);
 
-                fn.SetInt6(k_ID_shapeA, shapeA);
-                fn.SetInt6(k_ID_stridesA, stridesA);
-                fn.SetInt6(k_ID_shapeB, shapeB);
-                fn.SetInt6(k_ID_stridesB, stridesB);
-                fn.SetInt6(k_ID_shapeO, shapeO);
-                fn.SetInt6(k_ID_stridesO, stridesO);
+                cb.SetInt6(fn, k_ID_shapeA, shapeA);
+                cb.SetInt6(fn, k_ID_stridesA, stridesA);
+                cb.SetInt6(fn, k_ID_shapeB, shapeB);
+                cb.SetInt6(fn, k_ID_stridesB, stridesB);
+                cb.SetInt6(fn, k_ID_shapeO, shapeO);
+                cb.SetInt6(fn, k_ID_stridesO, stridesO);
             }
 
-            fn.SetInt(k_ID_AM, M);
-            fn.SetInt(k_ID_AN, K);
-            fn.SetInt(k_ID_BM, K);
-            fn.SetInt(k_ID_BN, N);
-            fn.SetInt(k_ID_CB, batch);
-            fn.SetInt(k_ID_CM, M);
-            fn.SetInt(k_ID_CN, N);
-            fn.SetInt(k_ID_rank, oShape.rank);
+            cb.SetComputeIntParam(fn.shader, k_ID_AM, M);
+            cb.SetComputeIntParam(fn.shader, k_ID_AN, K);
+            cb.SetComputeIntParam(fn.shader, k_ID_BM, K);
+            cb.SetComputeIntParam(fn.shader, k_ID_BN, N);
+            cb.SetComputeIntParam(fn.shader, k_ID_CB, batch);
+            cb.SetComputeIntParam(fn.shader, k_ID_CM, M);
+            cb.SetComputeIntParam(fn.shader, k_ID_CN, N);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, oShape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(Y));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.Dispatch(batch, M, N);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(Y));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.Dispatch(fn, batch, M, N);
         }
 
-        void BatchedGemm(TensorFloat X, TensorFloat Y, TensorFloat O, int batch, int M, int K, int N)
+        void BatchedGemm(Tensor<float> X, Tensor<float> Y, Tensor<float> O, int batch, int M, int K, int N)
         {
             ComputeFunction fn;
             if (N % 64 == 0 && K % 16 == 0)
@@ -157,22 +184,21 @@ namespace Unity.Sentis
             else
                 fn = ComputeFunctions.k_GemmBatched_T8x8_R4x4;
 
+            cb.SetComputeIntParam(fn.shader, k_ID_maxXIndex, X.shape.length - 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_maxWIndex, Y.shape.length - 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_X_width, K);
+            cb.SetComputeIntParam(fn.shader, k_ID_W_width, N);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_width, N);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_height, M);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(Y));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.SetInt(k_ID_maxXIndex, X.shape.length - 1);
-            fn.SetInt(k_ID_maxWIndex, Y.shape.length - 1);
-            fn.SetInt(k_ID_X_width, K);
-            fn.SetInt(k_ID_W_width, N);
-            fn.SetInt(k_ID_O_width, N);
-            fn.SetInt(k_ID_O_height, M);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Wptr, Pin(Y));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-
-            fn.Dispatch(ComputeHelper.IDivC(N, 4), ComputeHelper.IDivC(M, 4), batch);
+            cb.Dispatch(fn, ComputeHelper.IDivC(N, 4), ComputeHelper.IDivC(M, 4), batch);
         }
 
         /// <inheritdoc/>
-        public void Dense(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Layers.FusableActivation fusedActivation)
+        public void Dense(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Layers.FusableActivation fusedActivation)
         {
             var Otmp = (fusedActivation != Layers.FusableActivation.None) ? AllocTensorFloat(O.shape) : O;
             var M = Otmp.shape.Length(0, -1);
@@ -195,14 +221,14 @@ namespace Unity.Sentis
         {
             // Warning, for some reason shared mem implementation on intel gpu is x2 faster than regular one
             var fn = ComputeFunctions.k_Tril;
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.SetInt(k_ID_X_width, X.shape[-1]);
-            fn.SetInt(k_ID_X_height, X.shape[-2]);
-            fn.SetInt(k_ID_X_length, X.shape.length);
-            fn.SetInt(k_ID_diagonalK, k);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_X_width, X.shape[-1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_X_height, X.shape[-2]);
+            cb.SetComputeIntParam(fn.shader, k_ID_X_length, X.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_diagonalK, k);
 
-            fn.Dispatch(ComputeHelper.IDivC(X.shape.length, 4), 1, 1);
+            cb.Dispatch(fn, ComputeHelper.IDivC(X.shape.length, 4), 1, 1);
         }
 
         /// <inheritdoc/>
@@ -210,17 +236,17 @@ namespace Unity.Sentis
         {
             // Warning, for some reason shared mem implementation on intel gpu is x2 faster than regular one
             var fn = ComputeFunctions.k_Triu;
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.SetInt(k_ID_X_width, X.shape[-1]);
-            fn.SetInt(k_ID_X_height, X.shape[-2]);
-            fn.SetInt(k_ID_X_length, X.shape.length);
-            fn.SetInt(k_ID_diagonalK, k);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_X_width, X.shape[-1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_X_height, X.shape[-2]);
+            cb.SetComputeIntParam(fn.shader, k_ID_X_length, X.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_diagonalK, k);
 
-            fn.Dispatch(ComputeHelper.IDivC(X.shape.length, 4), 1, 1);
+            cb.Dispatch(fn, ComputeHelper.IDivC(X.shape.length, 4), 1, 1);
         }
 
-        void ApplyFusedActivation(TensorFloat X, TensorFloat O, Layers.FusableActivation fusedActivation)
+        void ApplyFusedActivation(Tensor<float> X, Tensor<float> O, Layers.FusableActivation fusedActivation)
         {
             switch (fusedActivation)
             {
@@ -235,7 +261,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Conv(TensorFloat X, TensorFloat K, TensorFloat B, TensorFloat O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
+        public void Conv(Tensor<float> X, Tensor<float> K, Tensor<float> B, Tensor<float> O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
         {
             if (X.shape.rank > 5)
             {
@@ -272,32 +298,32 @@ namespace Unity.Sentis
                 var w = O.shape[4];
 
                 fn = K.shape.Length(2) == 1 ? ComputeFunctions.k_Conv3D_1x1_T16x16_R4x4 : ComputeFunctions.k_Conv3D_T16x16_R4x4;
-                fn.SetInt(k_ID_O_depth, O.shape[2]);
-                fn.SetInt(k_ID_O_height, O.shape[3]);
-                fn.SetInt(k_ID_O_width, O.shape[4]);
-                fn.SetInt(k_ID_X_depth, X.shape[2]);
-                fn.SetInt(k_ID_X_height, X.shape[3]);
-                fn.SetInt(k_ID_X_width, X.shape[4]);
-                fn.SetInt(k_ID_K_depth, K.shape[2]);
-                fn.SetInt(k_ID_K_height, K.shape[3]);
-                fn.SetInt(k_ID_K_width, K.shape[4]);
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fn.SetTensorAsBuffer(k_ID_Kptr, Pin(K));
+                cb.SetComputeIntParam(fn.shader, k_ID_O_depth, O.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_height, O.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_width, O.shape[4]);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_depth, X.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_height, X.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_width, X.shape[4]);
+                cb.SetComputeIntParam(fn.shader, k_ID_K_depth, K.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_K_height, K.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_K_width, K.shape[4]);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fn, k_ID_Kptr, Pin(K));
                 if (B != null)
                 {
-                    fn.EnableKeyword("USEBIAS");
-                    fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
+                    cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
+                    cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
                 }
                 else
                 {
-                    fn.DisableKeyword("USEBIAS");
+                    cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
                 }
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_O_batch, O.shape[0]); fn.SetInt(k_ID_O_channels, O.shape[1]);
-                fn.SetInt(k_ID_X_channels, X.shape[1]);
-                fn.SetInt4(k_ID__Stride, strides);
-                fn.SetInt4(k_ID__Pad, pads);
-                fn.SetInt4(k_ID__Dilation, dilations);
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_O_batch, O.shape[0]); cb.SetComputeIntParam(fn.shader, k_ID_O_channels, O.shape[1]);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_channels, X.shape[1]);
+                cb.SetInt4(fn, k_ID__Stride, strides);
+                cb.SetInt4(fn, k_ID__Pad, pads);
+                cb.SetInt4(fn, k_ID__Dilation, dilations);
                 workItemsX = ComputeHelper.IDivC(k, 4);
                 workItemsY = ComputeHelper.IDivC(d * h * w, 4);
                 workItemsZ = n;
@@ -315,37 +341,37 @@ namespace Unity.Sentis
                 workItemsZ = n;
 
                 fn = K.shape.Length(2) == 1 ? ComputeFunctions.k_Conv2D_1x1 : ComputeFunctions.k_Conv2D_KxK;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fn.SetTensorAsBuffer(k_ID_Wptr, Pin(K));
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(K));
                 if (B != null)
                 {
-                    fn.EnableKeyword("USEBIAS");
-                    fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
+                    cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
+                    cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
                 }
                 else
                 {
-                    fn.DisableKeyword("USEBIAS");
+                    cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
                 }
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_inputChannels, X.shape[1]);
-                fn.SetInt(k_ID_inputHeight, X.shape[2]);
-                fn.SetInt(k_ID_inputWidth, X.shape[3]);
-                fn.SetInt(k_ID_kernelHeight, K.shape[2]);
-                fn.SetInt(k_ID_kernelWidth, K.shape[3]);
-                fn.SetInt(k_ID_outputChannels, O.shape[1]);
-                fn.SetInt(k_ID_outputHeight, O.shape[2]);
-                fn.SetInt(k_ID_outputWidth, O.shape[3]);
-                fn.SetInt(k_ID_strideHeight, strides[0]);
-                fn.SetInt(k_ID_strideWidth, strides[1]);
-                fn.SetInt(k_ID_padHeight, pads[0]);
-                fn.SetInt(k_ID_padWidth, pads[1]);
-                fn.SetInt(k_ID_dilationHeight, dilations != null ? dilations[0] : 1);
-                fn.SetInt(k_ID_dilationWidth, dilations != null ? dilations[1] : 1);
-                fn.SetInt(k_ID_inputChannelsSize, X.shape[1] * X.shape[2] * X.shape[3]);
-                fn.SetInt(k_ID_outputChannelsSize, O.shape[1] * O.shape[2] * O.shape[3]);
-                fn.SetInt(k_ID_kernelChannelSize, K.shape[1] * K.shape[2] * K.shape[3]);
-                fn.SetInt(k_ID_inputSize, X.shape[2] * X.shape[3]);
-                fn.SetInt(k_ID_outputSize, O.shape[2] * O.shape[3]);
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_inputChannels, X.shape[1]);
+                cb.SetComputeIntParam(fn.shader, k_ID_inputHeight, X.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_inputWidth, X.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_kernelHeight, K.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_kernelWidth, K.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_outputChannels, O.shape[1]);
+                cb.SetComputeIntParam(fn.shader, k_ID_outputHeight, O.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_outputWidth, O.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_strideHeight, strides[0]);
+                cb.SetComputeIntParam(fn.shader, k_ID_strideWidth, strides[1]);
+                cb.SetComputeIntParam(fn.shader, k_ID_padHeight, pads[0]);
+                cb.SetComputeIntParam(fn.shader, k_ID_padWidth, pads[1]);
+                cb.SetComputeIntParam(fn.shader, k_ID_dilationHeight, dilations != null ? dilations[0] : 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_dilationWidth, dilations != null ? dilations[1] : 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_inputChannelsSize, X.shape[1] * X.shape[2] * X.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_outputChannelsSize, O.shape[1] * O.shape[2] * O.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_kernelChannelSize, K.shape[1] * K.shape[2] * K.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_inputSize, X.shape[2] * X.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_outputSize, O.shape[2] * O.shape[3]);
             }
             else //if (X.shape.rank == 3)
             {
@@ -358,40 +384,40 @@ namespace Unity.Sentis
                 workItemsZ = n;
 
                 fn = K.shape.Length(2) == 1 ? ComputeFunctions.k_Conv1D_1x1 : ComputeFunctions.k_Conv1D_KxK;
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fn.SetTensorAsBuffer(k_ID_Wptr, Pin(K));
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(K));
                 if (B != null)
                 {
-                    fn.EnableKeyword("USEBIAS");
-                    fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
+                    cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
+                    cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
                 }
                 else
                 {
-                    fn.DisableKeyword("USEBIAS");
+                    cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
                 }
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetInt(k_ID_inputChannels, X.shape[1]);
-                fn.SetInt(k_ID_inputHeight, X.shape[2]);
-                fn.SetInt(k_ID_kernelHeight, K.shape[2]);
-                fn.SetInt(k_ID_outputChannels, O.shape[1]);
-                fn.SetInt(k_ID_outputHeight, O.shape[2]);
-                fn.SetInt(k_ID_strideHeight, strides[0]);
-                fn.SetInt(k_ID_padHeight, pads[0]);
-                fn.SetInt(k_ID_dilationHeight, dilations[0]);
-                fn.SetInt(k_ID_inputChannelsSize, X.shape[1] * X.shape[2]);
-                fn.SetInt(k_ID_outputChannelsSize, O.shape[1] * O.shape[2]);
-                fn.SetInt(k_ID_kernelChannelSize, K.shape[1] * K.shape[2]);
-                fn.SetInt(k_ID_inputSize, X.shape[2]);
-                fn.SetInt(k_ID_outputSize, O.shape[2]);
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_inputChannels, X.shape[1]);
+                cb.SetComputeIntParam(fn.shader, k_ID_inputHeight, X.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_kernelHeight, K.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_outputChannels, O.shape[1]);
+                cb.SetComputeIntParam(fn.shader, k_ID_outputHeight, O.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_strideHeight, strides[0]);
+                cb.SetComputeIntParam(fn.shader, k_ID_padHeight, pads[0]);
+                cb.SetComputeIntParam(fn.shader, k_ID_dilationHeight, dilations[0]);
+                cb.SetComputeIntParam(fn.shader, k_ID_inputChannelsSize, X.shape[1] * X.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_outputChannelsSize, O.shape[1] * O.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_kernelChannelSize, K.shape[1] * K.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_inputSize, X.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_outputSize, O.shape[2]);
             }
 
-            fn.SetInt(k_ID_kernelLength, K.shape.length);
-            fn.SetFloat(k_ID__MinValue, fusedActivation == Layers.FusableActivation.Relu ? 0.0f : float.MinValue);
+            cb.SetComputeIntParam(fn.shader, k_ID_kernelLength, K.shape.length);
+            cb.SetComputeFloatParam(fn.shader, k_ID__MinValue, fusedActivation == Layers.FusableActivation.Relu ? 0.0f : float.MinValue);
 
-            fn.Dispatch(workItemsX, workItemsY, workItemsZ);
+            cb.Dispatch(fn, workItemsX, workItemsY, workItemsZ);
         }
 
-        void ConvMobile(TensorFloat X, TensorFloat K, TensorFloat B, TensorFloat O, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
+        void ConvMobile(Tensor<float> X, Tensor<float> K, Tensor<float> B, Tensor<float> O, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
         {
             int workItemsX, workItemsY, workItemsZ;
 
@@ -409,9 +435,9 @@ namespace Unity.Sentis
                 fn = ComputeFunctions.k_Conv3D_T16x16_R4x4;
                 if (K.shape.Length(2) == 1)
                     fn = ComputeFunctions.k_Conv3D_1x1_T16x16_R4x4;
-                fn.SetInt(k_ID_O_depth, O.shape[2]); fn.SetInt(k_ID_O_height, O.shape[3]); fn.SetInt(k_ID_O_width, O.shape[4]);
-                fn.SetInt(k_ID_X_depth, X.shape[2]); fn.SetInt(k_ID_X_height, X.shape[3]); fn.SetInt(k_ID_X_width, X.shape[4]);
-                fn.SetInt(k_ID_K_depth, K.shape[2]); fn.SetInt(k_ID_K_height, K.shape[3]); fn.SetInt(k_ID_K_width, K.shape[4]);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_depth, O.shape[2]); cb.SetComputeIntParam(fn.shader, k_ID_O_height, O.shape[3]); cb.SetComputeIntParam(fn.shader, k_ID_O_width, O.shape[4]);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_depth, X.shape[2]); cb.SetComputeIntParam(fn.shader, k_ID_X_height, X.shape[3]); cb.SetComputeIntParam(fn.shader, k_ID_X_width, X.shape[4]);
+                cb.SetComputeIntParam(fn.shader, k_ID_K_depth, K.shape[2]); cb.SetComputeIntParam(fn.shader, k_ID_K_height, K.shape[3]); cb.SetComputeIntParam(fn.shader, k_ID_K_width, K.shape[4]);
                 workItemsX = ComputeHelper.IDivC(k, 4); workItemsY = ComputeHelper.IDivC(d * h * w, 4); workItemsZ = n;
             }
             else if (X.shape.rank == 4)
@@ -424,9 +450,9 @@ namespace Unity.Sentis
                 fn = ComputeFunctions.k_Conv2D_T16x16_R4x4;
                 if (K.shape.Length(2) == 1)
                     fn = ComputeFunctions.k_Conv2D_1x1_T16x16_R4x4;
-                fn.SetInt(k_ID_O_height, O.shape[2]); fn.SetInt(k_ID_O_width, O.shape[3]);
-                fn.SetInt(k_ID_X_height, X.shape[2]); fn.SetInt(k_ID_X_width, X.shape[3]);
-                fn.SetInt(k_ID_K_height, K.shape[2]); fn.SetInt(k_ID_K_width, K.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_height, O.shape[2]); cb.SetComputeIntParam(fn.shader, k_ID_O_width, O.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_height, X.shape[2]); cb.SetComputeIntParam(fn.shader, k_ID_X_width, X.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_K_height, K.shape[2]); cb.SetComputeIntParam(fn.shader, k_ID_K_width, K.shape[3]);
                 workItemsX = ComputeHelper.IDivC(k, 4); workItemsY = ComputeHelper.IDivC(h * w, 4); workItemsZ = n;
             }
             else //if (X.shape.rank == 3)
@@ -438,40 +464,40 @@ namespace Unity.Sentis
                 fn = ComputeFunctions.k_Conv1D_T16x16_R4x4;
                 if (K.shape.Length(2) == 1)
                     fn = ComputeFunctions.k_Conv1D_1x1_T16x16_R4x4;
-                fn.SetInt(k_ID_O_width, O.shape[2]);
-                fn.SetInt(k_ID_X_width, X.shape[2]);
-                fn.SetInt(k_ID_K_width, K.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_width, O.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_width, X.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_K_width, K.shape[2]);
                 workItemsX = ComputeHelper.IDivC(k, 4);
                 workItemsY = ComputeHelper.IDivC(w, 4);
                 workItemsZ = n;
             }
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Kptr, Pin(K));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Kptr, Pin(K));
             if (B != null)
             {
-                fn.EnableKeyword("USEBIAS");
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
+                cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
             }
             else
             {
-                fn.DisableKeyword("USEBIAS");
+                cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
             }
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.SetInt(k_ID_O_batch, O.shape[0]);
-            fn.SetInt(k_ID_O_channels, O.shape[1]);
-            fn.SetInt(k_ID_X_channels, X.shape[1]);
-            fn.SetInt4(k_ID__Stride, strides);
-            fn.SetInt4(k_ID__Pad, pads);
-            fn.SetInt4(k_ID__Dilation, dilations);
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_O_batch, O.shape[0]);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_channels, O.shape[1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_X_channels, X.shape[1]);
+            cb.SetInt4(fn, k_ID__Stride, strides);
+            cb.SetInt4(fn, k_ID__Pad, pads);
+            cb.SetInt4(fn, k_ID__Dilation, dilations);
 
-            fn.SetFloat(k_ID__MinValue, fusedActivation == Layers.FusableActivation.Relu ? 0.0f : float.MinValue);
+            cb.SetComputeFloatParam(fn.shader, k_ID__MinValue, fusedActivation == Layers.FusableActivation.Relu ? 0.0f : float.MinValue);
 
-            fn.Dispatch(workItemsX, workItemsY, workItemsZ);
+            cb.Dispatch(fn, workItemsX, workItemsY, workItemsZ);
         }
 
         /// <inheritdoc/>
-        public void ConvTranspose(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Span<int> strides, Span<int> pads, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
+        public void ConvTranspose(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Span<int> strides, Span<int> pads, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
         {
             if (X.shape.rank > 5)
             {
@@ -497,53 +523,53 @@ namespace Unity.Sentis
             var workItemsY = ComputeHelper.IDivC(O.shape[1], 8);
             var workItemsZ = O.shape[0];
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Wptr, Pin(W));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(W));
             if (B != null)
             {
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.EnableKeyword("USEBIAS");
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
             }
             else
             {
-                fn.DisableKeyword("USEBIAS");
+                cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
             }
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.SetInt(k_ID_inputChannels, X.shape[1]);
-            fn.SetInt(k_ID_outputChannels, O.shape[1]);
-            fn.SetInt(k_ID_dilationHeight, 1);
-            fn.SetInt(k_ID_dilationWidth, 1);
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_inputChannels, X.shape[1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputChannels, O.shape[1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_dilationHeight, 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_dilationWidth, 1);
 
             var kernelSize = W.shape.Length(2);
             var inputSize = X.shape.Length(2);
             var outputSize = O.shape.Length(2);
-            fn.SetInt(k_ID_kernelLength, W.shape.length);
-            fn.SetInt(k_ID_kernelSize, kernelSize);
-            fn.SetInt(k_ID_inputSize, inputSize);
-            fn.SetInt(k_ID_outputSize, outputSize);
-            fn.SetInt(k_ID_inputChannelsSize, X.shape[1] * inputSize);
-            fn.SetInt(k_ID_outputChannelsSize, O.shape[1] * outputSize);
-            fn.SetInt(k_ID_kernelChannelSize, W.shape[0] * kernelSize);
-            fn.SetInt(k_ID_inputWidth, X.shape[-1]);
-            fn.SetInt(k_ID_kernelWidth, W.shape[-1]);
-            fn.SetInt(k_ID_outputWidth, O.shape[-1]);
-            fn.SetInt(k_ID_padWidth, W.shape[-1] - pads[numSpatialDims - 1] - 1);
-            fn.SetInt(k_ID_strideWidth, strides[numSpatialDims - 1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_kernelLength, W.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_kernelSize, kernelSize);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputSize, inputSize);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputSize, outputSize);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputChannelsSize, X.shape[1] * inputSize);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputChannelsSize, O.shape[1] * outputSize);
+            cb.SetComputeIntParam(fn.shader, k_ID_kernelChannelSize, W.shape[0] * kernelSize);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputWidth, X.shape[-1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_kernelWidth, W.shape[-1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputWidth, O.shape[-1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_padWidth, W.shape[-1] - pads[numSpatialDims - 1] - 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_strideWidth, strides[numSpatialDims - 1]);
             if (numSpatialDims > 1)
             {
-                fn.SetInt(k_ID_inputHeight, X.shape[-2]);
-                fn.SetInt(k_ID_kernelHeight, W.shape[-2]);
-                fn.SetInt(k_ID_outputHeight, O.shape[-2]);
-                fn.SetInt(k_ID_padHeight, W.shape[-2] - pads[numSpatialDims - 2] - 1);
-                fn.SetInt(k_ID_strideHeight, strides[numSpatialDims - 2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_inputHeight, X.shape[-2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_kernelHeight, W.shape[-2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_outputHeight, O.shape[-2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_padHeight, W.shape[-2] - pads[numSpatialDims - 2] - 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_strideHeight, strides[numSpatialDims - 2]);
             }
 
-            fn.SetFloat(k_ID__MinValue, fusedActivation == Layers.FusableActivation.Relu ? 0.0f : float.MinValue);
+            cb.SetComputeFloatParam(fn.shader, k_ID__MinValue, fusedActivation == Layers.FusableActivation.Relu ? 0.0f : float.MinValue);
 
-            fn.Dispatch(workItemsX, workItemsY, workItemsZ);
+            cb.Dispatch(fn, workItemsX, workItemsY, workItemsZ);
         }
 
-        void ConvTransposeMobile(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Span<int> stride, Span<int> pad, Span<int> outputAdjustment, Layers.FusableActivation fusedActivation)
+        void ConvTransposeMobile(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Span<int> stride, Span<int> pad, Span<int> outputAdjustment, Layers.FusableActivation fusedActivation)
         {
             ComputeFunction fn;
 
@@ -556,58 +582,58 @@ namespace Unity.Sentis
             else
                 fn = ComputeFunctions.k_ConvTranspose3D_T16x16_R4x4;
 
-            fn.SetInt(k_ID_O_channels, O.shape[1]);
-            fn.SetInt(k_ID_X_channels, X.shape[1]);
-            fn.SetInt(k_ID_maxXIndex, X.shape.length - 1);
-            fn.SetInt(k_ID_maxKIndex, W.shape.length - 1);
-            fn.SetInt4(k_ID__Pad, pad);
-            fn.SetInt4(k_ID__Stride, stride);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_channels, O.shape[1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_X_channels, X.shape[1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_maxXIndex, X.shape.length - 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_maxKIndex, W.shape.length - 1);
+            cb.SetInt4(fn, k_ID__Pad, pad);
+            cb.SetInt4(fn, k_ID__Stride, stride);
 
-            fn.SetInt(k_ID_O_width, O.shape[-1]);
-            fn.SetInt(k_ID_X_width, X.shape[-1]);
-            fn.SetInt(k_ID_K_width, W.shape[-1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_width, O.shape[-1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_X_width, X.shape[-1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_K_width, W.shape[-1]);
 
             if (numSpatialDims > 1)
             {
-                fn.SetInt(k_ID_O_height, O.shape[-2]);
-                fn.SetInt(k_ID_X_height, X.shape[-2]);
-                fn.SetInt(k_ID_K_height, W.shape[-2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_height, O.shape[-2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_height, X.shape[-2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_K_height, W.shape[-2]);
             }
 
             if (numSpatialDims > 2)
             {
-                fn.SetInt(k_ID_O_depth, O.shape[-3]);
-                fn.SetInt(k_ID_X_depth, X.shape[-3]);
-                fn.SetInt(k_ID_K_depth, W.shape[-3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_depth, O.shape[-3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_depth, X.shape[-3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_K_depth, W.shape[-3]);
             }
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Kptr, Pin(W));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Kptr, Pin(W));
             if (B != null)
             {
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.SetInt(k_ID_maxBIndex, B.shape.length - 1);
-                fn.EnableKeyword("USEBIAS");
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.SetComputeIntParam(fn.shader, k_ID_maxBIndex, B.shape.length - 1);
+                cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
             }
             else
             {
-                fn.DisableKeyword("USEBIAS");
+                cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
             }
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
             var workItemsX = ComputeHelper.IDivC(O.shape[1], 4);
             var workItemsY = ComputeHelper.IDivC(O.shape.Length(2), 4);
             var workItemsZ = O.shape[0];
             if (fusedActivation == Layers.FusableActivation.Relu)
-                fn.SetFloat(k_ID__MinValue, 0.0f);
+                cb.SetComputeFloatParam(fn.shader, k_ID__MinValue, 0.0f);
             else
-                fn.SetFloat(k_ID__MinValue, float.MinValue);
+                cb.SetComputeFloatParam(fn.shader, k_ID__MinValue, float.MinValue);
 
-            fn.Dispatch(workItemsX, workItemsY, workItemsZ);
+            cb.Dispatch(fn, workItemsX, workItemsY, workItemsZ);
         }
 
         /// <inheritdoc/>
-        public void Resize(TensorFloat X, TensorFloat O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
+        public void Resize(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
         {
             if (X.shape.rank > 5 || scale[0] != 1f || scale[1] != 1f)
             {
@@ -630,7 +656,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void GridSample(TensorFloat X, TensorFloat grid, TensorFloat O, Layers.InterpolationMode mode, Layers.PaddingMode paddingMode, bool alignCorners)
+        public void GridSample(Tensor<float> X, Tensor<float> grid, Tensor<float> O, Layers.InterpolationMode mode, Layers.PaddingMode paddingMode, bool alignCorners)
         {
             int n = O.shape[0]; int c = O.shape[1];
             int oH = O.shape[-2]; int oW = O.shape[-1];
@@ -651,33 +677,33 @@ namespace Unity.Sentis
                     oSpatialDim *= oD;
                     xSpatialDim *= xD;
 
-                    fn.SetInt(k_ID_inDepth, xD);
-                    fn.SetInt(k_ID_outDepth, oD);
+                    cb.SetComputeIntParam(fn.shader, k_ID_inDepth, xD);
+                    cb.SetComputeIntParam(fn.shader, k_ID_outDepth, oD);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
 
-            fn.SetInt(k_ID_outBatch, n);
-            fn.SetInt(k_ID_outChannels, c);
-            fn.SetInt(k_ID_inHeight, xH);
-            fn.SetInt(k_ID_inWidth, xW);
-            fn.SetInt(k_ID_outHeight, oH);
-            fn.SetInt(k_ID_outWidth, oW);
-            fn.SetInt(k_ID_inSpatialSize, xSpatialDim);
-            fn.SetInt(k_ID_outSpatialSize, oSpatialDim);
+            cb.SetComputeIntParam(fn.shader, k_ID_outBatch, n);
+            cb.SetComputeIntParam(fn.shader, k_ID_outChannels, c);
+            cb.SetComputeIntParam(fn.shader, k_ID_inHeight, xH);
+            cb.SetComputeIntParam(fn.shader, k_ID_inWidth, xW);
+            cb.SetComputeIntParam(fn.shader, k_ID_outHeight, oH);
+            cb.SetComputeIntParam(fn.shader, k_ID_outWidth, oW);
+            cb.SetComputeIntParam(fn.shader, k_ID_inSpatialSize, xSpatialDim);
+            cb.SetComputeIntParam(fn.shader, k_ID_outSpatialSize, oSpatialDim);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Sptr, Pin(grid));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Sptr, Pin(grid));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
             switch (mode)
             {
                 case Layers.InterpolationMode.Nearest:
-                    fn.DisableKeyword("LINEAR");
+                    cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "LINEAR"));
                     break;
                 case Layers.InterpolationMode.Linear:
-                    fn.EnableKeyword("LINEAR");
+                    cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, "LINEAR"));
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
@@ -686,30 +712,30 @@ namespace Unity.Sentis
             switch (paddingMode)
             {
                 case Layers.PaddingMode.Zeros:
-                    fn.DisableKeyword("BORDER");
-                    fn.DisableKeyword("REFLECTION");
+                    cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "BORDER"));
+                    cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "REFLECTION"));
                     break;
                 case Layers.PaddingMode.Border:
-                    fn.DisableKeyword("REFLECTION");
-                    fn.EnableKeyword("BORDER");
+                    cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "REFLECTION"));
+                    cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, "BORDER"));
                     break;
                 case Layers.PaddingMode.Reflection:
-                    fn.DisableKeyword("BORDER");
-                    fn.EnableKeyword("REFLECTION");
+                    cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "BORDER"));
+                    cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, "REFLECTION"));
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(paddingMode), paddingMode, null);
             }
 
             if (alignCorners)
-                fn.EnableKeyword("ALIGN_CORNERS");
+                cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, "ALIGN_CORNERS"));
             else
-                fn.DisableKeyword("ALIGN_CORNERS");
+                cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "ALIGN_CORNERS"));
 
-            fn.Dispatch(oSpatialDim, c, n);
+            cb.Dispatch(fn, oSpatialDim, c, n);
         }
 
-        void ResizeND(TensorFloat X, TensorFloat O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
+        void ResizeND(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
         {
             // calculate first and last axes with scaling
             var firstScaleAxis = scale.Length;
@@ -742,7 +768,7 @@ namespace Unity.Sentis
             }
         }
 
-        void Resize1D(TensorFloat X, TensorFloat O, int axis, float scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
+        void Resize1D(Tensor<float> X, Tensor<float> O, int axis, float scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
         {
             OpsUtils.GetScaleAndBias(X.shape[axis], O.shape[axis], scale, coordTransformMode, interpolationMode, nearestMode, out float outputScale, out float outputBias);
 
@@ -771,20 +797,20 @@ namespace Unity.Sentis
             int innerLength = O.shape.Strides(axis);
             int outerLength = O.shape.Length(0, axis);
 
-            fn.SetFloat(k_ID_scale1D, outputScale);
-            fn.SetFloat(k_ID_bias1D, outputBias);
-            fn.SetInt(k_ID_innerLength, innerLength);
-            fn.SetInt(k_ID_outerLength, outerLength);
-            fn.SetInt(k_ID_inWidth, X.shape[axis]);
-            fn.SetInt(k_ID_outWidth, O.shape[axis]);
+            cb.SetComputeFloatParam(fn.shader, k_ID_scale1D, outputScale);
+            cb.SetComputeFloatParam(fn.shader, k_ID_bias1D, outputBias);
+            cb.SetComputeIntParam(fn.shader, k_ID_innerLength, innerLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_outerLength, outerLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_inWidth, X.shape[axis]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outWidth, O.shape[axis]);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.Dispatch(outerLength, O.shape[axis], innerLength);
+            cb.Dispatch(fn, outerLength, O.shape[axis], innerLength);
         }
 
-        void Upsample1D(TensorFloat X, TensorFloat O, ReadOnlySpan<float> scale, Layers.NearestMode nearestMode, Layers.InterpolationMode interpolationMode, Layers.CoordTransformMode coordTransformMode)
+        void Upsample1D(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.NearestMode nearestMode, Layers.InterpolationMode interpolationMode, Layers.CoordTransformMode coordTransformMode)
         {
             OpsUtils.GetScaleAndBias(X.shape[2], O.shape[2], scale[2], coordTransformMode, interpolationMode, nearestMode, out float outputScale, out float outputBias);
 
@@ -810,18 +836,18 @@ namespace Unity.Sentis
                 fn = ComputeFunctions.k_Upsample1D_Linear_None;
             }
 
-            fn.SetFloat(k_ID_scale1D, outputScale);
-            fn.SetFloat(k_ID_bias1D, outputBias);
-            fn.SetInt(k_ID_inWidth, X.shape[2]);
-            fn.SetInt(k_ID_outWidth, O.shape[2]);
+            cb.SetComputeFloatParam(fn.shader, k_ID_scale1D, outputScale);
+            cb.SetComputeFloatParam(fn.shader, k_ID_bias1D, outputBias);
+            cb.SetComputeIntParam(fn.shader, k_ID_inWidth, X.shape[2]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outWidth, O.shape[2]);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.Dispatch(O.shape[0] * O.shape[1], O.shape[2], 1);
+            cb.Dispatch(fn, O.shape[0] * O.shape[1], O.shape[2], 1);
         }
 
-        void Upsample2D(TensorFloat X, TensorFloat O, ReadOnlySpan<float> scale, Layers.NearestMode nearestMode, Layers.InterpolationMode interpolationMode, Layers.CoordTransformMode coordTransformMode)
+        void Upsample2D(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.NearestMode nearestMode, Layers.InterpolationMode interpolationMode, Layers.CoordTransformMode coordTransformMode)
         {
             Vector4 scaleXY = Vector4.zero;
             Vector4 biasXY = Vector4.zero;
@@ -854,20 +880,20 @@ namespace Unity.Sentis
                 fn = ComputeFunctions.k_Upsample2D_Linear_None;
             }
 
-            fn.SetVector(k_ID_scale, scaleXY);
-            fn.SetVector(k_ID_bias, biasXY);
-            fn.SetInt(k_ID_inHeight, X.shape[2]);
-            fn.SetInt(k_ID_inWidth, X.shape[3]);
-            fn.SetInt(k_ID_outHeight, O.shape[2]);
-            fn.SetInt(k_ID_outWidth, O.shape[3]);
+            cb.SetComputeVectorParam(fn.shader, k_ID_scale, scaleXY);
+            cb.SetComputeVectorParam(fn.shader, k_ID_bias, biasXY);
+            cb.SetComputeIntParam(fn.shader, k_ID_inHeight, X.shape[2]);
+            cb.SetComputeIntParam(fn.shader, k_ID_inWidth, X.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outHeight, O.shape[2]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outWidth, O.shape[3]);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.Dispatch(O.shape[0] * O.shape[1], O.shape[2], O.shape[3]);
+            cb.Dispatch(fn, O.shape[0] * O.shape[1], O.shape[2], O.shape[3]);
         }
 
-        void Upsample3D(TensorFloat X, TensorFloat O, ReadOnlySpan<float> scale, Layers.NearestMode nearestMode, Layers.InterpolationMode interpolationMode, Layers.CoordTransformMode coordTransformMode)
+        void Upsample3D(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.NearestMode nearestMode, Layers.InterpolationMode interpolationMode, Layers.CoordTransformMode coordTransformMode)
         {
             Vector4 scaleXYD = Vector4.zero;
             Vector4 biasXYD = Vector4.zero;
@@ -900,67 +926,67 @@ namespace Unity.Sentis
                 fn = ComputeFunctions.k_Upsample3D_Linear_None;
             }
 
-            fn.SetVector(k_ID_scale, scaleXYD);
-            fn.SetVector(k_ID_bias, biasXYD);
-            fn.SetInt(k_ID_inDepth, X.shape[2]);
-            fn.SetInt(k_ID_inHeight, X.shape[3]);
-            fn.SetInt(k_ID_inWidth, X.shape[4]);
-            fn.SetInt(k_ID_outBatch, O.shape[0]);
-            fn.SetInt(k_ID_outChannels, O.shape[1]);
-            fn.SetInt(k_ID_outDepth, O.shape[2]);
-            fn.SetInt(k_ID_outHeight, O.shape[3]);
-            fn.SetInt(k_ID_outWidth, O.shape[4]);
+            cb.SetComputeVectorParam(fn.shader, k_ID_scale, scaleXYD);
+            cb.SetComputeVectorParam(fn.shader, k_ID_bias, biasXYD);
+            cb.SetComputeIntParam(fn.shader, k_ID_inDepth, X.shape[2]);
+            cb.SetComputeIntParam(fn.shader, k_ID_inHeight, X.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_inWidth, X.shape[4]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outBatch, O.shape[0]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outChannels, O.shape[1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outDepth, O.shape[2]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outHeight, O.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outWidth, O.shape[4]);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.Dispatch(O.shape[2], O.shape[3], O.shape[4]);
+            cb.Dispatch(fn, O.shape[2], O.shape[3], O.shape[4]);
         }
 
         /// <inheritdoc/>
-        public void DepthToSpace(TensorFloat X, TensorFloat O, int blocksize, Layers.DepthToSpaceMode mode)
+        public void DepthToSpace(Tensor<float> X, Tensor<float> O, int blocksize, Layers.DepthToSpaceMode mode)
         {
             var fn = (mode == Layers.DepthToSpaceMode.DepthColumnRow) ? ComputeFunctions.k_DepthToSpaceDepthColumnRow : ComputeFunctions.k_DepthToSpaceColumnRowDepth;
-            fn.SetInt(k_ID_blocksize, blocksize);
-            fn.SetInt(k_ID_inputChannels, X.shape[1]);
-            fn.SetInt(k_ID_inputHeight, X.shape[2]);
-            fn.SetInt(k_ID_inputWidth, X.shape[3]);
-            fn.SetInt(k_ID_inputSpatialSize, X.shape[2] * X.shape[3]);
-            fn.SetInt(k_ID_inputBatchOffset, X.shape[1] * X.shape[2] * X.shape[3]);
-            fn.SetInt(k_ID_outputChannels, O.shape[1]);
-            fn.SetInt(k_ID_outputHeight, O.shape[2]);
-            fn.SetInt(k_ID_outputWidth, O.shape[3]);
-            fn.SetInt(k_ID_outputSpatialSize, O.shape[2] * O.shape[3]);
-            fn.SetInt(k_ID_outputBatch, O.shape[0]);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_blocksize, blocksize);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputChannels, X.shape[1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputHeight, X.shape[2]);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputWidth, X.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputSpatialSize, X.shape[2] * X.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputBatchOffset, X.shape[1] * X.shape[2] * X.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputChannels, O.shape[1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputHeight, O.shape[2]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputWidth, O.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputSpatialSize, O.shape[2] * O.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputBatch, O.shape[0]);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.Dispatch(O.shape[0] * O.shape[1], O.shape[2] * O.shape[3], 1);
+            cb.Dispatch(fn, O.shape[0] * O.shape[1], O.shape[2] * O.shape[3], 1);
         }
 
         /// <inheritdoc/>
-        public void SpaceToDepth(TensorFloat X, TensorFloat O, int blocksize)
+        public void SpaceToDepth(Tensor<float> X, Tensor<float> O, int blocksize)
         {
             var fn = ComputeFunctions.k_SpaceToDepth;
-            fn.SetInt(k_ID_blocksize, blocksize);
-            fn.SetInt(k_ID_inputChannels, X.shape[1]);
-            fn.SetInt(k_ID_inputHeight, X.shape[2]);
-            fn.SetInt(k_ID_inputWidth, X.shape[3]);
-            fn.SetInt(k_ID_inputSpatialSize, X.shape[2] * X.shape[3]);
-            fn.SetInt(k_ID_inputBatchOffset, X.shape[1] * X.shape[2] * X.shape[3]);
-            fn.SetInt(k_ID_outputChannels, O.shape[1]);
-            fn.SetInt(k_ID_outputHeight, O.shape[2]);
-            fn.SetInt(k_ID_outputWidth, O.shape[3]);
-            fn.SetInt(k_ID_outputSpatialSize, O.shape[2] * O.shape[3]);
-            fn.SetInt(k_ID_outputBatch, O.shape[0]);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_blocksize, blocksize);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputChannels, X.shape[1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputHeight, X.shape[2]);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputWidth, X.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputSpatialSize, X.shape[2] * X.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputBatchOffset, X.shape[1] * X.shape[2] * X.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputChannels, O.shape[1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputHeight, O.shape[2]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputWidth, O.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputSpatialSize, O.shape[2] * O.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputBatch, O.shape[0]);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.Dispatch(O.shape[0] * O.shape[1], O.shape[2] * O.shape[3], 1);
+            cb.Dispatch(fn, O.shape[0] * O.shape[1], O.shape[2] * O.shape[3], 1);
         }
 
         /// <inheritdoc/>
-        public void GlobalAverageVariancePool(TensorFloat X, TensorFloat O, int axis)
+        public void GlobalAverageVariancePool(Tensor<float> X, Tensor<float> O, int axis)
         {
             int globalNonSpatialLength = X.shape.Length(0, axis);
             int globalSpatialDims = X.shape.length / globalNonSpatialLength;
@@ -969,7 +995,7 @@ namespace Unity.Sentis
 
             var Oshape = new TensorShape(globalNonSpatialLength, localSpatialLength);
 
-            TensorFloat X2 = X; // save a X^2 and do it in the first dispatch
+            Tensor<float> X2 = X; // save a X^2 and do it in the first dispatch
             bool isFirstDispatch = true;
 
             // downsample with pyramid approach
@@ -981,15 +1007,15 @@ namespace Unity.Sentis
                 var O2temp = AllocTensorFloat(Oshape);
 
                 var fnPool = ComputeFunctions.k_AverageVariancePoolReduce;
-                fnPool.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fnPool.SetTensorAsBuffer(k_ID_X2ptr, Pin(X2));
-                fnPool.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                fnPool.SetTensorAsBuffer(k_ID_O2ptr, Pin(O2temp));
-                fnPool.SetInt(k_ID_SpatialDims, localSpatialLength);
-                fnPool.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                fnPool.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(fnPool, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fnPool, k_ID_X2ptr, Pin(X2));
+                cb.SetTensorAsBuffer(fnPool, k_ID_Optr, Pin(Otemp));
+                cb.SetTensorAsBuffer(fnPool, k_ID_O2ptr, Pin(O2temp));
+                cb.SetComputeIntParam(fnPool.shader, k_ID_SpatialDims, localSpatialLength);
+                cb.SetComputeIntParam(fnPool.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(fnPool.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                fnPool.Dispatch(globalNonSpatialLength, ComputeHelper.IDivC(localSpatialLength, 4), 1);
+                cb.Dispatch(fnPool, globalNonSpatialLength, ComputeHelper.IDivC(localSpatialLength, 4), 1);
 
                 if (!isFirstDispatch)
                 {
@@ -1003,14 +1029,14 @@ namespace Unity.Sentis
             }
 
             var fn = ComputeFunctions.k_GlobalAverageVariancePool;
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_X2ptr, Pin(X2));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.SetInt(k_ID_SpatialDims, localSpatialLength);
-            fn.SetInt(k_ID_GlobalSpatialDims, globalSpatialDims);
-            fn.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_X2ptr, Pin(X2));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_SpatialDims, localSpatialLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_GlobalSpatialDims, globalSpatialDims);
+            cb.SetComputeIntParam(fn.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-            fn.Dispatch(globalNonSpatialLength, 1, 1);
+            cb.Dispatch(fn, globalNonSpatialLength, 1, 1);
 
             if (!isFirstDispatch)
             {
@@ -1019,7 +1045,7 @@ namespace Unity.Sentis
             }
         }
 
-        void GroupedConv(TensorFloat X, TensorFloat K, TensorFloat B, TensorFloat O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
+        void GroupedConv(Tensor<float> X, Tensor<float> K, Tensor<float> B, Tensor<float> O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
         {
             var Otmp = (fusedActivation != Layers.FusableActivation.None) ? AllocTensorFloat(O.shape) : O;
 
@@ -1030,59 +1056,59 @@ namespace Unity.Sentis
             if (X.shape.rank == 5)
             {
                 fn = (outputGroupedChannels < 64) ? ComputeFunctions.k_GroupedConv3D : ComputeFunctions.k_GroupedConv3D_GroupLower64;
-                fn.SetInt(k_ID_O_depth, Otmp.shape[2]);
-                fn.SetInt(k_ID_O_height, Otmp.shape[3]);
-                fn.SetInt(k_ID_O_width, Otmp.shape[4]);
-                fn.SetInt(k_ID_X_depth, X.shape[2]);
-                fn.SetInt(k_ID_X_height, X.shape[3]);
-                fn.SetInt(k_ID_X_width, X.shape[4]);
-                fn.SetInt(k_ID_K_depth, K.shape[2]);
-                fn.SetInt(k_ID_K_height, K.shape[3]);
-                fn.SetInt(k_ID_K_width, K.shape[4]);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_depth, Otmp.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_height, Otmp.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_width, Otmp.shape[4]);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_depth, X.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_height, X.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_width, X.shape[4]);
+                cb.SetComputeIntParam(fn.shader, k_ID_K_depth, K.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_K_height, K.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_K_width, K.shape[4]);
             }
             else if (X.shape.rank == 4)
             {
                 fn = (outputGroupedChannels < 64) ? ComputeFunctions.k_GroupedConv2D : ComputeFunctions.k_GroupedConv2D_GroupLower64;
-                fn.SetInt(k_ID_O_height, Otmp.shape[2]);
-                fn.SetInt(k_ID_O_width, Otmp.shape[3]);
-                fn.SetInt(k_ID_X_height, X.shape[2]);
-                fn.SetInt(k_ID_X_width, X.shape[3]);
-                fn.SetInt(k_ID_K_height, K.shape[2]);
-                fn.SetInt(k_ID_K_width, K.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_height, Otmp.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_width, Otmp.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_height, X.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_width, X.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_K_height, K.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_K_width, K.shape[3]);
             }
             else
             {
                 fn = (outputGroupedChannels < 64) ? ComputeFunctions.k_GroupedConv1D : ComputeFunctions.k_GroupedConv1D_GroupLower64;
-                fn.SetInt(k_ID_O_width, Otmp.shape[2]);
-                fn.SetInt(k_ID_X_width, X.shape[2]);
-                fn.SetInt(k_ID_K_width, K.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_width, Otmp.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_width, X.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_K_width, K.shape[2]);
             }
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Kptr, Pin(K));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Kptr, Pin(K));
             if (B != null)
             {
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-                fn.EnableKeyword("USEBIAS");
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+                cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
             }
             else
             {
-                fn.DisableKeyword("USEBIAS");
+                cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
             }
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(Otmp));
-            fn.SetInt(k_ID_O_channels, O.shape[1]);
-            fn.SetInt(k_ID_X_channels, X.shape[1]);
-            fn.SetInt4(k_ID__Stride, strides);
-            fn.SetInt4(k_ID__Pad, pads);
-            fn.SetInt4(k_ID__Dilation, dilations);
-            fn.SetInt(k_ID__Groups, groups);
-            fn.SetInt(k_ID_strideX, X.shape.Length(2));
-            fn.SetInt(k_ID_strideO, Otmp.shape.Length(2));
-            fn.SetInt(k_ID_strideK, K.shape.Length(2));
-            fn.SetInt(k_ID_inputGroupedChannels, X.shape[1] / groups);
-            fn.SetInt(k_ID_outputGroupedChannels, Otmp.shape[1] / groups);
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(Otmp));
+            cb.SetComputeIntParam(fn.shader, k_ID_O_channels, O.shape[1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_X_channels, X.shape[1]);
+            cb.SetInt4(fn, k_ID__Stride, strides);
+            cb.SetInt4(fn, k_ID__Pad, pads);
+            cb.SetInt4(fn, k_ID__Dilation, dilations);
+            cb.SetComputeIntParam(fn.shader, k_ID__Groups, groups);
+            cb.SetComputeIntParam(fn.shader, k_ID_strideX, X.shape.Length(2));
+            cb.SetComputeIntParam(fn.shader, k_ID_strideO, Otmp.shape.Length(2));
+            cb.SetComputeIntParam(fn.shader, k_ID_strideK, K.shape.Length(2));
+            cb.SetComputeIntParam(fn.shader, k_ID_inputGroupedChannels, X.shape[1] / groups);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputGroupedChannels, Otmp.shape[1] / groups);
 
-            fn.Dispatch(ComputeHelper.IDivC(Otmp.shape[1], 4), ComputeHelper.IDivC(Otmp.shape.Length(2), 4), Otmp.shape[0]);
+            cb.Dispatch(fn, ComputeHelper.IDivC(Otmp.shape[1], 4), ComputeHelper.IDivC(Otmp.shape.Length(2), 4), Otmp.shape[0]);
 
             if (fusedActivation != Layers.FusableActivation.None)
             {
@@ -1091,27 +1117,27 @@ namespace Unity.Sentis
             }
         }
 
-        void DepthwiseConv2D(TensorFloat X, TensorFloat K, TensorFloat B, TensorFloat O, int group, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
+        void DepthwiseConv2D(Tensor<float> X, Tensor<float> K, Tensor<float> B, Tensor<float> O, int group, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
         {
             var Otmp = (fusedActivation != Layers.FusableActivation.None) ? AllocTensorFloat(O.shape) : O;
 
             ComputeFunction fn;
             int workItemsX, workItemsY, workItemsZ;
 
-            TensorFloat KWE = null;
+            Tensor<float> KWE = null;
             if (K.shape[2] == 3 && K.shape[3] == 3 && strides[0] == 1 && strides[1] == 1 && dilations[0] == 1 && dilations[1] == 1)
             {
                 KWE = AllocTensorFloat(new TensorShape(Otmp.shape[1], 4, 4));
 
                 ComputeFunction fnKE = ComputeFunctions.k_KernelWinoExpand;
-                fnKE.SetTensorAsBuffer(k_ID_Kptr, Pin(K));
-                fnKE.SetTensorAsBuffer(k_ID_Optr, Pin(KWE));
-                fnKE.SetInt(k_ID_O_channels, O.shape[1]);
-                fnKE.Dispatch(O.shape[1], 1, 1);
+                cb.SetTensorAsBuffer(fnKE, k_ID_Kptr, Pin(K));
+                cb.SetTensorAsBuffer(fnKE, k_ID_Optr, Pin(KWE));
+                cb.SetComputeIntParam(fnKE.shader, k_ID_O_channels, O.shape[1]);
+                cb.Dispatch(fnKE, O.shape[1], 1, 1);
 
                 fn = ComputeFunctions.k_DepthwiseConv2DWinograd;
 
-                fn.SetTensorAsBuffer(k_ID_KWEptr, Pin(KWE));
+                cb.SetTensorAsBuffer(fn, k_ID_KWEptr, Pin(KWE));
 
                 workItemsX = ComputeHelper.IDivC(Otmp.shape[3], 2);
                 workItemsY = ComputeHelper.IDivC(Otmp.shape[2], 2);
@@ -1121,47 +1147,47 @@ namespace Unity.Sentis
             {
                 fn = ComputeFunctions.k_DepthwiseConv2DDirect;
 
-                fn.SetTensorAsBuffer(k_ID_Kptr, Pin(K));
+                cb.SetTensorAsBuffer(fn, k_ID_Kptr, Pin(K));
 
-                fn.SetInt(k_ID_K_heightDiv4, ComputeHelper.IDivC(K.shape[2], 4));
-                fn.SetInt(k_ID_K_widthDiv4, ComputeHelper.IDivC(K.shape[3], 4));
-                fn.SetInt(k_ID_K_height, K.shape[2]);
-                fn.SetInt(k_ID_K_width, K.shape[3]);
-                fn.SetInt(k_ID_StrideK, K.shape[2] * K.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_K_heightDiv4, ComputeHelper.IDivC(K.shape[2], 4));
+                cb.SetComputeIntParam(fn.shader, k_ID_K_widthDiv4, ComputeHelper.IDivC(K.shape[3], 4));
+                cb.SetComputeIntParam(fn.shader, k_ID_K_height, K.shape[2]);
+                cb.SetComputeIntParam(fn.shader, k_ID_K_width, K.shape[3]);
+                cb.SetComputeIntParam(fn.shader, k_ID_StrideK, K.shape[2] * K.shape[3]);
 
                 workItemsX = Otmp.shape[3];
                 workItemsY = Otmp.shape[2];
                 workItemsZ = Otmp.shape[0] * Otmp.shape[1];
             }
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
             if (B != null)
             {
-                fn.EnableKeyword("USEBIAS");
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
+                cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
             }
             else
             {
-                fn.DisableKeyword("USEBIAS");
+                cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "USEBIAS"));
             }
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(Otmp));
-            fn.SetInt(k_ID_X_channels, X.shape[1]);
-            fn.SetInt(k_ID_X_height, X.shape[2]);
-            fn.SetInt(k_ID_X_width, X.shape[3]);
-            fn.SetInt(k_ID_O_batch, O.shape[0]);
-            fn.SetInt(k_ID_O_channels, O.shape[1]);
-            fn.SetInt(k_ID_O_height, O.shape[2]);
-            fn.SetInt(k_ID_O_width, O.shape[3]);
-            fn.SetInt4(k_ID_Stride, strides);
-            fn.SetInt4(k_ID_Pad, pads);
-            fn.SetInt4(k_ID_Dilation, dilations);
-            fn.SetInt(k_ID_StrideX, X.shape[2] * X.shape[3]);
-            fn.SetInt(k_ID_MaxLengthX, X.shape.length - 1);
-            fn.SetInt(k_ID_MaxLengthK, K.shape.length - 1);
-            fn.SetInt(k_ID_StrideO, Otmp.shape[2] * Otmp.shape[3]);
-            fn.SetInt(k_ID_StrideFeaturesO, Otmp.shape[0] * Otmp.shape[1]);
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(Otmp));
+            cb.SetComputeIntParam(fn.shader, k_ID_X_channels, X.shape[1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_X_height, X.shape[2]);
+            cb.SetComputeIntParam(fn.shader, k_ID_X_width, X.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_batch, O.shape[0]);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_channels, O.shape[1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_height, O.shape[2]);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_width, O.shape[3]);
+            cb.SetInt4(fn, k_ID_Stride, strides);
+            cb.SetInt4(fn, k_ID_Pad, pads);
+            cb.SetInt4(fn, k_ID_Dilation, dilations);
+            cb.SetComputeIntParam(fn.shader, k_ID_StrideX, X.shape[2] * X.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_MaxLengthX, X.shape.length - 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_MaxLengthK, K.shape.length - 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_StrideO, Otmp.shape[2] * Otmp.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_StrideFeaturesO, Otmp.shape[0] * Otmp.shape[1]);
 
-            fn.Dispatch(workItemsX, workItemsY, workItemsZ);
+            cb.Dispatch(fn, workItemsX, workItemsY, workItemsZ);
             ReleaseTensorFloat(KWE);
 
             if (fusedActivation != Layers.FusableActivation.None)
@@ -1172,7 +1198,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ScaleBias(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O)
+        public void ScaleBias(Tensor<float> X, Tensor<float> S, Tensor<float> B, Tensor<float> O)
         {
             int batch = X.shape[0];
             int channels = X.shape[1];
@@ -1180,19 +1206,19 @@ namespace Unity.Sentis
 
             var fn = ComputeFunctions.k_ScaleBias;
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Sptr, Pin(S));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.SetInt(k_ID_LengthO, O.shape.length);
-            fn.SetInt(k_ID_batch, batch);
-            fn.SetInt(k_ID_channels, channels);
-            fn.SetInt(k_ID_spatialDims, spatialDims);
-            fn.Dispatch(spatialDims, ComputeHelper.IDivC(channels, 4), batch);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Sptr, Pin(S));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_batch, batch);
+            cb.SetComputeIntParam(fn.shader, k_ID_channels, channels);
+            cb.SetComputeIntParam(fn.shader, k_ID_spatialDims, spatialDims);
+            cb.Dispatch(fn, spatialDims, ComputeHelper.IDivC(channels, 4), batch);
         }
 
         /// <inheritdoc/>
-        public void InstanceNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O, float epsilon)
+        public void InstanceNormalization(Tensor<float> X, Tensor<float> S, Tensor<float> B, Tensor<float> O, float epsilon)
         {
             var reduceOpShape = ShapeInference.GlobalAverageVariancePool(X.shape);
             var meanVariance = AllocTensorFloat(reduceOpShape);
@@ -1200,22 +1226,22 @@ namespace Unity.Sentis
 
             var fn = ComputeFunctions.k_InstanceNormalizationTail;
 
-            fn.SetInt(k_ID_channels, X.shape[1]);
-            fn.SetInt(k_ID_spatialDims, X.shape.length / (X.shape[0] * X.shape[1]));
-            fn.SetFloat(k_ID_epsilon, epsilon);
+            cb.SetComputeIntParam(fn.shader, k_ID_channels, X.shape[1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_spatialDims, X.shape.length / (X.shape[0] * X.shape[1]));
+            cb.SetComputeFloatParam(fn.shader, k_ID_epsilon, epsilon);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Sptr, Pin(S));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Wptr, Pin(meanVariance));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Sptr, Pin(S));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(meanVariance));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.UnrolledDispatch(O.shape.length);
+            cb.UnrolledDispatch(fn, O.shape.length);
             ReleaseTensorFloat(meanVariance);
         }
 
         /// <inheritdoc/>
-        public void LayerNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat O, float epsilon)
+        public void LayerNormalization(Tensor<float> X, Tensor<float> S, Tensor<float> B, Tensor<float> O, float epsilon)
         {
             int axis = X.shape.Axis(-1);
 
@@ -1229,21 +1255,21 @@ namespace Unity.Sentis
             GlobalAverageVariancePool(X, meanVariance, -1);
 
             var fn = ComputeFunctions.k_LayerNormalizationTail;
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Wptr, Pin(meanVariance));
-            fn.SetTensorAsBuffer(k_ID_Sptr, Pin(S));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.SetInt(k_ID_axisDim, axisDim);
-            fn.SetInt(k_ID_outerLength, outerLength);
-            fn.SetFloat(k_ID_epsilon, epsilon);
-            fn.Dispatch(axisDim, outerLength, 1);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(meanVariance));
+            cb.SetTensorAsBuffer(fn, k_ID_Sptr, Pin(S));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_axisDim, axisDim);
+            cb.SetComputeIntParam(fn.shader, k_ID_outerLength, outerLength);
+            cb.SetComputeFloatParam(fn.shader, k_ID_epsilon, epsilon);
+            cb.Dispatch(fn, axisDim, outerLength, 1);
 
             ReleaseTensorFloat(meanVariance);
         }
 
         /// <inheritdoc/>
-        public void BatchNormalization(TensorFloat X, TensorFloat S, TensorFloat B, TensorFloat mean, TensorFloat variance, TensorFloat O, float epsilon)
+        public void BatchNormalization(Tensor<float> X, Tensor<float> S, Tensor<float> B, Tensor<float> mean, Tensor<float> variance, Tensor<float> O, float epsilon)
         {
             var batch = X.shape[0];
             var channels = X.shape.rank == 1 ? 1 : X.shape[1];
@@ -1251,444 +1277,444 @@ namespace Unity.Sentis
 
             var fn = ComputeFunctions.k_BatchNormalization;
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Wptr, Pin(mean));
-            fn.SetTensorAsBuffer(k_ID_Zptr, Pin(variance));
-            fn.SetTensorAsBuffer(k_ID_Sptr, Pin(S));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.SetInt(k_ID_LengthO, O.shape.length);
-            fn.SetInt(k_ID_batch, batch);
-            fn.SetInt(k_ID_channels, channels);
-            fn.SetInt(k_ID_spatialDims, spatialDims);
-            fn.SetFloat(k_ID_epsilon, epsilon);
-            fn.Dispatch(spatialDims, ComputeHelper.IDivC(channels, 4), batch);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(mean));
+            cb.SetTensorAsBuffer(fn, k_ID_Zptr, Pin(variance));
+            cb.SetTensorAsBuffer(fn, k_ID_Sptr, Pin(S));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_LengthO, O.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_batch, batch);
+            cb.SetComputeIntParam(fn.shader, k_ID_channels, channels);
+            cb.SetComputeIntParam(fn.shader, k_ID_spatialDims, spatialDims);
+            cb.SetComputeFloatParam(fn.shader, k_ID_epsilon, epsilon);
+            cb.Dispatch(fn, spatialDims, ComputeHelper.IDivC(channels, 4), batch);
         }
 
         /// <inheritdoc/>
-        public void Range(TensorFloat O, float start, float delta)
+        public void Range(Tensor<float> O, float start, float delta)
         {
             var fn = ComputeFunctions.k_RangeFloat;
-            fn.SetFloat(k_ID_alpha, start);
-            fn.SetFloat(k_ID_beta, delta);
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetComputeFloatParam(fn.shader, k_ID_alpha, start);
+            cb.SetComputeFloatParam(fn.shader, k_ID_beta, delta);
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Range(TensorInt O, int start, int delta)
+        public void Range(Tensor<int> O, int start, int delta)
         {
             var fn = ComputeFunctions.k_RangeInt;
-            fn.SetInt(k_ID_alphai, start);
-            fn.SetInt(k_ID_betai, delta);
-            fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_alphai, start);
+            cb.SetComputeIntParam(fn.shader, k_ID_betai, delta);
+            cb.SetTensorAsBuffer(fn, k_ID_O_int_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Relu(TensorFloat X, TensorFloat O)
+        public void Relu(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Relu;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Relu6(TensorFloat X, TensorFloat O)
+        public void Relu6(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Relu6;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void LeakyRelu(TensorFloat X, TensorFloat O, float alpha)
+        public void LeakyRelu(Tensor<float> X, Tensor<float> O, float alpha)
         {
             var fn = ComputeFunctions.k_LeakyRelu;
-            fn.SetFloat(k_ID_alpha, 0.5f * (1f + alpha));
-            fn.SetFloat(k_ID_beta, 0.5f * (1f - alpha));
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetComputeFloatParam(fn.shader, k_ID_alpha, 0.5f * (1f + alpha));
+            cb.SetComputeFloatParam(fn.shader, k_ID_beta, 0.5f * (1f - alpha));
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Tanh(TensorFloat X, TensorFloat O)
+        public void Tanh(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Tanh;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Softplus(TensorFloat X, TensorFloat O)
+        public void Softplus(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Softplus;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Sigmoid(TensorFloat X, TensorFloat O)
+        public void Sigmoid(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Sigmoid;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void HardSigmoid(TensorFloat X, TensorFloat O, float alpha, float beta)
+        public void HardSigmoid(Tensor<float> X, Tensor<float> O, float alpha, float beta)
         {
             var fn = ComputeFunctions.k_HardSigmoid;
-            fn.SetFloat(k_ID_alpha, alpha);
-            fn.SetFloat(k_ID_beta, beta);
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetComputeFloatParam(fn.shader, k_ID_alpha, alpha);
+            cb.SetComputeFloatParam(fn.shader, k_ID_beta, beta);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Elu(TensorFloat X, TensorFloat O, float alpha)
+        public void Elu(Tensor<float> X, Tensor<float> O, float alpha)
         {
             var fn = ComputeFunctions.k_Elu;
-            fn.SetFloat(k_ID_alpha, alpha);
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetComputeFloatParam(fn.shader, k_ID_alpha, alpha);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Gelu(TensorFloat X, TensorFloat O)
+        public void Gelu(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Gelu;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void GeluFast(TensorFloat X, TensorFloat O)
+        public void GeluFast(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_GeluFast;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Selu(TensorFloat X, TensorFloat O, float alpha, float gamma)
+        public void Selu(Tensor<float> X, Tensor<float> O, float alpha, float gamma)
         {
             var fn = ComputeFunctions.k_Selu;
-            fn.SetFloat(k_ID_alpha, alpha);
-            fn.SetFloat(k_ID_gamma, gamma);
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetComputeFloatParam(fn.shader, k_ID_alpha, alpha);
+            cb.SetComputeFloatParam(fn.shader, k_ID_gamma, gamma);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Swish(TensorFloat X, TensorFloat O)
+        public void Swish(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Swish;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Abs(TensorFloat X, TensorFloat O)
+        public void Abs(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_AbsFloat;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Abs(TensorInt X, TensorInt O)
+        public void Abs(Tensor<int> X, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_AbsInt;
-            fn.SetTensorAsBuffer(k_ID_X_int_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_int_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_int_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Neg(TensorFloat X, TensorFloat O)
+        public void Neg(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_NegFloat;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Neg(TensorInt X, TensorInt O)
+        public void Neg(Tensor<int> X, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_NegInt;
-            fn.SetTensorAsBuffer(k_ID_X_int_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_int_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_int_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Ceil(TensorFloat X, TensorFloat O)
+        public void Ceil(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Ceil;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Clip(TensorFloat X, TensorFloat O, float min, float max)
+        public void Clip(Tensor<float> X, Tensor<float> O, float min, float max)
         {
             var fn = ComputeFunctions.k_ClipFloat;
-            fn.SetFloat(k_ID_alpha, min);
-            fn.SetFloat(k_ID_beta, max);
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetComputeFloatParam(fn.shader, k_ID_alpha, min);
+            cb.SetComputeFloatParam(fn.shader, k_ID_beta, max);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Clip(TensorInt X, TensorInt O, int min, int max)
+        public void Clip(Tensor<int> X, Tensor<int> O, int min, int max)
         {
             var fn = ComputeFunctions.k_ClipInt;
-            fn.SetInt(k_ID_alphai, min);
-            fn.SetInt(k_ID_betai, max);
-            fn.SetTensorAsBuffer(k_ID_X_int_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_alphai, min);
+            cb.SetComputeIntParam(fn.shader, k_ID_betai, max);
+            cb.SetTensorAsBuffer(fn, k_ID_X_int_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_int_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Floor(TensorFloat X, TensorFloat O)
+        public void Floor(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Floor;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Round(TensorFloat X, TensorFloat O)
+        public void Round(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Round;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Reciprocal(TensorFloat X, TensorFloat O)
+        public void Reciprocal(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Reciprocal;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Square(TensorFloat X, TensorFloat O)
+        public void Square(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_SquareFloat;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Square(TensorInt X, TensorInt O)
+        public void Square(Tensor<int> X, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_SquareInt;
-            fn.SetTensorAsBuffer(k_ID_X_int_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_int_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_int_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Exp(TensorFloat X, TensorFloat O)
+        public void Exp(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Exp;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Log(TensorFloat X, TensorFloat O)
+        public void Log(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Log;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Sqrt(TensorFloat X, TensorFloat O)
+        public void Sqrt(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Sqrt;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Acos(TensorFloat X, TensorFloat O)
+        public void Acos(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Acos;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Acosh(TensorFloat X, TensorFloat O)
+        public void Acosh(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Acosh;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Asin(TensorFloat X, TensorFloat O)
+        public void Asin(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Asin;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Asinh(TensorFloat X, TensorFloat O)
+        public void Asinh(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Asinh;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Atan(TensorFloat X, TensorFloat O)
+        public void Atan(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Atan;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Atanh(TensorFloat X, TensorFloat O)
+        public void Atanh(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Atanh;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Cos(TensorFloat X, TensorFloat O)
+        public void Cos(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Cos;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Cosh(TensorFloat X, TensorFloat O)
+        public void Cosh(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Cosh;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Sin(TensorFloat X, TensorFloat O)
+        public void Sin(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Sin;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Sinh(TensorFloat X, TensorFloat O)
+        public void Sinh(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Sinh;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Tan(TensorFloat X, TensorFloat O)
+        public void Tan(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Tan;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Erf(TensorFloat X, TensorFloat O)
+        public void Erf(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Erf;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Celu(TensorFloat X, TensorFloat O, float alpha)
+        public void Celu(Tensor<float> X, Tensor<float> O, float alpha)
         {
             var fn = ComputeFunctions.k_Celu;
-            fn.SetFloat(k_ID_alpha, alpha);
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetComputeFloatParam(fn.shader, k_ID_alpha, alpha);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Shrink(TensorFloat X, TensorFloat O, float bias, float lambd)
+        public void Shrink(Tensor<float> X, Tensor<float> O, float bias, float lambd)
         {
             var fn = ComputeFunctions.k_Shrink;
-            fn.SetFloat(k_ID_alpha, bias);
-            fn.SetFloat(k_ID_beta, lambd);
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetComputeFloatParam(fn.shader, k_ID_alpha, bias);
+            cb.SetComputeFloatParam(fn.shader, k_ID_beta, lambd);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Softsign(TensorFloat X, TensorFloat O)
+        public void Softsign(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_Softsign;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void ThresholdedRelu(TensorFloat X, TensorFloat O, float alpha)
+        public void ThresholdedRelu(Tensor<float> X, Tensor<float> O, float alpha)
         {
             var fn = ComputeFunctions.k_ThresholdedRelu;
-            fn.SetFloat(k_ID_alpha, alpha);
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetComputeFloatParam(fn.shader, k_ID_alpha, alpha);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Softmax(TensorFloat X, TensorFloat O, int axis)
+        public void Softmax(Tensor<float> X, Tensor<float> O, int axis)
         {
             // Allocate temp tensors
             int innerLength = X.shape.Strides(axis);
@@ -1705,22 +1731,22 @@ namespace Unity.Sentis
 
             // exp(x[n,c] - x_max[n]) / e_x_sum[n]
             var fn = ComputeFunctions.k_SoftmaxEnd;
-            fn.SetInt(k_ID_innerLength, innerLength);
-            fn.SetInt(k_ID_reduceLength, reduceLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_innerLength, innerLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_reduceLength, reduceLength);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Sptr, Pin(XexpSums));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(Xmax));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Sptr, Pin(XexpSums));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(Xmax));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.UnrolledDispatch(O.shape.length);
+            cb.UnrolledDispatch(fn, O.shape.length);
 
             ReleaseTensorFloat(Xmax);
             ReleaseTensorFloat(XexpSums);
         }
 
         /// <inheritdoc/>
-        public void LogSoftmax(TensorFloat X, TensorFloat O, int axis)
+        public void LogSoftmax(Tensor<float> X, Tensor<float> O, int axis)
         {
             // Allocate temp tensors
             int innerLength = X.shape.Strides(axis);
@@ -1737,21 +1763,21 @@ namespace Unity.Sentis
 
             // x[n,c] - logexp_sum
             var fn = ComputeFunctions.k_LogSoftmaxEnd;
-            fn.SetInt(k_ID_innerLength, innerLength);
-            fn.SetInt(k_ID_reduceLength, reduceLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_innerLength, innerLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_reduceLength, reduceLength);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(XexpSums));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(XexpSums));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.UnrolledDispatch(O.shape.length);
+            cb.UnrolledDispatch(fn, O.shape.length);
 
             ReleaseTensorFloat(Xmax);
             ReleaseTensorFloat(XexpSums);
         }
 
         /// <inheritdoc/>
-        public void Hardmax(TensorFloat X, TensorFloat O, int axis)
+        public void Hardmax(Tensor<float> X, Tensor<float> O, int axis)
         {
             //Allocate temp tensors
             var reduceOpShape = X.shape.Reduce(axis);
@@ -1762,79 +1788,79 @@ namespace Unity.Sentis
             // argmax
             {
                 var fn = ComputeFunctions.k_ArgMaxFloatFirst;
-                fn.SetInt(k_ID_innerLength, offsetReduce);
-                fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(argMax));
-                fn.UnrolledDispatch(reduceOpShape.length);
+                cb.SetComputeIntParam(fn.shader, k_ID_innerLength, offsetReduce);
+                cb.SetComputeIntParam(fn.shader, k_ID_reduceLength, X.shape[axis]);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(argMax));
+                cb.UnrolledDispatch(fn, reduceOpShape.length);
             }
             // one hot from argmax
             {
                 var fn = ComputeFunctions.k_HardmaxEnd;
-                fn.SetInt(k_ID_innerLength, offsetReduce);
-                fn.SetInt(k_ID_reduceLength, X.shape[axis]);
+                cb.SetComputeIntParam(fn.shader, k_ID_innerLength, offsetReduce);
+                cb.SetComputeIntParam(fn.shader, k_ID_reduceLength, X.shape[axis]);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(argMax));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(O.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(argMax));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, O.shape.length);
             }
 
             ReleaseTensorFloat(argMax);
         }
 
         /// <inheritdoc/>
-        public void ScalarMad(TensorFloat X, TensorFloat O, float s, float b)
+        public void ScalarMad(Tensor<float> X, Tensor<float> O, float s, float b)
         {
             var fn = ComputeFunctions.k_ScalarMadFloat;
-            fn.SetFloat(k_ID_alpha, s);
-            fn.SetFloat(k_ID_beta, b);
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetComputeFloatParam(fn.shader, k_ID_alpha, s);
+            cb.SetComputeFloatParam(fn.shader, k_ID_beta, b);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void ScalarMad(TensorInt X, TensorInt O, int s, int b)
+        public void ScalarMad(Tensor<int> X, Tensor<int> O, int s, int b)
         {
             var fn = ComputeFunctions.k_ScalarMadInt;
-            fn.SetInt(k_ID_alphai, s);
-            fn.SetInt(k_ID_betai, b);
-            fn.SetTensorAsBuffer(k_ID_X_int_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_alphai, s);
+            cb.SetComputeIntParam(fn.shader, k_ID_betai, b);
+            cb.SetTensorAsBuffer(fn, k_ID_X_int_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_int_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void CumSum(TensorFloat X, TensorFloat O, int axis, bool reverse, bool exclusive)
+        public void CumSum(Tensor<float> X, Tensor<float> O, int axis, bool reverse, bool exclusive)
         {
             var reduceOpShape = X.shape.Reduce(axis);
             var offsetReduce = X.shape.Strides(axis);
 
             var fn = (reverse ? (exclusive ? ComputeFunctions.k_CumSumFloatReverseExclusive : ComputeFunctions.k_CumSumFloatReverseInclusive) : (exclusive ? ComputeFunctions.k_CumSumFloatForwardExclusive : ComputeFunctions.k_CumSumFloatForwardInclusive));
-            fn.SetInt(k_ID_innerLength, offsetReduce);
-            fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(reduceOpShape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_innerLength, offsetReduce);
+            cb.SetComputeIntParam(fn.shader, k_ID_reduceLength, X.shape[axis]);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, reduceOpShape.length);
         }
 
         /// <inheritdoc/>
-        public void CumSum(TensorInt X, TensorInt O, int axis, bool reverse, bool exclusive)
+        public void CumSum(Tensor<int> X, Tensor<int> O, int axis, bool reverse, bool exclusive)
         {
             var reduceOpShape = X.shape.Reduce(axis);
             var offsetReduce = X.shape.Strides(axis);
 
             var fn = (reverse ? (exclusive ? ComputeFunctions.k_CumSumIntReverseExclusive : ComputeFunctions.k_CumSumIntReverseInclusive) : (exclusive ? ComputeFunctions.k_CumSumIntForwardExclusive : ComputeFunctions.k_CumSumIntForwardInclusive));
-            fn.SetInt(k_ID_innerLength, offsetReduce);
-            fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(reduceOpShape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_innerLength, offsetReduce);
+            cb.SetComputeIntParam(fn.shader, k_ID_reduceLength, X.shape[axis]);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, reduceOpShape.length);
         }
 
         /// <inheritdoc/>
-        public void Einsum(TensorFloat[] inputTensors, TensorFloat O, TensorIndex[] operandIndices, TensorIndex outputIndices, TensorIndex sumIndices, TensorShape sumShape)
+        public void Einsum(Tensor<float>[] inputTensors, Tensor<float> O, TensorIndex[] operandIndices, TensorIndex outputIndices, TensorIndex sumIndices, TensorShape sumShape)
         {
             switch (inputTensors.Length)
             {
@@ -1847,20 +1873,20 @@ namespace Unity.Sentis
                         var outStridesA = stackalloc int[TensorShape.maxRank];
                         var sumStridesA = stackalloc int[TensorShape.maxRank];
                         EinsumHelper.PinOperandStrides(inputTensors[0].shape, operandIndices[0], outputIndices, sumIndices, outStridesA, sumStridesA);
-                        fn.SetInt8(k_ID_outStridesA, outStridesA);
-                        fn.SetInt8(k_ID_sumStridesA, sumStridesA);
+                        cb.SetInt8(fn, k_ID_outStridesA, outStridesA);
+                        cb.SetInt8(fn, k_ID_sumStridesA, sumStridesA);
 
-                        fn.SetTensorShapeStrides(k_ID_outLengths, k_ID_outStrides, O.shape);
-                        fn.SetTensorShapeStrides(k_ID_sumLengths, k_ID_sumStrides, sumShape);
+                        cb.SetTensorShapeStrides(fn, k_ID_outLengths, k_ID_outStrides, O.shape);
+                        cb.SetTensorShapeStrides(fn, k_ID_sumLengths, k_ID_sumStrides, sumShape);
                     }
 
-                    fn.SetInt(k_ID_sumSize, sumShape.length);
-                    fn.SetInt(k_ID_sumRank, sumShape.rank);
-                    fn.SetInt(k_ID_outRank, O.shape.rank);
+                    cb.SetComputeIntParam(fn.shader, k_ID_sumSize, sumShape.length);
+                    cb.SetComputeIntParam(fn.shader, k_ID_sumRank, sumShape.rank);
+                    cb.SetComputeIntParam(fn.shader, k_ID_outRank, O.shape.rank);
 
-                    fn.SetTensorAsBuffer(k_ID_Xptr, Pin(inputTensors[0]));
-                    fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                    fn.UnrolledDispatch(O.shape.length);
+                    cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(inputTensors[0]));
+                    cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                    cb.UnrolledDispatch(fn, O.shape.length);
                     return;
                 }
                 case 2:
@@ -1872,27 +1898,27 @@ namespace Unity.Sentis
                         var outStridesA = stackalloc int[TensorShape.maxRank];
                         var sumStridesA = stackalloc int[TensorShape.maxRank];
                         EinsumHelper.PinOperandStrides(inputTensors[0].shape, operandIndices[0], outputIndices, sumIndices, outStridesA, sumStridesA);
-                        fn.SetInt8(k_ID_outStridesA, outStridesA);
-                        fn.SetInt8(k_ID_sumStridesA, sumStridesA);
+                        cb.SetInt8(fn, k_ID_outStridesA, outStridesA);
+                        cb.SetInt8(fn, k_ID_sumStridesA, sumStridesA);
 
                         var outStridesB = stackalloc int[TensorShape.maxRank];
                         var sumStridesB = stackalloc int[TensorShape.maxRank];
                         EinsumHelper.PinOperandStrides(inputTensors[1].shape, operandIndices[1], outputIndices, sumIndices, outStridesB, sumStridesB);
-                        fn.SetInt8(k_ID_outStridesB, outStridesB);
-                        fn.SetInt8(k_ID_sumStridesB, sumStridesB);
+                        cb.SetInt8(fn, k_ID_outStridesB, outStridesB);
+                        cb.SetInt8(fn, k_ID_sumStridesB, sumStridesB);
 
-                        fn.SetTensorShapeStrides(k_ID_outLengths, k_ID_outStrides, O.shape);
-                        fn.SetTensorShapeStrides(k_ID_sumLengths, k_ID_sumStrides, sumShape);
+                        cb.SetTensorShapeStrides(fn, k_ID_outLengths, k_ID_outStrides, O.shape);
+                        cb.SetTensorShapeStrides(fn, k_ID_sumLengths, k_ID_sumStrides, sumShape);
                     }
 
-                    fn.SetInt(k_ID_sumSize, sumShape.length);
-                    fn.SetInt(k_ID_sumRank, sumShape.rank);
-                    fn.SetInt(k_ID_outRank, O.shape.rank);
+                    cb.SetComputeIntParam(fn.shader, k_ID_sumSize, sumShape.length);
+                    cb.SetComputeIntParam(fn.shader, k_ID_sumRank, sumShape.rank);
+                    cb.SetComputeIntParam(fn.shader, k_ID_outRank, O.shape.rank);
 
-                    fn.SetTensorAsBuffer(k_ID_Xptr, Pin(inputTensors[0]));
-                    fn.SetTensorAsBuffer(k_ID_Bptr, Pin(inputTensors[1]));
-                    fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                    fn.UnrolledDispatch(O.shape.length);
+                    cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(inputTensors[0]));
+                    cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(inputTensors[1]));
+                    cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                    cb.UnrolledDispatch(fn, O.shape.length);
                     return;
                 }
             }
@@ -1908,7 +1934,7 @@ namespace Unity.Sentis
         /// <param name="iouThreshold">Boxes with intersect-over-union with a selected box above this threshold are discarded.</param>
         /// <param name="scoreThreshold">Boxes with a score below this threshold are discarded.</param>
         /// <param name="centerPointBox">The types of the box coordinates, either [x1, y1, x2, y2] or [x, y, w, h].</param>
-        public void NonMaxSuppression(TensorFloat boxes, TensorFloat scores, TensorInt O, int maxOutputBoxesPerClass, float iouThreshold, float scoreThreshold, Layers.CenterPointBox centerPointBox)
+        public void NonMaxSuppression(Tensor<float> boxes, Tensor<float> scores, Tensor<int> O, int maxOutputBoxesPerClass, float iouThreshold, float scoreThreshold, Layers.CenterPointBox centerPointBox)
         {
             // based on https://github.com/pytorch/vision/blob/main/torchvision/csrc/ops/cpu/nms_kernel.cpp
             // extended to onnx multiple class multiple batch inputs as here
@@ -1925,12 +1951,12 @@ namespace Unity.Sentis
             // create bitmask of boxes
             {
                 var fn = centerPointBox == Layers.CenterPointBox.Center ? ComputeFunctions.k_NMSBitmaskCenter : ComputeFunctions.k_NMSBitmaskCorners;
-                fn.SetInt(k_ID_numBatches, numBatches);
-                fn.SetInt(k_ID_numBoxes, numBoxes);
-                fn.SetFloat(k_ID_iouThreshold, iouThreshold);
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(boxes));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(bitmask));
-                fn.Dispatch(numBatches, numBoxes, numBoxes);
+                cb.SetComputeIntParam(fn.shader, k_ID_numBatches, numBatches);
+                cb.SetComputeIntParam(fn.shader, k_ID_numBoxes, numBoxes);
+                cb.SetComputeFloatParam(fn.shader, k_ID_iouThreshold, iouThreshold);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(boxes));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(bitmask));
+                cb.Dispatch(fn, numBatches, numBoxes, numBoxes);
             }
 
             // sort
@@ -1948,31 +1974,31 @@ namespace Unity.Sentis
             // selection
             {
                 var fn = ComputeFunctions.k_NMSSelect;
-                fn.SetInt(k_ID_numBatches, numBatches);
-                fn.SetInt(k_ID_numBoxes, numBoxes);
-                fn.SetInt(k_ID_numClasses, numClasses);
-                fn.SetFloat(k_ID_scoreThreshold, scoreThreshold);
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(bitmask));
-                fn.SetTensorAsBuffer(k_ID_Sptr, Pin(scoresSorted));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indicesSorted));
-                fn.SetTensorAsBuffer(k_ID_Wptr, Pin(bitmaskOverlap));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(selected));
-                fn.Dispatch(1, numClasses, numBatches);
+                cb.SetComputeIntParam(fn.shader, k_ID_numBatches, numBatches);
+                cb.SetComputeIntParam(fn.shader, k_ID_numBoxes, numBoxes);
+                cb.SetComputeIntParam(fn.shader, k_ID_numClasses, numClasses);
+                cb.SetComputeFloatParam(fn.shader, k_ID_scoreThreshold, scoreThreshold);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(bitmask));
+                cb.SetTensorAsBuffer(fn, k_ID_Sptr, Pin(scoresSorted));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(indicesSorted));
+                cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(bitmaskOverlap));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(selected));
+                cb.Dispatch(fn, 1, numClasses, numBatches);
             }
 
             // compaction
             var numSelected = AllocTensorInt(new TensorShape());
             {
                 var fn = ComputeFunctions.k_NMSCompact;
-                fn.SetInt(k_ID_numBatches, numBatches);
-                fn.SetInt(k_ID_numBoxes, numBoxes);
-                fn.SetInt(k_ID_numClasses, numClasses);
-                fn.SetInt(k_ID_maxNumOutput, maxNumOutput);
-                fn.SetInt(k_ID_maxOutputBoxesPerClass, maxOutputBoxesPerClass);
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(selected));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.SetTensorAsBuffer(k_ID_Iptr, Pin(numSelected));
-                fn.Dispatch(1, 1, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_numBatches, numBatches);
+                cb.SetComputeIntParam(fn.shader, k_ID_numBoxes, numBoxes);
+                cb.SetComputeIntParam(fn.shader, k_ID_numClasses, numClasses);
+                cb.SetComputeIntParam(fn.shader, k_ID_maxNumOutput, maxNumOutput);
+                cb.SetComputeIntParam(fn.shader, k_ID_maxOutputBoxesPerClass, maxOutputBoxesPerClass);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(selected));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetTensorAsBuffer(fn, k_ID_Iptr, Pin(numSelected));
+                cb.Dispatch(fn, 1, 1, 1);
             }
 
             ReleaseTensorFloat(scoresSorted);
@@ -1981,10 +2007,14 @@ namespace Unity.Sentis
             ReleaseTensorInt(selected);
             ReleaseTensorInt(bitmask);
             ReleaseTensorInt(bitmaskOverlap);
-            var numSelectedCPU = numSelected.DownloadToNativeArray<int>();
+
+            if (!InternalCommandBuffer())
+                D.LogWarning("NMS: Need to download from ComputeBuffer, will flush CommandBuffer");
+            ExecuteCommandBufferAndClear();
+            var numSelectedCPU = numSelected.DownloadToNativeArray();
             ReleaseTensorInt(numSelected);
 
-            O.shape = new TensorShape(numSelectedCPU[0], 3);
+            O.Reshape(new TensorShape(numSelectedCPU[0], 3));
         }
 
         /// <inheritdoc/>
@@ -2003,28 +2033,25 @@ namespace Unity.Sentis
             var fn = ComputeFunctions.k_Slice;
             unsafe
             {
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, X.shape);
                 var pStarts = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
                 var pSteps = stackalloc int[8] { 1, 1, 1, 1, 1, 1, 1, 1 };
 
                 for (int i = 0; i < starts.Length; i++)
                 {
-                    int axis = axes != null ? X.shape.Axis(axes[i]) : i;
-                    int start = Math.Min(starts[i], X.shape[axis] - 1);
-                    start = start < 0 ? X.shape[axis] + start : start;
-                    int step = steps != null ? steps[i] : 1;
-                    pStarts[(TensorShape.maxRank - X.shape.rank) + axis] = start;
-                    pSteps[(TensorShape.maxRank - X.shape.rank) + axis] = step;
+                    int axis = axes[i];
+                    pStarts[(TensorShape.maxRank - X.shape.rank) + axis] = starts[i];
+                    pSteps[(TensorShape.maxRank - X.shape.rank) + axis] = steps[i];
                 }
-                fn.SetInt8(k_ID_starts, pStarts);
-                fn.SetInt8(k_ID_steps, pSteps);
+                cb.SetInt8(fn, k_ID_starts, pStarts);
+                cb.SetInt8(fn, k_ID_steps, pSteps);
             }
-            fn.SetInt(k_ID_rank, O.shape.rank);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
@@ -2034,55 +2061,50 @@ namespace Unity.Sentis
             var fn = ComputeFunctions.k_SliceSet;
             unsafe
             {
-                fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, values.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, values.shape);
                 var pStarts = stackalloc int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
                 var pSteps = stackalloc int[8] { 1, 1, 1, 1, 1, 1, 1, 1 };
 
                 for (int i = 0; i < starts.Length; i++)
                 {
-                    int axis = axes != null ? X.shape.Axis(axes[i]) : i;
-                    int start = Math.Min(starts[i], X.shape[axis] - 1);
-                    start = start < 0 ? X.shape[axis] + start : start;
-                    int step = steps != null ? steps[i] : 1;
-                    pStarts[(TensorShape.maxRank - X.shape.rank) + axis] = start;
-                    pSteps[(TensorShape.maxRank - X.shape.rank) + axis] = step;
+                    int axis = axes[i];
+                    pStarts[(TensorShape.maxRank - X.shape.rank) + axis] = starts[i];
+                    pSteps[(TensorShape.maxRank - X.shape.rank) + axis] = steps[i];
                 }
-                fn.SetInt8(k_ID_starts, pStarts);
-                fn.SetInt8(k_ID_steps, pSteps);
+                cb.SetInt8(fn, k_ID_starts, pStarts);
+                cb.SetInt8(fn, k_ID_steps, pSteps);
             }
-            fn.SetInt(k_ID_rank, O.shape.rank);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(values));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(values.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(values));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, values.shape.length);
         }
 
         /// <inheritdoc/>
         public void Split(Tensor X, Tensor O, int axis, int start)
         {
-            axis = X.shape.Axis(axis);
-
             var fn = ComputeFunctions.k_Split;
-            fn.SetInt(k_ID_start, start);
-            fn.SetInt(k_ID_lengthO, O.shape.length);
-            fn.SetInt(k_ID_strideLower, O.shape.Strides(axis));
+            cb.SetComputeIntParam(fn.shader, k_ID_start, start);
+            cb.SetComputeIntParam(fn.shader, k_ID_lengthO, O.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_strideLower, O.shape.Strides(axis));
             int strideUpperX = axis == 0 ? X.shape.length : X.shape.Strides(axis - 1);
             int strideUpperO = axis == 0 ? O.shape.length : O.shape.Strides(axis - 1);
-            fn.SetInt(k_ID_strideUpperX, strideUpperX);
-            fn.SetInt(k_ID_strideUpperO, strideUpperO);
+            cb.SetComputeIntParam(fn.shader, k_ID_strideUpperX, strideUpperX);
+            cb.SetComputeIntParam(fn.shader, k_ID_strideUpperO, strideUpperO);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
             var numBlocksY = ComputeHelper.IDivC(O.shape.length, (int)ComputeHelper.SafeDispatchLimit);
             var numBlocksX = ComputeHelper.IDivC(O.shape.length, numBlocksY);
-            fn.SetInt(k_ID_MaxBlockIndexX, numBlocksX);
-            fn.Dispatch(numBlocksX, numBlocksY, 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_MaxBlockIndexX, numBlocksX);
+            cb.Dispatch(fn, numBlocksX, numBlocksY, 1);
         }
 
         /// <inheritdoc/>
-        public void Pad(TensorFloat X, TensorFloat O, ReadOnlySpan<int> pad, Layers.PadMode padMode, float constant)
+        public void Pad(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> pad, Layers.PadMode padMode, float constant)
         {
             ComputeFunction fn;
             switch (padMode)
@@ -2106,20 +2128,20 @@ namespace Unity.Sentis
                     throw new NotImplementedException();
             }
 
-            fn.SetFloat(k_ID_Beta, constant);
+            cb.SetComputeFloatParam(fn.shader, k_ID_Beta, constant);
 
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
-            fn.SetInt16(k_ID_pad, pad);
-            fn.SetInt(k_ID_rank, X.shape.rank);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, X.shape);
+            cb.SetInt16(fn, k_ID_pad, pad);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, X.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Pad(TensorInt X, TensorInt O, ReadOnlySpan<int> pad, Layers.PadMode padMode, int constant)
+        public void Pad(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> pad, Layers.PadMode padMode, int constant)
         {
             ComputeFunction fn;
             switch (padMode)
@@ -2143,16 +2165,16 @@ namespace Unity.Sentis
                     throw new NotImplementedException();
             }
 
-            fn.SetFloat(k_ID_Beta, math.asfloat(constant));
+            cb.SetComputeFloatParam(fn.shader, k_ID_Beta, math.asfloat(constant));
 
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
-            fn.SetInt16(k_ID_pad, pad);
-            fn.SetInt(k_ID_rank, X.shape.rank);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, X.shape);
+            cb.SetInt16(fn, k_ID_pad, pad);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, X.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
@@ -2161,18 +2183,18 @@ namespace Unity.Sentis
             var fn = ComputeFunctions.k_Transpose;
             unsafe
             {
-                fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
+                cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, X.shape);
 
                 int* permutations = stackalloc int[TensorShape.maxRank];
                 for (int i = 0; i < X.shape.rank; i++)
                     permutations[i] = (X.shape.rank - 1) - i;
-                fn.SetInt8(k_ID_permutations, permutations);
+                cb.SetInt8(fn, k_ID_permutations, permutations);
             }
-            fn.SetInt(k_ID_rank, X.shape.rank);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, X.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(X.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, X.shape.length);
         }
 
         /// <inheritdoc/>
@@ -2189,13 +2211,13 @@ namespace Unity.Sentis
                 }
 
                 var fn = ComputeFunctions.k_Transpose2D;
-                fn.SetInt(k_ID_X_width, equivalentXW);
-                fn.SetInt(k_ID_X_height, equivalentXH);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_width, equivalentXW);
+                cb.SetComputeIntParam(fn.shader, k_ID_X_height, equivalentXH);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-                fn.Dispatch(equivalentXW, equivalentXH, 1);
+                cb.Dispatch(fn, equivalentXW, equivalentXH, 1);
             }
             else
             {
@@ -2203,18 +2225,18 @@ namespace Unity.Sentis
                 var fn = ComputeFunctions.k_Transpose;
                 unsafe
                 {
-                    fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
-                    fn.SetInt8(k_ID_permutations, permutations);
+                    cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, X.shape);
+                    cb.SetInt8(fn, k_ID_permutations, permutations);
                 }
-                fn.SetInt(k_ID_rank, X.shape.rank);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, X.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-                fn.UnrolledDispatch(X.shape.length);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fn, X.shape.length);
             }
         }
 
-        void ArgMaxTail(TensorFloat X, TensorInt O, int axis)
+        void ArgMaxTail(Tensor<float> X, Tensor<int> O, int axis)
         {
             int globalNonSpatialLength = X.shape.Length(0, axis);
             int globalSpatialDims = X.shape.length / globalNonSpatialLength;
@@ -2223,7 +2245,7 @@ namespace Unity.Sentis
 
             var Oshape = new TensorShape(globalNonSpatialLength, localSpatialLength);
 
-            TensorInt Xindices = AllocTensorInt(X.shape); // save max(X)
+            Tensor<int> Xindices = AllocTensorInt(X.shape); // save max(X)
             bool isFirstDispatch = true;
 
             // downsample with pyramid approach
@@ -2236,15 +2258,15 @@ namespace Unity.Sentis
                 var Oindicestemp = AllocTensorInt(Oshape);
 
                 var fnPool = ComputeFunctions.k_ArgMaxReduce;
-                fnPool.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fnPool.SetTensorAsBuffer(k_ID_XIndices, Pin(Xindices));
-                fnPool.SetTensorAsBuffer(k_ID_Optr, Pin(Otemp));
-                fnPool.SetTensorAsBuffer(k_ID_OIndices, Pin(Oindicestemp));
-                fnPool.SetInt(k_ID_SpatialDims, localSpatialLength);
-                fnPool.SetInt(k_ID_SpatialDimsO, spatialLengthO);
-                fnPool.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+                cb.SetTensorAsBuffer(fnPool, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fnPool, k_ID_XIndices, Pin(Xindices));
+                cb.SetTensorAsBuffer(fnPool, k_ID_Optr, Pin(Otemp));
+                cb.SetTensorAsBuffer(fnPool, k_ID_OIndices, Pin(Oindicestemp));
+                cb.SetComputeIntParam(fnPool.shader, k_ID_SpatialDims, localSpatialLength);
+                cb.SetComputeIntParam(fnPool.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(fnPool.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-                fnPool.Dispatch(globalNonSpatialLength, ComputeHelper.IDivC(localSpatialLength, 4), 1);
+                cb.Dispatch(fnPool, globalNonSpatialLength, ComputeHelper.IDivC(localSpatialLength, 4), 1);
 
                 if (!isFirstDispatch)
                 {
@@ -2262,13 +2284,13 @@ namespace Unity.Sentis
             }
 
             var fn = ComputeFunctions.k_GlobalArgMaxReduce;
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_XIndices, Pin(Xindices));
-            fn.SetTensorAsBuffer(k_ID_OIndices, Pin(O));
-            fn.SetInt(k_ID_SpatialDims, localSpatialLength);
-            fn.SetInt(k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_XIndices, Pin(Xindices));
+            cb.SetTensorAsBuffer(fn, k_ID_OIndices, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_SpatialDims, localSpatialLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
 
-            fn.Dispatch(globalNonSpatialLength, 1, 1);
+            cb.Dispatch(fn, globalNonSpatialLength, 1, 1);
 
             if (!isFirstDispatch)
                 ReleaseTensorFloat(X);
@@ -2276,7 +2298,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ArgMax(TensorFloat X, TensorInt O, int axis, bool selectLastIndex)
+        public void ArgMax(Tensor<float> X, Tensor<int> O, int axis, bool selectLastIndex)
         {
             int dimAxis = X.shape[axis];
             Assert.AreNotEqual(0, dimAxis, "ValueError: zero-size array to reduction operation maximum which has no identity.");
@@ -2288,134 +2310,134 @@ namespace Unity.Sentis
             }
 
             var fn = (selectLastIndex ? ComputeFunctions.k_ArgMaxFloatLast : ComputeFunctions.k_ArgMaxFloatFirst);
-            fn.SetInt(k_ID_innerLength, X.shape.Strides(axis));
-            fn.SetInt(k_ID_reduceLength, dimAxis);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_innerLength, X.shape.Strides(axis));
+            cb.SetComputeIntParam(fn.shader, k_ID_reduceLength, dimAxis);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void ArgMax(TensorInt X, TensorInt O, int axis, bool selectLastIndex)
+        public void ArgMax(Tensor<int> X, Tensor<int> O, int axis, bool selectLastIndex)
         {
             Assert.AreNotEqual(0, X.shape[axis], "ValueError: zero-size array to reduction operation maximum which has no identity.");
 
             var fn = (selectLastIndex ? ComputeFunctions.k_ArgMaxIntLast : ComputeFunctions.k_ArgMaxIntFirst);
-            fn.SetInt(k_ID_innerLength, X.shape.Strides(axis));
-            fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_innerLength, X.shape.Strides(axis));
+            cb.SetComputeIntParam(fn.shader, k_ID_reduceLength, X.shape[axis]);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void ArgMin(TensorFloat X, TensorInt O, int axis, bool selectLastIndex)
+        public void ArgMin(Tensor<float> X, Tensor<int> O, int axis, bool selectLastIndex)
         {
             Assert.AreNotEqual(0, X.shape[axis], "ValueError: zero-size array to reduction operation minimum which has no identity.");
 
             var fn = (selectLastIndex ? ComputeFunctions.k_ArgMinFloatLast : ComputeFunctions.k_ArgMinFloatFirst);
-            fn.SetInt(k_ID_innerLength, X.shape.Strides(axis));
-            fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_innerLength, X.shape.Strides(axis));
+            cb.SetComputeIntParam(fn.shader, k_ID_reduceLength, X.shape[axis]);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void ArgMin(TensorInt X, TensorInt O, int axis, bool selectLastIndex)
+        public void ArgMin(Tensor<int> X, Tensor<int> O, int axis, bool selectLastIndex)
         {
             var fn = (selectLastIndex ? ComputeFunctions.k_ArgMinIntLast : ComputeFunctions.k_ArgMinIntFirst);
-            fn.SetInt(k_ID_innerLength, X.shape.Strides(axis));
-            fn.SetInt(k_ID_reduceLength, X.shape[axis]);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_innerLength, X.shape.Strides(axis));
+            cb.SetComputeIntParam(fn.shader, k_ID_reduceLength, X.shape[axis]);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Not(TensorInt X, TensorInt O)
+        public void Not(Tensor<int> X, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_Not;
-            fn.SetTensorAsBuffer(k_ID_X_int_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_int_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_int_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void HardSwish(TensorFloat X, TensorFloat O)
+        public void HardSwish(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_HardSwish;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Sign(TensorFloat X, TensorFloat O)
+        public void Sign(Tensor<float> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_SignFloat;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Sign(TensorInt X, TensorInt O)
+        public void Sign(Tensor<int> X, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_SignInt;
-            fn.SetTensorAsBuffer(k_ID_X_int_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_int_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_int_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void IsInf(TensorFloat X, TensorInt O, bool detectNegative, bool detectPositive)
+        public void IsInf(Tensor<float> X, Tensor<int> O, bool detectNegative, bool detectPositive)
         {
             var fn = ComputeFunctions.k_IsInf;
-            fn.SetBool(k_ID_detectNegative, detectNegative);
-            fn.SetBool(k_ID_detectPositive, detectPositive);
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetBool(fn, k_ID_detectNegative, detectNegative);
+            cb.SetBool(fn, k_ID_detectPositive, detectPositive);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void IsNaN(TensorFloat X, TensorInt O)
+        public void IsNaN(Tensor<float> X, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_IsNaN;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_int_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Where(TensorInt C, Tensor A, Tensor B, Tensor O)
+        public void Where(Tensor<int> C, Tensor A, Tensor B, Tensor O)
         {
             var fn = ComputeFunctions.k_Where;
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeC, k_ID_stridesC, C.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeA, k_ID_stridesA, A.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeB, k_ID_stridesB, B.shape);
-            fn.SetInt(k_ID_rank, O.shape.rank);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeC, k_ID_stridesC, C.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeA, k_ID_stridesA, A.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeB, k_ID_stridesB, B.shape);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(C));
-            fn.SetTensorAsBuffer(k_ID_Sptr, Pin(A));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(C));
+            cb.SetTensorAsBuffer(fn, k_ID_Sptr, Pin(A));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.UnrolledDispatch(O.shape.length);
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
         public void Tile(Tensor X, Tensor O, ReadOnlySpan<int> repeats)
         {
             var fn = ComputeFunctions.k_Tile;
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
-            fn.SetInt(k_ID_rank, O.shape.rank);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, X.shape);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
@@ -2427,17 +2449,17 @@ namespace Unity.Sentis
             var wordsWidth = ComputeHelper.IDivC(numWords, wordsHeight);
 
             var fn = ComputeFunctions.k_MemSet;
-            fn.SetFloat(k_ID_memValueFloat, 0);
-            fn.SetInt(k_ID_offsetO, 0);
-            fn.SetInt(k_ID_count, length);
-            fn.SetInt(k_ID_O_width, wordsWidth * 4);
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetComputeFloatParam(fn.shader, k_ID_memValueFloat, 0);
+            cb.SetComputeIntParam(fn.shader, k_ID_offsetO, 0);
+            cb.SetComputeIntParam(fn.shader, k_ID_count, length);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_width, wordsWidth * 4);
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.Dispatch(wordsWidth, wordsHeight, 1);
+            cb.Dispatch(fn, wordsWidth, wordsHeight, 1);
         }
 
         /// <inheritdoc/>
-        public void MemSet(TensorFloat O, float value)
+        public void MemSet(Tensor<float> O, float value)
         {
             var length = O.shape.length;
             var numWords = ComputeHelper.IDivC(length, 4);
@@ -2445,17 +2467,17 @@ namespace Unity.Sentis
             var wordsWidth = ComputeHelper.IDivC(numWords, wordsHeight);
 
             var fn = ComputeFunctions.k_MemSet;
-            fn.SetFloat(k_ID_memValueFloat, value);
-            fn.SetInt(k_ID_offsetO, 0);
-            fn.SetInt(k_ID_count, length);
-            fn.SetInt(k_ID_O_width, wordsWidth * 4);
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetComputeFloatParam(fn.shader, k_ID_memValueFloat, value);
+            cb.SetComputeIntParam(fn.shader, k_ID_offsetO, 0);
+            cb.SetComputeIntParam(fn.shader, k_ID_count, length);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_width, wordsWidth * 4);
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.Dispatch(wordsWidth, wordsHeight, 1);
+            cb.Dispatch(fn, wordsWidth, wordsHeight, 1);
         }
 
         /// <inheritdoc/>
-        public void MemSet(TensorInt O, int value)
+        public void MemSet(Tensor<int> O, int value)
         {
             var length = O.shape.length;
             var numWords = ComputeHelper.IDivC(length, 4);
@@ -2463,57 +2485,57 @@ namespace Unity.Sentis
             var wordsWidth = ComputeHelper.IDivC(numWords, wordsHeight);
 
             var fn = ComputeFunctions.k_MemSet;
-            fn.SetFloat(k_ID_memValueFloat, math.asfloat(value));
-            fn.SetInt(k_ID_offsetO, 0);
-            fn.SetInt(k_ID_count, length);
-            fn.SetInt(k_ID_O_width, wordsWidth * 4);
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetComputeFloatParam(fn.shader, k_ID_memValueFloat, math.asfloat(value));
+            cb.SetComputeIntParam(fn.shader, k_ID_offsetO, 0);
+            cb.SetComputeIntParam(fn.shader, k_ID_count, length);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_width, wordsWidth * 4);
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.Dispatch(wordsWidth, wordsHeight, 1);
+            cb.Dispatch(fn, wordsWidth, wordsHeight, 1);
         }
 
         /// <inheritdoc/>
         public void Expand(Tensor X, Tensor O)
         {
             var fn = ComputeFunctions.k_Expand;
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
-            fn.SetInt(k_ID_rank, O.shape.rank);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, X.shape);
+            cb.SetComputeIntParam(fn.shader, k_ID_rank, O.shape.rank);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void CompressWithIndices(Tensor X, TensorInt indices, Tensor O, int numIndices, int axis)
+        public void CompressWithIndices(Tensor X, Tensor<int> indices, Tensor O, int numIndices, int axis)
         {
             var fn = ComputeFunctions.k_Gather;
-            fn.SetInt(k_ID_endLength, X.shape.Strides(axis));
-            fn.SetInt(k_ID_indicesLength, numIndices);
-            fn.SetInt(k_ID_axisDim, X.shape[axis]);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indices));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_endLength, X.shape.Strides(axis));
+            cb.SetComputeIntParam(fn.shader, k_ID_indicesLength, numIndices);
+            cb.SetComputeIntParam(fn.shader, k_ID_axisDim, X.shape[axis]);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(indices));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Gather(Tensor X, TensorInt indices, Tensor O, int axis)
+        public void Gather(Tensor X, Tensor<int> indices, Tensor O, int axis)
         {
             var fn = ComputeFunctions.k_Gather;
-            fn.SetInt(k_ID_endLength, X.shape.Strides(axis));
-            fn.SetInt(k_ID_indicesLength, indices.shape.length);
-            fn.SetInt(k_ID_axisDim, X.shape[axis]);
+            cb.SetComputeIntParam(fn.shader, k_ID_endLength, X.shape.Strides(axis));
+            cb.SetComputeIntParam(fn.shader, k_ID_indicesLength, indices.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_axisDim, X.shape[axis]);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indices));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(indices));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.UnrolledDispatch(O.shape.length);
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void GatherElements(Tensor X, TensorInt indices, Tensor O, int axis)
+        public void GatherElements(Tensor X, Tensor<int> indices, Tensor O, int axis)
         {
             Logger.AssertIsTrue(indices.shape.rank == X.shape.rank, "GatherElements: input and indices rank should match");
             Logger.AssertIsTrue(O.shape == indices.shape, "GatherElements: output and indices shapes should match");
@@ -2523,61 +2545,61 @@ namespace Unity.Sentis
             bool fastPathPossible = ShapeInference.ScatterGatherElementsSupportsFastPath(indices.shape, X.shape, axis);
             var fn = fastPathPossible ? ComputeFunctions.k_GatherElementsFast : ComputeFunctions.k_GatherElements;
 
-            fn.SetInt(k_ID_inputAxisSize, X.shape[axis]);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputAxisSize, X.shape[axis]);
 
             if (fastPathPossible)
             {
-                fn.SetInt(k_ID_indicesAxisElementStride, indices.shape.Strides(axis));
-                fn.SetInt(k_ID_inputAxisElementStride, X.shape.Strides(axis));
-                fn.SetInt(k_ID_indicesAxisMinusOneElementStride, indices.shape[axis] * indices.shape.Strides(axis));
+                cb.SetComputeIntParam(fn.shader, k_ID_indicesAxisElementStride, indices.shape.Strides(axis));
+                cb.SetComputeIntParam(fn.shader, k_ID_inputAxisElementStride, X.shape.Strides(axis));
+                cb.SetComputeIntParam(fn.shader, k_ID_indicesAxisMinusOneElementStride, indices.shape[axis] * indices.shape.Strides(axis));
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indices));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(indices));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-                fn.UnrolledDispatch(indices.shape.length);
+                cb.UnrolledDispatch(fn, indices.shape.length);
             }
             else
             {
-                fn.SetTensorStridesCompactedAtHead(k_ID_stridesO, indices.shape);
-                fn.SetTensorStridesCompactedAtHead(k_ID_stridesX, X.shape); // WARNING: Remember that X in the shader and here are inputs!
-                fn.SetInt(k_ID_posAxis, axis);
-                fn.SetInt(k_ID_rank, X.shape.rank);
+                cb.SetTensorStridesCompactedAtHead(fn, k_ID_stridesO, indices.shape);
+                cb.SetTensorStridesCompactedAtHead(fn, k_ID_stridesX, X.shape); // WARNING: Remember that X in the shader and here are inputs!
+                cb.SetComputeIntParam(fn.shader, k_ID_posAxis, axis);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, X.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indices));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(indices));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-                fn.UnrolledDispatch(indices.shape.length);
+                cb.UnrolledDispatch(fn, indices.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void GatherND(Tensor X, TensorInt indices, Tensor O, int batchDims)
+        public void GatherND(Tensor X, Tensor<int> indices, Tensor O, int batchDims)
         {
             var fn = ComputeFunctions.k_GatherND;
-            fn.SetInt(k_ID_rankX, X.shape.rank);
-            fn.SetInt(k_ID_rankO, O.shape.rank);
-            fn.SetInt(k_ID_rankIndices, indices.shape.rank);
-            fn.SetInt(k_ID_iStart, TensorShape.maxRank - O.shape.rank);
-            fn.SetInt(k_ID_iEndIndices, TensorShape.maxRank - O.shape.rank + indices.shape.rank - 1);
-            fn.SetInt(k_ID_iEndX, TensorShape.maxRank - O.shape.rank + batchDims);
-            fn.SetInt(k_ID_iEndMin, TensorShape.maxRank - O.shape.rank + Math.Min(batchDims, indices.shape.rank - 1));
-            fn.SetInt(k_ID_iStartB, TensorShape.maxRank - X.shape.rank + batchDims);
-            fn.SetInt(k_ID_iEndB, TensorShape.maxRank - X.shape.rank + batchDims + indices.shape[-1]);
-            fn.SetTensorShapeStrides(k_ID_shapeO, k_ID_stridesO, O.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeX, k_ID_stridesX, X.shape);
-            fn.SetTensorShapeStrides(k_ID_shapeIndices, k_ID_stridesIndices, indices.shape);
+            cb.SetComputeIntParam(fn.shader, k_ID_rankX, X.shape.rank);
+            cb.SetComputeIntParam(fn.shader, k_ID_rankO, O.shape.rank);
+            cb.SetComputeIntParam(fn.shader, k_ID_rankIndices, indices.shape.rank);
+            cb.SetComputeIntParam(fn.shader, k_ID_iStart, TensorShape.maxRank - O.shape.rank);
+            cb.SetComputeIntParam(fn.shader, k_ID_iEndIndices, TensorShape.maxRank - O.shape.rank + indices.shape.rank - 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_iEndX, TensorShape.maxRank - O.shape.rank + batchDims);
+            cb.SetComputeIntParam(fn.shader, k_ID_iEndMin, TensorShape.maxRank - O.shape.rank + Math.Min(batchDims, indices.shape.rank - 1));
+            cb.SetComputeIntParam(fn.shader, k_ID_iStartB, TensorShape.maxRank - X.shape.rank + batchDims);
+            cb.SetComputeIntParam(fn.shader, k_ID_iEndB, TensorShape.maxRank - X.shape.rank + batchDims + indices.shape[-1]);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeX, k_ID_stridesX, X.shape);
+            cb.SetTensorShapeStrides(fn, k_ID_shapeIndices, k_ID_stridesIndices, indices.shape);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indices));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(indices));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.UnrolledDispatch(O.shape.length);
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void ScatterElements(Tensor X, TensorInt indices, Tensor updates, Tensor O, int axis, Layers.ScatterReductionMode reduction)
+        public void ScatterElements(Tensor X, Tensor<int> indices, Tensor updates, Tensor O, int axis, Layers.ScatterReductionMode reduction)
         {
             // TODO: The ONNX definition for ScatterElements allows duplicate indices when using the
             // reduction modes, but allowing this introduces race conditions for updating the output
@@ -2595,38 +2617,38 @@ namespace Unity.Sentis
             bool fastPathPossible = ShapeInference.ScatterGatherElementsSupportsFastPath(indices.shape, X.shape, axis);
             var fn = fastPathPossible ? ComputeFunctions.k_ScatterElementsFast : ComputeFunctions.k_ScatterElements;
 
-            fn.SetInt(k_ID_outAxisSize, X.shape[axis]);
-            fn.SetInt(k_ID_reductionType, (int)reduction);
+            cb.SetComputeIntParam(fn.shader, k_ID_outAxisSize, X.shape[axis]);
+            cb.SetComputeIntParam(fn.shader, k_ID_reductionType, (int)reduction);
 
             if (fastPathPossible)
             {
-                fn.SetInt(k_ID_indicesAxisElementStride, indices.shape.Strides(axis));
-                fn.SetInt(k_ID_outAxisElementStride, X.shape.Strides(axis));
-                fn.SetInt(k_ID_indicesAxisMinusOneElementStride, indices.shape[axis] * indices.shape.Strides(axis));
+                cb.SetComputeIntParam(fn.shader, k_ID_indicesAxisElementStride, indices.shape.Strides(axis));
+                cb.SetComputeIntParam(fn.shader, k_ID_outAxisElementStride, X.shape.Strides(axis));
+                cb.SetComputeIntParam(fn.shader, k_ID_indicesAxisMinusOneElementStride, indices.shape[axis] * indices.shape.Strides(axis));
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(updates));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indices));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(updates));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(indices));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-                fn.UnrolledDispatch(indices.shape.length);
+                cb.UnrolledDispatch(fn, indices.shape.length);
             }
             else
             {
-                fn.SetTensorStridesCompactedAtHead(k_ID_stridesO, O.shape);
-                fn.SetTensorStridesCompactedAtHead(k_ID_stridesX, indices.shape); // WARNING: Remember that X in the shader code is updates, but here X is the input tensor!
-                fn.SetInt(k_ID_posAxis, axis);
-                fn.SetInt(k_ID_rank, X.shape.rank);
+                cb.SetTensorStridesCompactedAtHead(fn, k_ID_stridesO, O.shape);
+                cb.SetTensorStridesCompactedAtHead(fn, k_ID_stridesX, indices.shape); // WARNING: Remember that X in the shader code is updates, but here X is the input tensor!
+                cb.SetComputeIntParam(fn.shader, k_ID_posAxis, axis);
+                cb.SetComputeIntParam(fn.shader, k_ID_rank, X.shape.rank);
 
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(updates));
-                fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indices));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(updates));
+                cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(indices));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-                fn.UnrolledDispatch(indices.shape.length);
+                cb.UnrolledDispatch(fn, indices.shape.length);
             }
         }
 
         /// <inheritdoc/>
-        public void ScatterND(TensorFloat X, TensorInt indices, TensorFloat updates, TensorFloat O, Layers.ScatterReductionMode reduction)
+        public void ScatterND(Tensor<float> X, Tensor<int> indices, Tensor<float> updates, Tensor<float> O, Layers.ScatterReductionMode reduction)
         {
             MemCopy(X, O);
             int indexRemapDim = indices.shape[-1];
@@ -2634,10 +2656,10 @@ namespace Unity.Sentis
             int updatesLength = updates.shape.length / indicesLength;
 
             var fn = ComputeFunctions.k_ScatterNDFloat;
-            fn.SetInt(k_ID_updatesLength, updatesLength);
-            fn.SetInt(k_ID_indicesLength, indicesLength);
-            fn.SetInt(k_ID_indexRemapDim, indexRemapDim);
-            fn.SetInt(k_ID_reduction, (int)reduction);
+            cb.SetComputeIntParam(fn.shader, k_ID_updatesLength, updatesLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_indicesLength, indicesLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_indexRemapDim, indexRemapDim);
+            cb.SetComputeIntParam(fn.shader, k_ID_reduction, (int)reduction);
             unsafe
             {
                 var trailing = stackalloc int[8];
@@ -2647,16 +2669,16 @@ namespace Unity.Sentis
                     trailing[j] = trailingDim;
                     trailingDim *= X.shape[j];
                 }
-                fn.SetInt8(k_ID_trailing, trailing);
+                cb.SetInt8(fn, k_ID_trailing, trailing);
             }
-            fn.SetTensorAsBuffer(k_ID_Iptr, Pin(indices));
-            fn.SetTensorAsBuffer(k_ID_Uptr, Pin(updates));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.Dispatch(updatesLength, indicesLength, 1);
+            cb.SetTensorAsBuffer(fn, k_ID_Iptr, Pin(indices));
+            cb.SetTensorAsBuffer(fn, k_ID_Uptr, Pin(updates));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.Dispatch(fn, updatesLength, indicesLength, 1);
         }
 
         /// <inheritdoc/>
-        public void ScatterND(TensorInt X, TensorInt indices, TensorInt updates, TensorInt O, Layers.ScatterReductionMode reduction)
+        public void ScatterND(Tensor<int> X, Tensor<int> indices, Tensor<int> updates, Tensor<int> O, Layers.ScatterReductionMode reduction)
         {
             MemCopy(X, O);
 
@@ -2665,10 +2687,10 @@ namespace Unity.Sentis
             int updatesLength = updates.shape.length / indicesLength;
 
             var fn = ComputeFunctions.k_ScatterNDInt;
-            fn.SetInt(k_ID_updatesLength, updatesLength);
-            fn.SetInt(k_ID_indicesLength, indicesLength);
-            fn.SetInt(k_ID_indexRemapDim, indexRemapDim);
-            fn.SetInt(k_ID_reduction, (int)reduction);
+            cb.SetComputeIntParam(fn.shader, k_ID_updatesLength, updatesLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_indicesLength, indicesLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_indexRemapDim, indexRemapDim);
+            cb.SetComputeIntParam(fn.shader, k_ID_reduction, (int)reduction);
             unsafe
             {
                 var trailing = stackalloc int[8];
@@ -2678,179 +2700,179 @@ namespace Unity.Sentis
                     trailing[j] = trailingDim;
                     trailingDim *= X.shape[j];
                 }
-                fn.SetInt8(k_ID_trailing, trailing);
+                cb.SetInt8(fn, k_ID_trailing, trailing);
             }
-            fn.SetTensorAsBuffer(k_ID_Iptr, Pin(indices));
-            fn.SetTensorAsBuffer(k_ID_UIntptr, Pin(updates));
-            fn.SetTensorAsBuffer(k_ID_OIntptr, Pin(O));
-            fn.Dispatch(updatesLength, indicesLength, 1);
+            cb.SetTensorAsBuffer(fn, k_ID_Iptr, Pin(indices));
+            cb.SetTensorAsBuffer(fn, k_ID_UIntptr, Pin(updates));
+            cb.SetTensorAsBuffer(fn, k_ID_OIntptr, Pin(O));
+            cb.Dispatch(fn, updatesLength, indicesLength, 1);
         }
 
         /// <inheritdoc/>
-        public void OneHot(TensorInt X, TensorInt O, int axis, int depth, int offValue, int onValue)
+        public void OneHot(Tensor<int> X, Tensor<int> O, int axis, int depth, int offValue, int onValue)
         {
             axis = O.shape.Axis(axis);
 
             var fn = ComputeFunctions.k_OneHot;
-            fn.SetInt(k_ID_depth, depth);
-            fn.SetInt(k_ID_offValue, offValue);
-            fn.SetInt(k_ID_onValue, onValue);
-            fn.SetInt(k_ID_rankO, O.shape.rank);
+            cb.SetComputeIntParam(fn.shader, k_ID_depth, depth);
+            cb.SetComputeIntParam(fn.shader, k_ID_offValue, offValue);
+            cb.SetComputeIntParam(fn.shader, k_ID_onValue, onValue);
+            cb.SetComputeIntParam(fn.shader, k_ID_rankO, O.shape.rank);
 
-            fn.SetInt(k_ID_stridesToAxis, O.shape.Strides(axis));
-            fn.SetInt(k_ID_axisDim, O.shape[axis]);
+            cb.SetComputeIntParam(fn.shader, k_ID_stridesToAxis, O.shape.Strides(axis));
+            cb.SetComputeIntParam(fn.shader, k_ID_axisDim, O.shape[axis]);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.Dispatch(O.shape.length, 1, 1);
+            cb.Dispatch(fn, O.shape.length, 1, 1);
         }
 
         /// <inheritdoc/>
-        public void OneHot(TensorInt X, TensorFloat O, int axis, int depth, float offValue, float onValue)
+        public void OneHot(Tensor<int> X, Tensor<float> O, int axis, int depth, float offValue, float onValue)
         {
             axis = O.shape.Axis(axis);
 
             var fn = ComputeFunctions.k_OneHot;
-            fn.SetInt(k_ID_depth, depth);
-            fn.SetInt(k_ID_offValue, math.asint(offValue));
-            fn.SetInt(k_ID_onValue, math.asint(onValue));
-            fn.SetInt(k_ID_rankO, O.shape.rank);
+            cb.SetComputeIntParam(fn.shader, k_ID_depth, depth);
+            cb.SetComputeIntParam(fn.shader, k_ID_offValue, math.asint(offValue));
+            cb.SetComputeIntParam(fn.shader, k_ID_onValue, math.asint(onValue));
+            cb.SetComputeIntParam(fn.shader, k_ID_rankO, O.shape.rank);
 
-            fn.SetInt(k_ID_stridesToAxis, O.shape.Strides(axis));
-            fn.SetInt(k_ID_axisDim, O.shape[axis]);
+            cb.SetComputeIntParam(fn.shader, k_ID_stridesToAxis, O.shape.Strides(axis));
+            cb.SetComputeIntParam(fn.shader, k_ID_axisDim, O.shape[axis]);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.Dispatch(O.shape.length, 1, 1);
+            cb.Dispatch(fn, O.shape.length, 1, 1);
         }
 
         /// <inheritdoc/>
-        public void TopK(TensorFloat X, TensorFloat values, TensorInt indices, int k, int axis, bool largest)
+        public void TopK(Tensor<float> X, Tensor<float> values, Tensor<int> indices, int k, int axis, bool largest)
         {
             int reduceLength = X.shape[axis];
             int innerLength = X.shape.Strides(axis);
             int outerLength = X.shape.length / (reduceLength * innerLength);
 
             var fn = (largest ? ComputeFunctions.k_TopKLargest : ComputeFunctions.k_TopKSmallest);
-            fn.SetInt(k_ID_innerLength, innerLength);
-            fn.SetInt(k_ID_outerLength, outerLength);
-            fn.SetInt(k_ID_reduceLength, reduceLength);
-            fn.SetInt(k_ID_maxK, k);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Valuesptr, Pin(values));
-            fn.SetTensorAsBuffer(k_ID_Indicesptr, Pin(indices));
-            fn.Dispatch(innerLength, outerLength, 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_innerLength, innerLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_outerLength, outerLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_reduceLength, reduceLength);
+            cb.SetComputeIntParam(fn.shader, k_ID_maxK, k);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Valuesptr, Pin(values));
+            cb.SetTensorAsBuffer(fn, k_ID_Indicesptr, Pin(indices));
+            cb.Dispatch(fn, innerLength, outerLength, 1);
         }
 
         /// <inheritdoc/>
-        public void RoiAlign(TensorFloat X, TensorFloat rois, TensorInt indices, TensorFloat O, Layers.RoiPoolingMode mode, int outputHeight, int outputWidth, int samplingRatio, float spatialScale)
+        public void RoiAlign(Tensor<float> X, Tensor<float> rois, Tensor<int> indices, Tensor<float> O, Layers.RoiPoolingMode mode, int outputHeight, int outputWidth, int samplingRatio, float spatialScale)
         {
             var fn = (mode == Layers.RoiPoolingMode.Avg ? ComputeFunctions.k_RoiAlignAvg : ComputeFunctions.k_RoiAlignMax);
-            fn.SetInt(k_ID_numRois, rois.shape[0]);
-            fn.SetInt(k_ID_inputChannels, X.shape[1]);
-            fn.SetInt(k_ID_inputHeight, X.shape[2]);
-            fn.SetInt(k_ID_inputWidth, X.shape[3]);
-            fn.SetInt(k_ID_inputSpatialSize, X.shape[2] * X.shape[3]);
-            fn.SetInt(k_ID_inputBatchOffset, X.shape[1] * X.shape[2] * X.shape[3]);
-            fn.SetInt(k_ID_outputHeight, outputHeight);
-            fn.SetInt(k_ID_outputWidth, outputWidth);
-            fn.SetInt(k_ID_outputSpatialSize, outputHeight * outputWidth);
-            fn.SetFloat(k_ID_normalizeOHeight, 1.0f / outputHeight);
-            fn.SetFloat(k_ID_normalizeOWidth, 1.0f / outputWidth);
-            fn.SetInt(k_ID_samplingRatio, samplingRatio);
-            fn.SetFloat(k_ID_spatialScale, spatialScale);
+            cb.SetComputeIntParam(fn.shader, k_ID_numRois, rois.shape[0]);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputChannels, X.shape[1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputHeight, X.shape[2]);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputWidth, X.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputSpatialSize, X.shape[2] * X.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_inputBatchOffset, X.shape[1] * X.shape[2] * X.shape[3]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputHeight, outputHeight);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputWidth, outputWidth);
+            cb.SetComputeIntParam(fn.shader, k_ID_outputSpatialSize, outputHeight * outputWidth);
+            cb.SetComputeFloatParam(fn.shader, k_ID_normalizeOHeight, 1.0f / outputHeight);
+            cb.SetComputeFloatParam(fn.shader, k_ID_normalizeOWidth, 1.0f / outputWidth);
+            cb.SetComputeIntParam(fn.shader, k_ID_samplingRatio, samplingRatio);
+            cb.SetComputeFloatParam(fn.shader, k_ID_spatialScale, spatialScale);
 
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Sptr, Pin(rois));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(indices));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Sptr, Pin(rois));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(indices));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.Dispatch(O.shape[0] * O.shape[1], O.shape[2] * O.shape[3], 1);
+            cb.Dispatch(fn, O.shape[0] * O.shape[1], O.shape[2] * O.shape[3], 1);
         }
 
         /// <inheritdoc/>
-        public void RandomNormal(TensorFloat O, float mean, float scale, int? seed)
+        public void RandomNormal(Tensor<float> O, float mean, float scale, int? seed)
         {
             var fn = ComputeFunctions.k_RandomNormal;
-            fn.SetInt(k_ID_lengthO, O.shape.length);
-            fn.SetInt(k_ID_seed, (int)Random.GetSeed(seed));
-            fn.SetFloat(k_ID_mean, mean);
-            fn.SetFloat(k_ID_scale, scale);
+            cb.SetComputeIntParam(fn.shader, k_ID_lengthO, O.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_seed, (int)Random.GetSeed(seed));
+            cb.SetComputeFloatParam(fn.shader, k_ID_mean, mean);
+            cb.SetComputeFloatParam(fn.shader, k_ID_scale, scale);
 
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.Dispatch(O.shape.length, 1, 1);
+            cb.Dispatch(fn, O.shape.length, 1, 1);
         }
 
         /// <inheritdoc/>
-        public void TopP(TensorFloat X, TensorFloat random, TensorInt O)
+        public void TopP(Tensor<float> X, Tensor<float> random, Tensor<int> O)
         {
             var batch = O.shape.length;
 
             var fn = ComputeFunctions.k_TopP;
-            fn.SetInt(k_ID_count, O.shape[-1]);
-            fn.SetInt(k_ID_innerLength, X.shape[-1]);
-            fn.SetInt(k_ID_outerLength, batch);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(random));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.Dispatch(batch, 1, 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_count, O.shape[-1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_innerLength, X.shape[-1]);
+            cb.SetComputeIntParam(fn.shader, k_ID_outerLength, batch);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(random));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.Dispatch(fn, batch, 1, 1);
         }
 
         /// <inheritdoc/>
-        public void RandomUniform(TensorFloat O, float low, float high, int? seed)
+        public void RandomUniform(Tensor<float> O, float low, float high, int? seed)
         {
             var fn = ComputeFunctions.k_RandomUniform;
-            fn.SetInt(k_ID_lengthO, O.shape.length);
-            fn.SetInt(k_ID_seed, (int)Random.GetSeed(seed));
-            fn.SetFloat(k_ID_low, low);
-            fn.SetFloat(k_ID_high, high);
+            cb.SetComputeIntParam(fn.shader, k_ID_lengthO, O.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_seed, (int)Random.GetSeed(seed));
+            cb.SetComputeFloatParam(fn.shader, k_ID_low, low);
+            cb.SetComputeFloatParam(fn.shader, k_ID_high, high);
 
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.Dispatch(O.shape.length, 1, 1);
+            cb.Dispatch(fn, O.shape.length, 1, 1);
         }
 
         /// <inheritdoc/>
-        public void Bernoulli(TensorFloat X, Tensor O, int? seed)
+        public void Bernoulli(Tensor<float> X, Tensor O, int? seed)
         {
             var fn = (O.dataType == DataType.Float ? ComputeFunctions.k_BernoulliFloat : ComputeFunctions.k_BernoulliInt);
-            fn.SetInt(k_ID_lengthO, O.shape.length);
-            fn.SetInt(k_ID_seed, (int)Random.GetSeed(seed));
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(O.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_lengthO, O.shape.length);
+            cb.SetComputeIntParam(fn.shader, k_ID_seed, (int)Random.GetSeed(seed));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Cast(TensorInt X, TensorFloat O)
+        public void Cast(Tensor<int> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_CastIntToFloat;
-            fn.SetTensorAsBuffer(k_ID_X_int_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_float_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_int_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_float_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Cast(TensorFloat X, TensorInt O)
+        public void Cast(Tensor<float> X, Tensor<int> O)
         {
             var fn = ComputeFunctions.k_CastFloatToInt;
-            fn.SetTensorAsBuffer(k_ID_X_float_ptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(O));
-            fn.UnrolledDispatchFast(O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_X_float_ptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_O_int_ptr, Pin(O));
+            cb.UnrolledDispatchFast(fn, O.shape.length);
         }
 
         /// <inheritdoc/>
-        public void Cast(TensorShort X, TensorFloat O)
+        public void Cast(Tensor<short> X, Tensor<float> O)
         {
             var fn = ComputeFunctions.k_CastHalfToFloat;
-            fn.SetInt(k_ID_lengthO, O.shape.length);
-            fn.SetTensorAsBuffer(k_ID_XIntptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.UnrolledDispatch(X.count);
+            cb.SetComputeIntParam(fn.shader, k_ID_lengthO, O.shape.length);
+            cb.SetTensorAsBuffer(fn, k_ID_XIntptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.UnrolledDispatch(fn, X.count);
         }
 
         /// <inheritdoc/>
@@ -2866,14 +2888,14 @@ namespace Unity.Sentis
             var wordsWidth = ComputeHelper.IDivC(numWords, wordsHeight);
 
             var fn = ComputeFunctions.k_MemCopy;
-            fn.SetInt(k_ID_offsetO, offsetO);
-            fn.SetInt(k_ID_offsetX, offsetX);
-            fn.SetInt(k_ID_count, count);
-            fn.SetInt(k_ID_O_width, wordsWidth * 4);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_offsetO, offsetO);
+            cb.SetComputeIntParam(fn.shader, k_ID_offsetX, offsetX);
+            cb.SetComputeIntParam(fn.shader, k_ID_count, count);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_width, wordsWidth * 4);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-            fn.Dispatch(wordsWidth, wordsHeight, 1);
+            cb.Dispatch(fn, wordsWidth, wordsHeight, 1);
         }
 
         /// <inheritdoc/>
@@ -2895,18 +2917,18 @@ namespace Unity.Sentis
             Logger.AssertIsTrue(offsetO + (count - 1) * strideO + length <= O.shape.length, "MemCopy.BoundsError: copy stride out of bounds for tensor O");
             var fn = ComputeFunctions.k_MemCopyStride;
             var copyLength = count * length;
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.SetInt(k_ID_strideX, strideX);
-            fn.SetInt(k_ID_strideO, strideO);
-            fn.SetInt(k_ID_offsetX, offsetX);
-            fn.SetInt(k_ID_offsetO, offsetO);
-            fn.SetInt(k_ID_elementSize, length);
-            fn.SetInt(k_ID_count, copyLength);
-            fn.Dispatch(ComputeHelper.IDivC(copyLength, 4), 1, 1);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_strideX, strideX);
+            cb.SetComputeIntParam(fn.shader, k_ID_strideO, strideO);
+            cb.SetComputeIntParam(fn.shader, k_ID_offsetX, offsetX);
+            cb.SetComputeIntParam(fn.shader, k_ID_offsetO, offsetO);
+            cb.SetComputeIntParam(fn.shader, k_ID_elementSize, length);
+            cb.SetComputeIntParam(fn.shader, k_ID_count, copyLength);
+            cb.Dispatch(fn, ComputeHelper.IDivC(copyLength, 4), 1, 1);
         }
 
-        void Gemm(TensorFloat X, TensorFloat Y, TensorFloat B, TensorFloat O, int M, int K, int N)
+        void Gemm(Tensor<float> X, Tensor<float> Y, Tensor<float> B, Tensor<float> O, int M, int K, int N)
         {
             int workItemsX, workItemsY;
             ComputeFunction fn;
@@ -2929,23 +2951,23 @@ namespace Unity.Sentis
                 workItemsY = ComputeHelper.IDivC(M, 4);
             }
 
-            fn.SetInt(k_ID_X_width, K);
-            fn.SetInt(k_ID_W_width, N);
-            fn.SetInt(k_ID_O_height, M);
-            fn.SetInt(k_ID_O_width, N);
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Wptr, Pin(Y));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.SetInt(k_ID_maxXIndex, M * K - 1);
-            fn.SetInt(k_ID_maxWIndex, K * N - 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_X_width, K);
+            cb.SetComputeIntParam(fn.shader, k_ID_W_width, N);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_height, M);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_width, N);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(Y));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_maxXIndex, M * K - 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_maxWIndex, K * N - 1);
 
-            fn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            fn.SetInt(k_ID_maxBIndex, N - 1);
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetComputeIntParam(fn.shader, k_ID_maxBIndex, N - 1);
 
-            fn.Dispatch(workItemsX, workItemsY, 1);
+            cb.Dispatch(fn, workItemsX, workItemsY, 1);
         }
 
-        void Gemm(TensorFloat X, TensorFloat Y, TensorFloat O, int M, int K, int N, bool transposeA = false, bool transposeB = false)
+        void Gemm(Tensor<float> X, Tensor<float> Y, Tensor<float> O, int M, int K, int N, bool transposeA = false, bool transposeB = false)
         {
             if (transposeA || transposeB)
             {
@@ -2956,17 +2978,16 @@ namespace Unity.Sentis
                 else
                     fn = ComputeFunctions.k_GemmT_WT_T8x8_R4x4;
 
+                cb.SetComputeIntParam(fn.shader, k_ID_M, M);
+                cb.SetComputeIntParam(fn.shader, k_ID_N, N);
+                cb.SetComputeIntParam(fn.shader, k_ID_K, K);
+                cb.SetComputeIntParam(fn.shader, k_ID_maxXIndex, M * K - 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_maxWIndex, K * N - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(Y));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-                fn.SetInt(k_ID_M, M);
-                fn.SetInt(k_ID_N, N);
-                fn.SetInt(k_ID_K, K);
-                fn.SetInt(k_ID_maxXIndex, M * K - 1);
-                fn.SetInt(k_ID_maxWIndex, K * N - 1);
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fn.SetTensorAsBuffer(k_ID_Wptr, Pin(Y));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-
-                fn.Dispatch(ComputeHelper.IDivC(N, 4), ComputeHelper.IDivC(M, 4), 1);
+                cb.Dispatch(fn, ComputeHelper.IDivC(N, 4), ComputeHelper.IDivC(M, 4), 1);
             }
             else
             {
@@ -2995,22 +3016,22 @@ namespace Unity.Sentis
                     workItemsZ = 1;
                 }
 
-                fn.SetInt(k_ID_X_width, K);
-                fn.SetInt(k_ID_W_width, N);
-                fn.SetInt(k_ID_O_width, N);
-                fn.SetInt(k_ID_O_height, M);
-                fn.SetInt(k_ID_maxXIndex, M * K - 1);
-                fn.SetInt(k_ID_maxWIndex, K * N - 1);
-                fn.SetTensorAsBuffer(k_ID_Xptr, Pin(X));
-                fn.SetTensorAsBuffer(k_ID_Wptr, Pin(Y));
-                fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
+                cb.SetComputeIntParam(fn.shader, k_ID_X_width, K);
+                cb.SetComputeIntParam(fn.shader, k_ID_W_width, N);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_width, N);
+                cb.SetComputeIntParam(fn.shader, k_ID_O_height, M);
+                cb.SetComputeIntParam(fn.shader, k_ID_maxXIndex, M * K - 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_maxWIndex, K * N - 1);
+                cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(Y));
+                cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
 
-                fn.Dispatch(workItemsX, workItemsY, workItemsZ);
+                cb.Dispatch(fn, workItemsX, workItemsY, workItemsZ);
             }
         }
 
         /// <inheritdoc/>
-        protected void SinglePassLSTM(TensorFloat X, TensorFloat W, TensorFloat R, TensorFloat B, TensorInt sequenceLens, TensorFloat P, TensorFloat Y, TensorFloat Y_h, TensorFloat Y_c, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, bool isReverse, int dirIndex, Layers.RnnLayout layout)
+        protected void SinglePassLSTM(Tensor<float> X, Tensor<float> W, Tensor<float> R, Tensor<float> B, Tensor<int> sequenceLens, Tensor<float> P, Tensor<float> Y, Tensor<float> Y_h, Tensor<float> Y_c, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, bool isReverse, int dirIndex, Layers.RnnLayout layout)
         {
             var numDirections = B.shape[0];
             var inputSize = X.shape[2];
@@ -3045,31 +3066,31 @@ namespace Unity.Sentis
             Gemm(X, W, XsixWT, seqLength * batchSize, inputSize, 4 * hiddenSize, transposeB: true);
 
             var endFn = ComputeFunctions.k_LSTMEnd;
-            endFn.SetInt(k_ID_hiddenSize, hiddenSize);
-            endFn.SetInt(k_ID_batchSize, batchSize);
-            endFn.SetInt(k_ID_xStride, xStrideBatch);
-            endFn.SetInt(k_ID_yStride, yStrideBatch);
-            endFn.SetBool(k_ID_inputForget, inputForget);
-            endFn.SetFloat(k_ID_clipValue, clip);
-            endFn.SetInt(k_ID_fActivation, (int)activations[3 * dirIndex + 0]);
-            endFn.SetFloat(k_ID_fAlpha, activationAlpha[3 * dirIndex + 0]);
-            endFn.SetFloat(k_ID_fBeta, activationAlpha[3 * dirIndex + 0]);
-            endFn.SetInt(k_ID_gActivation, (int)activations[3 * dirIndex + 1]);
-            endFn.SetFloat(k_ID_gAlpha, activationAlpha[3 * dirIndex + 1]);
-            endFn.SetFloat(k_ID_gBeta, activationAlpha[3 * dirIndex + 1]);
-            endFn.SetInt(k_ID_hActivation, (int)activations[3 * dirIndex + 2]);
-            endFn.SetFloat(k_ID_hAlpha, activationAlpha[3 * dirIndex + 2]);
-            endFn.SetFloat(k_ID_hBeta, activationAlpha[3 * dirIndex + 2]);
-            endFn.SetTensorAsBuffer(k_ID_Yptr, Pin(Y));
-            endFn.SetTensorAsBuffer(k_ID_YHptr, Pin(Y_h));
-            endFn.SetTensorAsBuffer(k_ID_YCptr, Pin(Y_c));
-            endFn.SetTensorAsBuffer(k_ID_Bptr, Pin(B));
-            endFn.SetInt(k_ID_bOffset, dirIndex * 8 * hiddenSize);
-            endFn.SetTensorAsBuffer(k_ID_Pptr, Pin(P));
-            endFn.SetInt(k_ID_pOffset, dirIndex * 3 * hiddenSize);
-            endFn.SetTensorAsBuffer(k_ID_XsixWTptr, Pin(XsixWT));
-            endFn.SetTensorAsBuffer(k_ID_HtxRTptr, Pin(HtxRT));
-            endFn.SetTensorAsBuffer(k_ID_SequenceLensptr, Pin(sequenceLens));
+            cb.SetComputeIntParam(endFn.shader, k_ID_hiddenSize, hiddenSize);
+            cb.SetComputeIntParam(endFn.shader, k_ID_batchSize, batchSize);
+            cb.SetComputeIntParam(endFn.shader, k_ID_xStride, xStrideBatch);
+            cb.SetComputeIntParam(endFn.shader, k_ID_yStride, yStrideBatch);
+            cb.SetBool(endFn, k_ID_inputForget, inputForget);
+            cb.SetComputeFloatParam(endFn.shader, k_ID_clipValue, clip);
+            cb.SetComputeIntParam(endFn.shader, k_ID_fActivation, (int)activations[3 * dirIndex + 0]);
+            cb.SetComputeFloatParam(endFn.shader, k_ID_fAlpha, activationAlpha[3 * dirIndex + 0]);
+            cb.SetComputeFloatParam(endFn.shader, k_ID_fBeta, activationAlpha[3 * dirIndex + 0]);
+            cb.SetComputeIntParam(endFn.shader, k_ID_gActivation, (int)activations[3 * dirIndex + 1]);
+            cb.SetComputeFloatParam(endFn.shader, k_ID_gAlpha, activationAlpha[3 * dirIndex + 1]);
+            cb.SetComputeFloatParam(endFn.shader, k_ID_gBeta, activationAlpha[3 * dirIndex + 1]);
+            cb.SetComputeIntParam(endFn.shader, k_ID_hActivation, (int)activations[3 * dirIndex + 2]);
+            cb.SetComputeFloatParam(endFn.shader, k_ID_hAlpha, activationAlpha[3 * dirIndex + 2]);
+            cb.SetComputeFloatParam(endFn.shader, k_ID_hBeta, activationAlpha[3 * dirIndex + 2]);
+            cb.SetTensorAsBuffer(endFn, k_ID_Yptr, Pin(Y));
+            cb.SetTensorAsBuffer(endFn, k_ID_YHptr, Pin(Y_h));
+            cb.SetTensorAsBuffer(endFn, k_ID_YCptr, Pin(Y_c));
+            cb.SetTensorAsBuffer(endFn, k_ID_Bptr, Pin(B));
+            cb.SetComputeIntParam(endFn.shader, k_ID_bOffset, dirIndex * 8 * hiddenSize);
+            cb.SetTensorAsBuffer(endFn, k_ID_Pptr, Pin(P));
+            cb.SetComputeIntParam(endFn.shader, k_ID_pOffset, dirIndex * 3 * hiddenSize);
+            cb.SetTensorAsBuffer(endFn, k_ID_XsixWTptr, Pin(XsixWT));
+            cb.SetTensorAsBuffer(endFn, k_ID_HtxRTptr, Pin(HtxRT));
+            cb.SetTensorAsBuffer(endFn, k_ID_SequenceLensptr, Pin(sequenceLens));
 
             for (var i = 0; i < seqLength; i++)
             {
@@ -3077,10 +3098,10 @@ namespace Unity.Sentis
 
                 Gemm(Y_h, R, HtxRT, batchSize, hiddenSize, 4 * hiddenSize, transposeB: true);
 
-                endFn.SetInt(k_ID_seqIndex, seqIndex);
-                endFn.SetInt(k_ID_yOffset, dirIndex * yStrideDir + seqIndex * yStrideSeq);
-                endFn.SetInt(k_ID_xOffset, seqIndex * xStrideSeq);
-                endFn.Dispatch(batchSize, hiddenSize, 1);
+                cb.SetComputeIntParam(endFn.shader, k_ID_seqIndex, seqIndex);
+                cb.SetComputeIntParam(endFn.shader, k_ID_yOffset, dirIndex * yStrideDir + seqIndex * yStrideSeq);
+                cb.SetComputeIntParam(endFn.shader, k_ID_xOffset, seqIndex * xStrideSeq);
+                cb.Dispatch(endFn, batchSize, hiddenSize, 1);
             }
 
             ReleaseTensorFloat(HtxRT);
@@ -3092,7 +3113,7 @@ namespace Unity.Sentis
         /// if no input is provided the tensor is cleared to 0 as a default
         /// otherwise if the input tensor can be used directly in the calculation this will early out
         /// </summary>
-        void SetRnnInput(TensorFloat X, TensorFloat O, int index, int count, int length, int strideX)
+        void SetRnnInput(Tensor<float> X, Tensor<float> O, int index, int count, int length, int strideX)
         {
             if (X == O)
                 return;
@@ -3107,7 +3128,7 @@ namespace Unity.Sentis
         /// if the calculation is single direction and sequenceFirst layout then the output
         /// tensor will be used directly and this command early outs
         /// </summary>
-        void SetRnnOutput(TensorFloat X, TensorFloat O, int index, int count, int length, int strideO)
+        void SetRnnOutput(Tensor<float> X, Tensor<float> O, int index, int count, int length, int strideO)
         {
             if (X == O)
                 return;
@@ -3115,7 +3136,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void LSTM(TensorFloat X, TensorFloat W, TensorFloat R, TensorFloat B, TensorInt sequenceLens, TensorFloat initialH, TensorFloat initialC, TensorFloat P, TensorFloat Y, TensorFloat Yh, TensorFloat Yc, Layers.RnnDirection direction, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, Layers.RnnLayout layout)
+        public void LSTM(Tensor<float> X, Tensor<float> W, Tensor<float> R, Tensor<float> B, Tensor<int> sequenceLens, Tensor<float> initialH, Tensor<float> initialC, Tensor<float> P, Tensor<float> Y, Tensor<float> Yh, Tensor<float> Yc, Layers.RnnDirection direction, Layers.RnnActivation[] activations, float[] activationAlpha, float[] activationBeta, bool inputForget, float clip, Layers.RnnLayout layout)
         {
             var seqLength = X.shape[layout == Layers.RnnLayout.SequenceFirst ? 0 : 1];
             var batchSize = X.shape[layout == Layers.RnnLayout.SequenceFirst ? 1 : 0];
@@ -3188,15 +3209,15 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void DequantizeLinear(TensorByte X, TensorFloat O, float scale, byte zeroPoint)
+        public void DequantizeLinear(Tensor<byte> X, Tensor<float> O, float scale, byte zeroPoint)
         {
             var fn = ComputeFunctions.k_DequantizeUint8;
-            fn.SetFloat(k_ID_scale, scale);
-            fn.SetInt(k_ID_zeroPoint, (int)zeroPoint);
-            fn.SetTensorAsBuffer(k_ID_XIntptr, Pin(X));
-            fn.SetTensorAsBuffer(k_ID_Optr, Pin(O));
-            fn.SetInt(k_ID_lengthO, O.shape.length);
-            fn.UnrolledDispatch(X.count);
+            cb.SetComputeFloatParam(fn.shader, k_ID_scale, scale);
+            cb.SetComputeIntParam(fn.shader, k_ID_zeroPoint, (int)zeroPoint);
+            cb.SetTensorAsBuffer(fn, k_ID_XIntptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_lengthO, O.shape.length);
+            cb.UnrolledDispatch(fn, X.count);
         }
 
         /// <inheritdoc/>
@@ -3212,7 +3233,7 @@ namespace Unity.Sentis
         /// <param name="Value">The input value tensor. Must be of shape (N0, ... , Nn, L). Sort is happening on the L dimension </param>
         /// <param name="Key">The input key tensor. Must be of shape (N0, ... , Nn, L). Optional, if not given will sort Value.  </param>
         /// <param name="descending">Whether to sort in a ascending or descending order.</param>
-        internal void BitonicSort(TensorFloat Value, TensorInt Key = null, bool descending = false)
+        internal void BitonicSort(Tensor<float> Value, Tensor<int> Key = null, bool descending = false)
         {
             // https://en.wikipedia.org/wiki/Bitonic_sorter
             // https://stackoverflow.com/questions/73147204/can-bitonic-sort-handle-non-power-of-2-data-in-a-non-recursive-implementation
@@ -3225,33 +3246,26 @@ namespace Unity.Sentis
             else
             {
                 fn = ComputeFunctions.k_BitonicSortKeyStep;
-                fn.SetTensorAsBuffer(k_ID_O_int_ptr, Pin(Key));
+                cb.SetTensorAsBuffer(fn, k_ID_O_int_ptr, Pin(Key));
             }
-            fn.SetTensorAsBuffer(k_ID_Xptr, Pin(Value));
-            fn.SetInt(k_ID_lengthO, N);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(Value));
+            cb.SetComputeIntParam(fn.shader, k_ID_lengthO, N);
             if (descending)
-                fn.EnableKeyword("DESCENDING");
+                cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, "DESCENDING"));
             else
-                fn.DisableKeyword("DESCENDING");
+                cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, "DESCENDING"));
 
             for (int k = 1; k < N; k <<= 1)
             {
-                fn.SetInt(k_ID_indexJ, (k << 1) - 1);
-                fn.Dispatch(N, L, 1);
+                cb.SetComputeIntParam(fn.shader, k_ID_indexJ, (k << 1) - 1);
+                cb.Dispatch(fn, N, L, 1);
 
                 for (int j = k >> 1; j > 0; j >>= 1)
                 {
-                    fn.SetInt(k_ID_indexJ, j);
-                    fn.Dispatch(N, L, 1);
+                    cb.SetComputeIntParam(fn.shader, k_ID_indexJ, j);
+                    cb.Dispatch(fn, N, L, 1);
                 }
             }
-        }
-
-        /// <inheritdoc/>
-        public Tensor PinToDevice(Tensor X, bool clearOnInit = false)
-        {
-            Pin(X, clearOnInit);
-            return X;
         }
     }
 }

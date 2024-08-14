@@ -6,7 +6,7 @@ namespace Unity.Sentis
     /// <summary>
     /// Represents information about the compute capabilities of the GPU.
     /// </summary>
-    public class ComputeInfo
+    class ComputeInfo
     {
         /// <summary>
         /// Whether the GPU supports shared memory.

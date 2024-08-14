@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/Activation"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile Relu Selu Abs Neg Ceil Floor Round Reciprocal Swish Tanh Softplus Sigmoid HardSigmoid Relu6 Elu LeakyRelu Exp Log Sqrt Acos Acosh Asin Asinh Atan Atanh Cos Cosh Sin Sinh Tan Pow Clip Erf Sign Square Celu HardSwish Softsign ThresholdedRelu Gelu GeluFast Shrink
+            #pragma multi_compile_local Relu Selu Abs Neg Ceil Floor Round Reciprocal Swish Tanh Softplus Sigmoid HardSigmoid Relu6 Elu LeakyRelu Exp Log Sqrt Acos Acosh Asin Asinh Atan Atanh Cos Cosh Sin Sinh Tan Pow Clip Erf Sign Square Celu HardSwish Softsign ThresholdedRelu Gelu GeluFast Shrink
 
             #pragma vertex vert
             #pragma fragment frag

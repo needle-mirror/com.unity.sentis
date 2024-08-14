@@ -27,7 +27,7 @@ namespace Unity.Sentis.Layers
 
         internal override void InferPartial(PartialInferenceContext ctx)
         {
-            var shape = ctx.GetPartialTensor(inputs[0]).ToSymbolicTensorShape();
+            var shape = ctx.GetPartialTensor(inputs[0]).ToDynamicTensorShape();
             var tensorOut = new PartialTensor(dataType, shape);
             if (!tensorOut.isPartiallyKnown)
             {
@@ -43,16 +43,16 @@ namespace Unity.Sentis.Layers
             ctx.AddPartialTensor(outputs[0], tensorOut);
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             TensorShape shape = new TensorShape(ctx.storage.GetInts(inputs[0]));
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], shape, dataType, ctx.backend.backendType);
             if (O.shape.HasZeroDims())
                 return;
             if (dataType == DataType.Int)
-                ctx.backend.MemSet(O as TensorInt, intValue);
+                ctx.backend.MemSet(O as Tensor<int>, intValue);
             else
-                ctx.backend.MemSet(O as TensorFloat, floatValue);
+                ctx.backend.MemSet(O as Tensor<float>, floatValue);
             return;
         }
 
@@ -90,14 +90,14 @@ namespace Unity.Sentis.Layers
             }
 
             var shapeOut = shapeX.Unsqueeze(axis);
-            shapeOut[axis] = (SymbolicTensorDim)ctx.GetPartialTensor(inputs[1])[0];
+            shapeOut[axis] = (DynamicTensorDim)ctx.GetPartialTensor(inputs[1])[0];
 
             ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, shapeOut));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var indices = ctx.storage.GetTensor(inputs[0]) as TensorInt;
+            var indices = ctx.storage.GetTensor(inputs[0]) as Tensor<int>;
             var depth = ctx.storage.GetInt(inputs[1]);
             var dataType = ctx.storage.GetDataType(inputs[2]);
             var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.OneHot(indices.shape, axis, depth), dataType, ctx.backend.backendType);
@@ -106,12 +106,12 @@ namespace Unity.Sentis.Layers
             if (dataType == DataType.Int)
             {
                 var valuesi = ctx.storage.GetInts(inputs[2]);
-                ctx.backend.OneHot(indices, O as TensorInt, axis, depth, valuesi[0], valuesi[1]);
+                ctx.backend.OneHot(indices, O as Tensor<int>, axis, depth, valuesi[0], valuesi[1]);
             }
             else
             {
                 var valuesf = ctx.storage.GetFloats(inputs[2]);
-                ctx.backend.OneHot(indices, O as TensorFloat, axis, depth, valuesf[0], valuesf[1]);
+                ctx.backend.OneHot(indices, O as Tensor<float>, axis, depth, valuesf[0], valuesf[1]);
             }
         }
 
@@ -141,22 +141,22 @@ namespace Unity.Sentis.Layers
             limit.shape.DeclareRank(0);
             delta.shape.DeclareRank(0);
 
-            var shape = SymbolicTensorShape.UnknownOfRank(1);
+            var shape = DynamicTensorShape.DynamicOfRank(1);
 
             if (start[0] == 0 && delta[0] == 1)
-                shape[0] = (SymbolicTensorDim)limit[0];
+                shape[0] = (DynamicTensorDim)limit[0];
 
             ctx.AddPartialTensor(outputs[0], new PartialTensor(start.dataType, shape));
         }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
             if (ctx.storage.GetDataType(inputs[0]) == DataType.Int)
             {
                 int starti = ctx.storage.GetInt(inputs[0]);
                 int limiti = ctx.storage.GetInt(inputs[1]);
                 int deltai = ctx.storage.GetInt(inputs[2]);
-                var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.Range(starti, limiti, deltai), DataType.Int, ctx.backend.backendType) as TensorInt;
+                var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.Range(starti, limiti, deltai), DataType.Int, ctx.backend.backendType) as Tensor<int>;
                 if (O.shape.HasZeroDims())
                     return;
                 ctx.backend.Range(O, starti, deltai);
@@ -166,7 +166,7 @@ namespace Unity.Sentis.Layers
                 float startf = ctx.storage.GetFloat(inputs[0]);
                 float limitf = ctx.storage.GetFloat(inputs[1]);
                 float deltaf = ctx.storage.GetFloat(inputs[2]);
-                var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.Range(startf, limitf, deltaf), DataType.Float, ctx.backend.backendType) as TensorFloat;
+                var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.Range(startf, limitf, deltaf), DataType.Float, ctx.backend.backendType) as Tensor<float>;
                 if (O.shape.HasZeroDims())
                     return;
                 ctx.backend.Range(O, startf, deltaf);

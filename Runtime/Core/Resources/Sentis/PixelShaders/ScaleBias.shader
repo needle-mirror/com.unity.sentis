@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/ScaleBias"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile _ BLOCK_C
+            #pragma multi_compile_local _ BLOCK_C
             #pragma vertex vert
             #pragma fragment frag
 

@@ -11,10 +11,10 @@ Shader "Hidden/Sentis/GridSample"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile GRIDSAMPLE1D GRIDSAMPLE2D GRIDSAMPLE3D
-            #pragma multi_compile LINEAR NEAREST
-            #pragma multi_compile ZEROS BORDER REFLECTION
-            #pragma multi_compile _ ALIGN_CORNERS
+            #pragma multi_compile_local GRIDSAMPLE1D GRIDSAMPLE2D GRIDSAMPLE3D
+            #pragma multi_compile_local LINEAR NEAREST
+            #pragma multi_compile_local ZEROS BORDER REFLECTION
+            #pragma multi_compile_local _ ALIGN_CORNERS
 
             #pragma vertex vert
             #pragma fragment frag
@@ -100,7 +100,7 @@ Shader "Hidden/Sentis/GridSample"
                 srcPos = clamp(srcPos, -1.0, 1.0);
                 #endif
 
-                uint4 Xshape = float4(X_width, X_height, X_depth, 0);
+                int4 Xshape = int4(X_width, X_height, X_depth, 0);
 
                 #ifdef ALIGN_CORNERS
                 srcPos = (0.5f * (srcPos + 1.0)) * (Xshape - 1.0);
@@ -114,7 +114,7 @@ Shader "Hidden/Sentis/GridSample"
                     int4 pos_i = round(srcPos);
 
                     #if defined(BORDER) || defined(REFLECTION)
-                    pos_i = clamp(pos_i, 0, Xshape - 1);
+                    pos_i = clamp(pos_i, 0, Xshape - int4(1, 1, 1, 1));
                     #endif
 
                     v = SampleXWithOOB(pos_i, offset);
@@ -126,7 +126,7 @@ Shader "Hidden/Sentis/GridSample"
 
                     #if defined(BORDER) || defined(REFLECTION)
                     pos_i_0 = max(pos_i_0, 0);
-                    pos_i_1 = min(pos_i_1, Xshape - 1);
+                    pos_i_1 = min(pos_i_1, Xshape - int4(1, 1, 1, 1));
                     #endif
 
                     #ifdef GRIDSAMPLE1D

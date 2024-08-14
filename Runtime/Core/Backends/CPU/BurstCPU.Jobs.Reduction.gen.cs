@@ -16,7 +16,7 @@ using Unity.Mathematics;
 using static Unity.Mathematics.math;
 
 namespace Unity.Sentis {
-public partial class CPUBackend
+partial class CPUBackend
 {
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
     internal unsafe struct ReduceMaxFloatJob : IParallelForBatch, IJobResourceDeclarationXO

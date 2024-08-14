@@ -8,7 +8,7 @@ namespace Unity.Sentis
     /// <summary>
     /// Represents a struct used to iterate over a `TensorShape`.
     /// </summary>
-    public unsafe struct TensorNDIterator
+    unsafe struct TensorNDIterator
     {
         TensorShape m_Shape;
         /// <summary>

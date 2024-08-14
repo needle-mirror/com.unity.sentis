@@ -1,14 +1,14 @@
 # Read output from a model asynchronously
 
-After you execute a model and access an output tensor from `PeekOutput`, the following are true:
+After you schedule a model and access an output tensor from [`PeekOutput`](xref:Unity.Sentis.Worker.PeekOutput*), the following are true:
 - Sentis might not have finished calculating the final tensor data, so there's pending scheduled work.
 - If you use a graphics processing unit (GPU) backend, the calculated tensor data might be on the GPU. This requires a read back to copy the data to the central processing unit (CPU) in a readable format.
 
-If either of these conditions is true, `ReadbackAndClone` or `CompleteAllPendingOperations` blocks the main thread until the steps complete.
+If either of these conditions is true, [`ReadbackAndClone`](xref:Unity.Sentis.Tensor.ReadbackAndClone*) or [`CompleteAllPendingOperations`](xref:Unity.Sentis.TextureTensorData.CompleteAllPendingOperations*) methods block the main thread until the operations are complete.
 
 To avoid this, follow these two methods to use asynchronous readback:
 
-1. Use the awaitable [`Tensor.ReadbackAndCloneAsync`](xref:Unity.Sentis.Tensor.ReadbackAndCloneAsync()) method. Sentis returns a CPU copy of the input tensor in a non blocking way.
+1. Use the awaitable [`ReadbackAndCloneAsync`](xref:Unity.Sentis.Tensor.ReadbackAndCloneAsync*) method. Sentis returns a CPU copy of the input tensor in a non blocking way.
 
 ```
 using Unity.Sentis;
@@ -19,90 +19,83 @@ public class AsyncReadbackCompute : MonoBehaviour
     [SerializeField]
     ModelAsset modelAsset;
 
-    TensorFloat m_Input;
-    IWorker m_Engine;
+    Tensor<float> m_Input;
+    Worker m_Worker;
 
     async void OnEnable()
     {
         var model = ModelLoader.Load(modelAsset);
-        m_Input = new TensorFloat(new TensorShape(1, 1), new[] { 43.0f });
-        m_Engine = WorkerFactory.CreateWorker(BackendType.GPUCompute, model);
-        m_Engine.Execute(m_Input);
+        m_Input = new Tensor<float>(new TensorShape(1, 1), new[] { 43.0f });
+        m_Worker = new Worker(model, BackendType.GPUCompute);
+        m_Worker.Schedule(m_Input);
 
         // Peek the value from Sentis, without taking ownership of the tensor
-        var outputTensor = m_Engine.PeekOutput() as TensorFloat;
+        var outputTensor = m_Worker.PeekOutput() as Tensor<float>;
         var cpuCopyTensor = await outputTensor.ReadbackAndCloneAsync();
 
-        Debug.Assert(m_Output[0] == 42);
-        Debug.Log($"Output tensor value {m_Output[0]}");
+        Debug.Assert(cpuCopyTensor[0] == 42);
+        Debug.Log($"Output tensor value {cpuCopyTensor[0]}");
         cpuCopyTensor.Dispose();
     }
 
     void OnDisable()
     {
         m_Input.Dispose();
-        m_Engine.Dispose();
+        m_Worker.Dispose();
     }
 }
 ```
 
-2. Use a polling mechanism with [`Tensor.ReadbackRequest`](xref:Unity.Sentis.Tensor.ReadbackRequest()) and [`Tensor.IsReadbackRequestDone`](xref:Unity.Sentis.Tensor.IsReadbackRequestDone()) methods.
+2. Use a polling mechanism with the [`ReadbackRequest`](xref:Unity.Sentis.Tensor.ReadbackRequest*) and [`Tensor.IsReadbackRequestDone`](xref:Unity.Sentis.Tensor.IsReadbackRequestDone*) methods.
 
 ```
-using Unity.Sentis;
-using UnityEngine;
+bool inferencePending = false;
+Tensor<float> outputTensor;
 
-public class AsyncReadbackCompute : MonoBehaviour
+void OnUpdate()
 {
-    [SerializeField]
-    ModelAsset modelAsset;
-
-    TensorFloat m_Input, m_Output;
-    IWorker m_Engine;
-
-    void OnEnable()
+    if (!inferencePending)
     {
-        var model = ModelLoader.Load(modelAsset);
-        m_Input = new TensorFloat(new TensorShape(1, 1), new[] { 43.0f });
-        m_Engine = WorkerFactory.CreateWorker(BackendType.GPUCompute, model);
+        m_Worker.Schedule(m_Input);
+        outputTensor = m_Worker.PeekOutput() as Tensor<float>;
+
+        // Trigger a non-blocking readback request
+        outputTensor.ReadbackRequest();
+        inferencePending = true;
     }
-
-    bool inferencePending = false;
-
-    void OnUpdate()
+    else if (inferencePending && outputTensor.IsReadbackRequestDone())
     {
-        if (!inferencePending)
-        {
-            m_Engine.Execute(m_Input);
+        // m_Output is now downloaded to the cpu. Using ReadbackAndClone or ToReadOnlyArray will not be blocking
+        var array = outputTensor.DownloadToArray();
+        inferencePending = false;
+    }
+}
+```
+3. Use an awaitable with a callback.
+```
+bool inferencePending = false;
 
-            // Peek the value from Sentis, without taking ownership of the tensor
-            m_Output = m_Engine.PeekOutput() as TensorFloat;
+void Update()
+{
+    if (!inferencePending)
+    {
+        m_Worker.Schedule(m_Input);
+        var outputTensor = m_Worker.PeekOutput() as Tensor<float>;
+        inferencePending = true;
 
-            // Trigger a non blocking readback request
-            m_Output.ReadbackRequest();
-            inferencePending = true;
-        }
-        else if (inferencePending && m_Output.IsReadbackRequestDone())
+        var awaiter = outputTensor.ReadbackAndCloneAsync().GetAwaiter();
+        awaiter.OnCompleted(() =>
         {
-            // m_Output is now downloaded to the cpu. Using ReadbackAndClone or ToReadOnlyArray will not be blocking
-            var array = outputTensor.ToReadOnlyArray();
-            Debug.Assert(array[0] == 42);
-            Debug.Log($"Output tensor value {m_Output[0]}");
+            var tensorOut = awaiter.GetResult();
             inferencePending = false;
-        }
-    }
-
-    void OnDisable()
-    {
-        m_Input.Dispose();
-        TensorFloat.Dispose();
-        m_Engine.Dispose();
+            tensorOut.Dispose();
+        });
     }
 }
 ```
 
 > [!NOTE]
-> To avoid a Tensor data mutation to a CPU tensor that `ReadbackAndClone` does, call `tensor.dataOnBackend.Download<T>()` to get the data directly. This keeps the `tensor.dataOnDevice` on the given backend while providing a CPU copy. Be cautious with synchronization issues: if you re-run a worker, issue a new download request.
+> To avoid a Tensor data mutation to a CPU tensor from calling [`ReadbackAndClone`](xref:Unity.Sentis.Tensor.ReadbackAndClone), call [`tensor.dataOnBackend.Download`](xref:Unity.Sentis.ITensorData.Download*) to get the data directly. This keeps the [`tensor.dataOnBackend`](xref:Unity.Sentis.Tensor.dataOnBackend) on the given backend while providing a CPU copy. Be cautious with synchronization issues: if you re-schedule a worker, make a new download request.
 
 For an example, refer to the `Read output asynchronously` example in the [sample scripts](package-samples.md).
 

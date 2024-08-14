@@ -1,6 +1,6 @@
 using System;
 
-namespace Unity.Sentis.Layers
+namespace Unity.Sentis
 {
     /// <summary>
     /// Represents a constant in a model.
@@ -67,7 +67,7 @@ namespace Unity.Sentis.Layers
             if (value.Length == 0)
                 return;
             weights = new NativeTensorArray(value.Length);
-            NativeTensorArray.Copy(value, weights);
+            NativeTensorArray.Copy(value, 0, weights, 0, value.Length);
         }
 
         /// <summary>
@@ -85,7 +85,7 @@ namespace Unity.Sentis.Layers
             if (value.Length == 0)
                 return;
             weights = new NativeTensorArray(value.Length);
-            NativeTensorArray.Copy(value, weights);
+            NativeTensorArray.Copy(value, 0, weights, 0, value.Length);
         }
 
         internal static Constant AllocNoData(int index, DataType dataType, TensorShape shape)
@@ -121,15 +121,15 @@ namespace Unity.Sentis.Layers
             {
                 case DataType.Float:
                 {
-                    var array = new float[shape.length];
-                    NativeTensorArray.Copy(weights, 0, array, 0, shape.length);
-                    return new TensorFloat(shape, array);
+                    var tensor = new Tensor<float>(shape, clearOnInit: false);
+                    NativeTensorArray.Copy(weights, 0, (tensor.dataOnBackend as CPUTensorData).array, 0, shape.length);
+                    return tensor;
                 }
                 case DataType.Int:
                 {
-                    var array = new int[shape.length];
-                    NativeTensorArray.Copy(weights, 0, array, 0, shape.length);
-                    return new TensorInt(shape, array);
+                    var tensor = new Tensor<int>(shape, clearOnInit: false);
+                    NativeTensorArray.Copy(weights, 0, (tensor.dataOnBackend as CPUTensorData).array, 0, shape.length);
+                    return tensor;
                 }
                 default:
                     throw new NotImplementedException();
@@ -143,19 +143,19 @@ namespace Unity.Sentis.Layers
             {
                 case DataType.Float:
                 {
-                    output = TensorFloat.AllocNoData(shape);
+                    output = new Tensor<float>(shape, data: null);
                     break;
                 }
                 case DataType.Int:
                 {
-                    output = TensorInt.AllocNoData(shape);
+                    output = new Tensor<int>(shape, data: null);
                     break;
                 }
                 default:
                     throw new NotImplementedException();
             }
 
-            output.dataOnBackend = new BurstTensorData(weights);
+            output.dataOnBackend = new CPUTensorData(weights);
             return output;
         }
 
@@ -164,8 +164,10 @@ namespace Unity.Sentis.Layers
         /// </summary>
         /// <param name="X">The tensor to use for initialization.</param>
         /// <exception cref="NotImplementedException">Thrown when a given data type is not supported.</exception>
+        // TODO move this to LayerFusingHelper
         internal void TensorToDataSet(Tensor X)
         {
+            X.CompleteAllPendingOperations();
             this.shape = X.shape;
             this.dataType = X.dataType;
             if (X.shape.HasZeroDims())
@@ -176,13 +178,13 @@ namespace Unity.Sentis.Layers
                 case DataType.Float:
                 {
                     this.lengthBytes = shape.length * sizeof(float);
-                    NativeTensorArray.Copy(X.ToReadOnlyNativeArray<float>(), 0, weights, 0, shape.length);
+                    NativeTensorArray.Copy(X.AsReadOnlyNativeArray<float>(), 0, weights, 0, shape.length);
                     break;
                 }
                 case DataType.Int:
                 {
                     this.lengthBytes = shape.length * sizeof(float);
-                    NativeTensorArray.Copy(X.ToReadOnlyNativeArray<int>(), 0, weights, 0, shape.length);
+                    NativeTensorArray.Copy(X.AsReadOnlyNativeArray<int>(), 0, weights, 0, shape.length);
                     break;
                 }
                 default:

@@ -5,10 +5,10 @@ using UnityEngine;
 namespace Unity.Sentis
 {
     /// <summary>
-    /// Types of `SymbolicTensorShape` dimension.
+    /// Types of `DynamicTensorShape` dimension.
     /// </summary>
     [Serializable]
-    public enum DimType
+    enum DimType
     {
         /// <summary>
         /// The tensor dimension is unknown.
@@ -18,7 +18,7 @@ namespace Unity.Sentis
         /// <summary>
         /// The tensor dimension is fixed.
         /// </summary>
-        Value,
+        Static,
 
         /// <summary>
         /// The tensor dimension is dynamic.
@@ -27,44 +27,56 @@ namespace Unity.Sentis
     }
 
     /// <summary>
-    /// Represents a single dimension of a `SymbolicTensorShape`.
+    /// Represents a single dimension of a `DynamicTensorShape`.
     /// </summary>
     [Serializable]
-    public struct SymbolicTensorDim
+    struct DynamicTensorDim
     {
         const string k_UnknownName = "?";
-        const string k_ParamName = "?";
 
         DimType m_DimType;
         byte m_Param;
         int m_Value;
 
-        internal static SymbolicTensorDim Unknown => new SymbolicTensorDim();
+        public static DynamicTensorDim Unknown => new DynamicTensorDim();
 
-        /// <summary>
-        /// Initializes and returns an instance of `SymbolicTensorDim` of fixed type, with an integer value.
-        /// </summary>
-        /// <param name="value">The size of the dim.</param>
-        /// <returns>The symbolic tensor dim.</returns>
-        public static SymbolicTensorDim Int(int value)
+        public static DynamicTensorDim FromInt(int value)
         {
-            Logger.AssertIsTrue(value >= 0, "Dim value cannot be negative");
-            return new SymbolicTensorDim()
+            if (value == -1)
+                return Unknown;
+            Logger.AssertIsTrue(value >= 0, "Dim must be non-negative or equal to -1");
+            return new DynamicTensorDim()
             {
-                m_DimType = DimType.Value,
+                m_DimType = DimType.Static,
                 m_Param = default,
                 m_Value = value
             };
         }
 
         /// <summary>
-        /// Initializes and returns an instance of `SymbolicTensorDim` of dynamic type, with a byte value.
+        /// Initializes and returns an instance of `DynamicTensorDim` of fixed type, with an integer value.
+        /// </summary>
+        /// <param name="value">The size of the dim.</param>
+        /// <returns>The dynamic tensor dim.</returns>
+        public static DynamicTensorDim Int(int value)
+        {
+            Logger.AssertIsTrue(value >= 0, "Dim value cannot be negative");
+            return new DynamicTensorDim()
+            {
+                m_DimType = DimType.Static,
+                m_Param = default,
+                m_Value = value
+            };
+        }
+
+        /// <summary>
+        /// Initializes and returns an instance of `DynamicTensorDim` of dynamic type, with a byte value.
         /// </summary>
         /// <param name="param">The byte value dynamic parameter.</param>
-        /// <returns>The symbolic tensor dim.</returns>
-        public static SymbolicTensorDim Param(byte param)
+        /// <returns>The dynamic tensor dim.</returns>
+        public static DynamicTensorDim Param(byte param)
         {
-            return new SymbolicTensorDim()
+            return new DynamicTensorDim()
             {
                 m_DimType = DimType.Param,
                 m_Param = param,
@@ -72,29 +84,34 @@ namespace Unity.Sentis
             };
         }
 
-        internal bool isUnknown => m_DimType == DimType.Unknown;
+        public bool isUnknown => m_DimType == DimType.Unknown;
 
-        /// <summary>
-        /// Whether the dimension is fixed. If the value is `true`, you can use `.value` to return the value.
-        /// </summary>
-        public bool isValue => m_DimType == DimType.Value;
+        public bool isValue => m_DimType == DimType.Static;
 
-        /// <summary>
-        /// Whether the dimension is dynamic. If the value is `true`, you can use `.param` to return the value as a byte.
-        /// </summary>
         public bool isParam => m_DimType == DimType.Param;
 
-        internal static SymbolicTensorDim Zero => Int(0);
-        internal static SymbolicTensorDim One => Int(1);
+        internal static DynamicTensorDim Zero => Int(0);
+        internal static DynamicTensorDim One => Int(1);
 
         /// <summary>
-        /// The value of the dimension. You can only call this method if `.isValue` is true.
+        /// Return the dim as an integer, if the dim is dynamic this is -1.
+        /// </summary>
+        /// <returns>The dim as an integer.</returns>
+        public int ToInt()
+        {
+            if (isValue)
+                return value;
+            return -1;
+        }
+
+        /// <summary>
+        /// The value of the dimension. You can only call this method if `.isStatic` is true.
         /// </summary>
         public int value
         {
             get
             {
-                Logger.AssertIsTrue(m_DimType == DimType.Value, "Cannot get value of dim with type != DimType.Value");
+                Logger.AssertIsTrue(m_DimType == DimType.Static, "Cannot get value of dim which is not static");
                 return m_Value;
             }
         }
@@ -112,63 +129,63 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Returns a string that represents the `SymbolicTensorDim`.
+        /// Returns a string that represents the `DynamicTensorDim`.
         /// </summary>
-        /// <returns>The string representation of the `SymbolicTensorDim`.</returns>
+        /// <returns>The string representation of the `DynamicTensorDim`.</returns>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if the dim type is not implemented.</exception>
         public override string ToString()
         {
             return m_DimType switch
             {
                 DimType.Unknown => k_UnknownName,
-                DimType.Value => value.ToString(),
+                DimType.Static => value.ToString(),
                 DimType.Param => "d" + (int)param,
                 _ => throw new ArgumentOutOfRangeException()
             };
         }
 
-        internal bool Equals(SymbolicTensorDim other)
+        public bool Equals(DynamicTensorDim other)
         {
             return m_DimType == other.m_DimType && m_Value == other.m_Value && m_Param == other.m_Param;
         }
 
         /// <summary>
-        /// Determines whether the specified object is equal to the current `SymbolicTensorDim`.
+        /// Determines whether the specified object is equal to the current `DynamicTensorDim`.
         /// </summary>
         /// <param name="obj">The object to compare against.</param>
-        /// <returns>Whether the object is equal to the current `SymbolicTensorDim`.</returns>
+        /// <returns>Whether the object is equal to the current `DynamicTensorDim`.</returns>
         public override bool Equals(object obj)
         {
-            return obj is SymbolicTensorDim other && Equals(other);
+            return obj is DynamicTensorDim other && Equals(other);
         }
 
         /// <summary>
-        /// Whether the current 'SymbolicTensorDim' is 'DimType.Value' and is equal to the specified dim.
+        /// Whether the current 'DynamicTensorDim' is 'DimType.Value' and is equal to the specified dim.
         /// </summary>
-        /// <param name="other">The 'SymbolicTensorDim' to compare against.</param>
-        /// <returns>Whether the other `SymbolicTensorDim` is is a value and is equal to the current `SymbolicTensorDim`.</returns>
-        public bool EqualsValue(SymbolicTensorDim other)
+        /// <param name="other">The 'DynamicTensorDim' to compare against.</param>
+        /// <returns>Whether the other `DynamicTensorDim` is is a value and is equal to the current `DynamicTensorDim`.</returns>
+        public bool EqualsValue(DynamicTensorDim other)
         {
-            return m_DimType == DimType.Value && other.m_DimType == DimType.Value && m_Value == other.m_Value;
+            return m_DimType == DimType.Static && other.m_DimType == DimType.Static && m_Value == other.m_Value;
         }
 
         /// <summary>
-        /// Whether the current 'SymbolicTensorDim' is 'DimType.Param' and is equal to the specified dim.
+        /// Whether the current 'DynamicTensorDim' is 'DimType.Param' and is equal to the specified dim.
         /// </summary>
-        /// <param name="other">The 'SymbolicTensorDim' to compare against.</param>
-        /// <returns>Whether the other `SymbolicTensorDim` is is a param and is equal to the current `SymbolicTensorDim`.</returns>
-        public bool EqualsParam(SymbolicTensorDim other)
+        /// <param name="other">The 'DynamicTensorDim' to compare against.</param>
+        /// <returns>Whether the other `DynamicTensorDim` is is a param and is equal to the current `DynamicTensorDim`.</returns>
+        public bool EqualsParam(DynamicTensorDim other)
         {
             return m_DimType == DimType.Param && other.m_DimType == DimType.Param && m_Param == other.m_Param;
         }
 
         /// <summary>
-        /// Determines whether two 'SymbolicTensorDim' objects are equal.
+        /// Determines whether two 'DynamicTensorDim' objects are equal.
         /// </summary>
-        /// <param name="a">The first 'SymbolicTensorDim' to compare.</param>
-        /// <param name="b">The second 'SymbolicTensorDim' to compare.</param>
-        /// <returns>Whether the two 'SymbolicTensorDim' objects are equal.</returns>
-        public static bool operator ==(SymbolicTensorDim a, SymbolicTensorDim b)
+        /// <param name="a">The first 'DynamicTensorDim' to compare.</param>
+        /// <param name="b">The second 'DynamicTensorDim' to compare.</param>
+        /// <returns>Whether the two 'DynamicTensorDim' objects are equal.</returns>
+        public static bool operator ==(DynamicTensorDim a, DynamicTensorDim b)
         {
             if (a.m_DimType != b.m_DimType)
                 return false;
@@ -180,67 +197,67 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Determines whether two 'SymbolicTensorDim' objects are not equal.
+        /// Determines whether two 'DynamicTensorDim' objects are not equal.
         /// </summary>
-        /// <param name="a">The first 'SymbolicTensorDim' to compare.</param>
-        /// <param name="b">The second 'SymbolicTensorDim' to compare.</param>
-        /// <returns>Whether the two 'SymbolicTensorDim' objects are not equal.</returns>
-        public static bool operator !=(SymbolicTensorDim a, SymbolicTensorDim b)
+        /// <param name="a">The first 'DynamicTensorDim' to compare.</param>
+        /// <param name="b">The second 'DynamicTensorDim' to compare.</param>
+        /// <returns>Whether the two 'DynamicTensorDim' objects are not equal.</returns>
+        public static bool operator !=(DynamicTensorDim a, DynamicTensorDim b)
         {
             return a.isValue && b.isValue && a.m_Value != b.m_Value;
         }
 
         /// <summary>
-        /// Determines whether a 'SymbolicTensorDim' is equal to a value.
+        /// Determines whether a 'DynamicTensorDim' is equal to a value.
         /// </summary>
-        /// <param name="a">The 'SymbolicTensorDim' to compare.</param>
+        /// <param name="a">The 'DynamicTensorDim' to compare.</param>
         /// <param name="b">The integer value to compare.</param>
-        /// <returns>Whether the 'SymbolicTensorDim' object is equal to the value.</returns>
-        public static bool operator ==(SymbolicTensorDim a, int b)
+        /// <returns>Whether the 'DynamicTensorDim' object is equal to the value.</returns>
+        public static bool operator ==(DynamicTensorDim a, int b)
         {
             return a.isValue && a.m_Value == b;
         }
 
         /// <summary>
-        /// Determines whether a 'SymbolicTensorDim' is not equal to a value.
+        /// Determines whether a 'DynamicTensorDim' is not equal to a value.
         /// </summary>
-        /// <param name="a">The 'SymbolicTensorDim' to compare.</param>
+        /// <param name="a">The 'DynamicTensorDim' to compare.</param>
         /// <param name="b">The integer value to compare.</param>
-        /// <returns>Whether the 'SymbolicTensorDim' object is not equal to the value.</returns>
-        public static bool operator !=(SymbolicTensorDim a, int b)
+        /// <returns>Whether the 'DynamicTensorDim' object is not equal to the value.</returns>
+        public static bool operator !=(DynamicTensorDim a, int b)
         {
             return a.isValue && a.m_Value != b;
         }
 
         /// <summary>
-        /// Determines whether a 'SymbolicTensorDim' is equal to a value.
+        /// Determines whether a 'DynamicTensorDim' is equal to a value.
         /// </summary>
         /// <param name="a">The integer value to compare.</param>
-        /// <param name="b">The 'SymbolicTensorDim' to compare.</param>
-        /// <returns>Whether the 'SymbolicTensorDim' object is equal to the value.</returns>
-        public static bool operator ==(int a, SymbolicTensorDim b)
+        /// <param name="b">The 'DynamicTensorDim' to compare.</param>
+        /// <returns>Whether the 'DynamicTensorDim' object is equal to the value.</returns>
+        public static bool operator ==(int a, DynamicTensorDim b)
         {
             return b.isValue && a == b.m_Value;
         }
 
         /// <summary>
-        /// Determines whether a 'SymbolicTensorDim' is not equal to a value.
+        /// Determines whether a 'DynamicTensorDim' is not equal to a value.
         /// </summary>
         /// <param name="a">The integer value to compare.</param>
-        /// <param name="b">The 'SymbolicTensorDim' to compare.</param>
-        /// <returns>Whether the 'SymbolicTensorDim' object is not equal to the value.</returns>
-        public static bool operator !=(int a, SymbolicTensorDim b)
+        /// <param name="b">The 'DynamicTensorDim' to compare.</param>
+        /// <returns>Whether the 'DynamicTensorDim' object is not equal to the value.</returns>
+        public static bool operator !=(int a, DynamicTensorDim b)
         {
             return b.isValue && a != b.m_Value;
         }
 
         /// <summary>
-        /// Adds two `SymbolicTensorDim` objects.
+        /// Adds two `DynamicTensorDim` objects.
         /// </summary>
-        /// <param name="a">The LHS 'SymbolicTensorDim' of the operation.</param>
-        /// <param name="b">The RHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="a">The LHS 'DynamicTensorDim' of the operation.</param>
+        /// <param name="b">The RHS 'DynamicTensorDim' of the operation.</param>
         /// <returns>The result of the add operation.</returns>
-        public static SymbolicTensorDim operator +(SymbolicTensorDim a, SymbolicTensorDim b)
+        public static DynamicTensorDim operator +(DynamicTensorDim a, DynamicTensorDim b)
         {
             if (a.isValue)
                 return a.value + b;
@@ -254,12 +271,12 @@ namespace Unity.Sentis
         // 0 | 0   4   A   ?
         // 3 | 3   4   ?   ?
         /// <summary>
-        /// Adds a `SymbolicTensorDim` to an `int`.
+        /// Adds a `DynamicTensorDim` to an `int`.
         /// </summary>
         /// <param name="a">The LHS integer of the operation.</param>
-        /// <param name="b">The RHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="b">The RHS 'DynamicTensorDim' of the operation.</param>
         /// <returns>The result of the add operation.</returns>
-        public static SymbolicTensorDim operator +(int a, SymbolicTensorDim b)
+        public static DynamicTensorDim operator +(int a, DynamicTensorDim b)
         {
             if (b.isValue)
                 return Int(a + b.value);
@@ -275,12 +292,12 @@ namespace Unity.Sentis
         // A | A   ?
         // ? | ?   ?
         /// <summary>
-        /// Adds an `int` to a `SymbolicTensorDim`.
+        /// Adds an `int` to a `DynamicTensorDim`.
         /// </summary>
-        /// <param name="a">The LHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="a">The LHS 'DynamicTensorDim' of the operation.</param>
         /// <param name="b">The RHS integer of the operation.</param>
         /// <returns>The result of the add operation.</returns>
-        public static SymbolicTensorDim operator +(SymbolicTensorDim a, int b)
+        public static DynamicTensorDim operator +(DynamicTensorDim a, int b)
         {
             return b + a;
         }
@@ -291,12 +308,12 @@ namespace Unity.Sentis
         // A | A   ?   0   ?   ?
         // ? | ?   ?   ?   ?   ?
         /// <summary>
-        /// Subtracts a `SymbolicTensorDim` from another `SymbolicTensorDim`.
+        /// Subtracts a `DynamicTensorDim` from another `DynamicTensorDim`.
         /// </summary>
-        /// <param name="a">The LHS 'SymbolicTensorDim' of the operation.</param>
-        /// <param name="b">The RHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="a">The LHS 'DynamicTensorDim' of the operation.</param>
+        /// <param name="b">The RHS 'DynamicTensorDim' of the operation.</param>
         /// <returns>The result of the subtract operation.</returns>
-        public static SymbolicTensorDim operator -(SymbolicTensorDim a, SymbolicTensorDim b)
+        public static DynamicTensorDim operator -(DynamicTensorDim a, DynamicTensorDim b)
         {
             if (a.isValue)
                 return a.value - b;
@@ -311,12 +328,12 @@ namespace Unity.Sentis
         // --|---------------------
         // 3 | 3   2   ?   ?   ?
         /// <summary>
-        /// Subtracts a `SymbolicTensorDim` from an `int`.
+        /// Subtracts a `DynamicTensorDim` from an `int`.
         /// </summary>
         /// <param name="a">The LHS integer of the operation.</param>
-        /// <param name="b">The RHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="b">The RHS 'DynamicTensorDim' of the operation.</param>
         /// <returns>The result of the subtract operation.</returns>
-        public static SymbolicTensorDim operator -(int a, SymbolicTensorDim b)
+        public static DynamicTensorDim operator -(int a, DynamicTensorDim b)
         {
             if (b.isValue)
                 return Int(a - b.value);
@@ -329,12 +346,12 @@ namespace Unity.Sentis
         // A | A   ?
         // ? | ?   ?
         /// <summary>
-        /// Subtracts an `int` from a `SymbolicTensorDim`.
+        /// Subtracts an `int` from a `DynamicTensorDim`.
         /// </summary>
-        /// <param name="a">The LHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="a">The LHS 'DynamicTensorDim' of the operation.</param>
         /// <param name="b">The RHS integer of the operation.</param>
         /// <returns>The result of the subtract operation.</returns>
-        public static SymbolicTensorDim operator -(SymbolicTensorDim a, int b)
+        public static DynamicTensorDim operator -(DynamicTensorDim a, int b)
         {
             if (a.isValue)
                 return Int(a.value - b);
@@ -350,12 +367,12 @@ namespace Unity.Sentis
         // A | 0   A   ?   ?   ?   ?
         // ? | 0   ?   ?   ?   ?   ?
         /// <summary>
-        /// Multiplies two `SymbolicTensorDim` dimensions.
+        /// Multiplies two `DynamicTensorDim` dimensions.
         /// </summary>
-        /// <param name="a">The LHS 'SymbolicTensorDim' of the operation.</param>
-        /// <param name="b">The RHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="a">The LHS 'DynamicTensorDim' of the operation.</param>
+        /// <param name="b">The RHS 'DynamicTensorDim' of the operation.</param>
         /// <returns>The result of the multiply operation.</returns>
-        public static SymbolicTensorDim operator *(SymbolicTensorDim a, SymbolicTensorDim b)
+        public static DynamicTensorDim operator *(DynamicTensorDim a, DynamicTensorDim b)
         {
             if (a.isValue)
                 return a.value * b;
@@ -369,12 +386,12 @@ namespace Unity.Sentis
         // 0 | 0   0   0   0   0
         // 2 | 2   6   ?   ?   ?
         /// <summary>
-        /// Multiplies an `int` by a `SymbolicTensorDim`.
+        /// Multiplies an `int` by a `DynamicTensorDim`.
         /// </summary>
         /// <param name="a">The LHS integer of the operation.</param>
-        /// <param name="b">The RHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="b">The RHS 'DynamicTensorDim' of the operation.</param>
         /// <returns>The result of the multiply operation.</returns>
-        public static SymbolicTensorDim operator *(int a, SymbolicTensorDim b)
+        public static DynamicTensorDim operator *(int a, DynamicTensorDim b)
         {
             if (b.isValue)
                 return Int(a * b.value);
@@ -391,12 +408,12 @@ namespace Unity.Sentis
         // A | 0   A   ?
         // ? | 0   ?   ?
         /// <summary>
-        /// Multiplies a `SymbolicTensorDim` by an `int`.
+        /// Multiplies a `DynamicTensorDim` by an `int`.
         /// </summary>
-        /// <param name="a">The LHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="a">The LHS 'DynamicTensorDim' of the operation.</param>
         /// <param name="b">The RHS integer of the operation.</param>
         /// <returns>The result of the multiply operation.</returns>
-        public static SymbolicTensorDim operator *(SymbolicTensorDim a, int b)
+        public static DynamicTensorDim operator *(DynamicTensorDim a, int b)
         {
             return b * a;
         }
@@ -408,12 +425,12 @@ namespace Unity.Sentis
         // A | A   3   ?   1   ?   ?
         // ? | ?   ?   ?   ?   ?   ?
         /// <summary>
-        /// Divides two `SymbolicTensorDim` dimensions a whole number of times. The method throws an error if the result has a remainder.
+        /// Divides two `DynamicTensorDim` dimensions a whole number of times. The method throws an error if the result has a remainder.
         /// </summary>
-        /// <param name="a">The LHS 'SymbolicTensorDim' of the operation.</param>
-        /// <param name="b">The RHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="a">The LHS 'DynamicTensorDim' of the operation.</param>
+        /// <param name="b">The RHS 'DynamicTensorDim' of the operation.</param>
         /// <returns>The result of the divide operation.</returns>
-        public static SymbolicTensorDim operator /(SymbolicTensorDim a, SymbolicTensorDim b)
+        public static DynamicTensorDim operator /(DynamicTensorDim a, DynamicTensorDim b)
         {
             if (a.isValue)
                 return a.value / b;
@@ -429,19 +446,19 @@ namespace Unity.Sentis
         // 0 | 0   0   0   0   0
         // 2 | 2   1  Err  ?   ?
         /// <summary>
-        /// Divides an `int` by a `SymbolicTensorDim` a whole number of times. The method throws an error if the result has a remainder.
+        /// Divides an `int` by a `DynamicTensorDim` a whole number of times. The method throws an error if the result has a remainder.
         /// </summary>
         /// <param name="a">The LHS integer of the operation.</param>
-        /// <param name="b">The RHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="b">The RHS 'DynamicTensorDim' of the operation.</param>
         /// <returns>The result of the divide operation.</returns>
-        public static SymbolicTensorDim operator /(int a, SymbolicTensorDim b)
+        public static DynamicTensorDim operator /(int a, DynamicTensorDim b)
         {
             if (a == 0)
                 return Zero;
             if (b.isValue)
             {
                 Logger.AssertIsTrue(b.value != 0, "ValueError: cannot divide by dim of size 0");
-                Logger.AssertIsTrue(a % b.value == 0, "ValueError: cannot divide SymbolicTensorDims exactly");
+                Logger.AssertIsTrue(a % b.value == 0, "ValueError: cannot divide DynamicTensorDims exactly");
                 return Int(a / b.value);
             }
 
@@ -454,17 +471,17 @@ namespace Unity.Sentis
         // A | A   3   ?
         // ? | ?   ?   ?
         /// <summary>
-        /// Divides a `SymbolicTensorDim` by an `int` a whole number of times. The method throws an error if the result has a remainder.
+        /// Divides a `DynamicTensorDim` by an `int` a whole number of times. The method throws an error if the result has a remainder.
         /// </summary>
-        /// <param name="a">The LHS 'SymbolicTensorDim' of the operation.</param>
+        /// <param name="a">The LHS 'DynamicTensorDim' of the operation.</param>
         /// <param name="b">The RHS integer of the operation.</param>
         /// <returns>The result of the divide operation.</returns>
-        public static SymbolicTensorDim operator /(SymbolicTensorDim a, int b)
+        public static DynamicTensorDim operator /(DynamicTensorDim a, int b)
         {
             if (a.isValue)
             {
                 Logger.AssertIsTrue(b != 0, "ValueError: cannot divide by dim of size 0");
-                Logger.AssertIsTrue(a.value % b == 0, "ValueError: cannot divide SymbolicTensorDims exactly");
+                Logger.AssertIsTrue(a.value % b == 0, "ValueError: cannot divide DynamicTensorDims exactly");
                 return Int(a.value / b);
             }
             if (b == 1)
@@ -481,12 +498,12 @@ namespace Unity.Sentis
         // A | Err  A   ?
         // ? | Err  ?   ?
         /// <summary>
-        /// Divides a `SymbolicTensorDim` by a `float` to return a rounded `SymbolicTensorDim`.
+        /// Divides a `DynamicTensorDim` by a `float` to return a rounded `DynamicTensorDim`.
         /// rounding direction greater than 0 = ceiling
         /// rounding direction less than 0 = floor
         /// rounding direction equals 0 = round
         /// </summary>
-        internal SymbolicTensorDim DivideWithRounding(int b, int roundingDirection)
+        public DynamicTensorDim DivideWithRounding(int b, int roundingDirection)
         {
             if (b == 1)
                 return this;
@@ -505,47 +522,47 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Whether a `SymbolicTensorDim` is known to be less than a given integer value.
+        /// Whether a `DynamicTensorDim` is known to be less than a given integer value.
         /// </summary>
-        /// <param name="d">The `SymbolicTensorDim` to compare.</param>
+        /// <param name="d">The `DynamicTensorDim` to compare.</param>
         /// <param name="v">The integer value to compare.</param>
         /// <returns>The result of the comparison</returns>
-        public static bool operator <(SymbolicTensorDim d, int v)
+        public static bool operator <(DynamicTensorDim d, int v)
         {
-            return d.m_DimType == DimType.Value && d.m_Value < v;
+            return d.m_DimType == DimType.Static && d.m_Value < v;
         }
 
         /// <summary>
-        /// Whether a `SymbolicTensorDim` is known to be greater than than a given integer value.
+        /// Whether a `DynamicTensorDim` is known to be greater than than a given integer value.
         /// </summary>
-        /// <param name="d">The `SymbolicTensorDim` to compare.</param>
+        /// <param name="d">The `DynamicTensorDim` to compare.</param>
         /// <param name="v">The integer value to compare.</param>
         /// <returns>The result of the comparison</returns>
-        public static bool operator >(SymbolicTensorDim d, int v)
+        public static bool operator >(DynamicTensorDim d, int v)
         {
-            return d.m_DimType == DimType.Value && d.m_Value > v;
+            return d.m_DimType == DimType.Static && d.m_Value > v;
         }
 
         /// <summary>
-        /// Whether a `SymbolicTensorDim` is known to be less than or equal to than a given integer value.
+        /// Whether a `DynamicTensorDim` is known to be less than or equal to than a given integer value.
         /// </summary>
-        /// <param name="d">The `SymbolicTensorDim` to compare.</param>
+        /// <param name="d">The `DynamicTensorDim` to compare.</param>
         /// <param name="v">The integer value to compare.</param>
         /// <returns>The result of the comparison</returns>
-        public static bool operator <=(SymbolicTensorDim d, int v)
+        public static bool operator <=(DynamicTensorDim d, int v)
         {
-            return d.m_DimType == DimType.Value && d.m_Value <= v;
+            return d.m_DimType == DimType.Static && d.m_Value <= v;
         }
 
         /// <summary>
-        /// Whether a `SymbolicTensorDim` is known to be greater than or equal to than a given integer value.
+        /// Whether a `DynamicTensorDim` is known to be greater than or equal to than a given integer value.
         /// </summary>
-        /// <param name="d">The `SymbolicTensorDim` to compare.</param>
+        /// <param name="d">The `DynamicTensorDim` to compare.</param>
         /// <param name="v">The integer value to compare.</param>
         /// <returns>The result of the comparison</returns>
-        public static bool operator >=(SymbolicTensorDim d, int v)
+        public static bool operator >=(DynamicTensorDim d, int v)
         {
-            return d.m_DimType == DimType.Value && d.m_Value >= v;
+            return d.m_DimType == DimType.Static && d.m_Value >= v;
         }
 
         //   | 2   3   A   B   ?
@@ -553,13 +570,13 @@ namespace Unity.Sentis
         // 2 | 2  Err  2   2   2
         // A | 2   3   A   A   A
         // ? | 2   3   A   B   ?
-        // <summary>
-        /// Returns the better known of two `SymbolicTensorDim` dimensions known to be equal. The method throws an error if both dimensions are values and not equal.
+        /// <summary>
+        /// Returns the better known of two `DynamicTensorDim` dimensions known to be equal. The method throws an error if both dimensions are values and not equal.
         /// </summary>
-        /// <param name="a">The first `SymbolicTensorDim`.</param>
-        /// <param name="b">The second `SymbolicTensorDim`.</param>
-        /// <returns>The better known of the `SymbolicTensorDim` objects.</returns>
-        internal static SymbolicTensorDim MaxDefinedDim(SymbolicTensorDim a, SymbolicTensorDim b)
+        /// <param name="a">The first `DynamicTensorDim`.</param>
+        /// <param name="b">The second `DynamicTensorDim`.</param>
+        /// <returns>The better known of the `DynamicTensorDim` objects.</returns>
+        public static DynamicTensorDim MaxDefinedDim(DynamicTensorDim a, DynamicTensorDim b)
         {
             if (a.isUnknown)
                 return b;
@@ -581,9 +598,9 @@ namespace Unity.Sentis
         // A | A   3   A   ?   ?
         // ? | ?   3   ?   ?   ?
         /// <summary>
-        /// Broadcasts two `SymbolicTensorDim` dimensions using a broadcast rule where a dimension of size 1 can broadcast with any other dimension.
+        /// Broadcasts two `DynamicTensorDim` dimensions using a broadcast rule where a dimension of size 1 can broadcast with any other dimension.
         /// </summary>
-        internal static SymbolicTensorDim Broadcast(SymbolicTensorDim a, SymbolicTensorDim b)
+        public static DynamicTensorDim Broadcast(DynamicTensorDim a, DynamicTensorDim b)
         {
             if (a == One)
                 return b;
@@ -607,14 +624,14 @@ namespace Unity.Sentis
         // A | A   3   ?   ?
         // ? | ?   3   ?   ?
         /// <summary>
-        /// Broadcasts the `SymbolicTensorDim` with another `SymbolicTensorDim` using a broadcast rule where a dimension of size 1 can broadcast with any other dimension.
+        /// Broadcasts the `DynamicTensorDim` with another `DynamicTensorDim` using a broadcast rule where a dimension of size 1 can broadcast with any other dimension.
         /// </summary>
-        internal SymbolicTensorDim Broadcast(SymbolicTensorDim other)
+        public DynamicTensorDim Broadcast(DynamicTensorDim other)
         {
             return Broadcast(this, other);
         }
 
-        internal SymbolicTensorDim Pool(int kernel, int stride, int padding, int dilation, bool ceilMode, Layers.AutoPad autoPad)
+        public DynamicTensorDim Pool(int kernel, int stride, int padding, int dilation, bool ceilMode, Layers.AutoPad autoPad)
         {
             switch (autoPad)
             {
@@ -630,12 +647,26 @@ namespace Unity.Sentis
             }
         }
 
-        internal SymbolicTensorDim Slice(PartialTensorElement start, PartialTensorElement end, PartialTensorElement step)
+        public DynamicTensorDim Slice(PartialTensorElement start, PartialTensorElement end, PartialTensorElement step)
         {
             Logger.AssertIsTrue(!(step == 0), "Slice.InputError: Step cannot be 0");
 
             if (isValue && start.isIntValue && end.isIntValue && step.isIntValue)
-                return Int(ShapeInference.SliceDim(value, start.intValue, end.intValue, step.intValue));
+            {
+                if (value == 0)
+                    return Zero;
+
+                var clampAdjustDirection = step < 0 ? -1 : 0;
+
+                var startValue = start.intValue < 0 ? value + start.intValue : start.intValue;
+                startValue = Mathf.Clamp(startValue, 0, value + clampAdjustDirection);
+
+                var endValue = end.intValue < 0 ? value + end.intValue : end.intValue;
+                endValue = Mathf.Clamp(endValue, clampAdjustDirection, value);
+
+                var outputDim = (int)Math.Ceiling((double)(endValue - startValue) / (double)step.intValue);
+                return Int(Mathf.Max(outputDim, 0));
+            }
 
             if (start.isUnknown || end.isUnknown)
                 return Unknown;
@@ -667,12 +698,12 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Calculates the greatest common divisor of two `SymbolicTensorDim` objects.
+        /// Calculates the greatest common divisor of two `DynamicTensorDim` objects.
         /// </summary>
-        /// <param name="a">The first `SymbolicTensorDim`.</param>
-        /// <param name="b">The second `SymbolicTensorDim`.</param>
-        /// <returns>The greatest common divisor of the `SymbolicTensorDim` objects.</returns>
-        public static SymbolicTensorDim GCD(SymbolicTensorDim a, SymbolicTensorDim b)
+        /// <param name="a">The first `DynamicTensorDim`.</param>
+        /// <param name="b">The second `DynamicTensorDim`.</param>
+        /// <returns>The greatest common divisor of the `DynamicTensorDim` objects.</returns>
+        public static DynamicTensorDim GCD(DynamicTensorDim a, DynamicTensorDim b)
         {
             if (a == One || b == One)
                 return One;
@@ -698,12 +729,12 @@ namespace Unity.Sentis
             return Int(x | y);
         }
 
-        internal SymbolicTensorDim Resize(PartialTensorElement e)
+        public DynamicTensorDim Resize(PartialTensorElement e)
         {
             return !e.isFloatValue ? Unknown : Resize(e.floatValue);
         }
 
-        internal SymbolicTensorDim Resize(float f)
+        public DynamicTensorDim Resize(float f)
         {
             if (f == 0)
                 return Zero;

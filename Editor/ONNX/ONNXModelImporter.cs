@@ -1,13 +1,10 @@
 using System;
 using UnityEngine;
-using UnityEditor;
 using UnityEditor.AssetImporters;
-using System.IO;
 using System.Runtime.CompilerServices;
 using Unity.Sentis.ONNX;
 using System.Collections.Generic;
-using System.Reflection;
-using System.Diagnostics;
+using UnityEditor;
 
 [assembly: InternalsVisibleTo("Unity.Sentis.EditorTests")]
 
@@ -20,6 +17,35 @@ namespace Unity.Sentis
     [HelpURL("https://docs.unity3d.com/Packages/com.unity.sentis@latest/index.html")]
     class ONNXModelImporter : ScriptedImporter
     {
+        static readonly List<IONNXMetadataImportCallbackReceiver> k_MetadataImportCallbackReceivers;
+
+        static ONNXModelImporter()
+        {
+            k_MetadataImportCallbackReceivers = new List<IONNXMetadataImportCallbackReceiver>();
+
+            foreach (var type in TypeCache.GetTypesDerivedFrom<IONNXMetadataImportCallbackReceiver>())
+            {
+                if (type.IsInterface || type.IsAbstract)
+                    continue;
+
+                if (Attribute.IsDefined(type, typeof(DisableAutoRegisterAttribute)))
+                    continue;
+
+                var receiver = (IONNXMetadataImportCallbackReceiver)Activator.CreateInstance(type);
+                RegisterMetadataReceiver(receiver);
+            }
+        }
+
+        internal static void RegisterMetadataReceiver(IONNXMetadataImportCallbackReceiver receiver)
+        {
+            k_MetadataImportCallbackReceivers.Add(receiver);
+        }
+
+        internal static void UnregisterMetadataReceiver(IONNXMetadataImportCallbackReceiver receiver)
+        {
+            k_MetadataImportCallbackReceivers.Remove(receiver);
+        }
+
         /// <summary>
         /// Callback that Sentis calls when the ONNX model has finished importing.
         /// </summary>
@@ -27,6 +53,7 @@ namespace Unity.Sentis
         public override void OnImportAsset(AssetImportContext ctx)
         {
             var converter = new ONNXModelConverter(ctx.assetPath);
+            converter.MetadataLoaded += metadata => InvokeMetadataHandlers(ctx, metadata);
             var model = converter.Convert();
 
             ModelAsset asset = ScriptableObject.CreateInstance<ModelAsset>();
@@ -54,6 +81,25 @@ namespace Unity.Sentis
 
             ctx.SetMainObject(asset);
             model.DisposeWeights();
+        }
+
+        static void InvokeMetadataHandlers(AssetImportContext ctx, ONNXModelMetadata onnxModelMetadata)
+        {
+            if (k_MetadataImportCallbackReceivers == null)
+                return;
+
+            foreach (var receiver in k_MetadataImportCallbackReceivers)
+            {
+                receiver.OnMetadataImported(ctx, onnxModelMetadata);
+            }
+        }
+
+        /// <summary>
+        /// Attribute to disable automatic registration of <see cref="IONNXMetadataImportCallbackReceiver"/>
+        /// implementations. Recommended for testing purposes.
+        /// </summary>
+        internal class DisableAutoRegisterAttribute : Attribute
+        {
         }
     }
 }

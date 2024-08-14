@@ -11,9 +11,9 @@ Shader "Hidden/Sentis/CumSum"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile _ INT
-            #pragma multi_compile FORWARD REVERSE
-            #pragma multi_compile INCLUSIVE EXCLUSIVE
+            #pragma multi_compile_local _ INT
+            #pragma multi_compile_local FORWARD REVERSE
+            #pragma multi_compile_local INCLUSIVE EXCLUSIVE
 
             #pragma vertex vert
             #pragma fragment frag

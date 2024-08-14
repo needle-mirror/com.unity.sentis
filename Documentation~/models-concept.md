@@ -25,10 +25,10 @@ The optimization doesn't affect what the model inputs or outputs.
 ## Model inputs
 
 You can get the shape of your model inputs in one of two ways:
-- [Inspect a model](inspect-a-model.md) to use the `inputs` property of the runtime model.
+- [Inspect a model](inspect-a-model.md) to use the [`inputs`](xref:Unity.Sentis.Model.inputs) property of the runtime model.
 - Select your model from the **Project** window to open the [**Model Asset Import Settings**](onnx-model-importer-properties.md) and view the **Inputs** section.
 
-The shape of a model input consists of multiple dimensions, defined as a [`SymbolicTensorShape`](xref:Unity.Sentis.SymbolicTensorShape).
+The shape of a model input consists of multiple dimensions, defined as a [`DynamicTensorShape`](xref:Unity.Sentis.DynamicTensorShape).
 
  The dimensions of a model input are either fixed or dynamic:
 - An `int` denotes a fixed dimension.
@@ -42,7 +42,7 @@ For example, if the **Inputs** section displays **(1, 1, 28, 28)**, the model on
 
 ### Dynamic dimensions
 
-When the shape of a model input contains a symbolic dimension, a `?` or `string`, for example `batch_size` or `height`, the input dimension can be any size.
+When the shape of a model input contains a dynamic dimension, a `?` or `string`, for example `batch_size` or `height`, the input dimension can be any size.
 
 For example, if the input is **(d0, 1, 28, 28)**, the first dimension of the input can be any size.
 

@@ -2,7 +2,7 @@ using System;
 
 namespace Unity.Sentis
 {
-    abstract class FunctionalNode
+    abstract class Node
     {
         protected FunctionalTensor[] m_Inputs;
         protected DataType[] m_OutputDataTypes;
@@ -11,64 +11,69 @@ namespace Unity.Sentis
         public FunctionalTensor[] Inputs => m_Inputs;
         public int[] OutputIndices => m_OutputIndices;
 
-        protected FunctionalNode(FunctionalTensor[] inputs, DataType[] outputDataTypes)
+        protected Node(FunctionalTensor[] inputs, DataType[] outputDataTypes)
         {
             m_Inputs = new FunctionalTensor[inputs.Length];
             for (var i = 0; i < m_Inputs.Length; i++)
-                m_Inputs[i] = inputs[i] == null ? null : new FunctionalTensor(inputs[i].DataType, inputs[i].Source, inputs[i].OutputIndex);
+                m_Inputs[i] = inputs[i] == null ? null : new FunctionalTensor(inputs[i].dataType, inputs[i].source, inputs[i].outputIndex);
             m_OutputDataTypes = new DataType[outputDataTypes.Length];
             for (var i = 0; i < m_OutputDataTypes.Length; i++)
                 m_OutputDataTypes[i] = outputDataTypes[i];
             m_OutputIndices = new int[outputDataTypes.Length];
         }
 
-        public FunctionalTensor[] CreateOutputs()
-        {
-            var outputs = new FunctionalTensor[m_OutputIndices.Length];
-            for (var i = 0; i < outputs.Length; i++)
-                outputs[i] = new FunctionalTensor(m_OutputDataTypes[i], this, i);
-            return outputs;
-        }
-
         public abstract void AddToModel(Model model, ref int index);
     }
 
-    class FunctionalInput : FunctionalNode
+    class InputNode : Node
     {
-        Model.Input m_Input;
+        int m_Index;
+        DataType m_DataType;
+        DynamicTensorShape m_Shape;
 
-        public FunctionalInput(Model.Input input)
-            : base(Array.Empty<FunctionalTensor>(), new[] { input.dataType })
+        public InputNode(int index, DataType dataType, DynamicTensorShape shape)
+            : base(Array.Empty<FunctionalTensor>(), new[] { dataType })
         {
-            m_Input = input;
+            m_Index = index;
+            m_DataType = dataType;
+            m_Shape = shape;
         }
 
         public override void AddToModel(Model model, ref int index)
         {
             var inputName = "input_" + model.inputs.Count;
             m_OutputIndices[0] = index;
-            model.AddInput(inputName, index, m_Input.dataType, m_Input.shape);
+            while (model.inputs.Count <= m_Index)
+                model.inputs.Add(default);
+            model.inputs[m_Index] = new Model.Input { name = inputName, index = index, dataType = m_DataType, shape = m_Shape };
             index++;
         }
     }
 
-    class FunctionalOutput : FunctionalNode
+    class OutputNode : Node
     {
-        public FunctionalOutput(FunctionalTensor input)
-            : base(new[] { input }, Array.Empty<DataType>()) { }
+        int m_Index;
+
+        public OutputNode(int index, FunctionalTensor input)
+            : base(new[] { input }, Array.Empty<DataType>())
+        {
+            m_Index = index;
+        }
 
         public override void AddToModel(Model model, ref int index)
         {
-            var outputName = "output_" + model.outputs.Count;
-            model.AddOutput(outputName, m_Inputs[0].Index);
+            var outputName = "output_" + m_Index;
+            while (model.outputs.Count <= m_Index)
+                model.outputs.Add(default);
+            model.outputs[m_Index] = new Model.Output { name = outputName, index = m_Inputs[0].index };
         }
     }
 
-    class FunctionalConstant : FunctionalNode
+    class ConstantNode : Node
     {
-        Layers.Constant m_Constant;
+        Constant m_Constant;
 
-        public FunctionalConstant(Layers.Constant constant)
+        public ConstantNode(Constant constant)
             : base(Array.Empty<FunctionalTensor>(), new[] { constant.dataType })
         {
             m_Constant = constant;
@@ -83,11 +88,11 @@ namespace Unity.Sentis
         }
     }
 
-    class FunctionalLayer : FunctionalNode
+    class LayerNode : Node
     {
-        Layers.Layer m_Layer;
+        Layer m_Layer;
 
-        public FunctionalLayer(FunctionalTensor[] inputs, DataType[] outputDataTypes, Layers.Layer layer)
+        public LayerNode(FunctionalTensor[] inputs, DataType[] outputDataTypes, Layer layer)
             : base(inputs, outputDataTypes)
         {
             m_Layer = layer;
@@ -96,7 +101,7 @@ namespace Unity.Sentis
         public override void AddToModel(Model model, ref int index)
         {
             for (var i = 0; i < m_Inputs.Length; i++)
-                m_Layer.inputs[i] = m_Inputs[i] is null ? -1 : m_Inputs[i].Index;
+                m_Layer.inputs[i] = m_Inputs[i] is null ? -1 : m_Inputs[i].index;
 
             for (var i = 0; i < m_OutputIndices.Length; i++)
             {
@@ -106,6 +111,14 @@ namespace Unity.Sentis
             }
 
             model.layers.Add(m_Layer);
+        }
+
+        public FunctionalTensor[] CreateOutputs()
+        {
+            var outputs = new FunctionalTensor[m_OutputIndices.Length];
+            for (var i = 0; i < outputs.Length; i++)
+                outputs[i] = new FunctionalTensor(m_OutputDataTypes[i], this, i);
+            return outputs;
         }
     }
 }

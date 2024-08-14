@@ -18,41 +18,39 @@ public class ClassifyHandwrittenDigit : MonoBehaviour
 {
     public Texture2D inputTexture;
     public ModelAsset modelAsset;
+
     Model runtimeModel;
-    IWorker worker;
+    Worker worker;
     public float[] results;
 
     void Start()
     {
-        var sourceModel = ModelLoader.Load(modelAsset);
+        Model sourceModel = ModelLoader.Load(modelAsset);
 
-        // Create the runtime model
-        runtimeModel = Functional.Compile(
-            inputs =>
-            {
-                var output = FunctionalTensor.FromModel(sourceModel, inputs)[0];
-                // rescale output of source model
-                return new[] { Functional.Softmax(output) };
-            },
-            InputDef.FromModel(sourceModel)
-        );
+        // Create a functional graph that runs the input model and then applies softmax to the output.
+        FunctionalGraph graph = new FunctionalGraph();
+        FunctionalTensor[] inputs = graph.AddInputs(sourceModel);
+        FunctionalTensor[] outputs = Functional.Forward(sourceModel, inputs);
+        FunctionalTensor softmax = Functional.Softmax(outputs[0]);
+
+        // Create a model with softmax by compiling the functional graph.
+        runtimeModel = graph.Compile(softmax);
 
         // Create input data as a tensor
         using Tensor inputTensor = TextureConverter.ToTensor(inputTexture, width: 28, height: 28, channels: 1);
 
         // Create an engine
-        worker = WorkerFactory.CreateWorker(BackendType.GPUCompute, runtimeModel);
+        worker = new Worker(runtimeModel, BackendType.GPUCompute);
 
         // Run the model with the input data
-        worker.Execute(inputTensor);
+        worker.Schedule(inputTensor);
 
         // Get the result
-        using TensorFloat outputTensor = worker.PeekOutput() as TensorFloat;
+        Tensor<float> outputTensor = worker.PeekOutput() as Tensor<float>;
 
-        // Move the tensor data to the CPU before reading it
-        outputTensor.CompleteOperationsAndDownload();
-
-        results = outputTensor.ToReadOnlyArray();
+        // outputTensor is still pending
+        // Either read back the results asynchronously or do a blocking download call
+        var results = outputTensor.DownloadToArray();
     }
 
     void OnDisable()

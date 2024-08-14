@@ -5,7 +5,7 @@ using System;
 
 namespace Unity.Sentis
 {
-public partial class CPUBackend
+partial class CPUBackend
 {
 }
 }

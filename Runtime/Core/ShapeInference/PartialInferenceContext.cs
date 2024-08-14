@@ -11,7 +11,7 @@ namespace Unity.Sentis
         Dictionary<int, PartialTensor> m_PartialTensors;
 
         /// <summary>
-        /// Instantiates and returns an empty partial inference context.
+        /// Initializes and returns an empty partial inference context.
         /// </summary>
         public PartialInferenceContext()
         {

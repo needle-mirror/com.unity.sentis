@@ -11,9 +11,9 @@ Shader "Hidden/Sentis/DepthwiseConv"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile CONV1D CONV2D CONV3D
-            #pragma multi_compile _ USEBIAS
-            #pragma multi_compile NONE RELU
+            #pragma multi_compile_local CONV1D CONV2D CONV3D
+            #pragma multi_compile_local _ USEBIAS
+            #pragma multi_compile_local NONE RELU
 
             #pragma vertex vert
             #pragma fragment frag

@@ -6,7 +6,7 @@ namespace Unity.Sentis
     /// <summary>
     /// Represents a CPU backend ops.
     /// </summary>
-    public partial class CPUBackend : IBackend
+    partial class CPUBackend : IBackend
     {
         /// <inheritdoc/>
         public BackendType backendType => BackendType.CPU;
@@ -14,7 +14,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Initializes and returns an instance of `CPUBackend`.
         /// </summary>
-        public CPUBackend() {}
+        public CPUBackend() { }
 
         /// <summary>
         /// Disposes of the ops and any associated memory.
@@ -25,14 +25,14 @@ namespace Unity.Sentis
             m_MemoryPool = null;
         }
 
-        void ConvND(TensorFloat X, TensorFloat K, TensorFloat B, TensorFloat O, int groups, Span<int> stride, Span<int> pad, Span<int> dilation, Layers.FusableActivation fusedActivation)
+        void ConvND(Tensor<float> X, Tensor<float> K, Tensor<float> B, Tensor<float> O, int groups, Span<int> stride, Span<int> pad, Span<int> dilation, Layers.FusableActivation fusedActivation)
         {
             var Otmp = (fusedActivation != Layers.FusableActivation.None) ? AllocTensorFloat(O.shape) : O;
 
-            BurstTensorData.Pin(X);
-            BurstTensorData.Pin(K);
-            BurstTensorData.Pin(B);
-            BurstTensorData.Pin(Otmp);
+            CPUTensorData.Pin(X);
+            CPUTensorData.Pin(K);
+            CPUTensorData.Pin(B);
+            CPUTensorData.Pin(Otmp);
 
             int inputGroupedChannels = X.shape[1] / groups;
             int outputGroupedChannels = Otmp.shape[1] / groups;
@@ -91,15 +91,15 @@ namespace Unity.Sentis
             }
         }
 
-        void ConvTransposeND(TensorFloat X, TensorFloat W, TensorFloat B, TensorFloat O, Span<int> strides, Span<int> pads, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
+        void ConvTransposeND(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Span<int> strides, Span<int> pads, Span<int> outputPadding, Layers.FusableActivation fusedActivation)
         {
             var Otmp = (fusedActivation != Layers.FusableActivation.None) ? AllocTensorFloat(O.shape) : O;
 
-            BurstTensorData.Pin(X);
-            BurstTensorData.Pin(W);
+            CPUTensorData.Pin(X);
+            CPUTensorData.Pin(W);
             if (B != null)
-                BurstTensorData.Pin(B);
-            BurstTensorData.Pin(O);
+                CPUTensorData.Pin(B);
+            CPUTensorData.Pin(O);
 
             var inputChannels = X.shape[1];
 
@@ -157,7 +157,7 @@ namespace Unity.Sentis
             }
         }
 
-        void ResizeND(TensorFloat X, TensorFloat O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode = Layers.NearestMode.RoundPreferFloor, Layers.CoordTransformMode coordTransformMode = Layers.CoordTransformMode.HalfPixel)
+        void ResizeND(Tensor<float> X, Tensor<float> O, ReadOnlySpan<float> scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode = Layers.NearestMode.RoundPreferFloor, Layers.CoordTransformMode coordTransformMode = Layers.CoordTransformMode.HalfPixel)
         {
             bool firstAlloc = false;
             for (var i = 0; i < scale.Length; i++)
@@ -171,10 +171,10 @@ namespace Unity.Sentis
             }
         }
 
-        void Resize1D(TensorFloat X, TensorFloat O, int axis, float scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
+        void Resize1D(Tensor<float> X, Tensor<float> O, int axis, float scale, Layers.InterpolationMode interpolationMode, Layers.NearestMode nearestMode, Layers.CoordTransformMode coordTransformMode)
         {
-            BurstTensorData.Pin(X);
-            BurstTensorData.Pin(O);
+            CPUTensorData.Pin(X);
+            CPUTensorData.Pin(O);
 
             var itX = new TensorNDIterator(X.shape);
 
@@ -220,10 +220,10 @@ namespace Unity.Sentis
             }
         }
 
-        void ApplyLocalPoolingOperator(TensorFloat X, TensorFloat O, int[] pool, int[] stride, int[] pad, Func<float> initOp, Func<float, float, float> accumulateOp, Func<float, int, float> normalizeOp)
+        void ApplyLocalPoolingOperator(Tensor<float> X, Tensor<float> O, int[] pool, int[] stride, int[] pad, Func<float> initOp, Func<float, float, float> accumulateOp, Func<float, int, float> normalizeOp)
         {
-            BurstTensorData.Pin(X);
-            BurstTensorData.Pin(O);
+            CPUTensorData.Pin(X);
+            CPUTensorData.Pin(O);
 
             var itX = new TensorNDIterator(X.shape);
             var itP = new TensorNDIterator(new TensorShape(pool));
@@ -263,7 +263,7 @@ namespace Unity.Sentis
             }
         }
 
-        void MaxPoolND(TensorFloat X, TensorFloat O, int[] pool, int[] stride, int[] pad)
+        void MaxPoolND(Tensor<float> X, Tensor<float> O, int[] pool, int[] stride, int[] pad)
         {
             Func<float> initOp = () => float.MinValue;
             Func<float, float, float> accumulateOp = (acc, v) => Mathf.Max(acc, v);
@@ -271,7 +271,7 @@ namespace Unity.Sentis
             ApplyLocalPoolingOperator(X, O, pool, stride, pad, initOp, accumulateOp, normalizeOp);
         }
 
-        void AveragePoolND(TensorFloat X, TensorFloat O, int[] pool, int[] stride, int[] pad)
+        void AveragePoolND(Tensor<float> X, Tensor<float> O, int[] pool, int[] stride, int[] pad)
         {
             Func<float> initOp = () => 0.0f;
             Func<float, float, float> accumulateOp = (acc, v) => acc + v;
@@ -279,14 +279,19 @@ namespace Unity.Sentis
             ApplyLocalPoolingOperator(X, O, pool, stride, pad, initOp, accumulateOp, normalizeOp);
         }
 
-        void ScatterElementsReduce(TensorInt X, TensorInt indices, TensorInt updates, TensorInt O, int axis, Layers.ScatterReductionMode reduction)
+        void ScatterElementsReduce(Tensor<int> X, Tensor<int> indices, Tensor<int> updates, Tensor<int> O, int axis, Layers.ScatterReductionMode reduction)
         {
             MemCopy(X, O);
 
-            BurstTensorData.Pin(X);
-            BurstTensorData.Pin(indices);
-            BurstTensorData.Pin(updates);
-            BurstTensorData.Pin(O);
+            CPUTensorData.Pin(X);
+            CPUTensorData.Pin(indices);
+            CPUTensorData.Pin(updates);
+            CPUTensorData.Pin(O);
+
+            indices.CompleteAllPendingOperations();
+            X.CompleteAllPendingOperations();
+            updates.CompleteAllPendingOperations();
+            O.CompleteAllPendingOperations();
 
             //TODO: verify this.
             var itO = new TensorNDIterator(O.shape);

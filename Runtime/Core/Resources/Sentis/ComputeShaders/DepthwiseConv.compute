@@ -1,7 +1,7 @@
 #pragma kernel DepthwiseConv2DWinograd
 #pragma kernel KernelWinoExpand
 #pragma kernel DepthwiseConv2DDirect
-#pragma multi_compile _ USEBIAS
+#pragma multi_compile_local _ USEBIAS
 
 #include "Tensor.cginc"
 

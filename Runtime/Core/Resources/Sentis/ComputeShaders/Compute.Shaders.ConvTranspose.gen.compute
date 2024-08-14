@@ -3,7 +3,7 @@
 #pragma kernel ConvTranspose2D_KxK
 #pragma kernel ConvTranspose1D_KxK
 
-#pragma multi_compile _ USEBIAS
+#pragma multi_compile_local _ USEBIAS
 
 StructuredBuffer<float> Xptr;
 StructuredBuffer<float> Wptr;

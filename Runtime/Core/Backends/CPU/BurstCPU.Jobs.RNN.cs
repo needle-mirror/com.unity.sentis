@@ -8,7 +8,7 @@ using Unity.Mathematics;
 
 namespace Unity.Sentis
 {
-    public partial class CPUBackend
+    partial class CPUBackend
     {
         [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
         unsafe struct LSTMEndJob : IJobParallelFor

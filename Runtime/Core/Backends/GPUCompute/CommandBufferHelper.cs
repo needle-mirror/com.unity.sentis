@@ -14,26 +14,16 @@ namespace Unity.Sentis
     {
         //See https://docs.unity3d.com/2020.2/Documentation/ScriptReference/ComputeShader.SetInts.html
         //SetInts API need CPU side to be padded
-        static readonly int[] s_scratchPadInt16 = new int[16 * 4];
-        static readonly int[] s_scratchPadInt8 = new int[8 * 4];
-        static readonly int[] s_scratchPadInt6 = new int[6 * 4];
-        static readonly int[] s_scratchPadInt4 = new int[4];
-        static readonly int[] s_scratchPadInt2 = new int[2];
+        static readonly int[] k_ScratchPadInt16 = new int[16 * 4];
+        static readonly int[] k_ScratchPadInt8 = new int[8 * 4];
+        static readonly int[] k_ScratchPadInt6 = new int[6 * 4];
+        static readonly int[] k_ScratchPadInt4 = new int[4];
+        static readonly int[] k_ScratchPadInt2 = new int[2];
 
-        public static void SetTexture(this CommandBuffer cb, ComputeFunction fn, int nameID, Texture tex)
-        {
-            cb.SetComputeTextureParam(fn.shader, fn.kernelIndex, nameID, tex);
-        }
-
-        public static void SetTexture(this CommandBuffer cb, ComputeFunction fn, int nameID, RenderTargetIdentifier tex)
-        {
-            cb.SetComputeTextureParam(fn.shader, fn.kernelIndex, nameID, tex);
-        }
         public static void Dispatch(this CommandBuffer cb, ComputeFunction fn, int workItemsX, int workItemsY, int workItemsZ)
         {
-#if SENTIS_DEBUG
-        Profiler.BeginSample(fn.kernelName);
-#endif
+            cb.BeginSample(fn.profilerMarker);
+
             var x = ComputeHelper.IDivC(workItemsX, (int)fn.threadGroupSizeX);
             var y = ComputeHelper.IDivC(workItemsY, (int)fn.threadGroupSizeY);
             var z = ComputeHelper.IDivC(workItemsZ, (int)fn.threadGroupSizeZ);
@@ -43,9 +33,8 @@ namespace Unity.Sentis
                 D.LogWarning($"Exceeded safe compute dispatch group count limit per dimension [{x}, {y}, {z}] for {fn.shader.ToString()}");
 
             cb.DispatchCompute(fn.shader, fn.kernelIndex, x, y, z);
-#if SENTIS_DEBUG
-        Profiler.EndSample();
-#endif
+
+            cb.EndSample(fn.profilerMarker);
         }
 
         public static void UnrolledDispatch(this CommandBuffer cb, ComputeFunction fn, int numThread)
@@ -58,73 +47,45 @@ namespace Unity.Sentis
             int threadGroupZ = 1;
             int threadGroupY = ComputeHelper.IDivC(neededTG, (int)ComputeHelper.SafeDispatchLimit);
             int threadGroupX = ComputeHelper.IDivC(neededTG, threadGroupY);
-            s_scratchPadInt2[0] = threadGroupX * threadPerTG;
-            s_scratchPadInt2[1] = numThread;
-            cb.SetComputeIntParams(fn.shader, k_ID_unrolledDispatchArgs, s_scratchPadInt2);
+            k_ScratchPadInt2[0] = threadGroupX * threadPerTG;
+            k_ScratchPadInt2[1] = numThread;
+            cb.SetComputeIntParams(fn.shader, k_ID_unrolledDispatchArgs, k_ScratchPadInt2);
 
             int workItemsZ = (int)(threadGroupZ * fn.threadGroupSizeZ);
             int workItemsY = (int)(threadGroupY * fn.threadGroupSizeY);
             int workItemsX = (int)(threadGroupX * fn.threadGroupSizeX);
             cb.Dispatch(fn, workItemsX, workItemsY, workItemsZ);
         }
+
         public static void UnrolledDispatchFast(this CommandBuffer cb, ComputeFunction fn, int numThread)
         {
             if (numThread == 0)
                 return;
+
+            cb.BeginSample(fn.profilerMarker);
 
             int threadPerTG = 256 * 1 * 1;
             int neededTG = ComputeHelper.IDivC(numThread, threadPerTG);
             int threadGroupZ = 1;
             int threadGroupY = ComputeHelper.IDivC(neededTG, (int)ComputeHelper.SafeDispatchLimit);
             int threadGroupX = ComputeHelper.IDivC(neededTG, threadGroupY);
-            s_scratchPadInt2[0] = threadGroupX;
-            s_scratchPadInt2[1] = numThread;
-            cb.SetComputeIntParams(fn.shader, k_ID_unrolledDispatchArgs, s_scratchPadInt2);
+            k_ScratchPadInt2[0] = threadGroupX;
+            k_ScratchPadInt2[1] = numThread;
+            cb.SetComputeIntParams(fn.shader, k_ID_unrolledDispatchArgs, k_ScratchPadInt2);
 
             // some GFX APIs / GPU hw/drivers have limitation of 65535 per dimension
             if (threadGroupX > ComputeHelper.SafeDispatchLimit || threadGroupY > ComputeHelper.SafeDispatchLimit || threadGroupZ > ComputeHelper.SafeDispatchLimit)
                 D.LogWarning($"Exceeded safe compute dispatch group count limit per dimension [{threadGroupX}, {threadGroupY}, {threadGroupZ}] for {fn.shader.ToString()}");
 
             cb.DispatchCompute(fn.shader, fn.kernelIndex, threadGroupX, threadGroupY, threadGroupZ);
-        }
 
-
-        public static void SetFloat(this CommandBuffer cb, ComputeFunction fn, int nameID, float data)
-        {
-            cb.SetComputeFloatParam(fn.shader, nameID, data);
-        }
-
-        public static void SetInt(this CommandBuffer cb, ComputeFunction fn, int nameID, int data)
-        {
-            cb.SetComputeIntParam(fn.shader, nameID, data);
-        }
-
-        public static void SetInts(this CommandBuffer cb, ComputeFunction fn, int nameID, int[] data)
-        {
-            cb.SetComputeIntParams(fn.shader, nameID, data);
-        }
-
-        public static void SetVector(this CommandBuffer cb, ComputeFunction fn, int nameID, Vector4 data)
-        {
-            cb.SetComputeVectorParam(fn.shader, nameID, data);
+            cb.EndSample(fn.profilerMarker);
         }
 
         public static void SetBool(this CommandBuffer cb, ComputeFunction fn, int nameID, bool data)
         {
             cb.SetComputeIntParam(fn.shader, nameID, data ? 1 : 0);
         }
-
-        public static void EnableKeyword(this CommandBuffer cb, ComputeFunction fn, string keyword)
-        {
-            cb.EnableKeyword(fn.shader, new LocalKeyword(fn.shader, keyword));
-        }
-
-        public static void DisableKeyword(this CommandBuffer cb, ComputeFunction fn, string keyword)
-        {
-            cb.DisableKeyword(fn.shader, new LocalKeyword(fn.shader, keyword));
-        }
-
-
 
         public static unsafe void SetTensorShapeStrides(this CommandBuffer cb, ComputeFunction fn, int shapeNameID, int strideNameID, TensorShape shape)
         {
@@ -162,44 +123,46 @@ namespace Unity.Sentis
         {
             Logger.AssertIsTrue(ptr.Length <= 16, "cannot pin array > 16, got {0}", ptr.Length);
             for (int i = 0; i < ptr.Length; i++)
-                s_scratchPadInt16[4 * i] = ptr[i];
+                k_ScratchPadInt16[4 * i] = ptr[i];
 
-            cb.SetComputeIntParams(fn.shader, nameID, s_scratchPadInt16);
+            cb.SetComputeIntParams(fn.shader, nameID, k_ScratchPadInt16);
         }
 
         public static void SetInt8(this CommandBuffer cb, ComputeFunction fn, int nameID, ReadOnlySpan<int> ptr)
         {
             Logger.AssertIsTrue(ptr.Length <= 8, "cannot pin array > 8, got {0}", ptr.Length);
             for (int i = 0; i < ptr.Length; i++)
-                s_scratchPadInt8[4 * i] = ptr[i];
+                k_ScratchPadInt8[4 * i] = ptr[i];
 
-            cb.SetComputeIntParams(fn.shader, nameID, s_scratchPadInt8);
+            cb.SetComputeIntParams(fn.shader, nameID, k_ScratchPadInt8);
         }
 
         public static unsafe void SetInt8(this CommandBuffer cb, ComputeFunction fn, int nameID, int* ptr, int numElements = 8)
         {
-            fixed (int* dst = &s_scratchPadInt8[0])
+            fixed (int* dst = &k_ScratchPadInt8[0])
             {
                 UnsafeUtility.MemCpyStride(dst, 4 * sizeof(int), ptr, 1 * sizeof(int), sizeof(int), numElements);
             }
-            cb.SetComputeIntParams(fn.shader, nameID, s_scratchPadInt8);
+
+            cb.SetComputeIntParams(fn.shader, nameID, k_ScratchPadInt8);
         }
 
         public static unsafe void SetInt6(this CommandBuffer cb, ComputeFunction fn, int nameID, int* ptr)
         {
-            fixed (int* dst = &s_scratchPadInt6[0])
+            fixed (int* dst = &k_ScratchPadInt6[0])
             {
                 UnsafeUtility.MemCpyStride(dst, 4 * sizeof(int), ptr, 1 * sizeof(int), sizeof(int), 6);
             }
-            cb.SetComputeIntParams(fn.shader, nameID, s_scratchPadInt6);
+
+            cb.SetComputeIntParams(fn.shader, nameID, k_ScratchPadInt6);
         }
 
         public static void SetInt4(this CommandBuffer cb, ComputeFunction fn, int nameID, Span<int> ptr)
         {
             for (int i = 0; i < ptr.Length && i < 4; i++)
-                s_scratchPadInt4[i] = ptr[i];
+                k_ScratchPadInt4[i] = ptr[i];
 
-            cb.SetComputeIntParams(fn.shader, nameID, s_scratchPadInt4);
+            cb.SetComputeIntParams(fn.shader, nameID, k_ScratchPadInt4);
         }
 
         public static void SetTensorAsBuffer(this CommandBuffer cb, ComputeFunction fn, int bufferID, ComputeTensorData tensorData)

@@ -1,6 +1,6 @@
 # Convert a texture to a tensor
 
-Use [`TextureConverter.ToTensor`](xref:Unity.Sentis.TextureConverter.ToTensor(Texture,Unity.Sentis.TextureTransform)) to convert a [Texture2D](https://docs.unity3d.com/ScriptReference/Texture2D.html) or a [RenderTexture](https://docs.unity3d.com/ScriptReference/RenderTexture.html) to a tensor.
+Use [`TextureConverter.ToTensor`](Unity.Sentis.TextureConverter.ToTensor*) to convert a [`Texture2D`](xref:UnityEngine.Texture2D) or a [`RenderTexture`](xref:UnityEngine.RenderTexture) to a tensor.
 
 ```
 using UnityEngine;
@@ -12,7 +12,7 @@ public class ConvertTextureToTensor : MonoBehaviour
 
     void Start()
     {
-        TensorFloat inputTensor = TextureConverter.ToTensor(inputTexture);
+        Tensor<float> inputTensor = TextureConverter.ToTensor(inputTexture);
     }
 }
 ```
@@ -32,11 +32,11 @@ Refer to the `Convert textures to tensors` example in the [sample scripts](packa
 
 ### Override texture shape and layout
 
-You can use parameters in `TextureConverter.ToTensor` to override the width, height, and number of channels of a texture. For example:
+You can use parameters in [`TextureConverter.ToTensor`](Unity.Sentis.TextureConverter.ToTensor*) to override the width, height, and number of channels of a texture. For example:
 
 ```
 // Set a property to -1 to use the default value
-TensorFloat inputTensor = TextureConverter.ToTensor(inputTexture, width: 4, height: 12, channels: -1);
+Tensor<float> inputTensor = TextureConverter.ToTensor(inputTexture, width: 4, height: 12, channels: -1);
 ```
 
 You can also use a [`TextureTransform`](xref:Unity.Sentis.TextureTransform) object to override the properties of a texture. For example, the following code changes or "swizzles" the order of the texture channels to blue, green, red, alpha:
@@ -46,7 +46,7 @@ You can also use a [`TextureTransform`](xref:Unity.Sentis.TextureTransform) obje
 TextureTransform swizzleChannels = new TextureTransform().SetChannelSwizzle(ChannelSwizzle.BGRA);
 
 // Convert the texture to a tensor using the TextureTransform object
-TensorFloat inputTensor = TextureConverter.ToTensor(inputTexture, swizzleChannels);
+Tensor<float> inputTensor = TextureConverter.ToTensor(inputTexture, swizzleChannels);
 ```
 
 You can also chain operations together.
@@ -56,20 +56,43 @@ You can also chain operations together.
 TextureTransform swizzleChannelsAndChangeSize = new TextureTransform().SetChannelSwizzle(ChannelSwizzle.BGRA).SetDimensions(width: 4, height: 12);
 
 // Convert the texture to a tensor using the TextureTransform object
-TensorFloat inputTensor = TextureConverter.ToTensor(inputTexture, swizzleChannelsAndChangeSize);
+Tensor<float> inputTensor = TextureConverter.ToTensor(inputTexture, swizzleChannelsAndChangeSize);
 ```
 
 If the width and height of the texture doesn't match the width and height of the tensor, Sentis applies linear resampling to upsample or downsample the texture.
 
-Refer to the [TextureTransform](xref:Unity.Sentis.TextureTransform) API reference for more information.
+Refer to the [`TextureTransform`](xref:Unity.Sentis.TextureTransform) API reference for more information.
 
 ### Set a tensor to the correct format
 
 When you convert a texture to a tensor, Sentis defaults to the NCHW layout.
 
-If your model needs a different layout, use [`TextureTransform.SetTensorLayout`](xref:Unity.Sentis.TextureTransform.SetTensorLayout(Unity.Sentis.TensorLayout)) to set the layout of the converted tensor.
+If your model needs a different layout, use [`SetTensorLayout`](xref:Unity.Sentis.TextureTransform.SetTensorLayout*) to set the layout of the converted tensor.
 
 Refer to [Tensor fundamentals in Sentis](tensor-fundamentals.md) for more information about tensor formats.
+
+### Avoid Tensor and Texture creation
+
+Allocating memory affects performance. If you can, try to allocate all needed memory on startup. You can use [`TextureConverter`](Unity.Sentis.TextureConverter) methods to directly operate on pre-allocated tensor/textures.
+
+For example, to read data from a webcam every frame, copy the webcam texture content into the input tensor. Don't create a new tensor every frame.
+```
+Tensor<float> inputTensor;
+Texture webcamTexture;
+
+// Allocate resources on startup
+void Start()
+{
+    inputTensor = new Tensor<float>(new TensorShape(1, 3, webcamTexture.height, webcamTexture.width));
+}
+void Update()
+{
+    // Copy webcamTexture into inputTensor : no memory allocations!
+    TextureConverter.ToTensor(webcamTexture, inputTensor, new TextureTransform());
+
+    // Run inference
+}
+```
 
 ## Additional resources
 

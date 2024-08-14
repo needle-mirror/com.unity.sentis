@@ -11,9 +11,9 @@ Shader "Hidden/Sentis/ConvTranspose"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile CONVTRANSPOSE1D CONVTRANSPOSE2D CONVTRANSPOSE3D
-            #pragma multi_compile NONE RELU
-            #pragma multi_compile _ USEBIAS
+            #pragma multi_compile_local CONVTRANSPOSE1D CONVTRANSPOSE2D CONVTRANSPOSE3D
+            #pragma multi_compile_local NONE RELU
+            #pragma multi_compile_local _ USEBIAS
 
             #pragma vertex vert
             #pragma fragment frag

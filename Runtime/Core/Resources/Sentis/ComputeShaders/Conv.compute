@@ -11,7 +11,7 @@
 #pragma kernel Conv2D_T8x8_R4x4 SUFFIX=Conv2D_T8x8_R BLOCK_SIZE=4 KERNEL_PER_TG=256 CONV2D
 #pragma kernel Conv1D_T8x8_R4x4 SUFFIX=Conv1D_T8x8_R BLOCK_SIZE=4 KERNEL_PER_TG=256 CONV1D
 
-#pragma multi_compile _ USEBIAS
+#pragma multi_compile_local _ USEBIAS
 
 // TODO see if we need a fast path when shapes modulo match threadcount
 // TODO no LDS path for specific architectures

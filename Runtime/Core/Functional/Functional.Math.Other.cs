@@ -13,7 +13,12 @@ namespace Unity.Sentis
         {
             var outputs = new FunctionalTensor[tensors.Length];
             for (var i = 0; i < outputs.Length; i++)
-                outputs[i] = BroadcastTo(tensors[i], new[] { 1 });
+            {
+                if (tensors[i].isShapeKnown && tensors[i].shape.rank >= 1)
+                    outputs[i] = tensors[i];
+                else
+                    outputs[i] = BroadcastTo(tensors[i], new[] { 1 });
+            }
             return outputs;
         }
 
@@ -26,7 +31,12 @@ namespace Unity.Sentis
         {
             var outputs = new FunctionalTensor[tensors.Length];
             for (var i = 0; i < outputs.Length; i++)
-                outputs[i] = BroadcastTo(tensors[i], new[] { 1, 1 });
+            {
+                if (tensors[i].isShapeKnown && tensors[i].shape.rank >= 2)
+                    outputs[i] = tensors[i];
+                else
+                    outputs[i] = BroadcastTo(tensors[i], new[] { 1, 1 });
+            }
             return outputs;
         }
 
@@ -39,7 +49,12 @@ namespace Unity.Sentis
         {
             var outputs = new FunctionalTensor[tensors.Length];
             for (var i = 0; i < outputs.Length; i++)
-                outputs[i] = BroadcastTo(tensors[i], new[] { 1, 1, 1 });
+            {
+                if (tensors[i].isShapeKnown && tensors[i].shape.rank >= 3)
+                    outputs[i] = tensors[i];
+                else
+                    outputs[i] = BroadcastTo(tensors[i], new[] { 1, 1, 1 });
+            }
             return outputs;
         }
 
@@ -51,7 +66,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor BroadcastTo(this FunctionalTensor input, int[] shape)
         {
-            return FunctionalTensor.FromLayer(new Layers.Expand(-1, -1, -1), input.DataType, new[] { input, Tensor(shape) });
+            var output = FromLayer(new Layers.Expand(-1, -1, -1), input.dataType, new[] { input, Constant(shape) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Broadcast(new TensorShape(shape)));
+            return output;
         }
 
         /// <summary>
@@ -61,7 +79,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Clone(this FunctionalTensor input)
         {
-            return FunctionalTensor.FromLayer(new Layers.Identity(-1, -1), input.DataType, input);
+            var output = FromLayer(new Layers.Identity(-1, -1), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -72,7 +93,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor CumSum(FunctionalTensor input, int dim)
         {
-            return FunctionalTensor.FromLayer(new Layers.CumSum(-1, -1, -1, false, false), input.DataType, new[] { input, Tensor(dim) });
+            var output = FromLayer(new Layers.CumSum(-1, -1, -1, false, false), input.dataType, new[] { input, Constant(dim) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -83,7 +107,25 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor Einsum(string equation, params FunctionalTensor[] operands)
         {
-            return FunctionalTensor.FromLayer(new Layers.Einsum(-1, new int[operands.Length], equation), CommonType(operands), operands);
+            var output = FromLayer(new Layers.Einsum(-1, new int[operands.Length], equation), CommonType(operands), operands);
+            var isInputShapesKnown = true;
+            var operandShapes = new TensorShape[operands.Length];
+            var operandIndices = new TensorIndex[operands.Length];
+            for (int i = 0; i < operands.Length; i++)
+            {
+                if (operands[i].isShapeKnown)
+                    operandShapes[i] = operands[i].shape;
+                else
+                    isInputShapesKnown = false;
+            }
+
+            if (isInputShapesKnown)
+            {
+                EinsumHelper.ParseEquationString(equation, operandShapes, ref operandIndices, out _, out var outputShape, out _, out _, out _);
+                output.SetShape(outputShape);
+            }
+
+            return output;
         }
 
         /// <summary>
@@ -105,7 +147,10 @@ namespace Unity.Sentis
                 steps[i] = -1;
             }
 
-            return FunctionalTensor.FromLayer(new Layers.Slice(-1, -1, -1, -1, -1, -1), input.DataType, new[] { input, Tensor(starts), Tensor(ends), Tensor(dims), Tensor(steps) });
+            var output = FromLayer(new Layers.Slice(-1, -1, -1, -1, -1, -1), input.dataType, new[] { input, Constant(starts), Constant(ends), Constant(dims), Constant(steps) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -146,7 +191,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor TriL(FunctionalTensor input, int diagonal = 0)
         {
-            return FunctionalTensor.FromLayer(new Layers.Trilu(-1, -1, -1, Layers.TriluMode.Lower), input.DataType, new[] { input, Tensor(diagonal) });
+            var output = FromLayer(new Layers.Trilu(-1, -1, -1, Layers.TriluMode.Lower), input.dataType, new[] { input, Constant(diagonal) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
 
         /// <summary>
@@ -157,7 +205,10 @@ namespace Unity.Sentis
         /// <returns>The output tensor.</returns>
         public static FunctionalTensor TriU(FunctionalTensor input, int diagonal = 0)
         {
-            return FunctionalTensor.FromLayer(new Layers.Trilu(-1, -1, -1, Layers.TriluMode.Upper), input.DataType, new[] { input, Tensor(diagonal) });
+            var output = FromLayer(new Layers.Trilu(-1, -1, -1, Layers.TriluMode.Upper), input.dataType, new[] { input, Constant(diagonal) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
         }
     }
 }

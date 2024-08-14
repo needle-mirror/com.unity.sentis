@@ -41,7 +41,7 @@ namespace Unity.Sentis.Layers
             Logger.AssertIsTrue(strides == null || shapeX.rank - 2 == strides.Length, "Pool.InputError: strides must have same number of values as spatial dimensions or be null");
             Logger.AssertIsTrue(pads == null || (shapeX.rank - 2) * 2 == pads.Length, "Pool.InputError: padding must have twice the number of values as spatial dimensions or be null");
 
-            var shapeOut = new SymbolicTensorShape(shapeX);
+            var shapeOut = new DynamicTensorShape(shapeX);
 
             for (var i = 2; i < shapeOut.rank; i++)
             {
@@ -80,11 +80,11 @@ namespace Unity.Sentis.Layers
 
             Logger.AssertIsTrue(shapeX.hasRank ? shapeX.rank >= 3 : true, "RankError: incorrect rank, expecting at least {0}, got {1}", 3, shapeX.rank);
 
-            var shapeOut = new SymbolicTensorShape(shapeX);
+            var shapeOut = new DynamicTensorShape(shapeX);
 
             for (var i = 2; i < shapeOut.rank; i++)
             {
-                shapeOut[i] = SymbolicTensorDim.One;
+                shapeOut[i] = DynamicTensorDim.One;
             }
 
             ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, shapeOut));
@@ -99,11 +99,11 @@ namespace Unity.Sentis.Layers
         public AveragePool(int output, int input, int[] kernelShape, int[] strides, int[] pads, AutoPad autopad = AutoPad.NotSet)
             : base(output, input, kernelShape, strides, pads, autopad) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
             ShapeInference.UpdatePadForPoolAutoPadding(X.shape, kernelShape, strides, pads, false, autopad);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.ApplyPool(X.shape, kernelShape, strides, pads), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.ApplyPool(X.shape, kernelShape, strides, pads), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.AveragePool(X, O, kernelShape, strides, pads);
@@ -120,10 +120,10 @@ namespace Unity.Sentis.Layers
         public GlobalAveragePool(int output, int input)
             : base(output, input) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.GlobalPool(X.shape), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.GlobalPool(X.shape), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.GlobalAveragePool(X, O);
@@ -140,10 +140,10 @@ namespace Unity.Sentis.Layers
         public GlobalMaxPool(int output, int input)
             : base(output, input) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.GlobalPool(X.shape), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.GlobalPool(X.shape), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.GlobalMaxPool(X, O);
@@ -160,11 +160,11 @@ namespace Unity.Sentis.Layers
         public MaxPool(int output, int input, int[] kernelShape, int[] strides, int[] pads, AutoPad autopad = AutoPad.NotSet)
             : base(output, input, kernelShape, strides, pads, autopad) { }
 
-        public override void Execute(ExecutionContext ctx)
+        internal override void Execute(ExecutionContext ctx)
         {
-            var X = ctx.storage.GetTensor(inputs[0]) as TensorFloat;
+            var X = ctx.storage.GetTensor(inputs[0]) as Tensor<float>;
             ShapeInference.UpdatePadForPoolAutoPadding(X.shape, kernelShape, strides, pads, false, autopad);
-            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.ApplyPool(X.shape, kernelShape, strides, pads), DataType.Float, ctx.backend.backendType) as TensorFloat;
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], ShapeInference.ApplyPool(X.shape, kernelShape, strides, pads), DataType.Float, ctx.backend.backendType) as Tensor<float>;
             if (O.shape.HasZeroDims())
                 return;
             ctx.backend.MaxPool(X, O, kernelShape, strides, pads);

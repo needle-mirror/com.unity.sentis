@@ -5,25 +5,25 @@ public class ModelExecution : MonoBehaviour
 {
     [SerializeField]
     ModelAsset modelAsset;
-    IWorker m_Engine;
+    Worker m_Worker;
     Tensor m_Input;
 
     void OnEnable()
     {
         var model = ModelLoader.Load(modelAsset);
-        m_Engine = WorkerFactory.CreateWorker(BackendType.GPUCompute, model);
+        m_Worker = new Worker(model, BackendType.GPUCompute);
 
         // The SingleInputSingleOutput model takes one input and runs a Relu activation
-        m_Input = TensorFloat.AllocZeros(new TensorShape(1024));
+        m_Input = new Tensor<float>(new TensorShape(1024));
     }
 
     void Update()
     {
         // model has a single input, so no ambiguity due to its name
-        m_Engine.Execute(m_Input);
+        m_Worker.Schedule(m_Input);
 
         // model has a single output, so no ambiguity due to its name
-        var outputTensor = m_Engine.PeekOutput() as TensorFloat;
+        var outputTensor = m_Worker.PeekOutput() as Tensor<float>;
 
         // If you wish to read from the tensor, download it to cpu.
         var cpuTensor = outputTensor.ReadbackAndClone();
@@ -34,7 +34,7 @@ public class ModelExecution : MonoBehaviour
     void OnDisable()
     {
         // Clean up Sentis resources.
-        m_Engine.Dispose();
+        m_Worker.Dispose();
         m_Input.Dispose();
     }
 }

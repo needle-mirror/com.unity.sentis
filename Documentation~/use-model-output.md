@@ -2,32 +2,30 @@
 
 After you [get the output from a model](get-the-output.md) as a tensor, you can post-process the data to use it in your project.
 
-## Convert to a flattened 1D array
+## Download to a CPU tensor
 
-Use `CompleteOperationsAndDownload` to move a tensor on the graphics processing unit (GPU) to the central processing unit (CPU) to read it. Use `ToReadOnlyArray` to convert tensor data to a flattened 1D array of floats or ints. You can also [read the tensor data asynchronously](read-output-async.md).
+Use [`ReadbackAndClone`](xref:Unity.Sentis.Tensor.ReadbackAndClone) or [`ReadbackAndCloneAsync`](xref:Unity.Sentis.Tensor.ReadbackAndCloneAsync*) to move a tensor on the graphics processing unit (GPU) to the central processing unit (CPU) to read it.
+
+Refer to [read the tensor data asynchronously](read-output-async.md) for best practices on how to do this efficiently.
 
 For example:
 
 ```
-TensorFloat outputTensor = worker.Execute(inputTensor).PeekOutput() as TensorFloat;
-float[] outputData = outputTensor.ToReadOnlyArray();
+var outputTensor = worker.Schedule(inputTensor).PeekOutput() as Tensor<float>;
+var cpuTensor = outputTensor.ReadbackAndClone();
 ```
+The returned tensor will be a cpu read-writable copy of the output tensor.
 
-To avoid a mutation of the underlying tensor data, use the following:
-
-```
-TensorFloat outputTensor = worker.Execute(inputTensor).PeekOutput();
-NativeArray<float> outputData = outputTensor.dataOnBackend.Download<float>();
-```
+Refer to [tensor fundamentals](tensor-fundamentals.md) and [access tensor data directly](access-tensor-data-directly.md) for details on how to properly index and access the tensor.
 
 ## Convert to a render texture
 
-To convert a tensor to a render texture, use the following APIs:
+To convert a tensor to a render texture, use one of the following methods:
 
-- `TextureConverter.ToTexture` to output tensor data to a render texture. Sentis creates a new render texture to do this.
-- `TextureConverter.RenderToTexture` to write tensor data to an existing render texture you provide.
+- [`TextureConverter.ToTexture`](xref:Unity.Sentis.TextureConverter.ToTexture*) to output tensor data to a render texture. Sentis creates a new render texture to do this.
+- [`TextureConverter.RenderToTexture`](xref:TextureConverter.RenderToTexture*) to write tensor data to an existing render texture you provide.
 
-When you use `ToTexture`, Sentis uses the tensor shape to determine the size and channels of the render texture. If the tensor doesn't match the render texture, Sentis makes the following adjustments:
+When you use [`TextureConverter.ToTexture`](xref:Unity.Sentis.TextureConverter.ToTexture*), Sentis uses the tensor shape to determine the size and channels of the render texture. If the tensor doesn't match the render texture, Sentis makes the following adjustments:
 
 - Samples the tensor linearly if the dimensions don't match.
 - Removes channels from the end if the render texture has fewer channels than the tensor.
@@ -46,14 +44,14 @@ void Start()
     ...
 
     // Get the output of the model as a tensor
-    TensorFloat outputTensor = worker.Execute(inputTensor).PeekOutput() as TensorFloat;
+    Tensor<float> outputTensor = worker.Schedule(inputTensor).PeekOutput() as Tensor<float>;
 
     // Convert the tensor to a texture and store it in the uninstantiated render texture
     rt = TextureConverter.ToTexture(outputTensor);
 }
 ```
 
-You can use the parameters in `ToTexture` to override the width, height, and number of channels of a texture.
+You can use the parameters in [`TextureConverter.ToTexture`](xref:Unity.Sentis.TextureConverter.ToTexture*) to override the width, height, and number of channels of a texture.
 
 For example:
 
@@ -65,31 +63,32 @@ For example:
 ### RenderToTexture example
 
 ```
-// Define an empty render texture
-public RenderTexture rt;
+// Instantiate the render texture
+public RenderTexture rt = new RenderTexture(24, 32, 0, RenderTextureFormat.ARGB32);
+Worker worker;
+Tensor inputTensor;
 
 void Start()
 {
-    ...
-
-    // Instantiate the render texture
-    rt = new RenderTexture(24, 32, 0, RenderTextureFormat.ARGB32);
-
     // Get the output of the model as a tensor
-    TensorFloat outputTensor = worker.Execute(inputTensor).PeekOutput() as TensorFloat;
+    Tensor<float> outputTensor = worker.PeekOutput() as Tensor<float>;
 
     // Convert the tensor to a texture and store it in the render texture
     TextureConverter.RenderToTexture(outputTensor, rt);
 }
 ```
 
+> [!NOTE]
+> Avoid unnecessary resource allocation, and don't re-allocate Tensors or Textures every frame.
+> The TextureConverter provides versions of all methods that to do in-place copies between pre-allocated Textures and Tensors.
+
 ## Copy to the screen
 
 To copy an output tensor to the screen, follow these steps:
 
-1. Set the `Camera.targetTexture` property of `Camera.main` to null.
+1. Set the [`Camera.targetTexture`](xref:UnityEngine.Camera.targetTexture) property of [`Camera.main`](xref:UnityEngine.Camera.main) to null.
 2. Create a script and attach it to the Camera.
-3. In the script, use `TextureConverter.RenderToScreen` in an event function such as `OnRenderImage`.
+3. In the script, use [`TextureConverter.RenderToScreen`](xref:Unity.Sentis.TextureConverter.RenderToScreen*) in an event function such as [`OnRenderImage`](xref:MonoBehaviour.OnRenderImage).
 
 If the image is too bright, the output tensor might be using values from `0` to `255` instead of `0` to `1`. You can use [Edit a model](edit-a-model.md) to remap the values in the output tensor before calling `RenderToScreen`.
 
@@ -103,34 +102,34 @@ public class StyleTransfer : MonoBehaviour
 {
     public ModelAsset modelAsset;
     public Model runtimeModel;
-    private IWorker worker;
     public Texture2D inputImage;
     public RenderTexture outputTexture;
+
+    Worker worker;
+    Tensor<float> inputTensor;
 
     void Start()
     {
         var sourceModel = ModelLoader.Load(modelAsset);
-        runtimeModel = Functional.Compile(
-            inputs =>
-            {
-                var output = FunctionalTensor.FromModel(sourceModel, inputs)[0];
-                // rescale output of source model
-                return new[] { output / 255f };
-            },
-            InputDef.FromModel(sourceModel)
-        );
+        var graph = new FunctionalGraph();
+        var input = graph.AddInput(sourceModel, 0);
+        var output = Functional.Forward(sourceModel, input)[0];
+        // rescale output of source model
+        output /= 255f;
+        var runtimeModel = graph.Compile(output);
 
-        worker = WorkerFactory.CreateWorker(BackendType.GPUCompute, runtimeModel);
+        worker = new Worker(runtimeModel, BackendType.GPUCompute);
+        inputTensor = new Tensor<float>(new TensorShape(1, 3, 256, 256));
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         // Create the input tensor from the texture
-        TensorFloat inputTensor = TextureConverter.ToTensor(inputImage);
+        TextureConverter.ToTensor(inputImage, inputTensor, new TextureTransform());
 
         // Run the model and get the output as a tensor
-        worker.Execute(inputTensor);
-        TensorFloat outputTensor = worker.PeekOutput() as TensorFloat;
+        worker.Schedule(inputTensor);
+        Tensor<float> outputTensor = worker.PeekOutput() as Tensor<float>;
 
         // Copy the rescaled tensor to the screen as a texture
         TextureConverter.RenderToScreen(outputTensor);
@@ -143,41 +142,9 @@ public class StyleTransfer : MonoBehaviour
 }
 ```
 
-When using Universal Render Pipeline (URP) or the High-Definition Render Pipeline (HDRP), call `RenderToScreen` in the `RenderPipelineManager.endFrameRendering` or `RenderPipelineManager.endContextRendering` callbacks. For more information, refer to [Rendering.RenderPipelineManager](https://docs.unity3d.com/ScriptReference/Rendering.RenderPipelineManager.html).
+When using Universal Render Pipeline (URP) or the High-Definition Render Pipeline (HDRP), call [`RenderToScreen`](xref:Unity.Sentis.TextureConverter.RenderToScreen*) in the [`RenderPipelineManager.endFrameRendering`](UnityEngine.Rendering.RenderPipelineManager.endFrameRendering(System.Action`2<UnityEngine.Rendering.ScriptableRenderContext,UnityEngine.Camera[]>)) or [`RenderPipelineManager.endContextRendering`](xref:UnityEngine.Rendering.RenderPipelineManager.endContextRendering(System.Action2<UnityEngine.Rendering.ScriptableRenderContext,System.Collections.Generic.List1<UnityEngine.Camera>>)) callbacks. For more information, refer to [Rendering.RenderPipelineManager](xref:UnityEngine.Rendering.RenderPipelineManager).
 
 For an example, refer to the `Copy a texture tensor to the screen` example in the [sample scripts](package-samples.md).
-
-## Override shape and layout
-
-Use a `TextureTransform` object to override the properties of the texture. For example, the following code changes or swizzles the order of the texture channels to blue, green, red, alpha:
-
-```
-// Create a TextureTransform that swizzles the order of the channels of the texture
-TextureTransform swizzleChannels = new TextureTransform().SetChannelSwizzle(ChannelSwizzle.BGRA);
-
-// Convert the tensor to a texture using the TextureTransform object
-TextureConverter.RenderToTexture(outputTensor, rt, swizzleChannels);
-```
-
-You can also chain operations together.
-
-```
-// Create a TextureTransform that swizzles the order of the channels of the texture and changes the size
-TextureTransform swizzleChannelsAndChangeSize = new TextureTransform().SetChannelSwizzle(ChannelSwizzle.BGRA).SetDimensions(width: 256, height: 320);
-
-// Convert the tensor to a texture using the TextureTransform object
-TextureConverter.RenderToTexture(outputTensor, rt, swizzleChannelsAndChangeSize);
-```
-
-For more information, refer to the [TextureTransform](xref:Unity.Sentis.TextureTransform) API.
-
-### Read a tensor in the correct format
-
-When you convert a tensor to a texture, Sentis reads the tensor with a batch size, channels, height, width (NCHW) layout.
-
-If the tensor is a different layout, use [`TextureTransform.SetTensorLayout`](xref:Unity.Sentis.TextureTransform.SetTensorLayout(Unity.Sentis.TensorLayout)) to make sure Sentis reads the tensor correctly.
-
-For more information about tensor formats, refer to [Tensor fundamentals in Sentis](tensor-fundamentals.md).
 
 ## Additional resources
 

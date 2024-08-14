@@ -124,7 +124,7 @@ void SUFFIX_REDUCEMAXFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 g
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? FLT_MIN : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
     #endif
 
-    
+
     LDS_AccumulationBuffer[gts] = rda_maxf(v0, rda_maxf(v1, rda_maxf(v2, v3)));
 
     GroupMemoryBarrierWithGroupSync();
@@ -199,7 +199,7 @@ void SUFFIX_REDUCEMINFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 g
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? FLT_MAX : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
     #endif
 
-    
+
     LDS_AccumulationBuffer[gts] = rda_minf(v0, rda_minf(v1, rda_minf(v2, v3)));
 
     GroupMemoryBarrierWithGroupSync();
@@ -274,7 +274,7 @@ void SUFFIX_REDUCESUMFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 g
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
     #endif
 
-    
+
     LDS_AccumulationBuffer[gts] = rda_sumf(v0, rda_sumf(v1, rda_sumf(v2, v3)));
 
     GroupMemoryBarrierWithGroupSync();
@@ -311,7 +311,7 @@ inline float rda_sum2f(float v0, float v1)
     return v0 + v1;
 }
 
-        
+
 inline float rdi_sum2f(float v)
 {
     return IsFirstDispatch ? v * v : v;
@@ -354,7 +354,7 @@ void SUFFIX_REDUCESUMSQUAREFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, u
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
     #endif
 
-            
+
     v0 = rdi_sum2f(v0);
     v1 = rdi_sum2f(v1);
     v2 = rdi_sum2f(v2);
@@ -434,7 +434,7 @@ void SUFFIX_REDUCEMEANFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
     #endif
 
-    
+
     LDS_AccumulationBuffer[gts] = rda_meanf(v0, rda_meanf(v1, rda_meanf(v2, v3)));
 
     GroupMemoryBarrierWithGroupSync();
@@ -509,7 +509,7 @@ void SUFFIX_REDUCEPRODFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 1.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
     #endif
 
-    
+
     LDS_AccumulationBuffer[gts] = rda_prodf(v0, rda_prodf(v1, rda_prodf(v2, v3)));
 
     GroupMemoryBarrierWithGroupSync();
@@ -546,7 +546,7 @@ inline float rda_l1f(float v0, float v1)
     return v0 + v1;
 }
 
-        
+
 inline float rdi_l1f(float v)
 {
     return abs(v);
@@ -589,7 +589,7 @@ void SUFFIX_REDUCEL1FLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 gr
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
     #endif
 
-            
+
     v0 = rdi_l1f(v0);
     v1 = rdi_l1f(v1);
     v2 = rdi_l1f(v2);
@@ -631,7 +631,7 @@ inline float rda_l2f(float v0, float v1)
     return v0 + v1;
 }
 
-        
+
 inline float rdi_l2f(float v)
 {
     return IsFirstDispatch ? v * v : v;
@@ -674,7 +674,7 @@ void SUFFIX_REDUCEL2FLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 gr
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
     #endif
 
-            
+
     v0 = rdi_l2f(v0);
     v1 = rdi_l2f(v1);
     v2 = rdi_l2f(v2);
@@ -754,7 +754,7 @@ void SUFFIX_REDUCESQRTFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
     #endif
 
-    
+
     LDS_AccumulationBuffer[gts] = rda_sqrtf(v0, rda_sqrtf(v1, rda_sqrtf(v2, v3)));
 
     GroupMemoryBarrierWithGroupSync();
@@ -829,7 +829,7 @@ void SUFFIX_REDUCELOGSUMFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint
     float v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0.0f : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
     #endif
 
-    
+
     LDS_AccumulationBuffer[gts] = rda_logsumf(v0, rda_logsumf(v1, rda_logsumf(v2, v3)));
 
     GroupMemoryBarrierWithGroupSync();
@@ -926,7 +926,7 @@ void SUFFIX_REDUCELOGSUMEXPFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, u
         #endif
     }
 
-    
+
     LDS_AccumulationBuffer[gts] = rda_logsumexpf(v0, rda_logsumexpf(v1, rda_logsumexpf(v2, v3)));
 
     GroupMemoryBarrierWithGroupSync();
@@ -1023,7 +1023,7 @@ void SUFFIX_REDUCESUMEXPFLOAT(uint3 dispatchThreadID : SV_DispatchThreadID, uint
         #endif
     }
 
-    
+
     LDS_AccumulationBuffer[gts] = rda_sumexpf(v0, rda_sumexpf(v1, rda_sumexpf(v2, v3)));
 
     GroupMemoryBarrierWithGroupSync();
@@ -1098,7 +1098,7 @@ void SUFFIX_REDUCEMAXINT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 gro
     int v3 = s + 3 * POOL_SIZE >= ReducedDim ? INT_MIN : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
     #endif
 
-    
+
     LDS_AccumulationBuffer[gts] = rda_maxi(v0, rda_maxi(v1, rda_maxi(v2, v3)));
 
     GroupMemoryBarrierWithGroupSync();
@@ -1173,7 +1173,7 @@ void SUFFIX_REDUCEMININT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 gro
     int v3 = s + 3 * POOL_SIZE >= ReducedDim ? INT_MAX : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
     #endif
 
-    
+
     LDS_AccumulationBuffer[gts] = rda_mini(v0, rda_mini(v1, rda_mini(v2, v3)));
 
     GroupMemoryBarrierWithGroupSync();
@@ -1248,7 +1248,7 @@ void SUFFIX_REDUCESUMINT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 gro
     int v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
     #endif
 
-    
+
     LDS_AccumulationBuffer[gts] = rda_sumi(v0, rda_sumi(v1, rda_sumi(v2, v3)));
 
     GroupMemoryBarrierWithGroupSync();
@@ -1285,7 +1285,7 @@ inline int rda_sum2i(int v0, int v1)
     return v0 + v1;
 }
 
-        
+
 inline int rdi_sum2i(int v)
 {
     return IsFirstDispatch ? v * v : v;
@@ -1328,7 +1328,7 @@ void SUFFIX_REDUCESUMSQUAREINT(uint3 dispatchThreadID : SV_DispatchThreadID, uin
     int v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
     #endif
 
-            
+
     v0 = rdi_sum2i(v0);
     v1 = rdi_sum2i(v1);
     v2 = rdi_sum2i(v2);
@@ -1408,7 +1408,7 @@ void SUFFIX_REDUCEPRODINT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 gr
     int v3 = s + 3 * POOL_SIZE >= ReducedDim ? 1 : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
     #endif
 
-    
+
     LDS_AccumulationBuffer[gts] = rda_prodi(v0, rda_prodi(v1, rda_prodi(v2, v3)));
 
     GroupMemoryBarrierWithGroupSync();
@@ -1445,7 +1445,7 @@ inline int rda_l1i(int v0, int v1)
     return v0 + v1;
 }
 
-        
+
 inline int rdi_l1i(int v)
 {
     return abs(v);
@@ -1488,7 +1488,7 @@ void SUFFIX_REDUCEL1INT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 grou
     int v3 = s + 3 * POOL_SIZE >= ReducedDim ? 0 : Xptr[outer * ReducedDim * InnerDim + (s + 3 * POOL_SIZE) * InnerDim + inner];
     #endif
 
-            
+
     v0 = rdi_l1i(v0);
     v1 = rdi_l1i(v1);
     v2 = rdi_l1i(v2);
@@ -1522,4 +1522,3 @@ void SUFFIX_REDUCEL1INT(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 grou
 #endif
     }
 }
-

@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace Unity.Sentis
 {
@@ -13,7 +14,10 @@ namespace Unity.Sentis
         public static FunctionalTensor PixelShuffle(FunctionalTensor input, int upscaleFactor)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.DepthToSpace(-1, -1, upscaleFactor, Layers.DepthToSpaceMode.DepthColumnRow), input.DataType, input);
+            var output = FromLayer(new Layers.DepthToSpace(-1, -1, upscaleFactor, Layers.DepthToSpaceMode.DepthColumnRow), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(ShapeInference.DepthToSpace(input.shape, upscaleFactor));
+            return output;
         }
 
         /// <summary>
@@ -25,7 +29,10 @@ namespace Unity.Sentis
         public static FunctionalTensor PixelUnshuffle(FunctionalTensor input, int downscaleFactor)
         {
             input = input.Float();
-            return FunctionalTensor.FromLayer(new Layers.SpaceToDepth(-1, -1, downscaleFactor), input.DataType, input);
+            var output = FromLayer(new Layers.SpaceToDepth(-1, -1, downscaleFactor), input.dataType, input);
+            if (input.isShapeKnown)
+                output.SetShape(ShapeInference.SpaceToDepth(input.shape, downscaleFactor));
+            return output;
         }
 
         /// <summary>
@@ -51,9 +58,28 @@ namespace Unity.Sentis
             var axes = new int[numAxes];
             for (var i = 0; i < numAxes; i++)
                 axes[i] = 2 + i;
+
+            FunctionalTensor output;
             if (size != null)
-                return FunctionalTensor.FromLayer(new Layers.Resize(-1, -1, -1, Layers.ScaleMode.Sizes, interpolationMode, Layers.CoordTransformMode.PytorchHalfPixel, Layers.NearestMode.RoundPreferFloor, axes), input.DataType, new[] { input, Tensor(size) });
-            return FunctionalTensor.FromLayer(new Layers.Resize(-1, -1, -1, Layers.ScaleMode.Scales, interpolationMode, Layers.CoordTransformMode.PytorchHalfPixel, Layers.NearestMode.RoundPreferFloor, axes), input.DataType, new[] { input, Tensor(scaleFactor) });
+            {
+                output = FromLayer(new Layers.Resize(-1, -1, -1, Layers.ScaleMode.Sizes, interpolationMode, Layers.CoordTransformMode.PytorchHalfPixel, Layers.NearestMode.RoundPreferFloor, axes), input.dataType, new[] { input, Constant(size) });
+                if (input.isShapeKnown)
+                {
+                    var outputShape = new TensorShape(input.shape);
+                    for (var i = 0; i < numAxes; i++)
+                        outputShape[2 + i] = size[i];
+                    output.SetShape(outputShape);
+                }
+            }
+            else
+            {
+                output = FromLayer(new Layers.Resize(-1, -1, -1, Layers.ScaleMode.Scales, interpolationMode, Layers.CoordTransformMode.PytorchHalfPixel, Layers.NearestMode.RoundPreferFloor, axes), input.dataType, new[] { input, Constant(scaleFactor) });
+                if (input.isShapeKnown)
+                {
+                    output.SetShape(ShapeInference.Resize(input.shape, scaleFactor));
+                }
+            }
+            return output;
         }
 
         /// <summary>
@@ -83,7 +109,10 @@ namespace Unity.Sentis
                 "reflection" => Layers.PaddingMode.Reflection,
                 _ => throw new ArgumentOutOfRangeException(nameof(paddingMode), paddingMode, null)
             };
-            return FunctionalTensor.FromLayer(new Layers.GridSample(-1, -1, -1, interpolationMode, padMode, alignCorners), input.DataType, new[] { input, grid });
+            var output = FromLayer(new Layers.GridSample(-1, -1, -1, interpolationMode, padMode, alignCorners), input.dataType, new[] { input, grid });
+            if (input.isShapeKnown && grid.isShapeKnown)
+                output.SetShape(ShapeInference.GridSample(input.shape, grid.shape));
+            return output;
         }
     }
 }

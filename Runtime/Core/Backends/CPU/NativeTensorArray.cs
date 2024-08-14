@@ -78,6 +78,10 @@ namespace Unity.Sentis
         /// Use 8-bit signed integer data - padded on a int32 buffer.
         /// </summary>
         Byte,
+        /// <summary>
+        /// Use raw n-bit field data - padded on a int32 buffer.
+        /// </summary>
+        Custom
     }
 
     /// <summary>
@@ -137,17 +141,6 @@ namespace Unity.Sentis
         /// Size in bytes of an individual element.
         /// </summary>
         public const int k_DataItemSize = sizeof(float);
-
-        void CheckElementAccess(long index)
-        {
-            //Disabled by default for performance reasons.
-#if ENABLE_SENTIS_DEBUG
-        if (Disposed)
-            throw new InvalidOperationException("The NativeTensorArray was disposed.");
-        if (index <0 || index >= m_Length)
-            throw new IndexOutOfRangeException($"Accessing NativeTensorArray of length {m_Length} at index {index}.");
-#endif
-        }
 
         /// <summary>
         /// Initializes and returns an instance of `NativeTensorArray` with a preexisting handle.
@@ -238,7 +231,6 @@ namespace Unity.Sentis
         /// <returns>The value of the element in the data.</returns>
         public unsafe T Get<T>(int index) where T : unmanaged
         {
-            CheckElementAccess(index);
             return UnsafeUtility.ReadArrayElement<T>(RawPtr, index);
         }
 
@@ -250,7 +242,6 @@ namespace Unity.Sentis
         /// <typeparam name="T">The type of the element.</typeparam>
         public unsafe void Set<T>(int index, T value) where T : unmanaged
         {
-            CheckElementAccess(index);
             UnsafeUtility.WriteArrayElement<T>(RawPtr, index, value);
         }
 
@@ -278,7 +269,7 @@ namespace Unity.Sentis
         /// <param name="srcOffset">The index of the first element.</param>
         /// <typeparam name="T">The type of the data.</typeparam>
         /// <returns>The read only native array of the data.</returns>
-        public NativeArray<T>.ReadOnly GetReadOnlyNativeArrayHandle<T>(int dstCount, int srcOffset = 0) where T : unmanaged
+        public NativeArray<T>.ReadOnly AsReadOnlyNativeArray<T>(int dstCount, int srcOffset = 0) where T : unmanaged
         {
             unsafe
             {
@@ -323,291 +314,232 @@ namespace Unity.Sentis
             return array;
         }
 
-        /// <summary>
-        /// Copies all of the data to a `NativeTensorArray` starting from a given offset.
-        /// </summary>
-        /// <param name="dst">The `NativeTensorArray` to copy to.</param>
-        /// <param name="dstOffset">The index of the first element in the destination to copy to.</param>
-        public void CopyTo(NativeTensorArray dst, int dstOffset)
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+        static void CheckCopyArguments(int srcLength, int srcIndex, int dstLength, int dstIndex, int length)
         {
-            Copy(this, 0, dst, dstOffset, Length);
-        }
+            // all dims in byte
+            if (length < 0)
+                throw new ArgumentOutOfRangeException("length must be equal or greater than zero.");
 
-        /// <summary>
-        /// Copies the data from a source `NativeTensorArray` to a destination `NativeTensorArray` up to a given length.
-        /// </summary>
-        /// <param name="sourceArray">The array to copy from.</param>
-        /// <param name="destinationArray">The array to copy to.</param>
-        /// <param name="length">The number of elements to copy.</param>
-        /// <param name="srcIndex">The index of the first element to copy from.</param>
-        public static void Copy(NativeTensorArray sourceArray, NativeTensorArray destinationArray, int length = -1, int srcIndex = 0)
-        {
-            Copy(sourceArray, srcIndex, destinationArray, 0, length);
-        }
+            if (srcIndex < 0 || srcIndex > srcLength || (srcIndex == srcLength && srcLength > 0))
+                throw new ArgumentOutOfRangeException("srcIndex is outside the range of valid indexes for the source buffer.");
 
-        /// <summary>
-        /// Copies the data from a source array to a destination `NativeTensorArray` up to a given length.
-        /// </summary>
-        /// <param name="sourceArray">The array to copy from.</param>
-        /// <param name="destinationArray">The array to copy to.</param>
-        /// <param name="length">The number of elements to copy.</param>
-        /// <param name="srcIndex">The index of the first element to copy from.</param>
-        /// <typeparam name="T">The data type of the elements.</typeparam>
-        public static void Copy<T>(T[] sourceArray, NativeTensorArray destinationArray, int length = -1, int srcIndex = 0) where T : unmanaged
-        {
-            Copy(sourceArray, srcIndex, destinationArray, 0, length);
-        }
+            if (dstIndex < 0 || dstIndex > dstLength || (dstIndex == dstLength && dstLength > 0))
+                throw new ArgumentOutOfRangeException("dstIndex is outside the range of valid indexes for the destination buffer.");
 
-        /// <summary>
-        /// Copies the data from a source array to a destination `NativeTensorArray` up to a given length.
-        /// </summary>
-        /// <param name="sourceArray">The array to copy from.</param>
-        /// <param name="destinationArray">The array to copy to.</param>
-        /// <param name="length">The number of elements to copy.</param>
-        /// <param name="srcIndex">The index of the first element to copy from.</param>
-        /// <typeparam name="T">The data type of the elements.</typeparam>
-        public static void Copy<T>(NativeArray<T> sourceArray, NativeTensorArray destinationArray, int length = -1, int srcIndex = 0) where T : unmanaged
-        {
-            Copy(sourceArray, srcIndex, destinationArray, 0, length);
-        }
+            if (srcIndex + length > srcLength)
+                throw new ArgumentException("length is greater than the number of elements from srcIndex to the end of the source buffer.");
 
-        /// <summary>
-        /// Copies the data from a source array to a destination array up to a given length.
-        /// </summary>
-        /// <param name="sourceArray">The array to copy from.</param>
-        /// <param name="destinationArray">The array to copy to.</param>
-        /// <param name="length">The number of elements to copy.</param>
-        /// <param name="srcIndex">The index of the first element to copy from.</param>
-        /// <typeparam name="T">The data type of the elements.</typeparam>
-        public static void Copy<T>(NativeTensorArray sourceArray, T[] destinationArray, int length = -1, int srcIndex = 0) where T : unmanaged
-        {
-            Copy(sourceArray, srcIndex, destinationArray, 0, length);
+            if (srcIndex + length < 0)
+                throw new ArgumentException("srcIndex + length causes an integer overflow");
+
+            if (dstIndex + length > dstLength)
+                throw new ArgumentException("length is greater than the number of elements from dstIndex to the end of the destination buffer.");
+
+            if (dstIndex + length < 0)
+                throw new ArgumentException("dstIndex + length causes an integer overflow");
         }
+#endif
 
         /// <summary>
         /// Copies the data from a source `NativeTensorArray` to a destination `NativeTensorArray` up to a given length starting from given indexes.
         /// </summary>
-        /// <param name="sourceArray">The array to copy from.</param>
-        /// <param name="sourceIndex">The index of the first element to copy from.</param>
-        /// <param name="destinationArray">The array to copy to.</param>
-        /// <param name="destinationIndex">The index of the first element to copy to.</param>
+        /// <param name="src">The array to copy from.</param>
+        /// <param name="srcIndex">The index of the first element to copy from.</param>
+        /// <param name="dst">The array to copy to.</param>
+        /// <param name="dstIndex">The index of the first element to copy to.</param>
         /// <param name="length">The number of elements.</param>
         /// <exception cref="ArgumentException">Thrown if the given indexes and length are out of bounds of the source or destination array.</exception>
-        public static unsafe void Copy(NativeTensorArray sourceArray, int sourceIndex, NativeTensorArray destinationArray, int destinationIndex, int length)
+        public static unsafe void Copy(NativeTensorArray src, int srcIndex, NativeTensorArray dst, int dstIndex, int length)
         {
-            if (length < 0)
-                length = sourceArray.Length;
             if (length == 0)
                 return;
-            if (sourceIndex + length > sourceArray.Length)
-                throw new ArgumentException($"Cannot copy {length} element from sourceIndex {sourceIndex} and Sentis array of length {sourceArray.Length}.");
-            if (destinationIndex + length > destinationArray.Length)
-                throw new ArgumentException($"Cannot copy {length} element to sourceIndex {destinationIndex} and Sentis array of length {destinationArray.Length}.");
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            CheckCopyArguments(src.Length, srcIndex, dst.Length, dstIndex, length);
+#endif
 
-            int itemSize = k_DataItemSize;
-            void* srcPtr = (byte*)sourceArray.RawPtr + sourceIndex * itemSize;
-            void* dstPtr = (byte*)destinationArray.RawPtr + destinationIndex * itemSize;
-            UnsafeUtility.MemCpy(dstPtr, srcPtr, length * itemSize);
+            void* srcPtr = src.RawPtr;
+            void* dstPtr = dst.RawPtr;
+            UnsafeUtility.MemCpy((byte*)dstPtr + dstIndex * k_DataItemSize,
+                                 (byte*)srcPtr + srcIndex * k_DataItemSize,
+                                 length * k_DataItemSize);
         }
 
         /// <summary>
         /// Copies the data from a source `NativeTensorArray` to a destination array up to a given length starting from given indexes.
         /// </summary>
-        /// <param name="sourceArray">The array to copy from.</param>
-        /// <param name="sourceIndex">The index of the first element to copy from.</param>
-        /// <param name="destinationArray">The array to copy to.</param>
-        /// <param name="destinationIndex">The index of the first element to copy to.</param>
+        /// <param name="src">The array to copy from.</param>
+        /// <param name="srcIndex">The index of the first element to copy from.</param>
+        /// <param name="dst">The array to copy to.</param>
+        /// <param name="dstIndex">The index of the first element to copy to.</param>
         /// <param name="length">The number of elements.</param>
         /// <typeparam name="T">The data type of the elements.</typeparam>
         /// <exception cref="ArgumentException">Thrown if the given indexes and length are out of bounds of the source or destination array.</exception>
-        public static unsafe void Copy<T>(NativeTensorArray sourceArray, int sourceIndex, T[] destinationArray, int destinationIndex, int length) where T : unmanaged
+        public static unsafe void Copy<T>(NativeTensorArray src, int srcIndex, T[] dst, int dstIndex, int length) where T : unmanaged
         {
-            if (length < 0)
-                length = sourceArray.Length;
             if (length == 0)
                 return;
-            if (sourceIndex + length > sourceArray.Length)
-                throw new ArgumentException($"Cannot copy {length} element from sourceIndex {sourceIndex} and Sentis array of length {sourceArray.Length}.");
-            if (destinationIndex + length > destinationArray.Length)
-                throw new ArgumentException($"Cannot copy {length} element to sourceIndex {destinationIndex} and array of length {destinationArray.Length}.");
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            CheckCopyArguments(src.Length * k_DataItemSize, srcIndex * k_DataItemSize, dst.Length * sizeof(T), dstIndex * sizeof(T), length * sizeof(T));
+#endif
 
-            fixed (void* dstPtr = &destinationArray[destinationIndex])
+            fixed (void* dstPtr = &dst[0])
             {
-                int itemSize = k_DataItemSize;
-                void* srcPtr = (byte*)sourceArray.RawPtr + sourceIndex * itemSize;
-                UnsafeUtility.MemCpy(dstPtr, srcPtr, length * itemSize);
+                void* srcPtr = src.RawPtr;
+                UnsafeUtility.MemCpy((byte*)dstPtr + dstIndex * sizeof(T),
+                                    (byte*)srcPtr + srcIndex * k_DataItemSize,
+                                    length * sizeof(T));
             }
         }
 
         /// <summary>
         /// Copies the data from a source `NativeTensorArray` to a destination array up to a given length starting from given indexes.
         /// </summary>
-        /// <param name="sourceArray">The array to copy from.</param>
-        /// <param name="sourceIndex">The index of the first element to copy from.</param>
-        /// <param name="destinationArray">The array to copy to.</param>
-        /// <param name="destinationIndex">The index of the first element to copy to.</param>
+        /// <param name="src">The array to copy from.</param>
+        /// <param name="srcIndex">The index of the first element to copy from.</param>
+        /// <param name="dst">The array to copy to.</param>
+        /// <param name="dstIndex">The index of the first element to copy to.</param>
         /// <param name="length">The number of elements.</param>
         /// <typeparam name="T">The data type of the elements.</typeparam>
         /// <exception cref="ArgumentException">Thrown if the given indexes and length are out of bounds of the source or destination array.</exception>
-        public static unsafe void Copy<T>(NativeTensorArray sourceArray, int sourceIndex, NativeArray<T> destinationArray, int destinationIndex, int length) where T : unmanaged
+        public static unsafe void Copy<T>(NativeTensorArray src, int srcIndex, NativeArray<T> dst, int dstIndex, int length) where T : unmanaged
         {
-            if (length < 0)
-                length = sourceArray.Length;
             if (length == 0)
                 return;
-            if (sourceIndex + length > sourceArray.Length)
-                throw new ArgumentException($"Cannot copy {length} element from sourceIndex {sourceIndex} and Sentis array of length {sourceArray.Length}.");
-            if (destinationIndex + length > destinationArray.Length)
-                throw new ArgumentException($"Cannot copy {length} element to sourceIndex {destinationIndex} and array of length {destinationArray.Length}.");
-
-            int itemSize = k_DataItemSize;
-            void* srcPtr = (byte*)sourceArray.RawPtr + sourceIndex * itemSize;
-            void* dstPtr = (byte*)destinationArray.GetUnsafeReadOnlyPtr<T>() + destinationIndex * itemSize;
-
-            UnsafeUtility.MemCpy(dstPtr, srcPtr, length * itemSize);
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            CheckCopyArguments(src.Length * k_DataItemSize, srcIndex * k_DataItemSize, dst.Length * sizeof(T), dstIndex * sizeof(T), length * sizeof(T));
+#endif
+            void* srcPtr = src.RawPtr;
+            void* dstPtr = dst.GetUnsafeReadOnlyPtr<T>();
+            UnsafeUtility.MemCpy((byte*)dstPtr + dstIndex * sizeof(T),
+                                 (byte*)srcPtr + srcIndex * k_DataItemSize,
+                                 length * sizeof(T));
         }
 
         /// <summary>
         /// Copies the data from a source array to a destination `NativeTensorArray` up to a given length starting from given indexes.
         /// </summary>
-        /// <param name="sourceArray">The array to copy from.</param>
-        /// <param name="sourceIndex">The index of the first element to copy from.</param>
-        /// <param name="destinationArray">The array to copy to.</param>
-        /// <param name="destinationIndex">The index of the first element to copy to.</param>
+        /// <param name="src">The array to copy from.</param>
+        /// <param name="srcIndex">The index of the first element to copy from.</param>
+        /// <param name="dst">The array to copy to.</param>
+        /// <param name="dstIndex">The index of the first element to copy to.</param>
         /// <param name="length">The number of elements.</param>
         /// <typeparam name="T">The data type of the elements.</typeparam>
         /// <exception cref="ArgumentException">Thrown if the given indexes and length are out of bounds of the source or destination array.</exception>
-        public static unsafe void Copy<T>(T[] sourceArray, int sourceIndex, NativeTensorArray destinationArray, int destinationIndex, int length) where T : unmanaged
+        public static unsafe void Copy<T>(T[] src, int srcIndex, NativeTensorArray dst, int dstIndex, int length) where T : unmanaged
         {
-            if (length < 0)
-                length = sourceArray.Length;
             if (length == 0)
                 return;
-            if (sourceIndex + length > sourceArray.Length)
-                throw new ArgumentException($"Cannot copy {length} element from sourceIndex {sourceIndex} and Sentis array of length {sourceArray.Length}.");
-            if (destinationIndex + length > destinationArray.Length)
-                throw new ArgumentException($"Cannot copy {length} element to sourceIndex {destinationIndex} and Sentis array of length {destinationArray.Length}.");
-
-            fixed (void* srcPtr = &sourceArray[sourceIndex])
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            CheckCopyArguments(src.Length * sizeof(T), srcIndex * sizeof(T), dst.Length * k_DataItemSize, dstIndex * k_DataItemSize, length * sizeof(T));
+#endif
+            fixed (void* srcPtr = &src[0])
             {
-                int itemSize = k_DataItemSize;
-                void* dstPtr = (byte*)destinationArray.RawPtr + destinationIndex * itemSize;
-                UnsafeUtility.MemCpy(dstPtr, srcPtr, length * itemSize);
+                void* dstPtr = dst.RawPtr;
+                UnsafeUtility.MemCpy((byte*)dstPtr + dstIndex * k_DataItemSize,
+                                     (byte*)srcPtr + srcIndex * sizeof(T),
+                                     length * sizeof(T));
             }
         }
 
         /// <summary>
         /// Copies the data from a source `NativeArray` to a destination array up to a given length starting from given indexes.
         /// </summary>
-        /// <param name="sourceArray">The array to copy from.</param>
-        /// <param name="sourceIndex">The index of the first element to copy from.</param>
-        /// <param name="destinationArray">The array to copy to.</param>
-        /// <param name="destinationIndex">The index of the first element to copy to.</param>
+        /// <param name="src">The array to copy from.</param>
+        /// <param name="srcIndex">The index of the first element to copy from.</param>
+        /// <param name="dst">The array to copy to.</param>
+        /// <param name="dstIndex">The index of the first element to copy to.</param>
         /// <param name="length">The number of elements.</param>
         /// <typeparam name="T">The data type of the elements.</typeparam>
         /// <exception cref="ArgumentException">Thrown if the given indexes and length are out of bounds of the source or destination array.</exception>
-        public static unsafe void Copy<T>(NativeArray<T> sourceArray, int sourceIndex, NativeTensorArray destinationArray, int destinationIndex, int length) where T : unmanaged
+        public static unsafe void Copy<T>(NativeArray<T> src, int srcIndex, NativeTensorArray dst, int dstIndex, int length) where T : unmanaged
         {
-            if (length < 0)
-                length = sourceArray.Length;
             if (length == 0)
                 return;
-            if (sourceIndex + length > sourceArray.Length)
-                throw new ArgumentException($"Cannot copy {length} element from sourceIndex {sourceIndex} and Sentis array of length {sourceArray.Length}.");
-            if (destinationIndex + length > destinationArray.Length)
-                throw new ArgumentException($"Cannot copy {length} element to sourceIndex {destinationIndex} and Sentis array of length {destinationArray.Length}.");
-
-            int itemSize = k_DataItemSize;
-            void* srcPtr = (byte*)sourceArray.GetUnsafeReadOnlyPtr<T>() + sourceIndex * itemSize;
-            void* dstPtr = (byte*)destinationArray.RawPtr + destinationIndex * itemSize;
-            UnsafeUtility.MemCpy(dstPtr, srcPtr, length * itemSize);
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            CheckCopyArguments(src.Length * sizeof(T), srcIndex * sizeof(T), dst.Length * k_DataItemSize, dstIndex * k_DataItemSize, length * sizeof(T));
+#endif
+            void* srcPtr = src.GetUnsafeReadOnlyPtr<T>();
+            void* dstPtr = dst.RawPtr;
+            UnsafeUtility.MemCpy((byte*)dstPtr + dstIndex * k_DataItemSize,
+                                 (byte*)srcPtr + srcIndex * sizeof(T),
+                                 length * sizeof(T));
         }
 
         /// <summary>
         /// Copies the data from a source `NativeArray` to a destination array up to a given length starting from given indexes.
         /// </summary>
-        /// <param name="sourceArray">The array to copy from.</param>
-        /// <param name="sourceIndex">The index of the first element to copy from.</param>
-        /// <param name="destinationArray">The array to copy to.</param>
-        /// <param name="destinationIndex">The index of the first element to copy to.</param>
+        /// <param name="src">The array to copy from.</param>
+        /// <param name="srcIndex">The index of the first element to copy from.</param>
+        /// <param name="dst">The array to copy to.</param>
+        /// <param name="dstIndex">The index of the first element to copy to.</param>
         /// <param name="length">The number of elements.</param>
         /// <typeparam name="T">The data type of the elements.</typeparam>
         /// <exception cref="ArgumentException">Thrown if the given indexes and length are out of bounds of the source or destination array.</exception>
-        public static unsafe void Copy<T>(NativeArray<T>.ReadOnly sourceArray, int sourceIndex, NativeTensorArray destinationArray, int destinationIndex, int length) where T : unmanaged
+        public static unsafe void Copy<T>(NativeArray<T>.ReadOnly src, int srcIndex, NativeTensorArray dst, int dstIndex, int length) where T : unmanaged
         {
-            if (length < 0)
-                length = sourceArray.Length;
             if (length == 0)
                 return;
-            if (sourceIndex + length > sourceArray.Length)
-                throw new ArgumentException($"Cannot copy {length} element from sourceIndex {sourceIndex} and Sentis array of length {sourceArray.Length}.");
-            if (destinationIndex + length > destinationArray.Length)
-                throw new ArgumentException($"Cannot copy {length} element to sourceIndex {destinationIndex} and Sentis array of length {destinationArray.Length}.");
-
-            int itemSize = k_DataItemSize;
-            void* srcPtr = (byte*)sourceArray.GetUnsafeReadOnlyPtr<T>() + sourceIndex * itemSize;
-            void* dstPtr = (byte*)destinationArray.RawPtr + destinationIndex * itemSize;
-            UnsafeUtility.MemCpy(dstPtr, srcPtr, length * itemSize);
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            CheckCopyArguments(src.Length * sizeof(T), srcIndex * sizeof(T), dst.Length * k_DataItemSize, dstIndex * k_DataItemSize, length * sizeof(T));
+#endif
+            void* srcPtr = src.GetUnsafeReadOnlyPtr<T>();
+            void* dstPtr = dst.RawPtr;
+            UnsafeUtility.MemCpy((byte*)dstPtr + dstIndex * k_DataItemSize,
+                                 (byte*)srcPtr + srcIndex * sizeof(T),
+                                 length * sizeof(T));
         }
 
         /// <summary>
         /// Copies the data from a source `NativeTensorArray` to a destination byte array up to a given length starting from given offsets.
         /// </summary>
-        /// <param name="sourceArray">The array to copy from.</param>
-        /// <param name="sourceOffset">The index of the first element to copy from.</param>
-        /// <param name="destinationArray">The array to copy to.</param>
-        /// <param name="destinationByteOffset">The offset in bytes to copy to in the destination array.</param>
+        /// <param name="src">The array to copy from.</param>
+        /// <param name="srcByteIndex">The index of the first element to copy from.</param>
+        /// <param name="dst">The array to copy to.</param>
+        /// <param name="dstByteIndex">The offset in bytes to copy to in the destination array.</param>
         /// <param name="lengthInBytes">The number of bytes to copy.</param>
         /// <exception cref="ArgumentException">Thrown if the given indexes and length are out of bounds of the source or destination array.</exception>
-        public static unsafe void BlockCopy(NativeTensorArray sourceArray, int sourceOffset, byte[] destinationArray, int destinationByteOffset, int lengthInBytes)
+        public static unsafe void BlockCopy(NativeTensorArray src, int srcByteIndex, byte[] dst, int dstByteIndex, int lengthInBytes)
         {
-            int itemSize = k_DataItemSize;
-            int srcLengthBytes = sourceArray.Length * itemSize;
-            int srcOffsetBytes = sourceOffset * itemSize;
-
-            if (lengthInBytes == 0)
+             if (lengthInBytes == 0)
                 return;
-            if (lengthInBytes < 0)
-                lengthInBytes = srcLengthBytes;
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            CheckCopyArguments(src.Length * k_DataItemSize, srcByteIndex, dst.Length, dstByteIndex, lengthInBytes);
+#endif
 
-            if (srcOffsetBytes + lengthInBytes > srcLengthBytes)
-                throw new ArgumentException($"Cannot copy {lengthInBytes} bytes from sourceByteOffset {srcOffsetBytes} and NativeTensorArray of {srcLengthBytes} num bytes.");
-            if (destinationByteOffset + lengthInBytes > destinationArray.Length)
-                throw new ArgumentException($"Cannot copy {lengthInBytes} bytes to destinationByteOffset {destinationByteOffset} and byte[] array of {destinationArray.Length} num bytes.");
-
-            fixed (void* dstPtr = &destinationArray[destinationByteOffset])
+            fixed (void* dstPtr = &dst[0])
             {
-                void* srcPtr = (byte*)sourceArray.RawPtr + srcOffsetBytes;
-                UnsafeUtility.MemCpy(dstPtr, srcPtr, lengthInBytes);
+                void* srcPtr = src.RawPtr;
+                UnsafeUtility.MemCpy((byte*)dstPtr + dstByteIndex,
+                                     (byte*)srcPtr + srcByteIndex,
+                                     lengthInBytes);
             }
         }
 
         /// <summary>
         /// Copies the data from a source byte array to a destination `NativeTensorArray` up to a given length starting from given offsets.
         /// </summary>
-        /// <param name="sourceArray">The array to copy from.</param>
-        /// <param name="sourceByteOffset">The offset in bytes to copy from.</param>
-        /// <param name="destinationArray">The array to copy to.</param>
-        /// <param name="destinationByteOffset">The offset in bytes to copy to in the destination array.</param>
+        /// <param name="src">The array to copy from.</param>
+        /// <param name="srcByteIndex">The offset in bytes to copy from.</param>
+        /// <param name="dst">The array to copy to.</param>
+        /// <param name="dstByteIndex">The offset in bytes to copy to in the destination array.</param>
         /// <param name="lengthInBytes">The number of bytes to copy.</param>
         /// <exception cref="ArgumentException">Thrown if the given indexes and length are out of bounds of the source or destination array.</exception>
-        public static unsafe void BlockCopy(byte[] sourceArray, int sourceByteOffset, NativeTensorArray destinationArray, int destinationByteOffset, int lengthInBytes)
+        public static unsafe void BlockCopy(byte[] src, int srcByteIndex, NativeTensorArray dst, int dstByteIndex, int lengthInBytes)
         {
             if (lengthInBytes == 0)
                 return;
-            if (lengthInBytes < 0)
-                lengthInBytes = sourceArray.Length;
 
-            if (sourceByteOffset + lengthInBytes > sourceArray.Length)
-                throw new ArgumentException($"Cannot copy {lengthInBytes} bytes from sourceByteOffset {sourceByteOffset} and byte[] array of {sourceArray.Length} num bytes.");
-            var fullDestPaddedSizeInByte = destinationArray.Length * k_DataItemSize;
-            if (destinationByteOffset + lengthInBytes > fullDestPaddedSizeInByte)
-                throw new ArgumentException($"Cannot copy {lengthInBytes} bytes to destinationByteOffset {destinationByteOffset} and byte[] array of {destinationArray.Length} num bytes.");
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            CheckCopyArguments(src.Length, srcByteIndex, dst.Length * k_DataItemSize, dstByteIndex, lengthInBytes);
+#endif
 
-            void* dstPtr = (byte*)destinationArray.RawPtr + destinationByteOffset;
-            fixed (void* srcPtr = &sourceArray[sourceByteOffset])
+            fixed (void* srcPtr = &src[0])
             {
-                UnsafeUtility.MemCpy(dstPtr, srcPtr, lengthInBytes);
+                void* dstPtr = dst.RawPtr;
+                UnsafeUtility.MemCpy((byte*)dstPtr + dstByteIndex,
+                                     (byte*)srcPtr + srcByteIndex,
+                                     lengthInBytes);
             }
         }
     }

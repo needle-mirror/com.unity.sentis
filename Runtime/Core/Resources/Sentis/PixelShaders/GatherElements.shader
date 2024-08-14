@@ -11,8 +11,8 @@ Shader "Hidden/Sentis/GatherElements"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile _ GatherInt
-            #pragma multi_compile _ NoFastPath
+            #pragma multi_compile_local _ GatherInt
+            #pragma multi_compile_local _ NoFastPath
             #pragma vertex vert
             #pragma fragment frag
 

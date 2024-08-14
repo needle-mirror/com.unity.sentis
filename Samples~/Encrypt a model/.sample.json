@@ -1,4 +1,0 @@
-{
-  "displayName": "Encrypt a model",
-  "description": "Example of serializing an encrypted model to disk using a custom editor window and loading that encrypted model at runtime."
-}

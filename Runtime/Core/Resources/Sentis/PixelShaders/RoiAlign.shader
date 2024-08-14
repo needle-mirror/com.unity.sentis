@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/RoiAlign"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile RoiAlignAvg RoiAlignMax
+            #pragma multi_compile_local RoiAlignAvg RoiAlignMax
 
             #pragma vertex vert
             #pragma fragment frag

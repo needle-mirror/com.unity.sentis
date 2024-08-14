@@ -5,7 +5,7 @@
 #pragma kernel Conv1D_KxK
 #pragma kernel Conv1D_1x1
 
-#pragma multi_compile _ USEBIAS
+#pragma multi_compile_local _ USEBIAS
 
 StructuredBuffer<float> Xptr;
 StructuredBuffer<float> Wptr;

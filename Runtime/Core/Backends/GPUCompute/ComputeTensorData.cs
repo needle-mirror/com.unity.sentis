@@ -4,13 +4,14 @@ using UnityEngine.Rendering;
 using System;
 using Unity.Collections;
 using System.Threading.Tasks;
+using Unity.Collections.LowLevel.Unsafe;
 
 namespace Unity.Sentis
 {
     /// <summary>
     /// An interface that provides methods for converting custom tensor data to `ComputeTensorData`.
     /// </summary>
-    public interface IConvertibleToComputeTensorData
+    interface IConvertibleToComputeTensorData
     {
         /// <summary>
         /// Implement this method to convert to `ComputeTensorData`.
@@ -23,7 +24,7 @@ namespace Unity.Sentis
     /// <summary>
     /// Represents data storage for a `Tensor` as a compute buffer, for GPUCompute backend.
     /// </summary>
-    public class ComputeTensorData : ITensorData, IConvertibleToBurstTensorData
+    public class ComputeTensorData : ITensorData, IConvertibleToCPUTensorData
     {
         bool m_IsDisposed;
         ComputeBuffer m_Buffer;
@@ -65,24 +66,6 @@ namespace Unity.Sentis
             }
 
             ProfilerMarkers.ComputeTensorDataNewEmpty.End();
-        }
-
-        /// <inheritdoc/>
-        public ITensorData Clone()
-        {
-            var copy = new ComputeTensorData(m_Count);
-
-            int length = m_Buffer.count;
-
-            var fn = ComputeFunctions.k_MemCopy;
-            fn.SetTensorAsBuffer(ShaderPropertyID.k_ID_Xptr, this);
-            fn.SetTensorAsBuffer(ShaderPropertyID.k_ID_Optr, copy);
-            fn.SetInt(ShaderPropertyID.k_ID_offsetX, 0);
-            fn.SetInt(ShaderPropertyID.k_ID_offsetO, 0);
-            fn.SetInt(ShaderPropertyID.k_ID_count, length);
-            fn.Dispatch(ComputeHelper.IDivC(length, 4), 1, 1);
-
-            return copy;
         }
 
         /// <summary>
@@ -146,21 +129,28 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public async Awaitable<NativeArray<T>> DownloadAsync<T>(int dstCount) where T : unmanaged
         {
-            if (m_Count == 0)
+            if (dstCount == 0)
                 return new NativeArray<T>();
-            var request = await AsyncGPUReadback.RequestAsync(m_Buffer, dstCount * sizeof(float), 0);
-            return request.GetData<T>().GetSubArray(0, dstCount);
+
+            int count;
+            unsafe
+            {
+                count = ((dstCount * sizeof(T) + sizeof(int) - 1) / sizeof(int));
+            }
+
+            var request = await AsyncGPUReadback.RequestAsync(m_Buffer, count * sizeof(int), 0);
+            return request.GetData<int>().Reinterpret<T>(sizeof(int)).GetSubArray(0, dstCount);
         }
         #endif
 
         /// <inheritdoc/>
-        public BurstTensorData ConvertToBurstTensorData(int dstCount)
+        public CPUTensorData ConvertToCPUTensorData(int dstCount)
         {
-            BurstTensorData output = new BurstTensorData(dstCount);
+            CPUTensorData output = new CPUTensorData(dstCount);
             if (dstCount == 0)
                 return output;
 
-            var array = output.array.GetNativeArrayHandle<float>();
+            var array = output.array.GetNativeArrayHandle<int>();
 
             if (m_AsyncDownloadRequested)
             {
@@ -168,13 +158,13 @@ namespace Unity.Sentis
                 if (!m_AsyncDownloadRequest.done)
                     m_AsyncDownloadRequest.WaitForCompletion();
 
-                var reqData = m_AsyncDownloadRequest.GetData<float>();
+                var reqData = m_AsyncDownloadRequest.GetData<int>();
                 ProfilerMarkers.ComputeTensorDataDownload.End();
-                NativeArray<float>.Copy(reqData, 0, array, 0, dstCount);
+                NativeArray<int>.Copy(reqData, 0, array, 0, dstCount);
                 return output;
             }
 
-            m_AsyncDownloadRequest = AsyncGPUReadback.RequestIntoNativeArray<float>(ref array, m_Buffer, dstCount * sizeof(float), 0);
+            m_AsyncDownloadRequest = AsyncGPUReadback.RequestIntoNativeArray<int>(ref array, m_Buffer, dstCount * sizeof(int), 0);
             m_AsyncDownloadRequest.WaitForCompletion();
             return output;
         }
@@ -182,12 +172,7 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public NativeArray<T> Download<T>(int dstCount) where T : unmanaged
         {
-            var count = dstCount;
-
-            Assert.IsTrue(maxCapacity >= count);
-            count = Math.Min(maxCapacity, count);
-
-            if (count == 0)
+            if (dstCount == 0)
                 return new NativeArray<T>();
 
             ProfilerMarkers.ComputeTensorDataDownload.Begin();
@@ -200,17 +185,21 @@ namespace Unity.Sentis
 
                 var reqData = m_AsyncDownloadRequest.GetData<T>();
                 ProfilerMarkers.ComputeTensorDataDownload.End();
-                return reqData.GetSubArray(0, dstCount);
+                return reqData;
             }
 
-            m_AsyncDownloadRequest = AsyncGPUReadback.Request(m_Buffer, dstCount * sizeof(float), 0);
+            unsafe
+            {
+                int count = ((dstCount * sizeof(T) + sizeof(int) - 1) / sizeof(int));
+                m_AsyncDownloadRequest = AsyncGPUReadback.Request(m_Buffer, count * sizeof(int), 0);
+            }
             m_AsyncDownloadRequest.WaitForCompletion();
 
-            var data = m_AsyncDownloadRequest.GetData<T>();
+            var data = m_AsyncDownloadRequest.GetData<int>();
 
             ProfilerMarkers.ComputeTensorDataDownload.End();
 
-            return data.GetSubArray(0, dstCount);
+            return data.Reinterpret<T>(sizeof(int)).GetSubArray(0, dstCount);
         }
 
         /// <inheritdoc/>
@@ -248,13 +237,12 @@ namespace Unity.Sentis
             var onDevice = X.dataOnBackend;
             if (onDevice == null)
             {
-                X.AttachToDevice(new ComputeTensorData(X.count, clearOnInit));
+                X.AdoptTensorData(new ComputeTensorData(X.count, clearOnInit));
                 return X.dataOnBackend as ComputeTensorData;
             }
 
             if (onDevice is ComputeTensorData)
                 return onDevice as ComputeTensorData;
-
             ComputeTensorData dataOnBackend;
             if (onDevice is IConvertibleToComputeTensorData asConvertible)
             {
@@ -265,7 +253,7 @@ namespace Unity.Sentis
                 dataOnBackend = new ComputeTensorData(X.count, clearOnInit: false);
                 dataOnBackend.Upload<int>(onDevice.Download<int>(X.count), X.count);
             }
-            X.AttachToDevice(dataOnBackend);
+            X.AdoptTensorData(dataOnBackend);
 
             return X.dataOnBackend as ComputeTensorData;
         }

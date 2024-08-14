@@ -266,7 +266,7 @@ namespace Unity.Sentis
 
         // given an einsum equation string and the operand shapes
         // calculates the static output tensor shape
-        public static SymbolicTensorShape ParseEquationStringShape(string equation, SymbolicTensorShape[] operandShapes, ref TensorIndex[] operandIndices, out TensorIndex outputIndices, out int numIndices)
+        public static DynamicTensorShape ParseEquationStringShape(string equation, DynamicTensorShape[] operandShapes, ref TensorIndex[] operandIndices, out TensorIndex outputIndices, out int numIndices)
         {
             unsafe
             {
@@ -352,7 +352,7 @@ namespace Unity.Sentis
                 if (isBroadcastOperands && isBroadcastOperandsUnknown)
                 {
                     outputIndices = default;
-                    return SymbolicTensorShape.UnknownShape;
+                    return DynamicTensorShape.DynamicRank;
                 }
 
                 Logger.AssertIsTrue(operandShapes.Length == numOperands, "number of operand shapes must equal the number of operands in equation");
@@ -362,7 +362,7 @@ namespace Unity.Sentis
                     var operandRank = isOperandEllipses[j] ? numOperandLabels[j] + numBroadcastDims : numOperandLabels[j];
                     if (!operandShapes[j].hasRank)
                     {
-                        operandShapes[j] = SymbolicTensorShape.UnknownOfRank(operandRank);
+                        operandShapes[j] = DynamicTensorShape.DynamicOfRank(operandRank);
                     }
 
                     Logger.AssertIsTrue(operandShapes[j].rank == operandRank, "operand rank must match that from equation");
@@ -375,11 +375,11 @@ namespace Unity.Sentis
                 operandIndices = new TensorIndex[numOperands];
                 var operandIndexCounts = stackalloc int[numIndices];
                 var outputIndexCounts = stackalloc int[numIndices];
-                var indexSize = new SymbolicTensorDim[numIndices];
+                var indexSize = new DynamicTensorDim[numIndices];
 
                 for (var i = 0; i < numIndices; i++)
                 {
-                    indexSize[i] = SymbolicTensorDim.One;
+                    indexSize[i] = DynamicTensorDim.One;
                 }
 
                 // loop through sections of equation for each
@@ -502,7 +502,7 @@ namespace Unity.Sentis
                 }
 
                 // calculate the output indices and shape
-                var outputDims = SymbolicTensorShape.UnknownOfRank(outputRank);
+                var outputDims = DynamicTensorShape.DynamicOfRank(outputRank);
                 outputIndices = TensorIndex.Zeros(outputRank);
 
                 for (var i = 0; i < outputRank; i++)

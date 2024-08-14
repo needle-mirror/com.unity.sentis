@@ -11,7 +11,7 @@ Shader "Hidden/Sentis/Softmax"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile SOFTMAXEND LOGSOFTMAXEND
+            #pragma multi_compile_local SOFTMAXEND LOGSOFTMAXEND
 
             #pragma vertex vert
             #pragma fragment frag

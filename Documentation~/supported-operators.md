@@ -2,13 +2,11 @@
 
 When you import a model, each Open Neural Network Exchange (ONNX) operator in the model graph becomes a Sentis layer. A Sentis layer has the same name as the ONNX operator, unless the table shows the operator maps to a different layer. Refer to [How Sentis optimizes a model](models-concept.md#how-sentis-optimizes-a-model) for more information.
 
-If you use a GPU Worker and the model has a layer that isn't supported, Sentis defaults to using `BackendType.CPU` for the layer that uses Burst. If `BackendType.CPU` isn't supported, Sentis resorts to utilizing a slower CPU implementation of the layer that doesn't use Burst.
-
 ## Supported ONNX operators
 
 The table below shows which ONNX operators Sentis supports, and which data types Sentis supports for each [backend type](create-an-engine.md#back-end-types).
 
-|Name|Supported data types with `BackendType.CPU`|Supported data types with `BackendType.GPUCompute`|Supported data types with `BackendType.GPUPixel`|Notes|
+|Name|Supported data types with [`BackendType.CPU`](xref:Unity.Sentis.BackendType.CPU)|Supported data types with [`BackendType.GPUCompute`](xref:Unity.Sentis.BackendType.GPUCompute)|Supported data types with [`BackendType.GPUPixel`](xref:Unity.Sentis.BackendType.GPUPixel)|Notes|
 |-|-|-|-|-|
 |[Abs](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Abs) | float, int | float, int | float, int | |
 |[Acos](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Acos) | float | float | float | |
@@ -148,7 +146,7 @@ The table below shows which ONNX operators Sentis supports, and which data types
 
 Sentis might create the following layers when it [optimizes the model](models-concept.md).
 
-|Name|Supported data types with `BackendType.CPU`|Supported data types with `BackendType.GPUCompute`|Supported data types with `BackendType.GPUPixel`|
+|Name|Supported data types with [`BackendType.CPU`](xref:Unity.Sentis.BackendType.CPU)|Supported data types with [`BackendType.GPUCompute`](xref:Unity.Sentis.BackendType.GPUCompute)|Supported data types with [`BackendType.GPUPixel`](xref:Unity.Sentis.BackendType.GPUPixel)|
 |-|-|-|-|
 |Dense | float | float | float |
 |DequantizeUint8 | byte | byte | byte |
@@ -157,6 +155,7 @@ Sentis might create the following layers when it [optimizes the model](models-co
 |MatMul2D | float | float | float |
 |MoveDim | float, int | float, int | float, int |
 |Narrow | float, int | float, int | float, int |
+|RandomChoice | float, int | float, int | float, int |
 |Relu6 | float | float | float |
 |ScalarMad | float, int | float, int | float, int |
 |Select | float, int | float, int | float, int |

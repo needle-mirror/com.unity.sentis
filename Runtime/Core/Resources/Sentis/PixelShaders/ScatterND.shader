@@ -11,9 +11,9 @@ Shader "Hidden/Sentis/ScatterND"
         Pass
         {
             CGPROGRAM
-            #pragma multi_compile _ ScatterInt
-            #pragma multi_compile ReduceNone ReduceAdd ReduceMul
-            #pragma multi_compile _ K_LARGE
+            #pragma multi_compile_local _ ScatterInt
+            #pragma multi_compile_local ReduceNone ReduceAdd ReduceMul
+            #pragma multi_compile_local _ K_LARGE
             #pragma vertex vert
             #pragma fragment frag
 
