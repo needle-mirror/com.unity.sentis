@@ -29,7 +29,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}";
         }
 
-        internal override string profilerTag => "LogSoftmax";
+        public override string opName => "LogSoftmax";
     }
 
     /// <summary>
@@ -59,6 +59,6 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}";
         }
 
-        internal override string profilerTag => "Softmax";
+        public override string opName => "Softmax";
     }
 }

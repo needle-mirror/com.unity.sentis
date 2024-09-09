@@ -48,7 +48,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.ScaleBias(X as Tensor<float>, ctx.storage.GetTensor(inputs[1]) as Tensor<float>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "ScaleBias";
+        public override string opName => "ScaleBias";
     }
 
     /// <summary>
@@ -108,7 +108,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, epsilon: {epsilon}";
         }
 
-        internal override string profilerTag => "InstanceNormalization";
+        public override string opName => "InstanceNormalization";
     }
 
     /// <summary>
@@ -166,7 +166,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, epsilon: {epsilon}";
         }
 
-        internal override string profilerTag => "LayerNormalization";
+        public override string opName => "LayerNormalization";
     }
 
     /// <summary>
@@ -229,7 +229,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, epsilon: {epsilon}";
         }
 
-        internal override string profilerTag => "BatchNormalization";
+        public override string opName => "BatchNormalization";
     }
 
     /// <summary>
@@ -316,6 +316,6 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, alpha: {alpha}, beta: {beta}, bias: {bias}, count: {count}";
         }
 
-        internal override string profilerTag => "LRN";
+        public override string opName => "LRN";
     }
 }

@@ -70,7 +70,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, start: {start}, end: {end}";
         }
 
-        internal override string profilerTag => "Shape";
+        public override string opName => "Shape";
     }
 
     /// <summary>
@@ -98,6 +98,6 @@ namespace Unity.Sentis.Layers
             O[0] = shapeX.length;
         }
 
-        internal override string profilerTag => "Size";
+        public override string opName => "Size";
     }
 }

@@ -19,7 +19,7 @@ partial class CPUBackend
 {
 
 
-[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
 internal unsafe struct EinsumOneJob : IJobParallelFor, IJobResourceDeclarationXO
 {
 
@@ -67,7 +67,7 @@ internal unsafe struct EinsumOneJob : IJobParallelFor, IJobResourceDeclarationXO
 
 
 
-[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
 internal unsafe struct EinsumTwoJob : IJobParallelFor, IJobResourceDeclarationXBO
 {
 

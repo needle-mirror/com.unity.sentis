@@ -14,14 +14,12 @@ using Unity.Jobs;
 using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Mathematics;
 
-[assembly: BurstCompile(OptimizeFor = OptimizeFor.FastCompilation)]
+[assembly: BurstCompile(OptimizeFor = OptimizeFor.FastCompilation, CompileSynchronously = true)]
 
 namespace Unity.Sentis
 {
     partial class CPUBackend
     {
-        internal static readonly Thread MainThread = Thread.CurrentThread;
-
         internal unsafe struct ReadOnlyMemResource
         {
             [NoAlias][NativeDisableUnsafePtrRestriction][ReadOnly] public void* ptr;
@@ -133,7 +131,7 @@ namespace Unity.Sentis
             UnsafeUtility.MemClear(dstPadding, multiplyBlockWidthN * sizeof(float));
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         internal unsafe struct BatchMatrixMultiplyJob : IJobParallelFor
         {
             public BatchMatrixMultiplyHelper data;
@@ -440,7 +438,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         internal unsafe struct ConvJob : IJobParallelFor, IJobResourceDeclarationXSBO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -1127,7 +1125,7 @@ namespace Unity.Sentis
             // Platform dependent tests that require checking for intrinsic support. From non-Burst
             // compiled code, these intrinsic fields read as false, so these checks must be done from
             // a Burst compiled method.
-            [BurstCompile]
+            [BurstCompile(CompileSynchronously = true)]
             static bool CanUseDepthwiseConvKernel(ConvJob* job)
             {
                 if (Unity.Burst.Intrinsics.X86.Avx2.IsAvx2Supported)
@@ -1511,7 +1509,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         internal unsafe struct VectorBroadcast1DJob : IJob, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; }
@@ -1528,7 +1526,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         internal unsafe struct MemFreeJob : IJob
         {
             [NoAlias] [NativeDisableUnsafePtrRestriction]           public void* buffer0;

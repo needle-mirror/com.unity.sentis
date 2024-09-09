@@ -109,6 +109,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     model.constants.Add(new Constant(kvp.Key, tensor.shape, tensor.dataType, 0));
                 else
                     model.constants.Add(new Constant(kvp.Key, tensor.shape, tensor.dataType, (tensor.dataOnBackend as CPUTensorData).array));
+                tensor.Dispose();
             }
 
             // remove unused constants

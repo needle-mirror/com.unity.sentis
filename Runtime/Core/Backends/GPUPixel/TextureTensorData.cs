@@ -126,28 +126,28 @@ namespace Unity.Sentis
         /// <summary>
         /// Returns the backing texture storing the tensor data.
         /// </summary>
-        internal RenderTexture bufferAsTexture => m_BufferAsTexture;
+        public RenderTexture bufferAsTexture => m_BufferAsTexture;
         /// <summary>
         /// Returns the power in the power of two width of the backing texture.
         /// </summary>
-        internal int widthShift => m_WidthShift;
+        public int widthShift => m_WidthShift;
         /// <summary>
         /// Returns the width of the texture - 1 for efficient masking in shaders.
         /// </summary>
-        internal int widthMask => m_WidthMask;
+        public int widthMask => m_WidthMask;
 
         /// <summary>
         /// Returns the data type of the associated tensor.
         /// </summary>
-        internal DataType dataType => m_DataType;
+        public DataType dataType => m_DataType;
         /// <summary>
         /// Returns the shape of the associated tensor.
         /// </summary>
-        internal TensorShape shape => m_Shape;
+        public TensorShape shape => m_Shape;
         /// <summary>
         /// Returns the shape of the tensor with the blocked axis divided by 4.
         /// </summary>
-        internal TensorShape blockedShape => m_BlockedShape;
+        public TensorShape blockedShape => m_BlockedShape;
         /// <summary>
         /// Returns the axis of the tensor which is blocked.
         ///
@@ -155,24 +155,24 @@ namespace Unity.Sentis
         ///
         /// Thus negative axis values do not count from the back of the shape as elsewhere.
         /// </summary>
-        internal int blockAxis => m_BlockAxis;
+        public int blockAxis => m_BlockAxis;
         /// <summary>
         /// The size of the blocked axis in the original tensor shape (when not blocked).
         /// </summary>
-        internal int dimAxis => m_DimAxis;
+        public int dimAxis => m_DimAxis;
         /// <summary>
         /// The size of the blocked axis in the blocked tensor shape, i.e. dimAxisDiv4 = ceil(dimAxis / 4).
         /// </summary>
-        internal int dimAxisDiv4 => m_DimAxisDiv4;
+        public int dimAxisDiv4 => m_DimAxisDiv4;
         /// <summary>
         /// A 4 int mask with 1 or 0 in each component to indicate whether the last blocked slice along the blocked axis has a valid entry or not.
         /// eg. if dimAxis % 4 = ceil(dimAxis/4)*4 - dimAxis = 3, blockedAxisDiv4RemainderMask = {1, 1, 1, 0};
         /// </summary>
-        internal int[] blockedAxisDiv4RemainderMask => m_BlockedAxisDiv4RemainderMask;
+        public int[] blockedAxisDiv4RemainderMask => m_BlockedAxisDiv4RemainderMask;
         /// <summary>
         /// The size of the stride of the blocked axis.
         /// </summary>
-        internal int strideAxis => m_StrideAxis;
+        public int strideAxis => m_StrideAxis;
 
         static int MaxTextureSize => Mathf.Min(SystemInfo.maxTextureSize, 16384);
 

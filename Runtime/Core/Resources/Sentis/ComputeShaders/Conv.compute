@@ -36,7 +36,7 @@ uint4 _Stride;
 uint4 _Dilation;
 float _MinValue;
 
-float ApplyFusedActivation(float v)
+inline float ApplyFusedActivation(float v)
 {
     return max(v, _MinValue);
 }

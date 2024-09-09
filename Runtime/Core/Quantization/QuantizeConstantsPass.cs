@@ -50,21 +50,24 @@ namespace Unity.Sentis
 
                     if (m_QuantizationType == QuantizationType.Float16)
                     {
-                        var quantizedTensor = new Tensor<short>(constant.shape);
-                        var data = CPUTensorData.Pin(quantizedTensor);
+                        var quantizedTensor = new Tensor<short>(constant.shape, data: null);
+                        var data = new int[quantizedTensor.count];
                         unsafe
                         {
-                            var job = new BurstJobsQuantizeTensor.CastFloatToHalfJob
+                            fixed (void* dataPtr = &data[0])
                             {
-                                src = (float*)constant.weights.RawPtr,
-                                dst = (ushort*)(data.rawPtr)
-                            };
-                            var jobHandle = job.Schedule(constant.shape.length, 1024);
-                            jobHandle.Complete();
+                                var job = new BurstJobsQuantizeTensor.CastFloatToHalfJob
+                                {
+                                    src = (float*)constant.weights.RawPtr,
+                                    dst = (ushort*)(dataPtr)
+                                };
+                                var jobHandle = job.Schedule(constant.shape.length, 1024);
+                                jobHandle.Complete();
+                            }
                         }
 
                         var newIndex = model.GetUniqueIndex();
-                        Constant quantizedConstant = new Constant(newIndex, constant.shape, DataType.Short, data.array);
+                        Constant quantizedConstant = new Constant(newIndex, constant.shape, DataType.Short, new NativeTensorArrayFromManagedArray(data, 0, sizeof(int), data.Length));
                         model.constants[index] = quantizedConstant;
                         model.layers.Insert(i, new Cast(constant.index, newIndex, DataType.Float));
                         i++;
@@ -81,23 +84,26 @@ namespace Unity.Sentis
                         float scale = (Mathf.Max(0, maxValue) - Mathf.Min(0, minValue)) / 255f;
                         byte zeroPoint = (byte)Mathf.RoundToInt(Mathf.Clamp(-minValue / scale, 0, 255));
 
-                        var quantizedTensor = new Tensor<byte>(constant.shape);
-                        var data = CPUTensorData.Pin(quantizedTensor);
+                        var quantizedTensor = new Tensor<byte>(constant.shape, null);
+                        var data = new int[quantizedTensor.count];
                         unsafe
                         {
-                            var job = new BurstJobsQuantizeTensor.QuantizeUint8Job
+                            fixed (void* dataPtr = &data[0])
                             {
-                                src = (float*)constant.weights.RawPtr,
-                                dst = (byte*)(data.rawPtr),
-                                scale = scale,
-                                zeroPoint = zeroPoint
-                            };
-                            var jobHandle = job.Schedule(constant.shape.length, 1024);
-                            jobHandle.Complete();
+                                var job = new BurstJobsQuantizeTensor.QuantizeUint8Job
+                                {
+                                    src = (float*)constant.weights.RawPtr,
+                                    dst = (byte*)(dataPtr),
+                                    scale = scale,
+                                    zeroPoint = zeroPoint
+                                };
+                                var jobHandle = job.Schedule(constant.shape.length, 1024);
+                                jobHandle.Complete();
+                            }
                         }
 
                         var newIndex = model.GetUniqueIndex();
-                        Constant quantizedConstant = new Constant(newIndex, constant.shape, DataType.Byte, data.array);
+                        Constant quantizedConstant = new Constant(newIndex, constant.shape, DataType.Byte, new NativeTensorArrayFromManagedArray(data, 0, sizeof(int), data.Length));
                         model.constants[index] = quantizedConstant;
                         model.layers.Insert(i, new DequantizeUint8(constant.index, newIndex, scale, zeroPoint));
                         i++;

@@ -49,7 +49,7 @@ namespace Unity.Sentis.ONNX
 #if UNITY_EDITOR && UNITY_2023_2_OR_NEWER && ENABLE_CLOUD_SERVICES_ANALYTICS
             var data = new SentisAnalytics.Data()
             {
-                allOperators = model.layers.Select(l => l.profilerTag).Distinct().ToArray(),
+                allOperators = model.layers.Select(l => l.opName).Distinct().ToArray(),
                 importWarningSeverity = Warnings.Select(w => (int)w.MessageSeverity).ToArray(),
                 importWarningMessages = Warnings.Select(w => w.Message).ToArray(),
                 modelLayerCount = model.layers.Count,

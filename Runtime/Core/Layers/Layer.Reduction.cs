@@ -94,7 +94,7 @@ namespace Unity.Sentis.Layers
             var axes = ctx.storage.GetInts(inputs[1], null);
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
             {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as Tensor<float>;
+                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
                 ctx.backend.MemCopy(X, copyX);
                 return;
             }
@@ -107,7 +107,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.ReduceL1(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
-        internal override string profilerTag => "ReduceL1";
+        public override string opName => "ReduceL1";
     }
 
     /// <summary>
@@ -134,7 +134,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.ReduceL2(X, O as Tensor<float>, axes);
         }
 
-        internal override string profilerTag => "ReduceL2";
+        public override string opName => "ReduceL2";
     }
 
     /// <summary>
@@ -161,7 +161,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.ReduceLogSum(X, O as Tensor<float>, axes);
         }
 
-        internal override string profilerTag => "ReduceLogSum";
+        public override string opName => "ReduceLogSum";
     }
 
     /// <summary>
@@ -188,7 +188,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.ReduceLogSumExp(X, O as Tensor<float>, axes);
         }
 
-        internal override string profilerTag => "ReduceLogSumExp";
+        public override string opName => "ReduceLogSumExp";
     }
 
     /// <summary>
@@ -205,7 +205,7 @@ namespace Unity.Sentis.Layers
             var axes = ctx.storage.GetInts(inputs[1], null);
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
             {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as Tensor<float>;
+                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
                 ctx.backend.MemCopy(X, copyX);
                 return;
             }
@@ -218,7 +218,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.ReduceMax(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
-        internal override string profilerTag => "ReduceMax";
+        public override string opName => "ReduceMax";
     }
 
     /// <summary>
@@ -245,7 +245,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.ReduceMean(X, O as Tensor<float>, axes);
         }
 
-        internal override string profilerTag => "ReduceMean";
+        public override string opName => "ReduceMean";
     }
 
     /// <summary>
@@ -262,7 +262,7 @@ namespace Unity.Sentis.Layers
             var axes = ctx.storage.GetInts(inputs[1], null);
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
             {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as Tensor<float>;
+                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
                 ctx.backend.MemCopy(X, copyX);
                 return;
             }
@@ -275,7 +275,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.ReduceMin(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
-        internal override string profilerTag => "ReduceMin";
+        public override string opName => "ReduceMin";
     }
 
     /// <summary>
@@ -292,7 +292,7 @@ namespace Unity.Sentis.Layers
             var axes = ctx.storage.GetInts(inputs[1], null);
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
             {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as Tensor<float>;
+                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
                 ctx.backend.MemCopy(X, copyX);
                 return;
             }
@@ -305,7 +305,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.ReduceProd(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
-        internal override string profilerTag => "ReduceProd";
+        public override string opName => "ReduceProd";
     }
 
     /// <summary>
@@ -322,7 +322,7 @@ namespace Unity.Sentis.Layers
             var axes = ctx.storage.GetInts(inputs[1], null);
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
             {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as Tensor<float>;
+                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
                 ctx.backend.MemCopy(X, copyX);
                 return;
             }
@@ -335,7 +335,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.ReduceSum(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
-        internal override string profilerTag => "ReduceSum";
+        public override string opName => "ReduceSum";
     }
 
     /// <summary>
@@ -352,7 +352,7 @@ namespace Unity.Sentis.Layers
             var axes = ctx.storage.GetInts(inputs[1], null);
             if (noopWithEmptyAxes && (axes == null || axes.Length == 0))
             {
-                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType) as Tensor<float>;
+                var copyX = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, X.dataType, ctx.backend.backendType);
                 ctx.backend.MemCopy(X, copyX);
                 return;
             }
@@ -365,6 +365,6 @@ namespace Unity.Sentis.Layers
                 ctx.backend.ReduceSumSquare(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
-        internal override string profilerTag => "ReduceSumSquare";
+        public override string opName => "ReduceSumSquare";
     }
 }

@@ -1,4 +1,18 @@
-# What's new in Sentis 2.0.0
+# What's new in Sentis 2.1.0
+
+This is a summary of the changes from Sentis 2.0.0 to 2.1.0.
+
+# What's new in Sentis 2.1.0
+
+### Updated
+- Fast activation fusing for MatMul
+- Batched MatMul optimization
+- Faster Upload for CPUTensorData
+
+### Fixed
+- CPU Tensors were not properly disposed.
+- Reshaping of empty tensor
+- Exposed internal fields of TextureTensorData
 
 This is a summary of the changes from Sentis 1.6.0-pre.1 to 2.0.0.
 

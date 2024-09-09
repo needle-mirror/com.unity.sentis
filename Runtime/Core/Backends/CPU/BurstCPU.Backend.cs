@@ -176,8 +176,8 @@ namespace Unity.Sentis
             { // O = broadcast(B)
                 // @TODO: move broadcast B directly into MatrixMultiplyJob
                 var job = new VectorBroadcast1DJob();
-                job.length = B.shape[0];
-                job.repeat = Otmp.shape.length / B.shape[0];
+                job.length = B.shape[-1];
+                job.repeat = Otmp.shape.length / B.shape[-1];
                 job.ScheduleXO(pinB, pinO);
             }
 
@@ -191,6 +191,25 @@ namespace Unity.Sentis
                 ApplyFusedActivation(Otmp, O, fusedActivation);
                 ReleaseTensorFloat(Otmp);
             }
+        }
+
+        /// <inheritdoc/>
+        public void DenseBatched(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Layers.FusableActivation fusedActivation)
+        {
+            // TODO: optimize, move add and relu into sgemm
+            var Otmp = AllocTensorFloat(O.shape);
+            if (fusedActivation == Layers.FusableActivation.Relu)
+            {
+                MatMul(X, W, O);
+                Add(O, B, Otmp);
+                Relu(Otmp, O);
+            }
+            else
+            {
+                MatMul(X, W, Otmp);
+                Add(Otmp, B, O);
+            }
+            ReleaseTensorFloat(Otmp);
         }
 
         void ApplyFusedActivation(Tensor<float> X, Tensor<float> O, Layers.FusableActivation fusedActivation)

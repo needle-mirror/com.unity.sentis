@@ -36,7 +36,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.And(A, B, O);
         }
 
-        internal override string profilerTag => "And";
+        public override string opName => "And";
     }
 
     /// <summary>
@@ -119,7 +119,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, hasAxis: {hasAxis}, axis: {axis}";
         }
 
-        internal override string profilerTag => "Compress";
+        public override string opName => "Compress";
     }
 
     /// <summary>
@@ -145,7 +145,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Equal(A as Tensor<float>, B as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "Equal";
+        public override string opName => "Equal";
     }
 
     /// <summary>
@@ -171,7 +171,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Greater(A as Tensor<float>, B as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "Greater";
+        public override string opName => "Greater";
     }
 
     /// <summary>
@@ -197,7 +197,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.GreaterOrEqual(A as Tensor<float>, B as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "GreaterOrEqual";
+        public override string opName => "GreaterOrEqual";
     }
 
     /// <summary>
@@ -234,7 +234,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, detectNegative: {detectNegative}, detectPositive: {detectPositive}";
         }
 
-        internal override string profilerTag => "IsInf";
+        public override string opName => "IsInf";
     }
 
     /// <summary>
@@ -259,7 +259,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.IsNaN(A, O);
         }
 
-        internal override string profilerTag => "IsNaN";
+        public override string opName => "IsNaN";
     }
 
     /// <summary>
@@ -285,7 +285,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Less(A as Tensor<float>, B as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "Less";
+        public override string opName => "Less";
     }
 
     /// <summary>
@@ -311,7 +311,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.LessOrEqual(A as Tensor<float>, B as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "LessOrEqual";
+        public override string opName => "LessOrEqual";
     }
 
     /// <summary>
@@ -335,7 +335,7 @@ namespace Unity.Sentis.Layers
                 return;
             ctx.backend.Not(A, O);
         }
-        internal override string profilerTag => "Not";
+        public override string opName => "Not";
     }
 
     /// <summary>
@@ -358,7 +358,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Or(A, B, O);
         }
 
-        internal override string profilerTag => "Or";
+        public override string opName => "Or";
     }
 
     /// <summary>
@@ -381,7 +381,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Xor(A, B, O);
         }
 
-        internal override string profilerTag => "Xor";
+        public override string opName => "Xor";
     }
 
     /// <summary>
@@ -410,6 +410,6 @@ namespace Unity.Sentis.Layers
             ctx.backend.Where(C, A, B, O);
         }
 
-        internal override string profilerTag => "Where";
+        public override string opName => "Where";
     }
 }

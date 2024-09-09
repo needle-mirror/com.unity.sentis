@@ -13,7 +13,7 @@ namespace Unity.Sentis
     /// <summary>
     /// Represents an importer for Open Neural Network Exchange (ONNX) files.
     /// </summary>
-    [ScriptedImporter(62, new[] { "onnx" })]
+    [ScriptedImporter(63, new[] { "onnx" })]
     [HelpURL("https://docs.unity3d.com/Packages/com.unity.sentis@latest/index.html")]
     class ONNXModelImporter : ScriptedImporter
     {

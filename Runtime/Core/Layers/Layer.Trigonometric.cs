@@ -19,7 +19,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Acos(X, O);
         }
 
-        internal override string profilerTag => "Acos";
+        public override string opName => "Acos";
     }
 
     /// <summary>
@@ -39,7 +39,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Acosh(X, O);
         }
 
-        internal override string profilerTag => "Acosh";
+        public override string opName => "Acosh";
     }
 
     /// <summary>
@@ -59,7 +59,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Asin(X, O);
         }
 
-        internal override string profilerTag => "Asin";
+        public override string opName => "Asin";
     }
 
     /// <summary>
@@ -79,7 +79,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Asinh(X, O);
         }
 
-        internal override string profilerTag => "Asinh";
+        public override string opName => "Asinh";
     }
 
     /// <summary>
@@ -99,7 +99,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Atan(X, O);
         }
 
-        internal override string profilerTag => "Atan";
+        public override string opName => "Atan";
     }
 
     /// <summary>
@@ -119,7 +119,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Atanh(X, O);
         }
 
-        internal override string profilerTag => "Atanh";
+        public override string opName => "Atanh";
     }
 
     /// <summary>
@@ -139,7 +139,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Cos(X, O);
         }
 
-        internal override string profilerTag => "Cos";
+        public override string opName => "Cos";
     }
 
     /// <summary>
@@ -159,7 +159,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Cosh(X, O);
         }
 
-        internal override string profilerTag => "Cosh";
+        public override string opName => "Cosh";
     }
 
     /// <summary>
@@ -179,7 +179,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Sin(X, O);
         }
 
-        internal override string profilerTag => "Sin";
+        public override string opName => "Sin";
     }
 
     /// <summary>
@@ -199,7 +199,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Sinh(X, O);
         }
 
-        internal override string profilerTag => "Sinh";
+        public override string opName => "Sinh";
     }
 
     /// <summary>
@@ -219,6 +219,6 @@ namespace Unity.Sentis.Layers
             ctx.backend.Tan(X, O);
         }
 
-        internal override string profilerTag => "Tan";
+        public override string opName => "Tan";
     }
 }

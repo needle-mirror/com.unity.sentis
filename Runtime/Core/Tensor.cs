@@ -81,14 +81,6 @@ namespace Unity.Sentis
         internal bool disposed => m_Disposed;
 
         /// <summary>
-        /// Disposes of the tensor and any associated memory.
-        /// </summary>
-        ~Tensor()
-        {
-            Dispose();
-        }
-
-        /// <summary>
         /// Changes the shape of a tensor without changing the backing data.
         ///
         /// The new shape must fit in the allocated backend tensor data, and the data cannot be on the GPUPixel backend.

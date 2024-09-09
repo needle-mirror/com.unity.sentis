@@ -17,7 +17,23 @@ namespace Unity.Sentis
 {
     partial class CPUBackend
     {
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        internal unsafe struct CopyJob<T> : IJob, IJobResourceDeclarationXO where T : unmanaged
+        {
+            public ReadOnlyMemResource X { get; set; } byte* Xptr => (byte*)X.ptr;
+            public ReadWriteMemResource O { get; set; } byte* Optr => (byte*)O.ptr;
+            public int length;
+            public int srcIndex;
+            public int dstIndex;
+
+            public void Execute()
+            {
+                UnsafeUtility.MemCpy(Optr + dstIndex * sizeof(int),
+                                     Xptr + srcIndex * sizeof(T),
+                                     length * sizeof(T));
+            }
+        }
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct CopyJob : IJob, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; } uint* Xptr => (uint*)X.ptr;
@@ -32,7 +48,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct CopyStrideJob : IJobParallelFor, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -49,7 +65,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct ClearJob : IJob, IJobResourceDeclarationO
         {
             public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
@@ -62,7 +78,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct SetJob : IJobParallelFor, IJobResourceDeclarationO
         {
             public ReadWriteMemResource O { get; set; } int* Optr => (int*)O.ptr;
@@ -87,7 +103,7 @@ namespace Unity.Sentis
             return Mathematics.Random.CreateFromIndex(index != uint.MaxValue ? index : 2147483647u);
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct RandomNormalJob : IJobParallelFor, IJobResourceDeclarationO
         {
             public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
@@ -109,7 +125,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct RandomUniformJob : IJobParallelFor, IJobResourceDeclarationO
         {
             public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
@@ -124,7 +140,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct BernoulliJob : IJobParallelFor, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -142,7 +158,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct TopPJob : IJobParallelFor, IJobResourceDeclarationXBO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -170,7 +186,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct IsInfJob : IJobParallelFor, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -185,7 +201,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct GatherJob : IParallelForBatch, IJobResourceDeclarationXBO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -235,7 +251,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct GatherNDJob :  IJobParallelFor, IJobResourceDeclarationXBO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -283,7 +299,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct SliceJob : IParallelForBatch, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -332,7 +348,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct SliceSetJob : IParallelForBatch, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -381,7 +397,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct HardmaxJob : IParallelForBatch, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -447,7 +463,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct TransposeJob : IParallelForBatch, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -485,7 +501,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct TrilJob : IJobParallelFor, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -506,7 +522,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct TriuJob : IJobParallelFor, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -527,7 +543,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct OneHotJob : IJobParallelFor, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -558,7 +574,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct ResizeLinearInitTablesJob : IJob, IJobResourceDeclarationO
         {
             public ReadWriteMemResource O { get; set; }
@@ -605,7 +621,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct ResizeLinearJob : IParallelForBatch, IJobResourceDeclarationXBO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -899,7 +915,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct ResizeNearestInitTablesJob : IJob, IJobResourceDeclarationO
         {
             public ReadWriteMemResource O { get; set; }
@@ -950,7 +966,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct ResizeNearestJob : IParallelForBatch, IJobResourceDeclarationXBO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -1106,7 +1122,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct UpsampleNearest2DJob : IParallelForBatch, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -1216,7 +1232,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct GridSample2DJob : IParallelForBatch, IJobResourceDeclarationXBO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -1413,7 +1429,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct GridSample3DJob : IParallelForBatch, IJobResourceDeclarationXBO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -1627,7 +1643,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct ConvTransposeJob : IJobParallelFor, IJobResourceDeclarationXBO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -1739,7 +1755,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct ScatterNDFloatJob : IJobParallelFor, IJobResourceDeclarationXSBO
         {
             public Layers.ScatterReductionMode reduction;
@@ -1772,7 +1788,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct ScatterNDIntJob : IJobParallelFor, IJobResourceDeclarationXSBO
         {
             public Layers.ScatterReductionMode reduction;
@@ -1805,7 +1821,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct TopKJob : IJobParallelFor
         {
             [NoAlias][NativeDisableUnsafePtrRestriction][Collections.ReadOnly] public float* Xptr;
@@ -1876,7 +1892,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         internal unsafe struct CastHalfToFloatJob : IJobParallelFor, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; } ushort* Xptr => (ushort*)X.ptr;
@@ -1892,7 +1908,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         internal unsafe struct DequantizeUint8Job : IJobParallelFor, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; } byte* Xptr => (byte*)X.ptr;
@@ -1906,7 +1922,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct NMSBitmaskJob : IParallelForBatch, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -2077,7 +2093,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct NMSSortSelectJob : IJobParallelFor, IJobResourceDeclarationXSBO
         {
             public ReadOnlyMemResource X { get; set; } bool* Xptr => (bool*)X.ptr;
@@ -2134,7 +2150,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct NMSCompactJob : IJob, IJobResourceDeclarationXO
         {
             public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;

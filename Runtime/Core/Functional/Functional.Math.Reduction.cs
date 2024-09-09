@@ -197,5 +197,32 @@ namespace Unity.Sentis
         {
             return ReduceSum(input, new[] { dim }, keepdim);
         }
+
+        /// <summary>
+        /// Returns the sum of the square of the elements of the input tensor along the dimensions.
+        /// </summary>
+        /// <param name="input">The input tensor.</param>
+        /// <param name="dim">The dimensions to reduce.</param>
+        /// <param name="keepdim">Whether to keep the reduced dimensions in the output.</param>
+        /// <returns>The output tensor.</returns>
+        public static FunctionalTensor ReduceSumSquare(FunctionalTensor input, int[] dim, bool keepdim = false)
+        {
+            var output = FromLayer(new Layers.ReduceSumSquare(-1, -1, -1, keepdim), input.dataType, new[] { input, Constant(dim) });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape.Reduce(dim, keepdim));
+            return output;
+        }
+
+        /// <summary>
+        /// Returns the sum of the square of the elements of the input tensor along the dimensions.
+        /// </summary>
+        /// <param name="input">The input tensor.</param>
+        /// <param name="dim">The dimension to reduce.</param>
+        /// <param name="keepdim">Whether to keep the reduced dimension in the output.</param>
+        /// <returns>The output tensor.</returns>
+        public static FunctionalTensor ReduceSumSquare(FunctionalTensor input, int dim, bool keepdim = false)
+        {
+            return ReduceSumSquare(input, new[] { dim }, keepdim);
+        }
     }
 }

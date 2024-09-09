@@ -18,7 +18,7 @@ using static Unity.Mathematics.math;
 namespace Unity.Sentis {
 partial class CPUBackend
 {
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct RoiAlignJob : IParallelForBatch, IJobResourceDeclarationXSBO
     {
         public float spatialScale;

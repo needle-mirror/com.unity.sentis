@@ -109,7 +109,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.AveragePool(X, O, kernelShape, strides, pads);
         }
 
-        internal override string profilerTag => "AveragePool";
+        public override string opName => "AveragePool";
     }
 
     /// <summary>
@@ -129,7 +129,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.GlobalAveragePool(X, O);
         }
 
-        internal override string profilerTag => "GlobalAveragePool";
+        public override string opName => "GlobalAveragePool";
     }
 
     /// <summary>
@@ -149,7 +149,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.GlobalMaxPool(X, O);
         }
 
-        internal override string profilerTag => "GlobalMaxPool";
+        public override string opName => "GlobalMaxPool";
     }
 
     /// <summary>
@@ -170,6 +170,6 @@ namespace Unity.Sentis.Layers
             ctx.backend.MaxPool(X, O, kernelShape, strides, pads);
         }
 
-        internal override string profilerTag => "MaxPool";
+        public override string opName => "MaxPool";
     }
 }

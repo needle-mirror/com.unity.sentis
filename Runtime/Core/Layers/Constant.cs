@@ -24,24 +24,28 @@ namespace Unity.Sentis
         /// </summary>
         public DataType dataType;
         /// <summary>
-        /// The elements of the constant as a `NativeTensorArray`.
+        /// The elements of the constant as a `NativeTensorArrayFromManagedArray`.
         /// </summary>
-        public NativeTensorArray weights;
+        public NativeTensorArray weights {
+            get { return m_Weights; }
+            [Obsolete("Setting constant weights has been deprecated", false)]
+            set
+            {
+                if (value == null || value is NativeTensorArrayFromManagedArray)
+                    m_Weights = (value as NativeTensorArrayFromManagedArray);
+                else
+                    throw new NotImplementedException($"Cannot assign weights to constant, must be of type NativeTensorArrayFromManagedArray");
+            }
+        }
+        internal NativeTensorArrayFromManagedArray m_Weights;
 
-        /// <summary>
-        /// Initializes and returns a vector `Constant` from a given index, shape and `NativeTensorArray` array.
-        /// </summary>
-        /// <param name="index">The index to use for the constant.</param>
-        /// <param name="shape">The shape to use for the constant.</param>
-        /// <param name="dataType">The dataType to use for the constant.</param>
-        /// <param name="array">The array of values.</param>
-        public Constant(int index, TensorShape shape, DataType dataType, NativeTensorArray array)
+        internal Constant(int index, TensorShape shape, DataType dataType, NativeTensorArrayFromManagedArray array)
         {
             this.index = index;
             this.shape = shape;
             this.lengthBytes = array.Length * sizeof(float);
             this.dataType = dataType;
-            this.weights = array;
+            this.m_Weights = array;
         }
 
         internal Constant(int index, TensorShape shape, DataType dataType, int lengthBytes)
@@ -50,6 +54,15 @@ namespace Unity.Sentis
             this.shape = shape;
             this.lengthBytes = lengthBytes;
             this.dataType = dataType;
+        }
+
+        internal Constant(int index, TensorShape shape, DataType dataType, NativeTensorArray array)
+        {
+            this.index = index;
+            this.shape = shape;
+            this.lengthBytes = array.Length * sizeof(float);
+            this.dataType = dataType;
+            this.m_Weights = new NativeTensorArrayFromManagedArray(array.ToArray<float>(array.Length), 0, sizeof(float), array.Length);
         }
 
         /// <summary>
@@ -66,8 +79,7 @@ namespace Unity.Sentis
             this.dataType = DataType.Float;
             if (value.Length == 0)
                 return;
-            weights = new NativeTensorArray(value.Length);
-            NativeTensorArray.Copy(value, 0, weights, 0, value.Length);
+            m_Weights = new NativeTensorArrayFromManagedArray(value, 0, sizeof(float), value.Length);
         }
 
         /// <summary>
@@ -84,10 +96,10 @@ namespace Unity.Sentis
             this.dataType = DataType.Int;
             if (value.Length == 0)
                 return;
-            weights = new NativeTensorArray(value.Length);
-            NativeTensorArray.Copy(value, 0, weights, 0, value.Length);
+            m_Weights = new NativeTensorArrayFromManagedArray(value, 0, sizeof(int), value.Length);
         }
 
+        // TODO remove
         internal static Constant AllocNoData(int index, DataType dataType, TensorShape shape)
         {
             switch (dataType)
@@ -172,19 +184,18 @@ namespace Unity.Sentis
             this.dataType = X.dataType;
             if (X.shape.HasZeroDims())
                 return;
-            weights = new NativeTensorArray(X.shape.length);
             switch (dataType)
             {
                 case DataType.Float:
                 {
                     this.lengthBytes = shape.length * sizeof(float);
-                    NativeTensorArray.Copy(X.AsReadOnlyNativeArray<float>(), 0, weights, 0, shape.length);
+                    m_Weights = new NativeTensorArrayFromManagedArray(X.AsReadOnlyNativeArray<float>().ToArray(), 0, sizeof(float), X.count);
                     break;
                 }
                 case DataType.Int:
                 {
-                    this.lengthBytes = shape.length * sizeof(float);
-                    NativeTensorArray.Copy(X.AsReadOnlyNativeArray<int>(), 0, weights, 0, shape.length);
+                    this.lengthBytes = shape.length * sizeof(int);
+                    m_Weights = new NativeTensorArrayFromManagedArray(X.AsReadOnlyNativeArray<int>().ToArray(), 0, sizeof(int), X.count);
                     break;
                 }
                 default:

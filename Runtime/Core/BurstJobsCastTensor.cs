@@ -9,7 +9,7 @@ namespace Unity.Sentis
 {
     static class BurstJobsCastTensor
     {
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         public unsafe struct DoubleBytesAsFloatJob : IJobParallelFor
         {
             [NoAlias][NativeDisableUnsafePtrRestriction] [ReadOnly] public long* src;
@@ -22,7 +22,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         public unsafe struct Float16BytesAsFloatJob : IJobParallelFor
         {
             [NoAlias][NativeDisableUnsafePtrRestriction] [ReadOnly] public ushort* src;
@@ -34,8 +34,8 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
-        public unsafe struct LongBytesAsFloatJob : IJobParallelFor
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        public unsafe struct LongBytesAsIntJob : IJobParallelFor
         {
             [NoAlias][NativeDisableUnsafePtrRestriction] [ReadOnly] public long* src;
             [NoAlias][NativeDisableUnsafePtrRestriction]            public int* dst;
@@ -47,8 +47,8 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
-        public unsafe struct BoolBytesAsFloatJob : IJobParallelFor
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        public unsafe struct BoolBytesAsIntJob : IJobParallelFor
         {
             [NoAlias][NativeDisableUnsafePtrRestriction] [ReadOnly] public bool* src;
             [NoAlias][NativeDisableUnsafePtrRestriction]            public int* dst;
@@ -60,8 +60,8 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
-        public unsafe struct Uint8BytesAsFloatJob : IJobParallelFor
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        public unsafe struct Uint8BytesAsIntJob : IJobParallelFor
         {
             [NoAlias][NativeDisableUnsafePtrRestriction] [ReadOnly] public byte* src;
             [NoAlias][NativeDisableUnsafePtrRestriction]            public int* dst;
@@ -73,8 +73,8 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
-        public unsafe struct Int8BytesAsFloatJob : IJobParallelFor
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        public unsafe struct Int8BytesAsIntJob : IJobParallelFor
         {
             [NoAlias] [NativeDisableUnsafePtrRestriction] [ReadOnly] public sbyte* src;
             [NoAlias] [NativeDisableUnsafePtrRestriction]            public int* dst;

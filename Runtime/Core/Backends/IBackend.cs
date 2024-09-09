@@ -30,8 +30,11 @@ namespace Unity.Sentis
 
         /// <summary>
         /// Performs a matrix multiplication operation: f(x, w, b) = X x W + B.
-        ///
-        /// This supports numpy-style broadcasting of input tensors.
+        /// input tensor must be of shape
+        /// B : (N)
+        /// W : (K, N)
+        /// X : (..B.. M, K)
+        /// O : (..B.., M, N)
         /// </summary>
         /// <param name="X">The input tensor.</param>
         /// <param name="W">The weights tensor.</param>
@@ -39,6 +42,21 @@ namespace Unity.Sentis
         /// <param name="O">The output tensor to be computed and filled.</param>
         /// <param name="fusedActivation">The fused activation to apply to the output tensor after the dense operation.</param>
         void Dense(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Layers.FusableActivation fusedActivation);
+
+        /// <summary>
+        /// Performs a batched-matrix multiplication operation: f(x, w, b) = X x W + B.
+        /// input tensor must be of shape
+        /// B : (..B.., N)
+        /// W : (..B..,K, N)
+        /// X : (..B.., M, N)
+        /// O : (..B.., M, N)
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="W">The weights tensor.</param>
+        /// <param name="B">The bias tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="fusedActivation">The fused activation to apply to the output tensor after the dense operation.</param>
+        void DenseBatched(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Layers.FusableActivation fusedActivation);
 
         /// <summary>
         /// Computes the output tensor by retaining the lower triangular values from an input matrix or matrix batch and setting the other values to zero.

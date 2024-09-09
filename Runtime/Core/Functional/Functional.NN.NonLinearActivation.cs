@@ -264,6 +264,26 @@ namespace Unity.Sentis
         }
 
         /// <summary>
+        /// Returns the result of computing Layer Normalization over a mini-batch of inputs.
+        /// see paper: https://arxiv.org/abs/1607.06450
+        /// </summary>
+        /// <param name="input">The input tensor.</param>
+        /// <param name="weight">The weight tensor.</param>
+        /// <param name="bias">The bias tensor.</param>
+        /// <param name="eps">The epsilon value used to avoid division by zero.</param>
+        /// <returns>The output tensor.</returns>
+        public static FunctionalTensor LayerNorm(FunctionalTensor input, FunctionalTensor weight, FunctionalTensor bias, float eps = 1e-5f)
+        {
+            input = input.Float();
+            weight = weight.Float();
+            bias = bias.Float();
+            var output = FromLayer(new Layers.LayerNormalization(-1, -1, -1, -1, eps), DataType.Float, new[] { input, weight, bias });
+            if (input.isShapeKnown)
+                output.SetShape(input.shape);
+            return output;
+        }
+
+        /// <summary>
         /// Returns the result of normalizing the input tensor over local input regions.
         /// </summary>
         /// <param name="input">The input tensor.</param>

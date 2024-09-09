@@ -44,7 +44,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, alpha: {alpha}";
         }
 
-        internal override string profilerTag => "Celu";
+        public override string opName => "Celu";
     }
 
     /// <summary>
@@ -74,7 +74,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, alpha: {alpha}";
         }
 
-        internal override string profilerTag => "Elu";
+        public override string opName => "Elu";
     }
 
     /// <summary>
@@ -94,7 +94,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Gelu(X, O);
         }
 
-        internal override string profilerTag => "Gelu";
+        public override string opName => "Gelu";
     }
 
     class GeluFast : Activation
@@ -111,7 +111,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.GeluFast(X, O);
         }
 
-        internal override string profilerTag => "GeluFast";
+        public override string opName => "GeluFast";
     }
 
     /// <summary>
@@ -131,7 +131,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Erf(X as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "Erf";
+        public override string opName => "Erf";
     }
 
     /// <summary>
@@ -161,7 +161,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}";
         }
 
-        internal override string profilerTag => "Hardmax";
+        public override string opName => "Hardmax";
     }
 
     /// <summary>
@@ -193,7 +193,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, alpha: {alpha}, beta: {beta}";
         }
 
-        internal override string profilerTag => "HardSigmoid";
+        public override string opName => "HardSigmoid";
     }
 
     /// <summary>
@@ -213,7 +213,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.HardSwish(X, O);
         }
 
-        internal override string profilerTag => "HardSwish";
+        public override string opName => "HardSwish";
     }
 
     /// <summary>
@@ -243,7 +243,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, alpha: {alpha}";
         }
 
-        internal override string profilerTag => "LeakyRelu";
+        public override string opName => "LeakyRelu";
     }
 
     /// <summary>
@@ -298,7 +298,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.PRelu(X as Tensor<float>, slope as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "PRelu";
+        public override string opName => "PRelu";
     }
 
     /// <summary>
@@ -318,7 +318,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Relu(X as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "Relu";
+        public override string opName => "Relu";
     }
 
     /// <summary>
@@ -338,7 +338,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Relu6(X, O);
         }
 
-        internal override string profilerTag => "Relu6";
+        public override string opName => "Relu6";
     }
 
     /// <summary>
@@ -370,7 +370,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, alpha: {alpha}, gamma: {gamma}";
         }
 
-        internal override string profilerTag => "Selu";
+        public override string opName => "Selu";
     }
 
     /// <summary>
@@ -390,7 +390,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Sigmoid(X as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "Sigmoid";
+        public override string opName => "Sigmoid";
     }
 
     /// <summary>
@@ -410,7 +410,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Softplus(X as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "Softplus";
+        public override string opName => "Softplus";
     }
 
     /// <summary>
@@ -430,7 +430,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Softsign(X as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "Softsign";
+        public override string opName => "Softsign";
     }
 
     /// <summary>
@@ -450,7 +450,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Swish(X as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "Swish";
+        public override string opName => "Swish";
     }
 
     /// <summary>
@@ -470,7 +470,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Tanh(X as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "Tanh";
+        public override string opName => "Tanh";
     }
 
     /// <summary>
@@ -500,6 +500,6 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, alpha: {alpha}";
         }
 
-        internal override string profilerTag => "ThresholdedRelu";
+        public override string opName => "ThresholdedRelu";
     }
 }

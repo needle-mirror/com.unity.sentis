@@ -2,9 +2,11 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using UnityEngine;
 using UnityEngine.Assertions;
+using static Unity.Sentis.CPUBackend;
 
 namespace Unity.Sentis
 {
@@ -45,6 +47,7 @@ namespace Unity.Sentis
     /// </summary>
     public class CPUTensorData : ITensorData, IDependableMemoryResource, IConvertibleToComputeTensorData
     {
+        bool m_IsDisposed;
         JobHandle m_ReadFence;
         JobHandle m_WriteFence;
         NativeTensorArray m_Array;
@@ -75,6 +78,7 @@ namespace Unity.Sentis
         /// <param name="clearOnInit">Whether to zero the data on allocation. The default value is `false`.</param>
         public CPUTensorData(int count, bool clearOnInit = false)
         {
+            m_IsDisposed = false;
             m_Count = count;
             if (m_Count == 0)
                 return;
@@ -87,6 +91,7 @@ namespace Unity.Sentis
         /// <param name="data">The elements of the tensor data as a `NativeTensorArray`.</param>
         public CPUTensorData(NativeTensorArray data)
         {
+            m_IsDisposed = false;
             if (data == null)
             {
                 m_Count = 0; m_Array = null;
@@ -101,8 +106,12 @@ namespace Unity.Sentis
         /// </summary>
         ~CPUTensorData()
         {
-            if (!m_SafeToDispose)
-                D.LogWarning($"Found unreferenced, but undisposed CPUTensorData that potentially participates in an unfinished job and might lead to hazardous memory overwrites");
+            if (m_Array == null || m_Array is NativeTensorArrayFromManagedArray)
+                return;
+            if (m_IsDisposed)
+                return;
+
+            D.LogWarning($"Found unreferenced, but undisposed CPUTensorData which might lead to CPU resource leak");
         }
 
         /// <summary>
@@ -110,9 +119,16 @@ namespace Unity.Sentis
         /// </summary>
         public void Dispose()
         {
-            // It isn't safe to Complete jobs from a finalizer thread, so
-            if (Thread.CurrentThread == CPUBackend.MainThread)
+            if (!m_SafeToDispose)
                 CompleteAllPendingOperations();
+
+            if (!m_IsDisposed)
+            {
+                m_Array?.Dispose();
+                m_Array = null;
+            }
+
+            m_IsDisposed = true;
         }
 
         /// <inheritdoc/>
@@ -126,8 +142,16 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public void Upload<T>(NativeArray<T> data, int srcCount) where T : unmanaged
         {
-            CompleteAllPendingOperations();
-            NativeTensorArray.Copy(data, 0, m_Array, 0, srcCount);
+            var job = new CopyJob<T>();
+            job.srcIndex = 0;
+            job.dstIndex = 0;
+            job.length = srcCount;
+            unsafe
+            {
+                job.X = new ReadOnlyMemResource() { ptr = data.GetUnsafeReadOnlyPtr<T>() };
+                job.O = new ReadWriteMemResource() { ptr = m_Array.RawPtr };
+            }
+            this.fence = job.Schedule(this.reuse);
         }
 
         /// <inheritdoc/>

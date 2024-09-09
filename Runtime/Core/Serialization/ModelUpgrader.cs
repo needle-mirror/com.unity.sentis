@@ -305,10 +305,17 @@ namespace Unity.Sentis
             }
         }
 
+        static bool UpgradeChainV2toV3(Chain chain, FlatBufferBuilder builder, List<string> operators, List<Offset<Chain>> chainsOffsets, List<Offset<EValue>> valuesOffsets)
+        {
+            return false;
+        }
+
         public static Program Upgrade(Program program)
         {
             if (program.Version == 1)
                 program = UpgradeFlatbuffer(program, 2, UpgradeChainV1toV2);
+            if (program.Version == 2)
+                program = UpgradeFlatbuffer(program, 3, UpgradeChainV2toV3);
 
             return program;
         }

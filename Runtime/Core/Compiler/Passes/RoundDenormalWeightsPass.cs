@@ -6,7 +6,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
 {
     class RoundDenormalWeightsPass : IModelPass
     {
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         internal unsafe struct RoundDenormalJob : IJobParallelFor
         {
             [NoAlias] [NativeDisableUnsafePtrRestriction] public uint* ptr;

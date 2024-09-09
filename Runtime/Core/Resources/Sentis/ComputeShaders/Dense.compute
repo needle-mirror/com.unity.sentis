@@ -6,9 +6,14 @@
 
 #pragma kernel GemmBatched_T16x16_R4x4 GEMM SUFFIX=GemmBatched_T16x16_R BLOCK_SIZE=4 KERNEL_PER_TG=256 BATCH
 #pragma kernel GemmBatched_T8x8_R4x4 GEMM SUFFIX=GemmBatched_T8x8_R BLOCK_SIZE=4 KERNEL_PER_TG=64 BATCH
+#pragma kernel DenseBatched_T16x16_R4x4 DENSE SUFFIX=DenseBatched_T16x16_R BLOCK_SIZE=4 KERNEL_PER_TG=256 BATCH
+#pragma kernel DenseBatched_T8x8_R4x4 DENSE SUFFIX=DenseBatched_T8x8_R BLOCK_SIZE=4 KERNEL_PER_TG=64 BATCH
 
 #pragma kernel Dense_V_L1Cached64 DENSE  SUFFIX=Dense_V_L1Cached64
 #pragma kernel Gemm_V_L1Cached64 GEMM  SUFFIX=Gemm_V_L1Cached64
+#pragma kernel GemmBatched_V_L1Cached64 GEMM BATCH SUFFIX=GemmBatched_V_L1Cached64
+#pragma kernel DenseBatched_V_L1Cached64 DENSE BATCH SUFFIX=DenseBatched_V_L1Cached64
+
 
 float ffma(float a, float b, float c) { return dot(float2(a, c), float2(b, 1)); } //return a*b+c;} //fastfma(a,b,c); }
 
@@ -29,6 +34,12 @@ uint W_width;
 uint maxXIndex;
 uint maxWIndex;
 uint maxBIndex;
+float _MinValue;
+
+inline float ApplyFusedActivation(float v)
+{
+    return max(v, _MinValue);
+}
 
 #define KERNEL_NAME SUFFIX
 #if BLOCK_SIZE == 4
@@ -61,17 +72,22 @@ void FUNC_NAME(KERNEL_NAME, BLOCK_SIZE)(uint3 dispatchThreadID : SV_DispatchThre
     float4 dstA[4];
     dstA[0] = 0.0f; dstA[1] = 0.0f; dstA[2] = 0.0f; dstA[3] = 0.0f;
 
+    uint readB = x;
+#ifdef BATCH
+    readB += dispatchThreadID.z * strideO;
+#endif
+
     #ifdef DENSE
     #if defined(SHADER_API_MOBILE)
-    dstA[0].x = Bptr[min(x + 0, maxBIndex)];
-    dstA[0].y = Bptr[min(x + 1, maxBIndex)];
-    dstA[0].z = Bptr[min(x + 2, maxBIndex)];
-    dstA[0].w = Bptr[min(x + 3, maxBIndex)];
+    dstA[0].x = Bptr[min(readB + 0, maxBIndex)];
+    dstA[0].y = Bptr[min(readB + 1, maxBIndex)];
+    dstA[0].z = Bptr[min(readB + 2, maxBIndex)];
+    dstA[0].w = Bptr[min(readB + 3, maxBIndex)];
     #else
-    dstA[0].x = x + 0 < strideO ? Bptr[x + 0] : 0.0f;
-    dstA[0].y = x + 1 < strideO ? Bptr[x + 1] : 0.0f;
-    dstA[0].z = x + 2 < strideO ? Bptr[x + 2] : 0.0f;
-    dstA[0].w = x + 3 < strideO ? Bptr[x + 3] : 0.0f;
+    dstA[0].x = x + 0 < strideO ? Bptr[readB + 0] : 0.0f;
+    dstA[0].y = x + 1 < strideO ? Bptr[readB + 1] : 0.0f;
+    dstA[0].z = x + 2 < strideO ? Bptr[readB + 2] : 0.0f;
+    dstA[0].w = x + 3 < strideO ? Bptr[readB + 3] : 0.0f;
     #endif
     dstA[1] = dstA[0];
     dstA[2] = dstA[0];
@@ -169,7 +185,7 @@ void FUNC_NAME(KERNEL_NAME, BLOCK_SIZE)(uint3 dispatchThreadID : SV_DispatchThre
     [unroll] for (uint sy = 0; sy < 4 && y+sy < m; ++sy)
         [unroll] for (uint sx = 0; sx < 4 && x+sx < strideO; ++sx)
             {
-                Optr[writeO + strideO * (y + sy) + x + sx] = dstA[sy][sx];
+                Optr[writeO + strideO * (y + sy) + x + sx] = ApplyFusedActivation(dstA[sy][sx]);
             }
 
     #undef X_
@@ -210,17 +226,22 @@ void FUNC_NAME(KERNEL_NAME, BLOCK_SIZE)(uint3 dispatchThreadID : SV_DispatchThre
     float4 dstA2 = 0.0f;
     float4 dstA3 = 0.0f;
 
+    uint readB = x;
+#ifdef BATCH
+    readB += dispatchThreadID.z * strideO;
+#endif
+
     #ifdef DENSE
     #if defined(SHADER_API_MOBILE)
-    dstA0.x = Bptr[min(x + 0, maxBIndex)];
-    dstA0.y = Bptr[min(x + 1, maxBIndex)];
-    dstA0.z = Bptr[min(x + 2, maxBIndex)];
-    dstA0.w = Bptr[min(x + 3, maxBIndex)];
+    dstA0.x = Bptr[min(readB + 0, maxBIndex)];
+    dstA0.y = Bptr[min(readB + 1, maxBIndex)];
+    dstA0.z = Bptr[min(readB + 2, maxBIndex)];
+    dstA0.w = Bptr[min(readB + 3, maxBIndex)];
     #else
-    dstA0.x = x + 0 < strideO ? Bptr[x + 0] : 0.0f;
-    dstA0.y = x + 1 < strideO ? Bptr[x + 1] : 0.0f;
-    dstA0.z = x + 2 < strideO ? Bptr[x + 2] : 0.0f;
-    dstA0.w = x + 3 < strideO ? Bptr[x + 3] : 0.0f;
+    dstA0.x = x + 0 < strideO ? Bptr[readB + 0] : 0.0f;
+    dstA0.y = x + 1 < strideO ? Bptr[readB + 1] : 0.0f;
+    dstA0.z = x + 2 < strideO ? Bptr[readB + 2] : 0.0f;
+    dstA0.w = x + 3 < strideO ? Bptr[readB + 3] : 0.0f;
     #endif
     dstA1 = dstA0;
     dstA2 = dstA0;
@@ -312,40 +333,40 @@ void FUNC_NAME(KERNEL_NAME, BLOCK_SIZE)(uint3 dispatchThreadID : SV_DispatchThre
     #endif
 
     if (((y + 0) < m) && ((x + 0) < strideO))
-        Optr[writeO + strideO * (y + 0) + x + 0] = dstA0.x;
+        Optr[writeO + strideO * (y + 0) + x + 0] = ApplyFusedActivation(dstA0.x);
     if (((y + 0) < m) && ((x + 1) < strideO))
-        Optr[writeO + strideO * (y + 0) + x + 1] = dstA0.y;
+        Optr[writeO + strideO * (y + 0) + x + 1] = ApplyFusedActivation(dstA0.y);
     if (((y + 0) < m) && ((x + 2) < strideO))
-        Optr[writeO + strideO * (y + 0) + x + 2] = dstA0.z;
+        Optr[writeO + strideO * (y + 0) + x + 2] = ApplyFusedActivation(dstA0.z);
     if (((y + 0) < m) && ((x + 3) < strideO))
-        Optr[writeO + strideO * (y + 0) + x + 3] = dstA0.w;
+        Optr[writeO + strideO * (y + 0) + x + 3] = ApplyFusedActivation(dstA0.w);
 
     if (((y + 1) < m) && ((x + 0) < strideO))
-        Optr[writeO + strideO * (y + 1) + x + 0] = dstA1.x;
+        Optr[writeO + strideO * (y + 1) + x + 0] = ApplyFusedActivation(dstA1.x);
     if (((y + 1) < m) && ((x + 1) < strideO))
-        Optr[writeO + strideO * (y + 1) + x + 1] = dstA1.y;
+        Optr[writeO + strideO * (y + 1) + x + 1] = ApplyFusedActivation(dstA1.y);
     if (((y + 1) < m) && ((x + 2) < strideO))
-        Optr[writeO + strideO * (y + 1) + x + 2] = dstA1.z;
+        Optr[writeO + strideO * (y + 1) + x + 2] = ApplyFusedActivation(dstA1.z);
     if (((y + 1) < m) && ((x + 3) < strideO))
-        Optr[writeO + strideO * (y + 1) + x + 3] = dstA1.w;
+        Optr[writeO + strideO * (y + 1) + x + 3] = ApplyFusedActivation(dstA1.w);
 
     if (((y + 2) < m) && ((x + 0) < strideO))
-        Optr[writeO + strideO * (y + 2) + x + 0] = dstA2.x;
+        Optr[writeO + strideO * (y + 2) + x + 0] = ApplyFusedActivation(dstA2.x);
     if (((y + 2) < m) && ((x + 1) < strideO))
-        Optr[writeO + strideO * (y + 2) + x + 1] = dstA2.y;
+        Optr[writeO + strideO * (y + 2) + x + 1] = ApplyFusedActivation(dstA2.y);
     if (((y + 2) < m) && ((x + 2) < strideO))
-        Optr[writeO + strideO * (y + 2) + x + 2] = dstA2.z;
+        Optr[writeO + strideO * (y + 2) + x + 2] = ApplyFusedActivation(dstA2.z);
     if (((y + 2) < m) && ((x + 3) < strideO))
-        Optr[writeO + strideO * (y + 2) + x + 3] = dstA2.w;
+        Optr[writeO + strideO * (y + 2) + x + 3] = ApplyFusedActivation(dstA2.w);
 
     if (((y + 3) < m) && ((x + 0) < strideO))
-        Optr[writeO + strideO * (y + 3) + x + 0] = dstA3.x;
+        Optr[writeO + strideO * (y + 3) + x + 0] = ApplyFusedActivation(dstA3.x);
     if (((y + 3) < m) && ((x + 1) < strideO))
-        Optr[writeO + strideO * (y + 3) + x + 1] = dstA3.y;
+        Optr[writeO + strideO * (y + 3) + x + 1] = ApplyFusedActivation(dstA3.y);
     if (((y + 3) < m) && ((x + 2) < strideO))
-        Optr[writeO + strideO * (y + 3) + x + 2] = dstA3.z;
+        Optr[writeO + strideO * (y + 3) + x + 2] = ApplyFusedActivation(dstA3.z);
     if (((y + 3) < m) && ((x + 3) < strideO))
-        Optr[writeO + strideO * (y + 3) + x + 3] = dstA3.w;
+        Optr[writeO + strideO * (y + 3) + x + 3] = ApplyFusedActivation(dstA3.w);
 
 #undef X_
 #undef W_
@@ -375,31 +396,39 @@ void KERNEL_NAME(uint3 groupID : SV_GroupID, uint threadIndex : SV_GroupIndex, u
 
     uint bx = 4 * CACHESIZE * groupID.x + ti;
 
+    uint readB = bx;
+#ifdef BATCH
+    readB += groupID.y * O_width;
+#endif
+
     float4 dstO = 0;
     #ifdef DENSE
     #if defined(SHADER_API_MOBILE)
-    dstO.x = Bptr[min(CACHESIZE*0 + bx, maxBIndex)];
-    dstO.y = Bptr[min(CACHESIZE*1 + bx, maxBIndex)];
-    dstO.z = Bptr[min(CACHESIZE*2 + bx, maxBIndex)];
-    dstO.w = Bptr[min(CACHESIZE*3 + bx, maxBIndex)];
+    dstO.x = Bptr[min(CACHESIZE*0 + readB, maxBIndex)];
+    dstO.y = Bptr[min(CACHESIZE*1 + readB, maxBIndex)];
+    dstO.z = Bptr[min(CACHESIZE*2 + readB, maxBIndex)];
+    dstO.w = Bptr[min(CACHESIZE*3 + readB, maxBIndex)];
     #else
-    dstO.x = CACHESIZE*0 + bx < O_width ? Bptr[CACHESIZE*0 + bx] : 0.0;
-    dstO.y = CACHESIZE*1 + bx < O_width ? Bptr[CACHESIZE*1 + bx] : 0.0;
-    dstO.z = CACHESIZE*2 + bx < O_width ? Bptr[CACHESIZE*2 + bx] : 0.0;
-    dstO.w = CACHESIZE*3 + bx < O_width ? Bptr[CACHESIZE*3 + bx] : 0.0;
+    dstO.x = CACHESIZE*0 + bx < O_width ? Bptr[CACHESIZE*0 + readB] : 0.0;
+    dstO.y = CACHESIZE*1 + bx < O_width ? Bptr[CACHESIZE*1 + readB] : 0.0;
+    dstO.z = CACHESIZE*2 + bx < O_width ? Bptr[CACHESIZE*2 + readB] : 0.0;
+    dstO.w = CACHESIZE*3 + bx < O_width ? Bptr[CACHESIZE*3 + readB] : 0.0;
     #endif
     #endif
-
 
     // loop over X columns (flatWidth) and W rows (height) in CACHESIZE steps
     for (uint i = 0; i < X_width; i += CACHESIZE)
     {
         // Cache X
         // coalescent reads
+        uint readX = i + ti;
+        #ifdef BATCH
+        readX += groupID.y * X_width;
+        #endif
         #if defined(SHADER_API_MOBILE)
-        LDS_[ti] = ((i + ti) < X_width) ? Xptr[min(i + ti, maxXIndex)] : 0.0;
+        LDS_[ti] = ((i + ti) < X_width) ? Xptr[min(readX, maxXIndex)] : 0.0;
         #else
-        LDS_[ti] = ((i + ti) < X_width) ? Xptr[i + ti] : 0.0;
+        LDS_[ti] = ((i + ti) < X_width) ? Xptr[readX] : 0.0;
         #endif
 
         GroupMemoryBarrierWithGroupSync();
@@ -408,16 +437,20 @@ void KERNEL_NAME(uint3 groupID : SV_GroupID, uint threadIndex : SV_GroupIndex, u
         [unroll]
         for (uint di = 0; di < CACHESIZE; ++di)
         {
+            uint readW = bx + (i + di)*W_width;
+            #ifdef BATCH
+            readW += groupID.y * W_width * X_width;
+            #endif
             #if defined(SHADER_API_MOBILE)
-            float w0 = ((CACHESIZE * 0 + bx) < W_width) && ((i + di) < X_width) ? Wptr[min(CACHESIZE * 0 + bx + (i + di)*W_width, maxWIndex)] : 0.0;
-            float w1 = ((CACHESIZE * 1 + bx) < W_width) && ((i + di) < X_width) ? Wptr[min(CACHESIZE * 1 + bx + (i + di)*W_width, maxWIndex)] : 0.0;
-            float w2 = ((CACHESIZE * 2 + bx) < W_width) && ((i + di) < X_width) ? Wptr[min(CACHESIZE * 2 + bx + (i + di)*W_width, maxWIndex)] : 0.0;
-            float w3 = ((CACHESIZE * 3 + bx) < W_width) && ((i + di) < X_width) ? Wptr[min(CACHESIZE * 3 + bx + (i + di)*W_width, maxWIndex)] : 0.0;
+            float w0 = ((CACHESIZE * 0 + bx) < W_width) && ((i + di) < X_width) ? Wptr[min(CACHESIZE * 0 + readW, maxWIndex)] : 0.0;
+            float w1 = ((CACHESIZE * 1 + bx) < W_width) && ((i + di) < X_width) ? Wptr[min(CACHESIZE * 1 + readW, maxWIndex)] : 0.0;
+            float w2 = ((CACHESIZE * 2 + bx) < W_width) && ((i + di) < X_width) ? Wptr[min(CACHESIZE * 2 + readW, maxWIndex)] : 0.0;
+            float w3 = ((CACHESIZE * 3 + bx) < W_width) && ((i + di) < X_width) ? Wptr[min(CACHESIZE * 3 + readW, maxWIndex)] : 0.0;
             #else
-            float w0 = ((CACHESIZE * 0 + bx) < W_width) && ((i + di) < X_width) ? Wptr[CACHESIZE * 0 + bx + (i + di)*W_width] : 0.0;
-            float w1 = ((CACHESIZE * 1 + bx) < W_width) && ((i + di) < X_width) ? Wptr[CACHESIZE * 1 + bx + (i + di)*W_width] : 0.0;
-            float w2 = ((CACHESIZE * 2 + bx) < W_width) && ((i + di) < X_width) ? Wptr[CACHESIZE * 2 + bx + (i + di)*W_width] : 0.0;
-            float w3 = ((CACHESIZE * 3 + bx) < W_width) && ((i + di) < X_width) ? Wptr[CACHESIZE * 3 + bx + (i + di)*W_width] : 0.0;
+            float w0 = ((CACHESIZE * 0 + bx) < W_width) && ((i + di) < X_width) ? Wptr[CACHESIZE * 0 + readW] : 0.0;
+            float w1 = ((CACHESIZE * 1 + bx) < W_width) && ((i + di) < X_width) ? Wptr[CACHESIZE * 1 + readW] : 0.0;
+            float w2 = ((CACHESIZE * 2 + bx) < W_width) && ((i + di) < X_width) ? Wptr[CACHESIZE * 2 + readW] : 0.0;
+            float w3 = ((CACHESIZE * 3 + bx) < W_width) && ((i + di) < X_width) ? Wptr[CACHESIZE * 3 + readW] : 0.0;
             #endif
 
             dstO.x = ffma(LDS_[di], w0, dstO.x);
@@ -429,14 +462,19 @@ void KERNEL_NAME(uint3 groupID : SV_GroupID, uint threadIndex : SV_GroupIndex, u
         GroupMemoryBarrierWithGroupSync();
     }
 
+    uint writeO = bx;
+#ifdef BATCH
+    writeO += groupID.y * O_width;
+#endif
+
     if (CACHESIZE * 0 + bx < O_width)
-        Optr[CACHESIZE *  0 + bx] = dstO.x;
+        Optr[CACHESIZE *  0 + writeO] = ApplyFusedActivation(dstO.x);
     if (CACHESIZE * 1 + bx < O_width)
-        Optr[CACHESIZE * 1 + bx] = dstO.y;
+        Optr[CACHESIZE * 1 + writeO] = ApplyFusedActivation(dstO.y);
     if (CACHESIZE * 2 + bx < O_width)
-        Optr[CACHESIZE * 2 + bx] = dstO.z;
+        Optr[CACHESIZE * 2 + writeO] = ApplyFusedActivation(dstO.z);
     if (CACHESIZE * 3 + bx < O_width)
-        Optr[CACHESIZE * 3 + bx] = dstO.w;
+        Optr[CACHESIZE * 3 + writeO] = ApplyFusedActivation(dstO.w);
 
 #undef LDS_
 }

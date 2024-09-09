@@ -233,6 +233,6 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, outputs: [{string.Join(", ", outputs)}], hiddenSize: {hiddenSize}, direction: {direction}, activations: [{string.Join(", ", activations)}], activationAlpha: [{string.Join(", ", activationAlpha)}], activationBeta: [{string.Join(", ", activationBeta)}], clip: {clip}, inputForget: {inputForget}, layout: {layout}";
         }
 
-        internal override string profilerTag { get { return "LSTM"; } }
+        public override string opName { get { return "LSTM"; } }
     }
 }

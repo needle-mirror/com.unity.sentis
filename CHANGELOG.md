@@ -4,6 +4,18 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2024-09-09
+
+### Updated
+- Fast activation fusing for MatMul
+- Batched MatMul optimization
+- Faster Upload for CPUTensorData
+
+### Fixed
+- CPU Tensors were not properly disposed.
+- Reshaping of empty tensor
+- Exposed internal fields of TextureTensorData
+
 ## [2.0.0] - 2024-08-14
 
 ### Added

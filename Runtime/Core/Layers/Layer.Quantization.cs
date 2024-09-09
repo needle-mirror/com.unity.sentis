@@ -39,6 +39,6 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, scale: {scale}, zeroPoint: {zeroPoint}";
         }
 
-        internal override string profilerTag => "DequantizeUint8";
+        public override string opName => "DequantizeUint8";
     }
 }

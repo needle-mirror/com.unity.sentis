@@ -33,7 +33,7 @@ namespace Unity.Sentis.ONNX
             weightStream.Read(byteArray, 0, length);
 
             var tensorData = GetTensorData(byteArray, length, shape, (TensorProto.Types.DataType)tensorProto.DataType);
-            constant.weights = tensorData;
+            constant.m_Weights = tensorData;
             return constant;
         }
 
@@ -54,7 +54,7 @@ namespace Unity.Sentis.ONNX
             if (shape.HasZeroDims())
                 return constant;
 
-            NativeTensorArray tensorData = new NativeTensorArray(shape.length);
+            NativeTensorArrayFromManagedArray tensorData;
 
             if ((tensorProto.RawData != null) && (!tensorProto.RawData.IsEmpty))
             {
@@ -66,13 +66,7 @@ namespace Unity.Sentis.ONNX
                 Assert.IsTrue(shape.length == tensorProto.FloatData.Count);
                 var arrayData = new float[shape.length];
                 tensorProto.FloatData.CopyTo(arrayData, 0);
-                unsafe
-                {
-                    fixed (void* dataPtr = &arrayData[0])
-                    {
-                        UnsafeUtility.MemCpy(tensorData.RawPtr, dataPtr, sizeof(float) * shape.length);
-                    }
-                }
+                tensorData = new NativeTensorArrayFromManagedArray(arrayData, 0, sizeof(float), shape.length);
             }
             // Int32
             else if ((tensorProto.Int32Data != null) && (tensorProto.Int32Data.Count != 0))
@@ -80,13 +74,7 @@ namespace Unity.Sentis.ONNX
                 Assert.IsTrue(shape.length == tensorProto.Int32Data.Count);
                 var arrayData = new int[shape.length];
                 tensorProto.Int32Data.CopyTo(arrayData, 0);
-                unsafe
-                {
-                    fixed (void* dataPtr = &arrayData[0])
-                    {
-                        UnsafeUtility.MemCpy(tensorData.RawPtr, dataPtr, sizeof(int) * shape.length);
-                    }
-                }
+                tensorData = new NativeTensorArrayFromManagedArray(arrayData, 0, sizeof(int), shape.length);
             }
             // Int64
             else if ((tensorProto.Int64Data != null) && (tensorProto.Int64Data.Count != 0))
@@ -94,27 +82,28 @@ namespace Unity.Sentis.ONNX
                 Assert.IsTrue(shape.length == tensorProto.Int64Data.Count);
                 var arrayData = new long[shape.length];
                 tensorProto.Int64Data.CopyTo(arrayData, 0);
+                var intArrayData = new int[shape.length];
                 unsafe
                 {
-                    fixed (void* dataPtr = &arrayData[0])
+                    fixed (void* dataPtr = &arrayData[0],  dstPtr = &intArrayData[0])
                     {
-                        var job = new BurstJobsCastTensor.LongBytesAsFloatJob
+                        var job = new BurstJobsCastTensor.LongBytesAsIntJob
                         {
                             src = (long*)dataPtr,
-                            dst = (int*)tensorData.RawPtr
+                            dst = (int*)dstPtr
                         };
                         var jobHandle = job.Schedule(shape.length, 1024);
                         jobHandle.Complete();
                     }
                 }
+                tensorData = new NativeTensorArrayFromManagedArray(intArrayData, 0, sizeof(int), shape.length);
             }
             else
             {
-                tensorData.Dispose();
                 throw new OnnxLayerImportException("Could not read tensor data for constant tensor.");
             }
 
-            constant.weights = tensorData;
+            constant.m_Weights = tensorData;
             return constant;
         }
 
@@ -129,136 +118,147 @@ namespace Unity.Sentis.ONNX
             return ONNXNodeWrapper.DataTypeFromOnnxDataType((TensorProto.Types.DataType)tensorProto.DataType);
         }
 
-        static NativeTensorArray GetTensorData(byte[] byteArray, int length, TensorShape shape, TensorProto.Types.DataType dataType)
+        static NativeTensorArrayFromManagedArray GetTensorData(byte[] byteArray, int length, TensorShape shape, TensorProto.Types.DataType dataType)
         {
             if (shape.HasZeroDims())
                 return null;
 
-            NativeTensorArray data = new NativeTensorArray(shape.length);
+            NativeTensorArrayFromManagedArray data;
 
             // Double
             if (dataType == TensorProto.Types.DataType.Double)
             {
                 Assert.IsTrue((sizeof(double) * shape.length) == length);
+                float[] dstData = new float[shape.length];
                 unsafe
                 {
-                    fixed (void* dataPtr = &byteArray[0])
+                    fixed (void* dataPtr = &byteArray[0], dstPtr = &dstData[0])
                     {
                         var job = new BurstJobsCastTensor.DoubleBytesAsFloatJob
                         {
                             src = (long*)dataPtr,
-                            dst = (float*)data.RawPtr
+                            dst = (float*)dstPtr
                         };
                         var jobHandle = job.Schedule(shape.length, 1024);
                         jobHandle.Complete();
                     }
                 }
+                data = new NativeTensorArrayFromManagedArray(dstData, 0, sizeof(float), shape.length);
             }
             // Float32
             else if (dataType == TensorProto.Types.DataType.Float)
             {
                 Assert.IsTrue((sizeof(float) * shape.length) == length);
-                NativeTensorArray.BlockCopy(byteArray, 0, data, 0, length);
+                data = new NativeTensorArrayFromManagedArray(byteArray, 0, sizeof(float), shape.length);
             }
             // Float16
             else if (dataType == TensorProto.Types.DataType.Float16)
             {
                 Assert.IsTrue((sizeof(ushort) * shape.length) == length);
+                float[] dstData = new float[shape.length];
                 unsafe
                 {
-                    fixed (void* dataPtr = &byteArray[0])
+                    fixed (void* dataPtr = &byteArray[0], dstPtr = &dstData[0])
                     {
                         var job = new BurstJobsCastTensor.Float16BytesAsFloatJob
                         {
                             src = (ushort*)dataPtr,
-                            dst = (float*)data.RawPtr
+                            dst = (float*)dstPtr
                         };
                         var jobHandle = job.Schedule(shape.length, 1024);
                         jobHandle.Complete();
                     }
                 }
+                data = new NativeTensorArrayFromManagedArray(dstData, 0, sizeof(float), shape.length);
             }
             // Int32
             else if (dataType == TensorProto.Types.DataType.Int32)
             {
                 Assert.IsTrue((sizeof(int) * shape.length) == length);
-                NativeTensorArray.BlockCopy(byteArray, 0, data, 0, length);
+                data = new NativeTensorArrayFromManagedArray(byteArray, 0, sizeof(int), shape.length);
             }
             // Int64
             else if (dataType == TensorProto.Types.DataType.Int64)
             {
                 Assert.IsTrue((sizeof(long) * shape.length) == length);
+                int[] dstData = new int[shape.length];
                 unsafe
                 {
-                    fixed (void* dataPtr = &byteArray[0])
+                    fixed (void* dataPtr = &byteArray[0], dstPtr = &dstData[0])
                     {
-                        var job = new BurstJobsCastTensor.LongBytesAsFloatJob
+                        var job = new BurstJobsCastTensor.LongBytesAsIntJob
                         {
                             src = (long*)dataPtr,
-                            dst = (int*)data.RawPtr
+                            dst = (int*)dstPtr
                         };
                         var jobHandle = job.Schedule(shape.length, 1024);
                         jobHandle.Complete();
                     }
                 }
+                data = new NativeTensorArrayFromManagedArray(dstData, 0, sizeof(int), shape.length);
             }
             // Bool
             else if (dataType == TensorProto.Types.DataType.Bool)
             {
                 Assert.IsTrue((sizeof(bool) * shape.length) == length);
+                int[] dstData = new int[shape.length];
                 unsafe
                 {
-                    fixed (void* dataPtr = &byteArray[0])
+                    fixed (void* dataPtr = &byteArray[0], dstPtr = &dstData[0])
                     {
-                        var job = new BurstJobsCastTensor.BoolBytesAsFloatJob
+                        var job = new BurstJobsCastTensor.BoolBytesAsIntJob
                         {
                             src = (bool*)dataPtr,
-                            dst = (int*)data.RawPtr
+                            dst = (int*)dstPtr
                         };
                         var jobHandle = job.Schedule(shape.length, 1024);
                         jobHandle.Complete();
                     }
                 }
+                data = new NativeTensorArrayFromManagedArray(dstData, 0, sizeof(int), shape.length);
             }
             // Uint8
             else if (dataType == TensorProto.Types.DataType.Uint8)
             {
                 Assert.IsTrue((sizeof(byte) * shape.length) == length);
+                int[] dstData = new int[shape.length];
                 unsafe
                 {
-                    fixed (void* dataPtr = &byteArray[0])
+                    fixed (void* dataPtr = &byteArray[0], dstPtr = &dstData[0])
                     {
-                        var job = new BurstJobsCastTensor.Uint8BytesAsFloatJob
+                        var job = new BurstJobsCastTensor.Uint8BytesAsIntJob
                         {
                             src = (byte*)dataPtr,
-                            dst = (int*)data.RawPtr
+                            dst = (int*)dstPtr
                         };
                         var jobHandle = job.Schedule(shape.length, 1024);
                         jobHandle.Complete();
                     }
                 }
+                data = new NativeTensorArrayFromManagedArray(dstData, 0, sizeof(int), shape.length);
             }
             // Int8
             else if (dataType == TensorProto.Types.DataType.Int8)
             {
                 Assert.IsTrue((sizeof(sbyte) * shape.length) == length);
+                int[] dstData = new int[shape.length];
                 unsafe
                 {
-                    fixed (void* dataPtr = &byteArray[0])
+                    fixed (void* dataPtr = &byteArray[0], dstPtr = &dstData[0])
                     {
-                        var job = new BurstJobsCastTensor.Int8BytesAsFloatJob
+                        var job = new BurstJobsCastTensor.Int8BytesAsIntJob
                         {
                             src = (sbyte*)dataPtr,
-                            dst = (int*)data.RawPtr
+                            dst = (int*)dstPtr
                         };
                         var jobHandle = job.Schedule(shape.length, 1024);
                         jobHandle.Complete();
                     }
                 }
+                data = new NativeTensorArrayFromManagedArray(dstData, 0, sizeof(float), shape.length);
             }
             else
             {
-                data.Dispose();
                 throw new OnnxLayerImportException($"Tensor data type {dataType} is not supported.");
             }
 

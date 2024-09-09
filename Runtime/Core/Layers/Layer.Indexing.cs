@@ -88,7 +88,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}, keepdims: {keepdims}, selectLastIndex: {selectLastIndex}";
         }
 
-        internal override string profilerTag => "ArgMax";
+        public override string opName => "ArgMax";
     }
 
     /// <summary>
@@ -117,7 +117,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}, keepdims: {keepdims}, selectLastIndex: {selectLastIndex}";
         }
 
-        internal override string profilerTag => "ArgMin";
+        public override string opName => "ArgMin";
     }
 
     /// <summary>
@@ -200,7 +200,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}";
         }
 
-        internal override string profilerTag => "Gather";
+        public override string opName => "Gather";
     }
 
     /// <summary>
@@ -248,7 +248,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}";
         }
 
-        internal override string profilerTag => "GatherElements";
+        public override string opName => "GatherElements";
     }
 
     /// <summary>
@@ -308,7 +308,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.GatherND(X, indices, O, batchDims);
         }
 
-        internal override string profilerTag => "GatherND";
+        public override string opName => "GatherND";
     }
 
     /// <summary>
@@ -399,7 +399,7 @@ namespace Unity.Sentis.Layers
             }
         }
 
-        internal override string profilerTag => "NonZero";
+        public override string opName => "NonZero";
     }
 
     /// <summary>
@@ -477,7 +477,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}, reduction: {reduction}";
         }
 
-        internal override string profilerTag => "ScatterElements";
+        public override string opName => "ScatterElements";
     }
 
     /// <summary>
@@ -539,7 +539,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, reduction: {reduction}";
         }
 
-        internal override string profilerTag => "ScatterND";
+        public override string opName => "ScatterND";
     }
 
     /// <summary>
@@ -602,6 +602,6 @@ namespace Unity.Sentis.Layers
             ctx.backend.TopK(X as Tensor<float>, values, indices, k, axis, largest);
         }
 
-        internal override string profilerTag => "TopK";
+        public override string opName => "TopK";
     }
 }

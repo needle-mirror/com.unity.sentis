@@ -89,8 +89,11 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public override void Reshape(TensorShape shape)
         {
-            Logger.AssertIsTrue(dataOnBackend is not TextureTensorData, "Tensor.Reshape: Sentis can only reshape when the dataOnBackend is not a TextureTensorData");
-            Logger.AssertIsTrue(shape.length <= dataOnBackend.maxCapacity, "Tensor.Reshape: Sentis can only reshape when the new length fits in the number of elements allocated on the backend, got {0}, expected {1}", shape.length, dataOnBackend.maxCapacity);
+            if (dataOnBackend != null)
+            {
+                Logger.AssertIsTrue(dataOnBackend is not TextureTensorData, "Tensor.Reshape: Sentis can only reshape when the dataOnBackend is not a TextureTensorData");
+                Logger.AssertIsTrue(shape.length <= dataOnBackend.maxCapacity, "Tensor.Reshape: Sentis can only reshape when the new length fits in the number of elements allocated on the backend, got {0}, expected {1}", shape.length, dataOnBackend.maxCapacity);
+            }
             m_Shape = shape;
             unsafe
             {

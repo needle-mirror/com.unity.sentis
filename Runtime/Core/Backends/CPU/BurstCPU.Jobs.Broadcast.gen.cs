@@ -19,7 +19,7 @@ namespace Unity.Sentis {
 partial class CPUBackend
 {
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct AddFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -76,7 +76,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct SubFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -133,7 +133,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct MulFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -190,7 +190,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct DivFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -247,7 +247,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct MinFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -304,7 +304,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct MaxFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -361,7 +361,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct PowFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -418,7 +418,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct PowFloatIntJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -475,7 +475,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct MeanFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -534,7 +534,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct GreaterFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -591,7 +591,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct GreaterOrEqualFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -648,7 +648,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct LessFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -705,7 +705,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct LessOrEqualFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -762,7 +762,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct EqualFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -819,7 +819,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct OrJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -876,7 +876,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct AndJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -933,7 +933,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct XorJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -990,7 +990,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct PReluJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -1047,7 +1047,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct AddIntJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -1104,7 +1104,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct SubIntJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -1161,7 +1161,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct MulIntJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -1218,7 +1218,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct DivIntJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -1275,7 +1275,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct MinIntJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -1332,7 +1332,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct MaxIntJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -1389,7 +1389,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct GreaterIntJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -1446,7 +1446,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct GreaterOrEqualIntJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -1503,7 +1503,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct LessIntJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -1560,7 +1560,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct LessOrEqualIntJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -1617,7 +1617,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct EqualIntJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -1674,7 +1674,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct ModIntJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -1731,7 +1731,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct ModFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -1788,7 +1788,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct FModIntJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } int* Xptr => (int*)X.ptr;
@@ -1845,7 +1845,7 @@ partial class CPUBackend
         }
     }
 
-    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct FModFloatJob : IParallelForBatch, IJobResourceDeclarationXBO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;

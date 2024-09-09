@@ -566,6 +566,14 @@ namespace Unity.Sentis
                         var fusedactivation = (FusableActivation)executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
                         model.AddLayer(new Dense(index, input, weights, bias, fusedactivation));
                     }
+                    else if (kernelName == "DenseBatched")
+                    {
+                        var input = chain.RequiredInput(0);
+                        var weights = chain.RequiredInput(1);
+                        var bias = chain.RequiredInput(2);
+                        var fusedactivation = (FusableActivation)executionPlan.Values(kernel.Args(0)).Value.ValAsInt().IntVal;
+                        model.AddLayer(new DenseBatched(index, input, weights, bias, fusedactivation));
+                    }
                     else if (kernelName == "Div")
                     {
                         var a = chain.RequiredInput(0);

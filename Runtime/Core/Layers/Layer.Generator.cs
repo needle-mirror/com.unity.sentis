@@ -61,7 +61,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, dataType: {dataType}, floatValue: {floatValue}, intValue: {intValue}";
         }
 
-        internal override string profilerTag => "ConstantOfShape";
+        public override string opName => "ConstantOfShape";
     }
 
     /// <summary>
@@ -120,7 +120,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}";
         }
 
-        internal override string profilerTag => "OneHot";
+        public override string opName => "OneHot";
     }
 
     /// <summary>
@@ -173,6 +173,6 @@ namespace Unity.Sentis.Layers
             }
         }
 
-        internal override string profilerTag => "Range";
+        public override string opName => "Range";
     }
 }

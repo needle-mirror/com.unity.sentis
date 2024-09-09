@@ -20,6 +20,15 @@ namespace Unity.Sentis.Compiler.Passes
                         model.layers[l].inputs[i] = remap[input];
                 }
             }
+            for (int i = 0; i < model.outputs.Count; i++)
+            {
+                var output = model.outputs[i];
+                if (remap.TryGetValue(output.index, out int newIndex))
+                {
+                    output.index = newIndex;
+                    model.outputs[i] = output;
+                }
+            }
         }
     }
 }

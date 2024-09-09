@@ -43,7 +43,10 @@ namespace Unity.Sentis
         /// <param name="ctx">The execution context with the backend and variables for the execution.</param>
         internal abstract void Execute(ExecutionContext ctx);
 
-        internal virtual string profilerTag => MethodBase.GetCurrentMethod()?.DeclaringType?.Name;
+        /// <summary>
+        /// Returns a string that represents the operation of the `Layer`.
+        /// </summary>
+        public virtual string opName => MethodBase.GetCurrentMethod()?.DeclaringType?.Name;
 
         /// <summary>
         /// Returns a string that represents the `Layer`.
@@ -51,7 +54,7 @@ namespace Unity.Sentis
         /// <returns>The string representation of the `Layer`.</returns>
         public override string ToString()
         {
-            return $"{profilerTag} - index: {outputs[0]}, inputs: [{string.Join(", ", inputs)}]";
+            return $"{opName} - index: {outputs[0]}, inputs: [{string.Join(", ", inputs)}]";
         }
     }
 }

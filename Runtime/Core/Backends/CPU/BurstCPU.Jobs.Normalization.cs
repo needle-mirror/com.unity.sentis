@@ -9,7 +9,7 @@ namespace Unity.Sentis
 {
     partial class CPUBackend
     {
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct LayerNormalizationTailJob : IJobParallelFor, IJobResourceDeclarationXSBWO
         {
             public float epsilon;
@@ -63,7 +63,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct BatchNormalizationJob : IParallelForBatch
         {
             public float epsilon;
@@ -150,7 +150,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct ScaleBiasJob : IParallelForBatch, IJobResourceDeclarationXSBO
         {
             public int channels;

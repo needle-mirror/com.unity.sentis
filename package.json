@@ -1,25 +1,26 @@
 {
   "name": "com.unity.sentis",
   "displayName": "Sentis",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "unity": "2022.3",
+  "unityRelease": "11f1",
   "description": "Sentis is a neural network inference library. It enables you to import trained neural network models, connect the network inputs and outputs to your game code, and then run them locally in your end-user app. Use cases include capabilities like natural language processing, object recognition, automated game opponents, sensor data classification, and many more.\n\nSentis automatically optimizes your network for real-time use to speed up inference. It also allows you to tune your implementation further with tools like frame slicing, quantization, and custom backend (i.e. compute type) dispatching.\n\nVisit https://unity.com/sentis for more resources.",
   "dependencies": {
-    "com.unity.burst": "1.8.12",
-    "com.unity.collections": "2.2.1",
+    "com.unity.burst": "1.8.17",
+    "com.unity.collections": "2.4.3",
     "com.unity.modules.imageconversion": "1.0.0"
   },
   "_upm": {
-    "changelog": "### Added\n- Callbacks for retrieving the ONNX metadata at import time.\n- `Upload` method to `Tensor` to allow for direct upload of data.\n- `IndexSelect` functional operator.\n- `scoreThreshold` parameter for `NMS` functional method.\n- `Tensor.Reshape` accepts tensor shapes of different lengths, provided the capacity of the tensor data is large enough.\n- `Worker.CopyOutput` method for copying outputs into allocated tensors.\n- `FunctionalTensor.ToString` shows the data type and shape (if known) for debugging when using the functional API.\n\n### Changed\n- Made a generic `Tensor` class so that you can declare `Tensor<float>` and `Tensor<int>` rather than `TensorFloat` and `TensorInt`.\n- Reworked and unified the `Worker` methods for setting inputs and scheduling.\n- `IWorker` and `GenericWorker` to be an instantiable `Worker` class.\n- Renamed `Execute` to `Schedule` throughout for clarity.\n- Renamed `BurstTensorData` to `CPUTensorData` for consistency.\n- Renamed and reworked `SymbolicTensorShape` as `DynamicTensorShape` for clarity and ease of use.\n- Reworked the `Functional.Compile` method as methods on a `FunctionalGraph` object, for clearer declaration of inputs and outputs.\n\n### Fixed\n- Issues with the `Slice` operator on zero-length dimensions.\n- Compilation of the `GridSample` shaders on consoles.\n\n### Removed\n- `GPUCommandBuffer` backend, in favour of a unified GPUCompute backend using command buffers.\n- `IBackend` methods, use the functional API to create and edit models instead.\n- Many methods and classes from the public API to keep it clear and maintainable."
+    "changelog": "### Updated\n- Fast activation fusing for MatMul\n- Batched MatMul optimization\n- Faster Upload for CPUTensorData\n\n### Fixed\n- CPU Tensors were not properly disposed.\n- Reshaping of empty tensor\n- Exposed internal fields of TextureTensorData"
   },
   "upmCi": {
-    "footprint": "13a77c87df489691db6fca7c8b09c99aabfebee7"
+    "footprint": "46d65ab2ae107fe9e5e1bbcef427f724c0f71ae2"
   },
-  "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.sentis@2.0/manual/index.html",
+  "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.sentis@2.1/manual/index.html",
   "repository": {
     "url": "https://github.cds.internal.unity3d.com/unity/UnityInferenceEngine.git",
     "type": "git",
-    "revision": "7d10d2f2045b8ea96773e1178e8eb5e0929dd8c0"
+    "revision": "d18d9ace04a705be09febedbc79b6ed29813f757"
   },
   "samples": [
     {

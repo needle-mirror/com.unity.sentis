@@ -126,6 +126,11 @@ namespace Unity.Sentis
 
         /// <inheritdoc/>
         public override unsafe void* RawPtr => (byte*)base.RawPtr + m_PinnedMemoryByteOffset;
+
+        /// <summary>
+        /// Disposes of the array and any associated memory.
+        /// </summary>
+        public override void Dispose() {}
     }
 
     /// <summary>

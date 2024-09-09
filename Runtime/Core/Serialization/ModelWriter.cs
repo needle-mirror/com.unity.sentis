@@ -16,7 +16,7 @@ namespace Unity.Sentis
     public static class ModelWriter
     {
         internal const long maxSize = 0x10000000;
-        internal const int version = 2;
+        internal const int version = 3;
 
         /// <summary>
         /// Serializes and saves the model description and weights to a file.
@@ -151,12 +151,12 @@ namespace Unity.Sentis
             for (int i = 0; i < model.layers.Count; i++)
             {
                 var layer = model.layers[i];
-                if (!operatorNames.ContainsKey(layer.profilerTag))
+                if (!operatorNames.ContainsKey(layer.opName))
                 {
-                    var operationName = builder.CreateString(layer.profilerTag);
+                    var operationName = builder.CreateString(layer.opName);
                     var operation = Operator.CreateOperator(builder, operationName);
                     operators.Add(operation);
-                    operatorNames[layer.profilerTag] = operatorNames.Count;
+                    operatorNames[layer.opName] = operatorNames.Count;
                 }
 
                 // layer inputs
@@ -278,7 +278,7 @@ namespace Unity.Sentis
                 var layerOutputVector = ExecutionPlan.CreateOutputsVector(builder, layerOutputs.ToArray());
                 // attributes
                 var layerAttributesVector = ExecutionPlan.CreateInputsVector(builder, layerAttributesInputs.ToArray());
-                var kernelCall = KernelCall.CreateKernelCall(builder, operatorNames[layer.profilerTag], layerAttributesVector);
+                var kernelCall = KernelCall.CreateKernelCall(builder, operatorNames[layer.opName], layerAttributesVector);
                 Instruction.StartInstruction(builder);
                 Instruction.AddInstrArgsType(builder, InstructionArguments.KernelCall);
                 Instruction.AddInstrArgs(builder, kernelCall.Value);

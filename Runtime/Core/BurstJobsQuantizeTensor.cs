@@ -9,7 +9,7 @@ namespace Unity.Sentis
 {
     static class BurstJobsQuantizeTensor
     {
-        [BurstCompile]
+        [BurstCompile(CompileSynchronously = true)]
         internal unsafe struct CastFloatToHalfJob : IJobParallelFor
         {
             [NoAlias] [NativeDisableUnsafePtrRestriction] [ReadOnly] public float* src;
@@ -22,7 +22,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile]
+        [BurstCompile(CompileSynchronously = true)]
         internal unsafe struct QuantizeUint8Job : IJobParallelFor
         {
             [NoAlias] [NativeDisableUnsafePtrRestriction] [ReadOnly] public float* src;

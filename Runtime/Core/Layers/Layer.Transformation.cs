@@ -197,7 +197,7 @@ namespace Unity.Sentis.Layers
                 throw new NotImplementedException();
         }
 
-        internal override string profilerTag => "Cast";
+        public override string opName => "Cast";
     }
 
     /// <summary>
@@ -234,7 +234,7 @@ namespace Unity.Sentis.Layers
                 throw new NotImplementedException();
         }
 
-        internal override string profilerTag => "CastLike";
+        public override string opName => "CastLike";
     }
 
     /// <summary>
@@ -346,7 +346,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}";
         }
 
-        internal override string profilerTag => "Concat";
+        public override string opName => "Concat";
     }
 
     /// <summary>
@@ -386,7 +386,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, blocksize: {string.Join(", ", blocksize)}, mode: {mode}";
         }
 
-        internal override string profilerTag => "DepthToSpace";
+        public override string opName => "DepthToSpace";
     }
 
     /// <summary>
@@ -414,7 +414,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Expand(X, O);
         }
 
-        internal override string profilerTag => "Expand";
+        public override string opName => "Expand";
     }
 
     /// <summary>
@@ -473,7 +473,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}";
         }
 
-        internal override string profilerTag => "Flatten";
+        public override string opName => "Flatten";
     }
 
     /// <summary>
@@ -533,7 +533,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, mode: {mode}, paddingMode: {paddingMode}, alignCorners: {alignCorners}";
         }
 
-        internal override string profilerTag => "GridSample";
+        public override string opName => "GridSample";
     }
 
     /// <summary>
@@ -558,7 +558,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.MemCopy(X, O);
         }
 
-        internal override string profilerTag => "Identity";
+        public override string opName => "Identity";
     }
 
     /// <summary>
@@ -639,7 +639,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, source: [{string.Join(", ", source)}], destination: [{string.Join(", ", destination)}]";
         }
 
-        internal override string profilerTag => "MoveDim";
+        public override string opName => "MoveDim";
     }
 
     /// <summary>
@@ -695,7 +695,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Split(X, O, dim, start);
         }
 
-        internal override string profilerTag => "Narrow";
+        public override string opName => "Narrow";
     }
 
     /// <summary>
@@ -805,7 +805,7 @@ namespace Unity.Sentis.Layers
             }
         }
 
-        internal override string profilerTag => "Pad";
+        public override string opName => "Pad";
     }
 
     /// <summary>
@@ -897,7 +897,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, allowZero: {allowZero}";
         }
 
-        internal override string profilerTag => "Reshape";
+        public override string opName => "Reshape";
     }
 
     /// <summary>
@@ -996,7 +996,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, mode: {mode}, coordTransformMode: {coordTransformMode}, nearestMode: {nearestMode}";
         }
 
-        internal override string profilerTag => "Resize";
+        public override string opName => "Resize";
     }
 
     /// <summary>
@@ -1050,7 +1050,7 @@ namespace Unity.Sentis.Layers
             ctx.storage.Dispose(unsqueezed);
         }
 
-        internal override string profilerTag => "Select";
+        public override string opName => "Select";
     }
 
     /// <summary>
@@ -1147,7 +1147,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Slice(X, O, startsSpan, axesSpan, stepsSpan);
         }
 
-        internal override string profilerTag => "Slice";
+        public override string opName => "Slice";
     }
 
     class SliceSet : Layer
@@ -1215,7 +1215,7 @@ namespace Unity.Sentis.Layers
             }
         }
 
-        internal override string profilerTag => "SliceSet";
+        public override string opName => "SliceSet";
     }
 
     /// <summary>
@@ -1252,7 +1252,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, blocksize: {blocksize}";
         }
 
-        internal override string profilerTag => "SpaceToDepth";
+        public override string opName => "SpaceToDepth";
     }
 
     /// <summary>
@@ -1336,7 +1336,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}, numOutputs: {numOutputs}";
         }
 
-        internal override string profilerTag => "Split";
+        public override string opName => "Split";
     }
 
     /// <summary>
@@ -1376,7 +1376,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Reshape(X, O); // TODO<tensordata> refcount tensordata
         }
 
-        internal override string profilerTag => "Squeeze";
+        public override string opName => "Squeeze";
     }
 
     /// <summary>
@@ -1424,7 +1424,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Tile(X, O, repeats);
         }
 
-        internal override string profilerTag => "Tile";
+        public override string opName => "Tile";
     }
 
     /// <summary>
@@ -1506,7 +1506,7 @@ namespace Unity.Sentis.Layers
                 return $"{base.ToString()}, permutations: [{string.Join(", ", permutations)}]";
         }
 
-        internal override string profilerTag => "Transpose";
+        public override string opName => "Transpose";
     }
 
     /// <summary>
@@ -1546,7 +1546,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, mode: {mode}";
         }
 
-        internal override string profilerTag => "Trilu";
+        public override string opName => "Trilu";
     }
 
     /// <summary>
@@ -1575,6 +1575,6 @@ namespace Unity.Sentis.Layers
             ctx.backend.Reshape(X, O); // TODO<tensordata> refcount tensordata
         }
 
-        internal override string profilerTag => "Unsqueeze";
+        public override string opName => "Unsqueeze";
     }
 }

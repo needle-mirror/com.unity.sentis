@@ -23,7 +23,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Abs(X as Tensor<float>, O as Tensor<float>);
         }
 
-        internal override string profilerTag => "Abs";
+        public override string opName => "Abs";
     }
 
     /// <summary>
@@ -51,7 +51,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Add(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
-        internal override string profilerTag => "Add";
+        public override string opName => "Add";
     }
 
     /// <summary>
@@ -71,7 +71,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Ceil(X, O);
         }
 
-        internal override string profilerTag => "Ceil";
+        public override string opName => "Ceil";
     }
 
     /// <summary>
@@ -109,7 +109,7 @@ namespace Unity.Sentis.Layers
             }
         }
 
-        internal override string profilerTag => "Clip";
+        public override string opName => "Clip";
     }
 
     /// <summary>
@@ -151,7 +151,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, reverse: {reverse}, exclusive: {exclusive}";
         }
 
-        internal override string profilerTag => "CumSum";
+        public override string opName => "CumSum";
     }
 
     /// <summary>
@@ -188,7 +188,39 @@ namespace Unity.Sentis.Layers
             ctx.backend.Dense(X as Tensor<float>, W as Tensor<float>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, O, fusedActivation);
         }
 
-        internal override string profilerTag => "Dense";
+        public override string opName => "Dense";
+    }
+
+    class DenseBatched : FusedActivation
+    {
+        public DenseBatched(int output, int input, int weights, int bias, FusableActivation fusedActivation = FusableActivation.None)
+            : base(new[] { output }, new[] { input, weights, bias })
+        {
+            this.fusedActivation = fusedActivation;
+        }
+
+        internal override void InferPartial(PartialInferenceContext ctx)
+        {
+            var X = ctx.GetPartialTensor(inputs[0]);
+            var W = ctx.GetPartialTensor(inputs[1]);
+            var B = ctx.GetPartialTensor(inputs[2]);
+            var shapeOut = X.shape.MatMul(W.shape);
+            if (shapeOut.hasRank)
+                shapeOut[-1] = DynamicTensorDim.MaxDefinedDim(B.shape[-1], shapeOut[-1]);
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(DataType.Float, shapeOut));
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var W = ctx.storage.GetTensor(inputs[1]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape.MatMul(W.shape), DataType.Float, ctx.backend.backendType) as Tensor<float>;
+            if (O.shape.HasZeroDims())
+                return;
+            ctx.backend.DenseBatched(X as Tensor<float>, W as Tensor<float>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, O, fusedActivation);
+        }
+
+        public override string opName => "DenseBatched";
     }
 
     /// <summary>
@@ -214,7 +246,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Div(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
-        internal override string profilerTag => "Div";
+        public override string opName => "Div";
     }
 
     /// <summary>
@@ -273,7 +305,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, equation: {equation}";
         }
 
-        internal override string profilerTag => "Einsum";
+        public override string opName => "Einsum";
     }
 
     /// <summary>
@@ -293,7 +325,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Exp(X, O);
         }
 
-        internal override string profilerTag => "Exp";
+        public override string opName => "Exp";
     }
 
     /// <summary>
@@ -313,7 +345,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Floor(X, O);
         }
 
-        internal override string profilerTag => "Floor";
+        public override string opName => "Floor";
     }
 
     /// <summary>
@@ -333,7 +365,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Log(X, O);
         }
 
-        internal override string profilerTag => "Log";
+        public override string opName => "Log";
     }
 
     /// <summary>
@@ -364,7 +396,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.MatMul(A as Tensor<float>, B as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "MatMul";
+        public override string opName => "MatMul";
     }
 
     /// <summary>
@@ -419,7 +451,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, transposeA: {transposeA}, transposeB: {transposeB}";
         }
 
-        internal override string profilerTag => "MatMul2D";
+        public override string opName => "MatMul2D";
     }
 
     /// <summary>
@@ -445,7 +477,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Min(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
-        internal override string profilerTag => "Min";
+        public override string opName => "Min";
     }
 
     /// <summary>
@@ -471,7 +503,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Max(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
-        internal override string profilerTag => "Max";
+        public override string opName => "Max";
     }
 
     /// <summary>
@@ -521,7 +553,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, fmod: {fmod}";
         }
 
-        internal override string profilerTag => "Mod";
+        public override string opName => "Mod";
     }
 
     /// <summary>
@@ -549,7 +581,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Mul(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
-        internal override string profilerTag => "Mul";
+        public override string opName => "Mul";
     }
 
     /// <summary>
@@ -572,7 +604,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Neg(X as Tensor<float>, O as Tensor<float>);
         }
 
-        internal override string profilerTag => "Neg";
+        public override string opName => "Neg";
     }
 
     /// <summary>
@@ -598,7 +630,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Pow(A, B as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "Pow";
+        public override string opName => "Pow";
     }
 
     /// <summary>
@@ -618,7 +650,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Reciprocal(X as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "Reciprocal";
+        public override string opName => "Reciprocal";
     }
 
     /// <summary>
@@ -638,7 +670,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Round(X as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "Round";
+        public override string opName => "Round";
     }
 
     /// <summary>
@@ -685,7 +717,7 @@ namespace Unity.Sentis.Layers
             return dataType == DataType.Float ? $"{base.ToString()}, sFloat: {sFloat}, bFloat: {bFloat}" : $"{base.ToString()}, sInt: {sInt}, bInt: {bInt}";
         }
 
-        internal override string profilerTag => "ScalarMad";
+        public override string opName => "ScalarMad";
     }
 
     /// <summary>
@@ -723,7 +755,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, bias: {bias}, lambd: {lambd}";
         }
 
-        internal override string profilerTag => "Shrink";
+        public override string opName => "Shrink";
     }
 
     /// <summary>
@@ -752,7 +784,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Sign(X as Tensor<float>, O as Tensor<float>);
         }
 
-        internal override string profilerTag => "Sign";
+        public override string opName => "Sign";
     }
 
     /// <summary>
@@ -772,7 +804,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Sqrt(X as Tensor<float>, O);
         }
 
-        internal override string profilerTag => "Sqrt";
+        public override string opName => "Sqrt";
     }
 
     /// <summary>
@@ -795,7 +827,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Square(X as Tensor<float>, O as Tensor<float>);
         }
 
-        internal override string profilerTag => "Square";
+        public override string opName => "Square";
     }
 
     /// <summary>
@@ -823,6 +855,6 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Sub(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
-        internal override string profilerTag => "Sub";
+        public override string opName => "Sub";
     }
 }

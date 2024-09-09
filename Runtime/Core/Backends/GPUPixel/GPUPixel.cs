@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using UnityEngine.Assertions;
 using System;
 using static Unity.Sentis.ShaderPropertyID;
+using Unity.Sentis.Layers;
 
 [assembly: InternalsVisibleTo("Unity.Sentis.RuntimeTests")]
 [assembly: InternalsVisibleTo("Unity.Sentis.EditorTests")]
@@ -440,6 +441,24 @@ namespace Unity.Sentis
                 func.EnableKeyword("Relu");
 
             func.Dispatch(pinO);
+        }
+
+        /// <inheritdoc/>
+        public void DenseBatched(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, FusableActivation fusedActivation)
+        {
+            var Otmp = AllocTensor(O.shape, O.dataType) as Tensor<float>;
+            if (fusedActivation == FusableActivation.Relu)
+            {
+                MatMul(X, W, O);
+                Add(O, B, Otmp);
+                Relu(Otmp, O);
+            }
+            else
+            {
+                MatMul(X, W, Otmp);
+                Add(Otmp, B, O);
+            }
+            ReleaseTensor(Otmp);
         }
 
         /// <inheritdoc/>

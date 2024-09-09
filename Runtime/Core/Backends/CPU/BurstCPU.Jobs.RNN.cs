@@ -10,7 +10,7 @@ namespace Unity.Sentis
 {
     partial class CPUBackend
     {
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct LSTMEndJob : IJobParallelFor
         {
             [NoAlias][NativeDisableUnsafePtrRestriction][ReadOnly] public float* Pptr;

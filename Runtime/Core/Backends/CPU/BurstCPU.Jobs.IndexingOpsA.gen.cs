@@ -19,7 +19,7 @@ partial class CPUBackend
 {
 
 
-[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
 internal unsafe struct TileJob : IJobParallelFor, IJobResourceDeclarationXO
 {
 
@@ -45,7 +45,7 @@ internal unsafe struct TileJob : IJobParallelFor, IJobResourceDeclarationXO
 
 
 
-[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
 internal unsafe struct GatherElementsFastJob : IJobParallelFor, IJobResourceDeclarationXBO
 {
 
@@ -79,7 +79,7 @@ internal unsafe struct GatherElementsFastJob : IJobParallelFor, IJobResourceDecl
 
 
 
-[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
 internal unsafe struct GatherElementsJob : IJobParallelFor, IJobResourceDeclarationXBO
 {
 
@@ -146,7 +146,7 @@ internal unsafe struct GatherElementsJob : IJobParallelFor, IJobResourceDeclarat
 
 
 
-[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
 internal unsafe struct ScatterElementsFastJob : IJobParallelFor, IJobResourceDeclarationXBO
 {
 
@@ -251,7 +251,7 @@ internal unsafe struct ScatterElementsFastJob : IJobParallelFor, IJobResourceDec
 
 
 
-[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
 internal unsafe struct ScatterElementsJob : IJobParallelFor, IJobResourceDeclarationXBO
 {
 
@@ -322,7 +322,7 @@ internal unsafe struct ScatterElementsJob : IJobParallelFor, IJobResourceDeclara
 
 
 
-[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
 internal unsafe struct ExpandJob : IJobParallelFor, IJobResourceDeclarationXO
 {
 

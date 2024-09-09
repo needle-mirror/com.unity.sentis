@@ -78,6 +78,7 @@ namespace Unity.Sentis
             {"Clip", new ProfilerMarker("Sentis.Layer.Clip") },
             {"CumSum", new ProfilerMarker("Sentis.Layer.CumSum") },
             {"Dense", new ProfilerMarker("Sentis.Layer.Dense") },
+            {"DenseBatched", new ProfilerMarker("Sentis.Layer.DenseBatched") },
             {"Div", new ProfilerMarker("Sentis.Layer.Div") },
             {"Einsum", new ProfilerMarker("Sentis.Layer.Einsum") },
             {"Exp", new ProfilerMarker("Sentis.Layer.Exp") },
@@ -161,10 +162,10 @@ namespace Unity.Sentis
         };
         public static readonly ProfilerMarker CustomLayerMarker = new ProfilerMarker("Sentis.Layer.Custom");
 
-        public static ProfilerMarker LayerTypeProfilerMarker(string profilerTag)
+        public static ProfilerMarker LayerTypeProfilerMarker(string opName)
         {
             var marker = CustomLayerMarker;
-            LayerTypeMarkers.TryGetValue(profilerTag, out marker);
+            LayerTypeMarkers.TryGetValue(opName, out marker);
             return marker;
         }
     }

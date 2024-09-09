@@ -64,7 +64,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, mean: {mean}, scale: {scale}, hasSeed: {hasSeed}, seed: {seed}";
         }
 
-        internal override string profilerTag => "RandomNormal";
+        public override string opName => "RandomNormal";
     }
 
     /// <summary>
@@ -101,7 +101,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, mean: {mean}, scale: {scale}, hasSeed: {hasSeed}, seed: {seed}";
         }
 
-        internal override string profilerTag => "RandomNormalLike";
+        public override string opName => "RandomNormalLike";
     }
 
     /// <summary>
@@ -139,7 +139,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, low: {low}, high: {high}, hasSeed: {hasSeed}, seed: {seed}";
         }
 
-        internal override string profilerTag => "RandomUniform";
+        public override string opName => "RandomUniform";
     }
 
     /// <summary>
@@ -176,7 +176,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, mean: {low}, scale: {high}, hasSeed: {hasSeed}, seed: {seed}";
         }
 
-        internal override string profilerTag => "RandomUniformLike";
+        public override string opName => "RandomUniformLike";
     }
 
     /// <summary>
@@ -211,7 +211,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, dataType: {dataType}, hasSeed: {hasSeed}, seed: {seed}";
         }
 
-        internal override string profilerTag => "Bernoulli";
+        public override string opName => "Bernoulli";
     }
 
     /// <summary>
@@ -254,6 +254,6 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, count: {count}, hasSeed: {hasSeed}, seed: {seed}";
         }
 
-        internal override string profilerTag => "Multinomial";
+        public override string opName => "Multinomial";
     }
 }

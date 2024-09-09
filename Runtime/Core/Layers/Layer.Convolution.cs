@@ -120,7 +120,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, group: {group}, strides: [{(string.Join(", ", strides))}], pads: [{(string.Join(", ", pads))}], dilations: [{(string.Join(", ", dilations))}], autoPad: {autoPad}, kernelShape: [{(kernelShape == null ? "null" : string.Join(", ", kernelShape))}], fusedActivation: {fusedActivation}";
         }
 
-        internal override string profilerTag => "Conv";
+        public override string opName => "Conv";
     }
 
     /// <summary>
@@ -213,6 +213,6 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, strides: [{(string.Join(", ", strides))}], pads: [{(string.Join(", ", pads))}], outputPadding: [{(string.Join(", ", outputPadding))}], autoPad, {autoPad}, kernelShape: [{(kernelShape == null ? "null" : string.Join(", ", kernelShape))}], fusedActivation: {fusedActivation}";
         }
 
-        internal override string profilerTag => "ConvTranspose";
+        public override string opName => "ConvTranspose";
     }
 }

@@ -19,7 +19,7 @@ partial class CPUBackend
 {
 
 
-[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+[BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
 internal unsafe struct InstanceNormalizationTailJob : IJobParallelFor, IJobResourceDeclarationXSBWO
 {
 

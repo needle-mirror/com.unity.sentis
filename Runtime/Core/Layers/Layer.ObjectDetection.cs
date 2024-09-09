@@ -71,7 +71,7 @@ namespace Unity.Sentis.Layers
                 ctx.cpuBackend.NonMaxSuppression(boxes, scores, O, maxOutputBoxesPerClass, iouThreshold, scoreThreshold, centerPointBox);
         }
 
-        internal override string profilerTag => "NonMaxSuppression";
+        public override string opName => "NonMaxSuppression";
     }
 
     /// <summary>
@@ -152,6 +152,6 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, mode: {mode}, outputHeight: {outputHeight}, outputWidth: {outputWidth}, samplingRatio: {samplingRatio}, spatialScale: {spatialScale}";
         }
 
-        internal override string profilerTag => "RoiAlign";
+        public override string opName => "RoiAlign";
     }
 }

@@ -8,7 +8,7 @@ namespace Unity.Sentis
 {
     static class GPUPixelBurstJobs
     {
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         public unsafe struct IntBytesAsFloatJob : IJobParallelFor
         {
             [NativeDisableUnsafePtrRestriction]
@@ -24,7 +24,7 @@ namespace Unity.Sentis
             }
         }
 
-        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard)]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Default, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         public unsafe struct FloatBytesAsIntJob : IJobParallelFor
         {
             public NativeArray<float> src;

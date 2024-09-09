@@ -28,8 +28,8 @@ namespace Unity.Sentis.Editor.Tests
             worker.Schedule(inputTensor);
 
             var outputTensor = (worker.PeekOutput() as Tensor<float>);
-
             Assert.AreEqual(output.Length, outputTensor.shape.length);
+            outputTensor.CompleteAllPendingOperations();
             // Check if output matches expected output down to epsilon
             for (var i = 0; i < output.Length; i++)
             {

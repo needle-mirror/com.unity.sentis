@@ -179,10 +179,28 @@ namespace Unity.Sentis
         void BatchedGemm(Tensor<float> X, Tensor<float> Y, Tensor<float> O, int batch, int M, int K, int N)
         {
             ComputeFunction fn;
-            if (N % 64 == 0 && K % 16 == 0)
+            int workItemsX, workItemsY, workItemsZ;
+            if (M == 1)
+            {
+                fn = ComputeFunctions.k_GemmBatched_V_L1Cached64;
+                workItemsX = ComputeHelper.IDivC(N, 4);
+                workItemsY = batch;
+                workItemsZ = 1;
+            }
+            else if (N % 64 == 0 && K % 16 == 0)
+            {
                 fn = ComputeFunctions.k_GemmBatched_T16x16_R4x4;
+                workItemsX = ComputeHelper.IDivC(N, 4);
+                workItemsY = ComputeHelper.IDivC(M, 4);
+                workItemsZ = batch;
+            }
             else
+            {
                 fn = ComputeFunctions.k_GemmBatched_T8x8_R4x4;
+                workItemsX = ComputeHelper.IDivC(N, 4);
+                workItemsY = ComputeHelper.IDivC(M, 4);
+                workItemsZ = batch;
+            }
 
             cb.SetComputeIntParam(fn.shader, k_ID_maxXIndex, X.shape.length - 1);
             cb.SetComputeIntParam(fn.shader, k_ID_maxWIndex, Y.shape.length - 1);
@@ -193,27 +211,104 @@ namespace Unity.Sentis
             cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
             cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(Y));
             cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeFloatParam(fn.shader, k_ID__MinValue, float.MinValue);
 
-            cb.Dispatch(fn, ComputeHelper.IDivC(N, 4), ComputeHelper.IDivC(M, 4), batch);
+            cb.Dispatch(fn, workItemsX, workItemsY, batch);
         }
 
         /// <inheritdoc/>
         public void Dense(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Layers.FusableActivation fusedActivation)
         {
-            var Otmp = (fusedActivation != Layers.FusableActivation.None) ? AllocTensorFloat(O.shape) : O;
-            var M = Otmp.shape.Length(0, -1);
+            var M = O.shape.Length(0, -1);
             var K = X.shape[-1];
-            var N = Otmp.shape[-1];
-            if (B != null)
-                Gemm(X, W, B, Otmp, M, K, N);
-            else
-                Gemm(X, W, Otmp, M, K, N);
+            var N = O.shape[-1];
 
-            if (fusedActivation != Layers.FusableActivation.None)
+            int workItemsX, workItemsY;
+            ComputeFunction fn;
+            if (M == 1)
             {
-                ApplyFusedActivation(Otmp, O, fusedActivation);
-                ReleaseTensorFloat(Otmp);
+                fn = ComputeFunctions.k_Dense_V_L1Cached64;
+                workItemsX = ComputeHelper.IDivC(N, 4);
+                workItemsY = 1;
             }
+            else if (N % 64 == 0 && K % 16 == 0)
+            {
+                fn = ComputeFunctions.k_Dense_T16x16_R4x4;
+                workItemsX = ComputeHelper.IDivC(N, 4);
+                workItemsY = ComputeHelper.IDivC(M, 4);
+            }
+            else
+            {
+                fn = ComputeFunctions.k_Dense_T8x8_R4x4;
+                workItemsX = ComputeHelper.IDivC(N, 4);
+                workItemsY = ComputeHelper.IDivC(M, 4);
+            }
+
+            cb.SetComputeIntParam(fn.shader, k_ID_X_width, K);
+            cb.SetComputeIntParam(fn.shader, k_ID_W_width, N);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_height, M);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_width, N);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(W));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_maxXIndex, X.shape.length - 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_maxWIndex, W.shape.length - 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_maxBIndex, B.shape.length - 1);
+
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetComputeIntParam(fn.shader, k_ID_maxBIndex, N - 1);
+            cb.SetComputeFloatParam(fn.shader, k_ID__MinValue, fusedActivation == Layers.FusableActivation.Relu ? 0.0f : float.MinValue);
+
+            cb.Dispatch(fn, workItemsX, workItemsY, 1);
+        }
+
+        /// <inheritdoc/>
+        public void DenseBatched(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Layers.FusableActivation fusedActivation)
+        {
+            var batch = O.shape.Length(0, -1);
+            var M = X.shape[-2];
+            var K = X.shape[-1];
+            var N = O.shape[-1];
+
+            ComputeFunction fn;
+            int workItemsX, workItemsY, workItemsZ;
+            if (M == 1)
+            {
+                fn = ComputeFunctions.k_DenseBatched_V_L1Cached64;
+                workItemsX = ComputeHelper.IDivC(N, 4);
+                workItemsY = batch;
+                workItemsZ = 1;
+            }
+            else if (N % 64 == 0 && K % 16 == 0)
+            {
+                fn = ComputeFunctions.k_DenseBatched_T16x16_R4x4;
+                workItemsX = ComputeHelper.IDivC(N, 4);
+                workItemsY = ComputeHelper.IDivC(M, 4);
+                workItemsZ = batch;
+            }
+            else
+            {
+                fn = ComputeFunctions.k_DenseBatched_T8x8_R4x4;
+                workItemsX = ComputeHelper.IDivC(N, 4);
+                workItemsY = ComputeHelper.IDivC(M, 4);
+                workItemsZ = batch;
+            }
+
+            cb.SetComputeIntParam(fn.shader, k_ID_maxXIndex, X.shape.length - 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_maxWIndex, W.shape.length - 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_maxBIndex, B.shape.length - 1);
+            cb.SetComputeIntParam(fn.shader, k_ID_X_width, K);
+            cb.SetComputeIntParam(fn.shader, k_ID_W_width, N);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_width, N);
+            cb.SetComputeIntParam(fn.shader, k_ID_O_height, M);
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(W));
+            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeFloatParam(fn.shader, k_ID__MinValue, fusedActivation == Layers.FusableActivation.Relu ? 0.0f : float.MinValue);
+
+            cb.Dispatch(fn, workItemsX, workItemsY, workItemsZ);
         }
 
         /// <inheritdoc/>
@@ -2928,46 +3023,7 @@ namespace Unity.Sentis
             cb.Dispatch(fn, ComputeHelper.IDivC(copyLength, 4), 1, 1);
         }
 
-        void Gemm(Tensor<float> X, Tensor<float> Y, Tensor<float> B, Tensor<float> O, int M, int K, int N)
-        {
-            int workItemsX, workItemsY;
-            ComputeFunction fn;
-            if (M == 1)
-            {
-                fn = ComputeFunctions.k_Dense_V_L1Cached64;
-                workItemsX = ComputeHelper.IDivC(N, 4);
-                workItemsY = 1;
-            }
-            else if (N % 64 == 0 && K % 16 == 0)
-            {
-                fn = ComputeFunctions.k_Dense_T16x16_R4x4;
-                workItemsX = ComputeHelper.IDivC(N, 4);
-                workItemsY = ComputeHelper.IDivC(M, 4);
-            }
-            else
-            {
-                fn = ComputeFunctions.k_Dense_T8x8_R4x4;
-                workItemsX = ComputeHelper.IDivC(N, 4);
-                workItemsY = ComputeHelper.IDivC(M, 4);
-            }
-
-            cb.SetComputeIntParam(fn.shader, k_ID_X_width, K);
-            cb.SetComputeIntParam(fn.shader, k_ID_W_width, N);
-            cb.SetComputeIntParam(fn.shader, k_ID_O_height, M);
-            cb.SetComputeIntParam(fn.shader, k_ID_O_width, N);
-            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
-            cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(Y));
-            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
-            cb.SetComputeIntParam(fn.shader, k_ID_maxXIndex, M * K - 1);
-            cb.SetComputeIntParam(fn.shader, k_ID_maxWIndex, K * N - 1);
-
-            cb.SetTensorAsBuffer(fn, k_ID_Bptr, Pin(B));
-            cb.SetComputeIntParam(fn.shader, k_ID_maxBIndex, N - 1);
-
-            cb.Dispatch(fn, workItemsX, workItemsY, 1);
-        }
-
-        void Gemm(Tensor<float> X, Tensor<float> Y, Tensor<float> O, int M, int K, int N, bool transposeA = false, bool transposeB = false)
+        void Gemm(Tensor<float> X, Tensor<float> Y, Tensor<float> O, int M, int K, int N, bool transposeA = false, bool transposeB = false, Layers.FusableActivation fusedActivation = Layers.FusableActivation.None)
         {
             if (transposeA || transposeB)
             {
@@ -2986,6 +3042,7 @@ namespace Unity.Sentis
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
                 cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(Y));
                 cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeFloatParam(fn.shader, k_ID__MinValue, fusedActivation == Layers.FusableActivation.Relu ? 0.0f : float.MinValue);
 
                 cb.Dispatch(fn, ComputeHelper.IDivC(N, 4), ComputeHelper.IDivC(M, 4), 1);
             }
@@ -3025,6 +3082,7 @@ namespace Unity.Sentis
                 cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
                 cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(Y));
                 cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+                cb.SetComputeFloatParam(fn.shader, k_ID__MinValue, fusedActivation == Layers.FusableActivation.Relu ? 0.0f : float.MinValue);
 
                 cb.Dispatch(fn, workItemsX, workItemsY, workItemsZ);
             }

@@ -237,7 +237,7 @@ namespace Unity.Sentis
                 m_InUseTensorsPool[constant.index] = tensor;
                 constants.Add(constant.index);
                 if (takeoverWeights)
-                    constant.weights = null;
+                    constant.m_Weights = null;
             }
 
             m_UnconnectedTensors = new HashSet<int>(model.inputs.Select(i => i.index));

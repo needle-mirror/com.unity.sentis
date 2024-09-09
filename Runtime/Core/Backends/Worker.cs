@@ -213,7 +213,7 @@ namespace Unity.Sentis
                 if (m_LayerCPUFallback.Contains(l.outputs[0]))
                     ctx.backend = m_FallbackBackend;
 
-                var markerType = ProfilerMarkers.LayerTypeProfilerMarker(l.profilerTag);
+                var markerType = ProfilerMarkers.LayerTypeProfilerMarker(l.opName);
                 markerType.Begin();
 #if SENTIS_DEBUG
                 Profiler.BeginSample(l.index);
@@ -279,8 +279,8 @@ namespace Unity.Sentis
                 if (cpuLayer)
                     ctx.backend = m_FallbackBackend;
 
-                //var markerType = ProfilerMarkers.LayerTypeProfilerMarker(l.profilerTag);
-                //markerType.Begin();
+                var markerType = ProfilerMarkers.LayerTypeProfilerMarker(l.opName);
+                markerType.Begin();
 #if SENTIS_DEBUG
                 Profiler.BeginSample(l.index);
 #endif
@@ -288,7 +288,7 @@ namespace Unity.Sentis
 #if SENTIS_DEBUG
                 Profiler.EndSample();
 #endif
-                //markerType.End();
+                markerType.End();
 
                 m_Storage.DisposeAfterLayer(l);
 
