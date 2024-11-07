@@ -149,7 +149,7 @@ namespace Unity.Sentis.ONNX
             else if (dataType == TensorProto.Types.DataType.Float)
             {
                 Assert.IsTrue((sizeof(float) * shape.length) == length);
-                data = new NativeTensorArrayFromManagedArray(byteArray, 0, sizeof(float), shape.length);
+                data = new NativeTensorArrayFromManagedArray(byteArray, 0, sizeof(byte), shape.length);
             }
             // Float16
             else if (dataType == TensorProto.Types.DataType.Float16)
@@ -175,7 +175,7 @@ namespace Unity.Sentis.ONNX
             else if (dataType == TensorProto.Types.DataType.Int32)
             {
                 Assert.IsTrue((sizeof(int) * shape.length) == length);
-                data = new NativeTensorArrayFromManagedArray(byteArray, 0, sizeof(int), shape.length);
+                data = new NativeTensorArrayFromManagedArray(byteArray, 0, sizeof(byte), shape.length);
             }
             // Int64
             else if (dataType == TensorProto.Types.DataType.Int64)

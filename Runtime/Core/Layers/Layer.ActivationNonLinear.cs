@@ -1,4 +1,5 @@
 using System;
+using Unity.Profiling;
 
 namespace Unity.Sentis.Layers
 {
@@ -7,6 +8,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class LogSoftmax : Activation
     {
+        static readonly string k_OpName = "LogSoftmax";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int axis;
 
         public LogSoftmax(int output, int input, int axis = -1)
@@ -29,7 +32,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}";
         }
 
-        public override string opName => "LogSoftmax";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -37,6 +41,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Softmax : Activation
     {
+        static readonly string k_OpName = "Softmax";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int axis;
 
         public Softmax(int output, int input, int axis = -1)
@@ -59,6 +65,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}";
         }
 
-        public override string opName => "Softmax";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

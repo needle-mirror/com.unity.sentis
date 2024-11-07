@@ -1,5 +1,6 @@
 using System;
 using Unity.Collections.LowLevel.Unsafe;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace Unity.Sentis.Layers
@@ -24,6 +25,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class NonMaxSuppression : Layer
     {
+        static readonly string k_OpName = "NonMaxSuppression";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public CenterPointBox centerPointBox;
 
         public NonMaxSuppression(int output, int boxes, int scores, int maxOutputBoxesPerClass = -1, int iouThreshold = -1, int scoreThreshold = -1, CenterPointBox centerPointBox = CenterPointBox.Corners)
@@ -71,7 +74,8 @@ namespace Unity.Sentis.Layers
                 ctx.cpuBackend.NonMaxSuppression(boxes, scores, O, maxOutputBoxesPerClass, iouThreshold, scoreThreshold, centerPointBox);
         }
 
-        public override string opName => "NonMaxSuppression";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -94,6 +98,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class RoiAlign : Layer
     {
+        static readonly string k_OpName = "RoiAlign";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public RoiPoolingMode mode;
         public int outputHeight;
         public int outputWidth;
@@ -152,6 +158,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, mode: {mode}, outputHeight: {outputHeight}, outputWidth: {outputWidth}, samplingRatio: {samplingRatio}, spatialScale: {spatialScale}";
         }
 
-        public override string opName => "RoiAlign";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

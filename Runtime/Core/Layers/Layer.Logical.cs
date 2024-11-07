@@ -1,4 +1,5 @@
 using System;
+using Unity.Profiling;
 
 namespace Unity.Sentis.Layers
 {
@@ -23,6 +24,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class And : Broadcast
     {
+        static readonly string k_OpName = "And";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public And(int output, int a, int b)
             : base(output, a, b) { }
 
@@ -36,7 +40,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.And(A, B, O);
         }
 
-        public override string opName => "And";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -45,6 +50,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Compress : Layer
     {
+        static readonly string k_OpName = "Compress";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public bool hasAxis;
         public int axis;
 
@@ -119,7 +126,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, hasAxis: {hasAxis}, axis: {axis}";
         }
 
-        public override string opName => "Compress";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -129,6 +137,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Equal : Comparison
     {
+        static readonly string k_OpName = "Equal";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Equal(int output, int a, int b)
             : base(output, a, b) { }
 
@@ -145,7 +156,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Equal(A as Tensor<float>, B as Tensor<float>, O);
         }
 
-        public override string opName => "Equal";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -155,6 +167,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Greater : Comparison
     {
+        static readonly string k_OpName = "Greater";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Greater(int output, int a, int b)
             : base(output, a, b) { }
 
@@ -171,7 +186,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Greater(A as Tensor<float>, B as Tensor<float>, O);
         }
 
-        public override string opName => "Greater";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -181,6 +197,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class GreaterOrEqual : Comparison
     {
+        static readonly string k_OpName = "GreaterOrEqual";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public GreaterOrEqual(int output, int a, int b)
             : base(output, a, b) { }
 
@@ -197,7 +216,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.GreaterOrEqual(A as Tensor<float>, B as Tensor<float>, O);
         }
 
-        public override string opName => "GreaterOrEqual";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -205,6 +225,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class IsInf : Layer
     {
+        static readonly string k_OpName = "IsInf";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public bool detectNegative;
         public bool detectPositive;
 
@@ -234,7 +256,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, detectNegative: {detectNegative}, detectPositive: {detectPositive}";
         }
 
-        public override string opName => "IsInf";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -242,6 +265,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class IsNaN : Layer
     {
+        static readonly string k_OpName = "IsNaN";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public IsNaN(int output, int input)
             : base(new[] { output }, new[] { input }) { }
 
@@ -259,7 +285,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.IsNaN(A, O);
         }
 
-        public override string opName => "IsNaN";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -269,6 +296,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Less : Comparison
     {
+        static readonly string k_OpName = "Less";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Less(int output, int a, int b)
             : base(output, a, b) { }
 
@@ -285,7 +315,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Less(A as Tensor<float>, B as Tensor<float>, O);
         }
 
-        public override string opName => "Less";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -295,6 +326,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class LessOrEqual : Comparison
     {
+        static readonly string k_OpName = "LessOrEqual";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public LessOrEqual(int output, int a, int b)
             : base(output, a, b) { }
 
@@ -311,7 +345,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.LessOrEqual(A as Tensor<float>, B as Tensor<float>, O);
         }
 
-        public override string opName => "LessOrEqual";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -319,6 +354,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Not : Layer
     {
+        static readonly string k_OpName = "Not";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Not(int output, int input)
             : base(new[] { output }, new[] { input }) { }
 
@@ -335,7 +373,8 @@ namespace Unity.Sentis.Layers
                 return;
             ctx.backend.Not(A, O);
         }
-        public override string opName => "Not";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -345,6 +384,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Or : Broadcast
     {
+        static readonly string k_OpName = "Or";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Or(int output, int a, int b)
             : base(output, a, b) { }
 
@@ -358,7 +400,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Or(A, B, O);
         }
 
-        public override string opName => "Or";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -368,6 +411,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Xor : Broadcast
     {
+        static readonly string k_OpName = "Xor";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Xor(int output, int a, int b)
             : base(output, a, b) { }
 
@@ -381,7 +427,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Xor(A, B, O);
         }
 
-        public override string opName => "Xor";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -391,6 +438,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Where : Broadcast
     {
+        static readonly string k_OpName = "Where";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Where(int output, int condition, int input1, int input2)
             : base(output, condition, input1, input2) { }
 
@@ -410,6 +460,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Where(C, A, B, O);
         }
 
-        public override string opName => "Where";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

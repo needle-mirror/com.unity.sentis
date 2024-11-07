@@ -50,7 +50,7 @@ public class ClassifyHandwrittenDigit : MonoBehaviour
 
         // outputTensor is still pending
         // Either read back the results asynchronously or do a blocking download call
-        var results = outputTensor.DownloadToArray();
+        results = outputTensor.DownloadToArray();
     }
 
     void OnDisable()

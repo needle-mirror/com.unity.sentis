@@ -1,4 +1,5 @@
 using System;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace Unity.Sentis.Layers
@@ -96,6 +97,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class AveragePool : LocalPool
     {
+        static readonly string k_OpName = "AveragePool";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public AveragePool(int output, int input, int[] kernelShape, int[] strides, int[] pads, AutoPad autopad = AutoPad.NotSet)
             : base(output, input, kernelShape, strides, pads, autopad) { }
 
@@ -109,7 +113,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.AveragePool(X, O, kernelShape, strides, pads);
         }
 
-        public override string opName => "AveragePool";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -117,6 +122,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class GlobalAveragePool : GlobalPool
     {
+        static readonly string k_OpName = "GlobalAveragePool";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public GlobalAveragePool(int output, int input)
             : base(output, input) { }
 
@@ -129,7 +137,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.GlobalAveragePool(X, O);
         }
 
-        public override string opName => "GlobalAveragePool";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -137,6 +146,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class GlobalMaxPool : GlobalPool
     {
+        static readonly string k_OpName = "GlobalMaxPool";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public GlobalMaxPool(int output, int input)
             : base(output, input) { }
 
@@ -149,7 +161,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.GlobalMaxPool(X, O);
         }
 
-        public override string opName => "GlobalMaxPool";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -157,6 +170,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class MaxPool : LocalPool
     {
+        static readonly string k_OpName = "MaxPool";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public MaxPool(int output, int input, int[] kernelShape, int[] strides, int[] pads, AutoPad autopad = AutoPad.NotSet)
             : base(output, input, kernelShape, strides, pads, autopad) { }
 
@@ -170,6 +186,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.MaxPool(X, O, kernelShape, strides, pads);
         }
 
-        public override string opName => "MaxPool";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

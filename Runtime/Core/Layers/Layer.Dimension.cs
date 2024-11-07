@@ -1,4 +1,5 @@
 using System;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace Unity.Sentis.Layers
@@ -8,6 +9,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Shape : Layer
     {
+        static readonly string k_OpName = "Shape";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int start;
         public int end;
 
@@ -70,7 +73,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, start: {start}, end: {end}";
         }
 
-        public override string opName => "Shape";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -78,6 +82,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Size : Layer
     {
+        static readonly string k_OpName = "Size";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Size(int output, int input)
             : base(new[] { output }, new[] { input }) { }
 
@@ -98,6 +105,7 @@ namespace Unity.Sentis.Layers
             O[0] = shapeX.length;
         }
 
-        public override string opName => "Size";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

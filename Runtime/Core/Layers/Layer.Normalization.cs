@@ -1,5 +1,6 @@
 using System;
 using Unity.Collections;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace Unity.Sentis.Layers
@@ -9,6 +10,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ScaleBias : Layer
     {
+        static readonly string k_OpName = "ScaleBias";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public ScaleBias(int output, int input, int scale, int bias)
             : base(new[] { output }, new[] { input, scale, bias }) { }
 
@@ -48,7 +52,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.ScaleBias(X as Tensor<float>, ctx.storage.GetTensor(inputs[1]) as Tensor<float>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, O);
         }
 
-        public override string opName => "ScaleBias";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -56,6 +61,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class InstanceNormalization : Layer
     {
+        static readonly string k_OpName = "InstanceNormalization";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float epsilon;
 
         public InstanceNormalization(int output, int input, int scale, int bias, float epsilon = 1e-5f)
@@ -108,7 +115,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, epsilon: {epsilon}";
         }
 
-        public override string opName => "InstanceNormalization";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -116,6 +124,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class LayerNormalization : Layer
     {
+        static readonly string k_OpName = "LayerNormalization";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float epsilon;
 
         public LayerNormalization(int output, int input, int scale, int bias = -1, float epsilon = 1e-5f)
@@ -166,7 +176,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, epsilon: {epsilon}";
         }
 
-        public override string opName => "LayerNormalization";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -174,6 +185,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class BatchNormalization : Layer
     {
+        static readonly string k_OpName = "BatchNormalization";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float epsilon;
 
         public BatchNormalization(int output, int input, int scale, int bias, int mean, int variance, float epsilon = 1e-5f)
@@ -229,7 +242,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, epsilon: {epsilon}";
         }
 
-        public override string opName => "BatchNormalization";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -237,6 +251,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class LRN : Layer
     {
+        static readonly string k_OpName = "LRN";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float alpha;
         public float beta;
         public float bias;
@@ -316,6 +332,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, alpha: {alpha}, beta: {beta}, bias: {bias}, count: {count}";
         }
 
-        public override string opName => "LRN";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

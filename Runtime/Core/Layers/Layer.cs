@@ -1,5 +1,7 @@
 using System;
 using System.Reflection;
+using Unity.Profiling;
+using Unity.Sentis.Layers;
 using UnityEngine;
 
 namespace Unity.Sentis
@@ -9,6 +11,8 @@ namespace Unity.Sentis
     /// </summary>
     public abstract class Layer
     {
+        internal const string k_ProfilerMarkerPrefix = "Sentis.Layer.";
+
         /// <summary>
         /// The indices to use for the input tensors for a layer.
         /// </summary>
@@ -18,6 +22,11 @@ namespace Unity.Sentis
         /// The indices to use for all of the output tensors for a layer.
         /// </summary>
         public int[] outputs;
+
+        /// <summary>
+        /// ProfilerMarker for this layer
+        /// </summary>
+        public abstract ProfilerMarker profilerMarker { get; }
 
         /// <summary>
         /// Initializes and returns a `Layer` from given arrays of input and output indices
@@ -46,7 +55,7 @@ namespace Unity.Sentis
         /// <summary>
         /// Returns a string that represents the operation of the `Layer`.
         /// </summary>
-        public virtual string opName => MethodBase.GetCurrentMethod()?.DeclaringType?.Name;
+        public abstract string opName { get; }
 
         /// <summary>
         /// Returns a string that represents the `Layer`.

@@ -1,4 +1,5 @@
 using System;
+using Unity.Profiling;
 
 namespace Unity.Sentis.Layers
 {
@@ -92,6 +93,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class LSTM : Layer
     {
+        static readonly string k_OpName = "LSTM";
+        static readonly ProfilerMarker k_ProfilerMarker = new("Sentis.Layer." + k_OpName);
         public int hiddenSize;
         public RnnDirection direction;
         public RnnActivation[] activations;
@@ -233,6 +236,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, outputs: [{string.Join(", ", outputs)}], hiddenSize: {hiddenSize}, direction: {direction}, activations: [{string.Join(", ", activations)}], activationAlpha: [{string.Join(", ", activationAlpha)}], activationBeta: [{string.Join(", ", activationBeta)}], clip: {clip}, inputForget: {inputForget}, layout: {layout}";
         }
 
-        public override string opName { get { return "LSTM"; } }
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

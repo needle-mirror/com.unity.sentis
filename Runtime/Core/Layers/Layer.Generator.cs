@@ -1,4 +1,5 @@
 using System;
+using Unity.Profiling;
 
 namespace Unity.Sentis.Layers
 {
@@ -7,6 +8,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ConstantOfShape : Layer
     {
+        static readonly string k_OpName = "ConstantOfShape";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public DataType dataType;
         public float floatValue;
         public int intValue;
@@ -61,7 +64,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, dataType: {dataType}, floatValue: {floatValue}, intValue: {intValue}";
         }
 
-        public override string opName => "ConstantOfShape";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -69,6 +73,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class OneHot : Layer
     {
+        static readonly string k_OpName = "OneHot";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int axis;
 
         public OneHot(int output, int indices, int depth, int values, int axis)
@@ -120,7 +126,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}";
         }
 
-        public override string opName => "OneHot";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -128,6 +135,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Range : Layer
     {
+        static readonly string k_OpName = "Range";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Range(int output, int start, int limit, int delta)
             : base(new[] { output }, new[] { start, limit, delta }) { }
 
@@ -173,6 +183,7 @@ namespace Unity.Sentis.Layers
             }
         }
 
-        public override string opName => "Range";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

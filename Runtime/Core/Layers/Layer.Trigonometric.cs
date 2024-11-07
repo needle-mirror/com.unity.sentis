@@ -1,4 +1,5 @@
 using System;
+using Unity.Profiling;
 
 namespace Unity.Sentis.Layers
 {
@@ -7,6 +8,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Acos : Activation
     {
+        static readonly string k_OpName = "Acos";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Acos(int output, int input)
             : base(output, input) { }
 
@@ -19,7 +23,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Acos(X, O);
         }
 
-        public override string opName => "Acos";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -27,6 +32,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Acosh : Activation
     {
+        static readonly string k_OpName = "Acosh";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Acosh(int output, int input)
             : base(output, input) { }
 
@@ -39,7 +47,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Acosh(X, O);
         }
 
-        public override string opName => "Acosh";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -47,6 +56,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Asin : Activation
     {
+        static readonly string k_OpName = "Asin";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Asin(int output, int input)
             : base(output, input) { }
 
@@ -59,7 +71,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Asin(X, O);
         }
 
-        public override string opName => "Asin";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -67,6 +80,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Asinh : Activation
     {
+        static readonly string k_OpName = "Asinh";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Asinh(int output, int input)
             : base(output, input) { }
 
@@ -79,7 +95,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Asinh(X, O);
         }
 
-        public override string opName => "Asinh";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -87,6 +104,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Atan : Activation
     {
+        static readonly string k_OpName = "Atan";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Atan(int output, int input)
             : base(output, input) { }
 
@@ -99,7 +119,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Atan(X, O);
         }
 
-        public override string opName => "Atan";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -107,6 +128,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Atanh : Activation
     {
+        static readonly string k_OpName = "Atanh";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Atanh(int output, int input)
             : base(output, input) { }
 
@@ -119,7 +143,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Atanh(X, O);
         }
 
-        public override string opName => "Atanh";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -127,6 +152,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Cos : Activation
     {
+        static readonly string k_OpName = "Cos";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Cos(int output, int input)
             : base(output, input) { }
 
@@ -139,7 +167,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Cos(X, O);
         }
 
-        public override string opName => "Cos";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -147,6 +176,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Cosh : Activation
     {
+        static readonly string k_OpName = "Cosh";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Cosh(int output, int input)
             : base(output, input) { }
 
@@ -159,7 +191,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Cosh(X, O);
         }
 
-        public override string opName => "Cosh";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -167,6 +200,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Sin : Activation
     {
+        static readonly string k_OpName = "Sin";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Sin(int output, int input)
             : base(output, input) { }
 
@@ -179,7 +215,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Sin(X, O);
         }
 
-        public override string opName => "Sin";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -187,6 +224,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Sinh : Activation
     {
+        static readonly string k_OpName = "Sinh";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Sinh(int output, int input)
             : base(output, input) { }
 
@@ -199,7 +239,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Sinh(X, O);
         }
 
-        public override string opName => "Sinh";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -207,6 +248,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Tan : Activation
     {
+        static readonly string k_OpName = "Tan";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Tan(int output, int input)
             : base(output, input) { }
 
@@ -219,6 +263,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.Tan(X, O);
         }
 
-        public override string opName => "Tan";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

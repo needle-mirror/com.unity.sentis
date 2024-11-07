@@ -89,6 +89,8 @@ namespace Unity.Sentis
         /// <inheritdoc/>
         public override void Reshape(TensorShape shape)
         {
+            if (shape == m_Shape)
+                return;
             if (dataOnBackend != null)
             {
                 Logger.AssertIsTrue(dataOnBackend is not TextureTensorData, "Tensor.Reshape: Sentis can only reshape when the dataOnBackend is not a TextureTensorData");

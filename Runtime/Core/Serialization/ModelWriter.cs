@@ -15,7 +15,10 @@ namespace Unity.Sentis
     /// </summary>
     public static class ModelWriter
     {
-        internal const long maxSize = 0x10000000;
+        // The overhead in bytes on top of the byte array data for a FlatBuffer with a prefix length
+        const int k_WeightsFlatBufferOverhead = 32;
+        // The maximum size of a FlatBuffer is int.MaxValue bytes, subtract the overhead to get the maximum size for a single constant
+        const long k_MaxConstantSize = int.MaxValue - k_WeightsFlatBufferOverhead;
         internal const int version = 3;
 
         /// <summary>
@@ -75,7 +78,9 @@ namespace Unity.Sentis
             // values: tensor desc + float/int layer values
             var values = new List<Offset<EValue>>();
             int valuesCount = 0;
-            Dictionary<int, int> layerInputIndices = new Dictionary<int, int>();
+
+            // mapping of indexes in model to indexes in serialized model
+            var indexMapping = new Dictionary<int, int>();
 
             // Inputs
             var inputsIndices = new int[model.inputs.Count];
@@ -114,7 +119,7 @@ namespace Unity.Sentis
                     val = SentisFlatBuffer.Tensor.CreateTensor(builder, (ScalarType)input.dataType, shape_dynamism: TensorShapeDynamism.DYNAMIC_UNBOUND, dynamic_sizesOffset: size);
                 }
                 values.Add(EValue.CreateEValue(builder, KernelTypes.Tensor, val.Value));
-                layerInputIndices[input.index] = valuesCount;
+                indexMapping[input.index] = valuesCount;
                 valuesCount++;
             }
             var epModelInputs = ExecutionPlan.CreateInputsVector(builder, inputsIndices);
@@ -122,17 +127,6 @@ namespace Unity.Sentis
 
             // Model Settings
             var epModelName = builder.CreateString(model.ProducerName);
-
-            // Model
-            var outputs = new Dictionary<int, bool>();
-            var outputFromIndex = new Dictionary<int, Model.Output>();
-            var outputIndices = new List<int>();
-            var outputsNames = new List<StringOffset>();
-            foreach (var output in model.outputs)
-            {
-                outputs.Add(output.index, false);
-                outputFromIndex.Add(output.index, output);
-            }
 
             // constants
             var constants = new Dictionary<int, Constant>();
@@ -164,12 +158,14 @@ namespace Unity.Sentis
                 for (int k = 0; k < layer.inputs.Length; k++)
                 {
                     var input = layer.inputs[k];
-                    // input is constant
-                    if (constants.ContainsKey(input) && !layerInputIndices.ContainsKey(input))
+
+                    if (input != -1 && !indexMapping.ContainsKey(input))
                     {
+                        // layer input must be a constant
                         var constant = constants[input];
                         var size = SentisFlatBuffer.Tensor.CreateFixedSizesVector(builder, constant.shape.ToArray());
-                        if (constantBufferOffset + constant.lengthBytes > maxSize)
+                        Logger.AssertIsTrue(constant.lengthBytes <= k_MaxConstantSize, "Constant of size {0} is larger than maximum serializable constant size {1}", constant.lengthBytes, k_MaxConstantSize);
+                        if (constantBufferOffset + constant.lengthBytes > k_MaxConstantSize)
                         {
                             segmentLength.Add((int)constantBufferOffset);
                             constantBufferOffset = 0;
@@ -178,18 +174,11 @@ namespace Unity.Sentis
                         values.Add(EValue.CreateEValue(builder, KernelTypes.Tensor, val.Value));
                         constantBufferOffset += constant.lengthBytes;
                         constantBuffersSize += constant.lengthBytes;
-                        layerInputIndices[input] = valuesCount;
-                        valuesCount++;
-                    }
-                    // input is dynamic
-                    else
-                    {
-                        var val = SentisFlatBuffer.Tensor.CreateTensor(builder);
-                        values.Add(EValue.CreateEValue(builder, KernelTypes.Tensor, val.Value));
+                        indexMapping[input] = valuesCount;
                         valuesCount++;
                     }
 
-                    layerInputs[k] = (input == -1) ? -1 : layerInputIndices[input];
+                    layerInputs[k] = (input == -1) ? -1 : indexMapping[input];
                 }
 
                 var layerAttributesInputs = new List<int>();
@@ -262,15 +251,9 @@ namespace Unity.Sentis
                 foreach (var output in layer.outputs)
                 {
                     layerOutputs.Add(valuesCount);
-                    layerInputIndices[output] = valuesCount;
                     var valTo = SentisFlatBuffer.Tensor.CreateTensor(builder);
                     values.Add(EValue.CreateEValue(builder, KernelTypes.Tensor, valTo.Value));
-                    if (outputs.ContainsKey(output) && !outputs[output])
-                    {
-                        outputIndices.Add(valuesCount);
-                        outputsNames.Add(builder.CreateString(outputFromIndex[output].name));
-                        outputs[output] = true;
-                    }
+                    indexMapping[output] = valuesCount;
                     valuesCount++;
                 }
 
@@ -301,10 +284,6 @@ namespace Unity.Sentis
 
                 var constant = constants[output.index];
 
-                outputIndices.Add(valuesCount);
-                outputsNames.Add(builder.CreateString(output.name));
-                outputs[constant.index] = true;
-
                 var size = SentisFlatBuffer.Tensor.CreateFixedSizesVector(builder, constant.shape.ToArray());
                 var val = SentisFlatBuffer.Tensor.CreateTensor(builder, (ScalarType)constant.dataType, constant.lengthBytes, size, (uint)(1 + segmentLength.Count), (int)constantBufferOffset);
                 values.Add(EValue.CreateEValue(builder, KernelTypes.Tensor, val.Value));
@@ -325,7 +304,16 @@ namespace Unity.Sentis
                 var lChain = Chain.EndChain(builder);
                 chains.Add(lChain);
 
+                indexMapping[constant.index] = valuesCount;
                 valuesCount++;
+            }
+
+            var outputIndices = new List<int>();
+            var outputsNames = new List<StringOffset>();
+            foreach (var output in model.outputs)
+            {
+                outputIndices.Add(indexMapping[output.index]);
+                outputsNames.Add(builder.CreateString(output.name));
             }
 
             var epModelOutputsNames = ExecutionPlan.CreateOutputsNameVector(builder, outputsNames.ToArray());
@@ -407,7 +395,7 @@ namespace Unity.Sentis
             for (int i = 0; i < constantsInOrder.Count; i++)
             {
                 int constantByteSize = constantsInOrder[i].lengthBytes;
-                if (constantBufferByteSize + constantByteSize > maxSize)
+                if (constantBufferByteSize + constantByteSize > k_MaxConstantSize)
                 {
                     segmentData.Add(new byte[constantBufferByteSize]);
                     constantBufferByteSize = 0;
@@ -426,9 +414,11 @@ namespace Unity.Sentis
             {
                 var constant = constantsInOrder[i];
                 int constantByteSize = constant.lengthBytes;
-                if (constantBufferByteSize + constantByteSize > maxSize)
+                Logger.AssertIsTrue(constant.lengthBytes <= k_MaxConstantSize, "Constant of size {0} is larger than maximum serializable constant size {1}", constant.lengthBytes, k_MaxConstantSize);
+                if (constantBufferByteSize + constantByteSize > k_MaxConstantSize)
                 {
-                    builder = new FlatBufferBuilder(1);
+                    // Preallocate exact size for FlatBuffer otherwise allocator can overshoot max FlatBuffer size for large byte arrays
+                    builder = new FlatBufferBuilder(k_WeightsFlatBufferOverhead + segmentData[segmentIndex].Length);
                     storage = SentisFlatBuffer.Buffer.CreateStorageVectorBlock(builder, segmentData[segmentIndex]);
                     SentisFlatBuffer.Buffer.StartBuffer(builder);
                     SentisFlatBuffer.Buffer.AddStorage(builder, storage);
@@ -445,7 +435,8 @@ namespace Unity.Sentis
                 constantBufferByteSize += constantByteSize;
             }
 
-            builder = new FlatBufferBuilder(1);
+            // Preallocate exact size for FlatBuffer otherwise allocator can overshoot max FlatBuffer size for large byte arrays
+            builder = new FlatBufferBuilder(k_WeightsFlatBufferOverhead + segmentData[segmentIndex].Length);
             storage = SentisFlatBuffer.Buffer.CreateStorageVectorBlock(builder, segmentData[segmentIndex]);
             SentisFlatBuffer.Buffer.StartBuffer(builder);
             SentisFlatBuffer.Buffer.AddStorage(builder, storage);

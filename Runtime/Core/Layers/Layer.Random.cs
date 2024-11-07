@@ -1,4 +1,5 @@
 using System;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace Unity.Sentis.Layers
@@ -34,6 +35,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class RandomNormal : RandomLayer
     {
+        static readonly string k_OpName = "RandomNormal";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float mean;
         public float scale;
         public int[] shape;
@@ -64,7 +67,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, mean: {mean}, scale: {scale}, hasSeed: {hasSeed}, seed: {seed}";
         }
 
-        public override string opName => "RandomNormal";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -72,6 +76,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class RandomNormalLike : RandomLayer
     {
+        static readonly string k_OpName = "RandomNormalLike";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float mean;
         public float scale;
 
@@ -101,7 +107,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, mean: {mean}, scale: {scale}, hasSeed: {hasSeed}, seed: {seed}";
         }
 
-        public override string opName => "RandomNormalLike";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -109,6 +116,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class RandomUniform : RandomLayer
     {
+        static readonly string k_OpName = "RandomUniform";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float low;
         public float high;
         public int[] shape;
@@ -139,7 +148,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, low: {low}, high: {high}, hasSeed: {hasSeed}, seed: {seed}";
         }
 
-        public override string opName => "RandomUniform";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -147,6 +157,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class RandomUniformLike : RandomLayer
     {
+        static readonly string k_OpName = "RandomUniformLike";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float low;
         public float high;
 
@@ -176,7 +188,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, mean: {low}, scale: {high}, hasSeed: {hasSeed}, seed: {seed}";
         }
 
-        public override string opName => "RandomUniformLike";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -184,6 +197,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Bernoulli : RandomLayer
     {
+        static readonly string k_OpName = "Bernoulli";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public DataType dataType;
 
         public Bernoulli(int output, int input, DataType dataType, int? seed)
@@ -211,7 +226,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, dataType: {dataType}, hasSeed: {hasSeed}, seed: {seed}";
         }
 
-        public override string opName => "Bernoulli";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -219,6 +235,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Multinomial : RandomLayer
     {
+        static readonly string k_OpName = "Multinomial";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int count;
 
         public Multinomial(int output, int input, int count, int? seed)
@@ -254,6 +272,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, count: {count}, hasSeed: {hasSeed}, seed: {seed}";
         }
 
-        public override string opName => "Multinomial";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

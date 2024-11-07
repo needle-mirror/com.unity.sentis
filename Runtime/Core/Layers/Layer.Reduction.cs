@@ -1,4 +1,5 @@
 using System;
+using Unity.Profiling;
 
 namespace Unity.Sentis.Layers
 {
@@ -85,6 +86,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ReduceL1 : Reduce
     {
+        static readonly string k_OpName = "ReduceL1";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public ReduceL1(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
@@ -107,7 +111,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.ReduceL1(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
-        public override string opName => "ReduceL1";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -115,6 +120,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ReduceL2 : Reduce
     {
+        static readonly string k_OpName = "ReduceL2";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public ReduceL2(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
@@ -134,7 +142,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.ReduceL2(X, O as Tensor<float>, axes);
         }
 
-        public override string opName => "ReduceL2";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -142,6 +151,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ReduceLogSum : Reduce
     {
+        static readonly string k_OpName = "ReduceLogSum";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public ReduceLogSum(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
@@ -161,7 +173,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.ReduceLogSum(X, O as Tensor<float>, axes);
         }
 
-        public override string opName => "ReduceLogSum";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -169,6 +182,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ReduceLogSumExp : Reduce
     {
+        static readonly string k_OpName = "ReduceLogSumExp";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public ReduceLogSumExp(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
@@ -188,7 +204,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.ReduceLogSumExp(X, O as Tensor<float>, axes);
         }
 
-        public override string opName => "ReduceLogSumExp";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -196,6 +213,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ReduceMax : Reduce
     {
+        static readonly string k_OpName = "ReduceMax";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public ReduceMax(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
@@ -218,7 +238,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.ReduceMax(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
-        public override string opName => "ReduceMax";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -226,6 +247,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ReduceMean : Reduce
     {
+        static readonly string k_OpName = "ReduceMean";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public ReduceMean(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
@@ -245,7 +269,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.ReduceMean(X, O as Tensor<float>, axes);
         }
 
-        public override string opName => "ReduceMean";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -253,6 +278,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ReduceMin : Reduce
     {
+        static readonly string k_OpName = "ReduceMin";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public ReduceMin(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
@@ -275,7 +303,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.ReduceMin(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
-        public override string opName => "ReduceMin";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -283,6 +312,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ReduceProd : Reduce
     {
+        static readonly string k_OpName = "ReduceProd";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public ReduceProd(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
@@ -305,7 +337,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.ReduceProd(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
-        public override string opName => "ReduceProd";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -313,6 +346,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ReduceSum : Reduce
     {
+        static readonly string k_OpName = "ReduceSum";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public ReduceSum(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
@@ -335,7 +371,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.ReduceSum(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
-        public override string opName => "ReduceSum";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -343,6 +380,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ReduceSumSquare : Reduce
     {
+        static readonly string k_OpName = "ReduceSumSquare";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public ReduceSumSquare(int output, int data, int axes = -1, bool keepdims = true, bool noopWithEmptyAxes = false)
             : base(output, data, axes, keepdims, noopWithEmptyAxes) { }
 
@@ -365,6 +405,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.ReduceSumSquare(X as Tensor<float>, O as Tensor<float>, axes);
         }
 
-        public override string opName => "ReduceSumSquare";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

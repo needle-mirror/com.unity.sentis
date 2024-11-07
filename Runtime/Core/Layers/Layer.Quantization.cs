@@ -1,4 +1,5 @@
 using System;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace Unity.Sentis.Layers
@@ -9,6 +10,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class DequantizeUint8 : Layer
     {
+        static readonly string k_OpName = "DequantizeUint8";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float scale;
         public byte zeroPoint;
 
@@ -39,6 +42,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, scale: {scale}, zeroPoint: {zeroPoint}";
         }
 
-        public override string opName => "DequantizeUint8";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

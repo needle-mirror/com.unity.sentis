@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Unity.Profiling;
 
 namespace Unity.Sentis.Layers
 {
@@ -8,6 +9,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Abs : Activation
     {
+        static readonly string k_OpName = "Abs";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Abs(int output, int input)
             : base(output, input) { }
 
@@ -23,7 +27,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Abs(X as Tensor<float>, O as Tensor<float>);
         }
 
-        public override string opName => "Abs";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -33,6 +38,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Add : Broadcast
     {
+        static readonly string k_OpName = "Add";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Add(int output, int a, int b)
             : base(output, a, b) { }
 
@@ -51,7 +59,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Add(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
-        public override string opName => "Add";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -59,6 +68,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Ceil : Activation
     {
+        static readonly string k_OpName = "Ceil";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Ceil(int output, int input)
             : base(output, input) { }
 
@@ -71,7 +83,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Ceil(X, O);
         }
 
-        public override string opName => "Ceil";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -79,6 +92,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Clip : Layer
     {
+        static readonly string k_OpName = "Clip";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Clip(int output, int input, int min = -1, int max = -1)
             : base(new[] { output }, new[] { input, min, max }) { }
 
@@ -109,7 +125,8 @@ namespace Unity.Sentis.Layers
             }
         }
 
-        public override string opName => "Clip";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -117,6 +134,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class CumSum : Layer
     {
+        static readonly string k_OpName = "CumSum";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public bool reverse;
         public bool exclusive;
 
@@ -151,7 +171,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, reverse: {reverse}, exclusive: {exclusive}";
         }
 
-        public override string opName => "CumSum";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -161,6 +182,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Dense : FusedActivation
     {
+        static readonly string k_OpName = "Dense";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Dense(int output, int input, int weights, int bias, FusableActivation fusedActivation = FusableActivation.None)
             : base(new[] { output }, new[] { input, weights, bias })
         {
@@ -188,11 +212,15 @@ namespace Unity.Sentis.Layers
             ctx.backend.Dense(X as Tensor<float>, W as Tensor<float>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, O, fusedActivation);
         }
 
-        public override string opName => "Dense";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     class DenseBatched : FusedActivation
     {
+        static readonly string k_OpName = "DenseBatched";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public DenseBatched(int output, int input, int weights, int bias, FusableActivation fusedActivation = FusableActivation.None)
             : base(new[] { output }, new[] { input, weights, bias })
         {
@@ -220,7 +248,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.DenseBatched(X as Tensor<float>, W as Tensor<float>, ctx.storage.GetTensor(inputs[2]) as Tensor<float>, O, fusedActivation);
         }
 
-        public override string opName => "DenseBatched";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -230,6 +259,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Div : Broadcast
     {
+        static readonly string k_OpName = "Div";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Div(int output, int a, int b)
             : base(output, a, b) { }
 
@@ -246,7 +278,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Div(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
-        public override string opName => "Div";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -260,6 +293,8 @@ namespace Unity.Sentis.Layers
     /// </description>
     class Einsum : Layer
     {
+        static readonly string k_OpName = "Einsum";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public string equation;
 
         TensorShape[] operandShapes;
@@ -305,7 +340,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, equation: {equation}";
         }
 
-        public override string opName => "Einsum";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -313,6 +349,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Exp : Activation
     {
+        static readonly string k_OpName = "Exp";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Exp(int output, int input)
             : base(output, input) { }
 
@@ -325,7 +364,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Exp(X, O);
         }
 
-        public override string opName => "Exp";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -333,6 +373,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Floor : Activation
     {
+        static readonly string k_OpName = "Floor";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Floor(int output, int input)
             : base(output, input) { }
 
@@ -345,7 +388,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Floor(X, O);
         }
 
-        public override string opName => "Floor";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -353,6 +397,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Log : Activation
     {
+        static readonly string k_OpName = "Log";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Log(int output, int input)
             : base(output, input) { }
 
@@ -365,7 +412,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Log(X, O);
         }
 
-        public override string opName => "Log";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -373,6 +421,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class MatMul : Layer
     {
+        static readonly string k_OpName = "MatMul";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public MatMul(int output, int input0, int input1)
             : base(new[] { output }, new[] { input0, input1 }) { }
 
@@ -396,7 +447,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.MatMul(A as Tensor<float>, B as Tensor<float>, O);
         }
 
-        public override string opName => "MatMul";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -404,6 +456,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class MatMul2D : Layer
     {
+        static readonly string k_OpName = "MatMul2D";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public bool transposeA;
         public bool transposeB;
 
@@ -451,7 +506,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, transposeA: {transposeA}, transposeB: {transposeB}";
         }
 
-        public override string opName => "MatMul2D";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -461,6 +517,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Min : Broadcast
     {
+        static readonly string k_OpName = "Min";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Min(int output, int a, int b)
             : base(output, a, b) { }
 
@@ -477,7 +536,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Min(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
-        public override string opName => "Min";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -487,6 +547,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Max : Broadcast
     {
+        static readonly string k_OpName = "Max";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Max(int output, int a, int b)
             : base(output, a, b) { }
 
@@ -503,7 +566,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Max(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
-        public override string opName => "Max";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -517,6 +581,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Mod : Broadcast
     {
+        static readonly string k_OpName = "Mod";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public bool fmod;
 
         public Mod(int output, int a, int b, bool fmod = false)
@@ -553,7 +619,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, fmod: {fmod}";
         }
 
-        public override string opName => "Mod";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -563,6 +630,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Mul : Broadcast
     {
+        static readonly string k_OpName = "Mul";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Mul(int output, int a, int b)
             : base(output, a, b) { }
 
@@ -581,7 +651,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Mul(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
-        public override string opName => "Mul";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -589,6 +660,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Neg : Activation
     {
+        static readonly string k_OpName = "Neg";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Neg(int output, int input)
             : base(output, input) { }
 
@@ -604,7 +678,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Neg(X as Tensor<float>, O as Tensor<float>);
         }
 
-        public override string opName => "Neg";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -614,6 +689,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Pow : Broadcast
     {
+        static readonly string k_OpName = "Pow";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Pow(int output, int a, int b)
             : base(output, a, b) { }
 
@@ -630,7 +708,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Pow(A, B as Tensor<float>, O);
         }
 
-        public override string opName => "Pow";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -638,6 +717,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Reciprocal : Activation
     {
+        static readonly string k_OpName = "Reciprocal";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Reciprocal(int output, int input)
             : base(output, input) { }
 
@@ -650,7 +732,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Reciprocal(X as Tensor<float>, O);
         }
 
-        public override string opName => "Reciprocal";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -658,6 +741,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Round : Activation
     {
+        static readonly string k_OpName = "Round";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Round(int output, int input)
             : base(output, input) { }
 
@@ -670,7 +756,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Round(X as Tensor<float>, O);
         }
 
-        public override string opName => "Round";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -678,6 +765,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ScalarMad : Activation
     {
+        static readonly string k_OpName = "ScalarMad";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public DataType dataType;
         public float sFloat;
         public float bFloat;
@@ -717,7 +806,8 @@ namespace Unity.Sentis.Layers
             return dataType == DataType.Float ? $"{base.ToString()}, sFloat: {sFloat}, bFloat: {bFloat}" : $"{base.ToString()}, sInt: {sInt}, bInt: {bInt}";
         }
 
-        public override string opName => "ScalarMad";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -725,6 +815,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Shrink : Layer
     {
+        static readonly string k_OpName = "Shrink";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float bias;
         public float lambd;
 
@@ -755,7 +847,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, bias: {bias}, lambd: {lambd}";
         }
 
-        public override string opName => "Shrink";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -763,6 +856,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Sign : Layer
     {
+        static readonly string k_OpName = "Sign";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Sign(int output, int input)
             : base(new[] { output }, new[] { input }) { }
 
@@ -784,7 +880,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Sign(X as Tensor<float>, O as Tensor<float>);
         }
 
-        public override string opName => "Sign";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -792,6 +889,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Sqrt : Activation
     {
+        static readonly string k_OpName = "Sqrt";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Sqrt(int output, int input)
             : base(output, input) { }
 
@@ -804,7 +904,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Sqrt(X as Tensor<float>, O);
         }
 
-        public override string opName => "Sqrt";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -812,6 +913,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Square : Activation
     {
+        static readonly string k_OpName = "Square";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Square(int output, int input)
             : base(output, input) { }
 
@@ -827,7 +931,8 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Square(X as Tensor<float>, O as Tensor<float>);
         }
 
-        public override string opName => "Square";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -837,6 +942,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Sub : Broadcast
     {
+        static readonly string k_OpName = "Sub";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Sub(int output, int a, int b)
             : base(output, a, b) { }
 
@@ -855,6 +963,7 @@ namespace Unity.Sentis.Layers
                 ctx.backend.Sub(A as Tensor<float>, B as Tensor<float>, O as Tensor<float>);
         }
 
-        public override string opName => "Sub";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

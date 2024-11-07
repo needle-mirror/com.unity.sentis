@@ -1,5 +1,6 @@
 using System;
 using Unity.Collections;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace Unity.Sentis.Layers
@@ -67,6 +68,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ArgMax : ArgReduce
     {
+        static readonly string k_OpName = "ArgMax";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public ArgMax(int output, int input, int axis, bool keepdims = true, bool selectLastIndex = false)
             : base(output, input, axis, keepdims, selectLastIndex) { }
 
@@ -88,7 +92,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}, keepdims: {keepdims}, selectLastIndex: {selectLastIndex}";
         }
 
-        public override string opName => "ArgMax";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -96,6 +101,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ArgMin : ArgReduce
     {
+        static readonly string k_OpName = "ArgMin";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public ArgMin(int output, int input, int axis, bool keepdims = true, bool selectLastIndex = false)
             : base(output, input, axis, keepdims, selectLastIndex) { }
 
@@ -117,7 +125,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}, keepdims: {keepdims}, selectLastIndex: {selectLastIndex}";
         }
 
-        public override string opName => "ArgMin";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -125,6 +134,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Gather : Layer
     {
+        static readonly string k_OpName = "Gather";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int axis;
 
         public Gather(int output, int input, int indices, int axis)
@@ -200,7 +211,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}";
         }
 
-        public override string opName => "Gather";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -208,6 +220,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class GatherElements : Layer
     {
+        static readonly string k_OpName = "GatherElements";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int axis;
 
         public GatherElements(int output, int input, int indices, int axis)
@@ -248,7 +262,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}";
         }
 
-        public override string opName => "GatherElements";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -256,6 +271,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class GatherND : Layer
     {
+        static readonly string k_OpName = "GatherND";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int batchDims;
 
         public GatherND(int output, int input, int indices, int batchDims)
@@ -308,7 +325,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.GatherND(X, indices, O, batchDims);
         }
 
-        public override string opName => "GatherND";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -316,6 +334,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class NonZero : Layer
     {
+        static readonly string k_OpName = "NonZero";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public NonZero(int output, int input)
             : base(new[] { output }, new[] { input }) { }
 
@@ -399,7 +420,8 @@ namespace Unity.Sentis.Layers
             }
         }
 
-        public override string opName => "NonZero";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -409,6 +431,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ScatterElements : Layer
     {
+        static readonly string k_OpName = "ScatterElements";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int axis;
         public ScatterReductionMode reduction;
 
@@ -477,7 +501,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}, reduction: {reduction}";
         }
 
-        public override string opName => "ScatterElements";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -487,6 +512,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ScatterND : Layer
     {
+        static readonly string k_OpName = "ScatterND";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public ScatterReductionMode reduction;
 
         public ScatterND(int output, int input, int indices, int updates, ScatterReductionMode reduction)
@@ -539,7 +566,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, reduction: {reduction}";
         }
 
-        public override string opName => "ScatterND";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -549,6 +577,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class TopK : Layer
     {
+        static readonly string k_OpName = "TopK";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public int axis;
         public bool largest;
         public bool sorted;
@@ -602,6 +632,7 @@ namespace Unity.Sentis.Layers
             ctx.backend.TopK(X as Tensor<float>, values, indices, k, axis, largest);
         }
 
-        public override string opName => "TopK";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

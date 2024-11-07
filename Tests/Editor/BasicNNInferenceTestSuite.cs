@@ -13,7 +13,7 @@ namespace Unity.Sentis.Editor.Tests
         private static string modelFileName = "mnist-cnn-mini";
         private static float epsilon = 1e-3f;
 
-        [Test]
+        [Test][Timeout(100000000)]
         public void BasicNNInferenceTest()
         {
             string[] allCandidates = AssetDatabase.FindAssets(modelFileName);

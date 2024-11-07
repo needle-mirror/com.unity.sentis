@@ -1,6 +1,6 @@
-# Upgrade from Sentis 1.6 to Sentis 2.0
+# Upgrade from Sentis 1.6 to Sentis 2
 
-To upgrade from Sentis 1.6 to Sentis 2.0, do the following:
+To upgrade from Sentis 1.6 to Sentis 2, do the following:
 
 - Replace uses of `TensorFloat` with `Tensor<float>` and uses of `TensorInt` with `Tensor<int>`.
 - Replace uses of `TensorFloat.AllocZeros(shape)` with `new Tensor<float>(shape)` and uses of `TensorInt.AllocZeros(shape)` with `new Tensor<int>(shape)`.

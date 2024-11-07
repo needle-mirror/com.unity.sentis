@@ -1,4 +1,5 @@
 using System;
+using Unity.Profiling;
 
 namespace Unity.Sentis.Layers
 {
@@ -22,6 +23,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Celu : Activation
     {
+        static readonly string k_OpName = "Celu";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float alpha;
 
         public Celu(int output, int input, float alpha)
@@ -44,7 +47,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, alpha: {alpha}";
         }
 
-        public override string opName => "Celu";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -52,6 +56,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Elu : Activation
     {
+        static readonly string k_OpName = "Elu";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float alpha;
 
         public Elu(int output, int input, float alpha = 1.0f)
@@ -74,7 +80,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, alpha: {alpha}";
         }
 
-        public override string opName => "Elu";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -82,6 +89,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Gelu : Activation
     {
+        static readonly string k_OpName = "Gelu";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Gelu(int output, int input)
             : base(output, input) { }
 
@@ -94,11 +104,15 @@ namespace Unity.Sentis.Layers
             ctx.backend.Gelu(X, O);
         }
 
-        public override string opName => "Gelu";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     class GeluFast : Activation
     {
+        static readonly string k_OpName = "GeluFast";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public GeluFast(int output, int input)
             : base(output, input) { }
 
@@ -111,7 +125,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.GeluFast(X, O);
         }
 
-        public override string opName => "GeluFast";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -119,6 +134,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Erf : Activation
     {
+        static readonly string k_OpName = "Erf";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Erf(int output, int input)
             : base(output, input) { }
 
@@ -131,7 +149,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Erf(X as Tensor<float>, O);
         }
 
-        public override string opName => "Erf";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -139,6 +158,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Hardmax : Activation
     {
+        static readonly string k_OpName = "Hardmax";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public int axis;
 
         public Hardmax(int output, int input, int axis = -1)
@@ -161,7 +183,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, axis: {axis}";
         }
 
-        public override string opName => "Hardmax";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -169,6 +192,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class HardSigmoid : Activation
     {
+        static readonly string k_OpName = "HardSigmoid";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public float alpha;
         public float beta;
 
@@ -193,7 +219,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, alpha: {alpha}, beta: {beta}";
         }
 
-        public override string opName => "HardSigmoid";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -201,6 +228,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class HardSwish : Activation
     {
+        static readonly string k_OpName = "HardSwish";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public HardSwish(int output, int input)
             : base(output, input) { }
 
@@ -213,7 +243,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.HardSwish(X, O);
         }
 
-        public override string opName => "HardSwish";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -221,6 +252,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class LeakyRelu : Activation
     {
+        static readonly string k_OpName = "LeakyRelu";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float alpha;
 
         public LeakyRelu(int output, int input, float alpha = 0.01f)
@@ -243,7 +276,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, alpha: {alpha}";
         }
 
-        public override string opName => "LeakyRelu";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -253,6 +287,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class PRelu : Layer
     {
+        static readonly string k_OpName = "PRelu";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public PRelu(int output, int input, int slope)
             : base(new[] { output }, new[] { input, slope }) { }
 
@@ -298,7 +335,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.PRelu(X as Tensor<float>, slope as Tensor<float>, O);
         }
 
-        public override string opName => "PRelu";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -306,6 +344,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Relu : Activation
     {
+        static readonly string k_OpName = "Relu";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Relu(int output, int input)
             : base(output, input) { }
 
@@ -318,7 +359,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Relu(X as Tensor<float>, O);
         }
 
-        public override string opName => "Relu";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -326,6 +368,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Relu6 : Activation
     {
+        static readonly string k_OpName = "Relu6";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Relu6(int output, int input)
             : base(output, input) { }
 
@@ -338,7 +383,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Relu6(X, O);
         }
 
-        public override string opName => "Relu6";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -346,6 +392,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Selu : Activation
     {
+        static readonly string k_OpName = "Selu";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float alpha;
         public float gamma;
 
@@ -370,7 +418,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, alpha: {alpha}, gamma: {gamma}";
         }
 
-        public override string opName => "Selu";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -378,6 +427,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Sigmoid : Activation
     {
+        static readonly string k_OpName = "Sigmoid";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Sigmoid(int output, int input)
             : base(output, input) { }
 
@@ -390,7 +442,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Sigmoid(X as Tensor<float>, O);
         }
 
-        public override string opName => "Sigmoid";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -398,6 +451,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Softplus : Activation
     {
+        static readonly string k_OpName = "Softplus";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Softplus(int output, int input)
             : base(output, input) { }
 
@@ -410,7 +466,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Softplus(X as Tensor<float>, O);
         }
 
-        public override string opName => "Softplus";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -418,6 +475,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Softsign : Activation
     {
+        static readonly string k_OpName = "Softsign";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Softsign(int output, int input)
             : base(output, input) { }
 
@@ -430,7 +490,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Softsign(X as Tensor<float>, O);
         }
 
-        public override string opName => "Softsign";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -438,6 +499,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Swish : Activation
     {
+        static readonly string k_OpName = "Swish";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Swish(int output, int input)
             : base(output, input) { }
 
@@ -450,7 +514,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Swish(X as Tensor<float>, O);
         }
 
-        public override string opName => "Swish";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -458,6 +523,9 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Tanh : Activation
     {
+        static readonly string k_OpName = "Tanh";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+
         public Tanh(int output, int input)
             : base(output, input) { }
 
@@ -470,7 +538,8 @@ namespace Unity.Sentis.Layers
             ctx.backend.Tanh(X as Tensor<float>, O);
         }
 
-        public override string opName => "Tanh";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -478,6 +547,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ThresholdedRelu : Activation
     {
+        static readonly string k_OpName = "ThresholdedRelu";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public float alpha;
 
         public ThresholdedRelu(int output, int input, float alpha)
@@ -500,6 +571,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, alpha: {alpha}";
         }
 
-        public override string opName => "ThresholdedRelu";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

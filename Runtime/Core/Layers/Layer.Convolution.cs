@@ -1,4 +1,5 @@
 using System;
+using Unity.Profiling;
 
 namespace Unity.Sentis.Layers
 {
@@ -30,6 +31,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class Conv : FusedActivation
     {
+        static readonly string k_OpName = "Conv";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public AutoPad autoPad;
         public int[] dilations;
         public int group;
@@ -120,7 +123,8 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, group: {group}, strides: [{(string.Join(", ", strides))}], pads: [{(string.Join(", ", pads))}], dilations: [{(string.Join(", ", dilations))}], autoPad: {autoPad}, kernelShape: [{(kernelShape == null ? "null" : string.Join(", ", kernelShape))}], fusedActivation: {fusedActivation}";
         }
 
-        public override string opName => "Conv";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 
     /// <summary>
@@ -128,6 +132,8 @@ namespace Unity.Sentis.Layers
     /// </summary>
     class ConvTranspose : FusedActivation
     {
+        static readonly string k_OpName = "ConvTranspose";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
         public AutoPad autoPad;
         public int[] outputPadding;
         public int[] pads;
@@ -213,6 +219,7 @@ namespace Unity.Sentis.Layers
             return $"{base.ToString()}, strides: [{(string.Join(", ", strides))}], pads: [{(string.Join(", ", pads))}], outputPadding: [{(string.Join(", ", outputPadding))}], autoPad, {autoPad}, kernelShape: [{(kernelShape == null ? "null" : string.Join(", ", kernelShape))}], fusedActivation: {fusedActivation}";
         }
 
-        public override string opName => "ConvTranspose";
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
     }
 }

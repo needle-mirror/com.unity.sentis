@@ -1,8 +1,14 @@
 # Supported functional methods
 
+Sentis provides a set of operators and functional methods to work with tensors. This topic lists the supported operators and functional methods, and provides examples of their usage.
+
 ## Supported operators
 
+You can directly apply the operators to the tensors.
+
 ### Overloaded operators
+
+You might use binary operators between functional tensors and scalar float, integer, and Boolean values. For example, 'x + 1', 'x % 2.5f', 'False ^ x'.
 
 | Operator   | Sentis equivalent |
 |------------|-------------------|
@@ -21,13 +27,11 @@
 | x ^ y      | Xor               |
 | ~x         | Not               |
 
-Binary operators may also be used between functional tensors and scalar float, integer, and boolean values, for example, 'x + 1', 'x % 2.5f', 'False ^ x'.
-
 ### Indexers
 
-Sentis allows indexing of functional tensors using C# square bracket indexer notation. These are mapped to the Slice and SetSlice operators.
+Sentis allows indexing of functional tensors using C# square bracket indexer notation. These are mapped to the `Slice` and `SetSlice` operators.
 
-Indexes and Ranges can be used as in these examples, x and y are functional tensors, i and j are integers.
+The following table shows how you can use indexes and ranges. In these examples, x and y are functional tensors, while i and j are integers.
 
 | Operator          | Description                                                                                                   |
 |-------------------|---------------------------------------------------------------------------------------------------------------|
@@ -41,13 +45,13 @@ Indexes and Ranges can be used as in these examples, x and y are functional tens
 | x[i] = y          | Set slice i of x to be equal to y, the shape of y must be broadcastable to the slice shape of x.              |
 | x[i..j] = y[i..j] | Set slice of x to be equal to slice of y, the slice shape of y must be broadcastable to the slice shape of x. |
 
-Sentis does not support setting a slice of a functional tensor directly as a scalar float or integer value with this method. Use the Functional.Tensor(value) method to create a scalar functional tensor.
+Sentis doesn't support setting a slice of a functional tensor directly as a scalar float or integer value with this method. Use the `Functional.Constant(value)` method to create a scalar functional tensor.
 
 ## Functional methods
 
 Sentis supports many functional methods modelled after the PyTorch library, with additional ones planned for future updates. Each of these methods is mapped to one or more Sentis layers.
 
-The input parameters and outputs will not exactly match the PyTorch version; check the API reference for more information.
+The input parameters and outputs don't exactly match the PyTorch version. Check the API reference for more information.
 
 | Operator          | PyTorch equivalent  | Sentis equivalent          |
 |-------------------|---------------------|----------------------------|

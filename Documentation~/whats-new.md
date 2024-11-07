@@ -1,8 +1,16 @@
+# What's new in Sentis 2.1.1
+
+This is a summary of the changes from Sentis 2.1.0 to 2.1.1.
+
+### Fixed
+- Models over 2GB or with large constants (over 500MB) import and serialize correctly.
+- The ordering of inputs and outputs is now guaranteed to match that in the ONNX file.
+- Other small fixes for individual operators that were causing inference or import issues.
+- Improved text and sample code in documentation.
+
 # What's new in Sentis 2.1.0
 
 This is a summary of the changes from Sentis 2.0.0 to 2.1.0.
-
-# What's new in Sentis 2.1.0
 
 ### Updated
 - Fast activation fusing for MatMul
@@ -13,6 +21,8 @@ This is a summary of the changes from Sentis 2.0.0 to 2.1.0.
 - CPU Tensors were not properly disposed.
 - Reshaping of empty tensor
 - Exposed internal fields of TextureTensorData
+
+# What's new in Sentis 2.0.0
 
 This is a summary of the changes from Sentis 1.6.0-pre.1 to 2.0.0.
 

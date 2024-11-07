@@ -57,8 +57,8 @@ namespace Unity.Sentis
                 m_OutputIndexes[output.name] = output.index;
             m_Storage = storage;
             m_Backend = backend;
-            if (m_Backend is CPUBackend)
-                m_FallbackBackend = (m_Backend as CPUBackend);
+            if (m_Backend is CPUBackend cpuBackend)
+                m_FallbackBackend = cpuBackend;
             else
                 m_FallbackBackend = new CPUBackend();
 
@@ -138,7 +138,7 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Sets an input tensor with a index.
+        /// Sets an input tensor with an index.
         /// </summary>
         /// <param name="index">The index of the input to set.</param>
         /// <param name="input">The input tensor.</param>
@@ -213,7 +213,7 @@ namespace Unity.Sentis
                 if (m_LayerCPUFallback.Contains(l.outputs[0]))
                     ctx.backend = m_FallbackBackend;
 
-                var markerType = ProfilerMarkers.LayerTypeProfilerMarker(l.opName);
+                var markerType = l.profilerMarker;
                 markerType.Begin();
 #if SENTIS_DEBUG
                 Profiler.BeginSample(l.index);
@@ -279,7 +279,7 @@ namespace Unity.Sentis
                 if (cpuLayer)
                     ctx.backend = m_FallbackBackend;
 
-                var markerType = ProfilerMarkers.LayerTypeProfilerMarker(l.opName);
+                var markerType = l.profilerMarker;
                 markerType.Begin();
 #if SENTIS_DEBUG
                 Profiler.BeginSample(l.index);
