@@ -4,6 +4,7 @@
 #pragma kernel UnrolledReduceMinFloat FLOAT
 #pragma kernel UnrolledReduceSumFloat FLOAT
 #pragma kernel UnrolledReduceSumSquareFloat FLOAT
+#pragma kernel UnrolledReduceMeanSquareFloat FLOAT
 #pragma kernel UnrolledReduceMeanFloat FLOAT
 #pragma kernel UnrolledReduceProdFloat FLOAT
 #pragma kernel UnrolledReduceL1Float FLOAT
@@ -122,6 +123,29 @@ void UnrolledReduceSumSquareFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
     }
 
     Optr[outer * InnerDim + inner] = accVal;
+}
+
+
+[numthreads(64, 1, 1)]
+void UnrolledReduceMeanSquareFloat(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
+    if (threadIdx >= unrolledDispatchArgs.y)
+        return;
+
+    uint inner = threadIdx % InnerDim;
+    uint outer = threadIdx / InnerDim;
+
+
+    float accVal = 0.0f;
+    for (uint r = 0; r < ReducedDim; ++r)
+    {
+        float v = Xptr[outer * InnerDim * ReducedDim + r * InnerDim + inner];
+        v = v * v;
+        accVal = accVal + v;
+    }
+
+    Optr[outer * InnerDim + inner] = accVal * Normalization;
 }
 
 

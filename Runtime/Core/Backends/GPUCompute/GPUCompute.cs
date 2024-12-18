@@ -20,7 +20,7 @@ namespace Unity.Sentis
         /// <summary>
         /// The command buffer to use for scheduling.
         /// </summary>
-        CommandBuffer cb;
+        protected CommandBuffer cb;
         bool m_InternalCommandBuffer;
 
         /// <summary>
@@ -102,23 +102,23 @@ namespace Unity.Sentis
         /// <summary>
         /// Disposes of the ops and any associated memory.
         /// </summary>
-        public void Dispose()
+        public virtual void Dispose()
         {
             m_MemoryPool?.Dispose();
             m_MemoryPool = null;
         }
 
         /// <inheritdoc/>
-        public BackendType backendType => BackendType.GPUCompute;
+        public virtual BackendType backendType => BackendType.GPUCompute;
 
         /// <inheritdoc/>
-        public void MatMul2D(Tensor<float> X, Tensor<float> Y, Tensor<float> O, bool xTranspose, bool yTranspose)
+        public virtual void MatMul2D(Tensor<float> X, Tensor<float> Y, Tensor<float> O, bool xTranspose, bool yTranspose)
         {
             Gemm(X, Y, O, O.shape[0], xTranspose ? X.shape[0] : X.shape[1], O.shape[1], xTranspose, yTranspose);
         }
 
         /// <inheritdoc/>
-        public void MatMul(Tensor<float> X, Tensor<float> Y, Tensor<float> O)
+        public virtual void MatMul(Tensor<float> X, Tensor<float> Y, Tensor<float> O)
         {
             var xShape = X.shape.rank == 1 ? new TensorShape(1, X.shape[0]) : X.shape;
             var yShape = Y.shape.rank == 1 ? new TensorShape(Y.shape[0], 1) : Y.shape;
@@ -217,7 +217,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Dense(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Layers.FusableActivation fusedActivation)
+        public virtual void Dense(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Layers.FusableActivation fusedActivation)
         {
             var M = O.shape.Length(0, -1);
             var K = X.shape[-1];
@@ -264,7 +264,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void DenseBatched(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Layers.FusableActivation fusedActivation)
+        public virtual void DenseBatched(Tensor<float> X, Tensor<float> W, Tensor<float> B, Tensor<float> O, Layers.FusableActivation fusedActivation)
         {
             var batch = O.shape.Length(0, -1);
             var M = X.shape[-2];
@@ -356,7 +356,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void Conv(Tensor<float> X, Tensor<float> K, Tensor<float> B, Tensor<float> O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
+        public virtual void Conv(Tensor<float> X, Tensor<float> K, Tensor<float> B, Tensor<float> O, int groups, Span<int> strides, Span<int> pads, Span<int> dilations, Layers.FusableActivation fusedActivation)
         {
             if (X.shape.rank > 5)
             {
@@ -1361,6 +1361,31 @@ namespace Unity.Sentis
             cb.Dispatch(fn, axisDim, outerLength, 1);
 
             ReleaseTensorFloat(meanVariance);
+        }
+
+        /// <inheritdoc/>
+        public void RMSNormalization(Tensor<float> X, Tensor<float> S, Tensor<float> O, float epsilon)
+        {
+            int axis = X.shape.Axis(-1);
+
+            var reducedShape = X.shape.Reduce(axis);
+            int axisDim = X.shape[axis];
+            int outerLength = X.shape.Length(0, -1);
+
+            var meanSquared = AllocTensorFloat(reducedShape);
+            ReduceMeanSquare(X, meanSquared, outerLength, axisDim, 1);
+
+            var fn = ComputeFunctions.k_RMSNormalizationTail;
+            cb.SetTensorAsBuffer(fn, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(fn, k_ID_Wptr, Pin(meanSquared));
+            cb.SetTensorAsBuffer(fn, k_ID_Sptr, Pin(S));
+            cb.SetTensorAsBuffer(fn, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(fn.shader, k_ID_axisDim, axisDim);
+            cb.SetComputeIntParam(fn.shader, k_ID_outerLength, outerLength);
+            cb.SetComputeFloatParam(fn.shader, k_ID_epsilon, epsilon);
+            cb.Dispatch(fn, axisDim, outerLength, 1);
+
+            ReleaseTensorFloat(meanSquared);
         }
 
         /// <inheritdoc/>
@@ -2679,7 +2704,6 @@ namespace Unity.Sentis
             cb.SetComputeIntParam(fn.shader, k_ID_iStart, TensorShape.maxRank - O.shape.rank);
             cb.SetComputeIntParam(fn.shader, k_ID_iEndIndices, TensorShape.maxRank - O.shape.rank + indices.shape.rank - 1);
             cb.SetComputeIntParam(fn.shader, k_ID_iEndX, TensorShape.maxRank - O.shape.rank + batchDims);
-            cb.SetComputeIntParam(fn.shader, k_ID_iEndMin, TensorShape.maxRank - O.shape.rank + Math.Min(batchDims, indices.shape.rank - 1));
             cb.SetComputeIntParam(fn.shader, k_ID_iStartB, TensorShape.maxRank - X.shape.rank + batchDims);
             cb.SetComputeIntParam(fn.shader, k_ID_iEndB, TensorShape.maxRank - X.shape.rank + batchDims + indices.shape[-1]);
             cb.SetTensorShapeStrides(fn, k_ID_shapeO, k_ID_stridesO, O.shape);
@@ -2971,7 +2995,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void MemCopy(Tensor X, Tensor O)
+        public virtual void MemCopy(Tensor X, Tensor O)
         {
             MemCopy(X, O, O.shape.length, 0, 0);
         }

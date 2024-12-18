@@ -57,16 +57,35 @@ inline float CompareOp(float x, float y)
 void SUFFIX(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
-
-    int indexA = 0; int indexB = 0;
-    for (int axis = 0; axis < rank; axis++)
+    if (threadIdx < unrolledDispatchArgs.y)
     {
-        indexA += (((threadIdx / stridesO[(SHAPE_MAXRANK - 1) - axis]) % shapeO[(SHAPE_MAXRANK - 1) - axis]) % shapeA[(SHAPE_MAXRANK - 1) - axis]) * stridesA[(SHAPE_MAXRANK - 1) - axis];
-        indexB += (((threadIdx / stridesO[(SHAPE_MAXRANK - 1) - axis]) % shapeO[(SHAPE_MAXRANK - 1) - axis]) % shapeB[(SHAPE_MAXRANK - 1) - axis]) * stridesB[(SHAPE_MAXRANK - 1) - axis];
-    }
+        int indexA = 0;
+        int indexB = 0;
+        int axis;
+        int sIdx;
+        int strideO;
+        int shapeOi;
+        int shapeAi, shapeBi;
+        int strideA, strideB;
 
-    Optr[threadIdx] = CompareOp(Xptr[indexA], Bptr[indexB]);
+        for (axis = 0; axis < rank; axis++)
+        {
+            // The following provokes a compiler bug on xbox series and has been broken down below:
+            //      indexA += (((threadIdx / stridesO[(SHAPE_MAXRANK - 1) - axis]) % shapeO[(SHAPE_MAXRANK - 1) - axis]) % shapeA[(SHAPE_MAXRANK - 1) - axis]) * stridesA[(SHAPE_MAXRANK - 1) - axis];
+            //      indexB += (((threadIdx / stridesO[(SHAPE_MAXRANK - 1) - axis]) % shapeO[(SHAPE_MAXRANK - 1) - axis]) % shapeB[(SHAPE_MAXRANK - 1) - axis]) * stridesB[(SHAPE_MAXRANK - 1) - axis];
+            sIdx = (SHAPE_MAXRANK - 1) - axis;
+            strideO = stridesO[sIdx];
+            shapeOi = shapeO[sIdx];
+            shapeAi = shapeA[sIdx];
+            shapeBi = shapeB[sIdx];
+            strideA = stridesA[sIdx];
+            strideB = stridesB[sIdx];
+
+            indexA += (((threadIdx / strideO) % shapeOi) % shapeAi) * strideA;
+            indexB += (((threadIdx / strideO) % shapeOi) % shapeBi) * strideB;
+        }
+
+        Optr[threadIdx] = CompareOp(Xptr[indexA], Bptr[indexB]);
+    }
 }
 

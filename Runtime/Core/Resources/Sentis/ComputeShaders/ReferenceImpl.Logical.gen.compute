@@ -25,15 +25,37 @@ RWStructuredBuffer<float> Optr;
 void Where(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    if(threadIdx < unrolledDispatchArgs.y)
     {
-        int indexC = 0; int indexA = 0; int indexB = 0;
-        for (int axis = 0; axis < rank; axis++)
+        int indexC = 0;
+        int indexA = 0;
+        int indexB = 0;
+        int axis;
+        int sIdx;
+        int strideO;
+        int shapeOi;
+        int shapeAi, shapeBi, shapeCi;
+        int strideA, strideB, strideC;
+
+        for (axis = 0; axis < rank; axis++)
         {
-            indexC += (((threadIdx / stridesO[(SHAPE_MAXRANK - 1) - axis]) % shapeO[(SHAPE_MAXRANK - 1) - axis]) % shapeC[(SHAPE_MAXRANK - 1) - axis]) * stridesC[(SHAPE_MAXRANK - 1) - axis];
-            indexA += (((threadIdx / stridesO[(SHAPE_MAXRANK - 1) - axis]) % shapeO[(SHAPE_MAXRANK - 1) - axis]) % shapeA[(SHAPE_MAXRANK - 1) - axis]) * stridesA[(SHAPE_MAXRANK - 1) - axis];
-            indexB += (((threadIdx / stridesO[(SHAPE_MAXRANK - 1) - axis]) % shapeO[(SHAPE_MAXRANK - 1) - axis]) % shapeB[(SHAPE_MAXRANK - 1) - axis]) * stridesB[(SHAPE_MAXRANK - 1) - axis];
+            //indexC += (((threadIdx / stridesO[(SHAPE_MAXRANK - 1) - axis]) % shapeO[(SHAPE_MAXRANK - 1) - axis]) % shapeC[(SHAPE_MAXRANK - 1) - axis]) * stridesC[(SHAPE_MAXRANK - 1) - axis];
+            //indexA += (((threadIdx / stridesO[(SHAPE_MAXRANK - 1) - axis]) % shapeO[(SHAPE_MAXRANK - 1) - axis]) % shapeA[(SHAPE_MAXRANK - 1) - axis]) * stridesA[(SHAPE_MAXRANK - 1) - axis];
+            //indexB += (((threadIdx / stridesO[(SHAPE_MAXRANK - 1) - axis]) % shapeO[(SHAPE_MAXRANK - 1) - axis]) % shapeB[(SHAPE_MAXRANK - 1) - axis]) * stridesB[(SHAPE_MAXRANK - 1) - axis];
+
+            sIdx = (SHAPE_MAXRANK - 1) - axis;
+            strideO = stridesO[sIdx];
+            shapeOi = shapeO[sIdx];
+            shapeAi = shapeA[sIdx];
+            shapeBi = shapeB[sIdx];
+            shapeCi = shapeC[sIdx];
+            strideA = stridesA[sIdx];
+            strideB = stridesB[sIdx];
+            strideC = stridesC[sIdx];
+
+            indexC += (((threadIdx / strideO) % shapeOi) % shapeCi) * strideC;
+            indexA += (((threadIdx / strideO) % shapeOi) % shapeAi) * strideA;
+            indexB += (((threadIdx / strideO) % shapeOi) % shapeBi) * strideB;
         }
 
         bool cond = (Xptr[indexC] != 0);

@@ -1,3 +1,7 @@
+# Upgrade to Sentis 2.1.2
+
+You do not need to take any actions to upgrade your project when upgrading from Sentis 2.0.0 or later. If you are upgrading from Sentis 1.6 or earlier please follow the instructions below.
+
 # Upgrade from Sentis 1.6 to Sentis 2
 
 To upgrade from Sentis 1.6 to Sentis 2, do the following:

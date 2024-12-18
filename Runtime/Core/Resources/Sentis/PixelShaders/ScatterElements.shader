@@ -25,17 +25,19 @@ Shader "Hidden/Sentis/ScatterElements"
 
             #ifdef ScatterInt
             #define DTYPE4 int4
+            #define DTYPE int
             DECLARE_TENSOR(X, int);
             DECLARE_TENSOR(W, int);
             #else
             #define DTYPE4 float4
+            #define DTYPE float
             DECLARE_TENSOR(X, float);
             DECLARE_TENSOR(W, float);
             #endif
             DECLARE_TENSOR(B, int);
-            DECLARE_TENSOR_BLOCK_STRIDE(X)
-            DECLARE_TENSOR_BLOCK_STRIDE(B)
-            DECLARE_TENSOR_BLOCK_STRIDE(W)
+            DECLARE_TENSOR_BLOCK_STRIDE(X, DTYPE)
+            DECLARE_TENSOR_BLOCK_STRIDE(B, int)
+            DECLARE_TENSOR_BLOCK_STRIDE(W, DTYPE)
             DECLARE_TENSOR_BLOCK_STRIDE_O;
 
             // Important: all tensors X, B, W and O are assumed to be blocked (4-element-chunked) along the same dimension,

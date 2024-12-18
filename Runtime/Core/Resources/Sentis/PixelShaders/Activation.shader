@@ -180,7 +180,9 @@ Shader "Hidden/Sentis/Activation"
                     v = pow(v, Alpha);
                 #endif
                 #ifdef Clip
-                    v = clamp(v, Alpha, Beta);
+                    //v = clamp(v, Alpha, Beta);
+                    // The built-in HLSL clamp doesn't garantee the series of instructions below, so use that instead, if that is what is expected:
+                    v = min(max(v, Alpha), Beta);
                 #endif
                 #ifdef Erf
                     v = erf(v);

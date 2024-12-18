@@ -350,7 +350,7 @@ namespace Unity.Sentis
                             src = (int*)dataPtr,
                             dest = dest
                         };
-                        var jobHandle = job.Schedule(srcCount, 1024);
+                        var jobHandle = job.Schedule(srcCount, 32);
                         jobHandle.Complete();
                         break;
                     }
@@ -393,15 +393,16 @@ namespace Unity.Sentis
 
             ProfilerMarkers.TextureTensorDataDownload.Begin();
 
+            bool gotTemporary = false;
             var linearRenderTexture = bufferAsTexture;
             var numValues = shape.length;
 
             if (dataType != DataType.Float || strideAxis != 1 || (dimAxis % 4 != 0 && count != dimAxis))
             {
+                gotTemporary = true;
                 var numPixels = ComputeHelper.IDivC(numValues, 4);
                 CalculateTextureDimensions(numPixels, out var linearWidthShift, out var linearWidth, out var linearHeight);
-
-                linearRenderTexture = CreateRenderTexture(linearWidth, linearHeight, RenderTextureFormat.ARGBFloat);
+                linearRenderTexture = RenderTexture.GetTemporary(linearWidth, linearHeight, 0, RenderTextureFormat.ARGBFloat);
 
                 var func = new PixelFunc("Hidden/Sentis/TextureTensorDataDownload");
                 func.EnableKeyword(dataType == DataType.Int ? "TensorInt" : "TensorFloat");
@@ -412,11 +413,15 @@ namespace Unity.Sentis
             }
 
             var texture = new Texture2D(linearRenderTexture.width, linearRenderTexture.height, TextureFormat.RGBAFloat, false);
+            texture.hideFlags = HideFlags.HideAndDontSave;
 
             var previousActiveRT = RenderTexture.active;
             RenderTexture.active = linearRenderTexture;
             texture.ReadPixels(new Rect(0, 0, linearRenderTexture.width, linearRenderTexture.height), 0, 0);
             texture.Apply();
+
+            if (gotTemporary)
+                RenderTexture.ReleaseTemporary(linearRenderTexture);
 
             var data = new NativeArray<T>(count, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
 
@@ -431,20 +436,24 @@ namespace Unity.Sentis
                         UnsafeUtility.MemCpy(dataPtr, src.GetUnsafePtr(), sizeof(float) * numValues);
                         break;
                     case DataType.Int:
-                    {
                         var job = new GPUPixelBurstJobs.FloatBytesAsIntJob
                         {
                             src = src,
                             dest = (int*)dataPtr
                         };
-                        var jobHandle = job.Schedule(numValues, 1024);
+                        var jobHandle = job.Schedule(numValues, 32);
                         jobHandle.Complete();
                         break;
-                    }
                     default:
                         throw new NotImplementedException();
                 }
             }
+
+#if UNITY_EDITOR
+            UnityEngine.Object.DestroyImmediate(texture);
+#else
+            UnityEngine.Object.Destroy(texture);
+#endif
 
             RenderTexture.active = previousActiveRT;
 

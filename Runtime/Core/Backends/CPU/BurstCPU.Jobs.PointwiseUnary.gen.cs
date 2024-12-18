@@ -2006,6 +2006,7 @@ partial class CPUBackend
 
             int lengthRemaining = length - i;
 
+            int index = i;
             while (count > 0)
             {
                 int spanCount = math.min(count, lengthRemaining);
@@ -2013,7 +2014,8 @@ partial class CPUBackend
 
                 for (int k = 0; k < spanCount; k++)
                 {
-                    Op[k] = Apply(k);
+                    Op[k] = Apply(index);
+                    index++;
                 }
 
                 Op += spanCount;
@@ -2039,6 +2041,7 @@ partial class CPUBackend
 
             int lengthRemaining = length - i;
 
+            int index = i;
             while (count > 0)
             {
                 int spanCount = math.min(count, lengthRemaining);
@@ -2046,7 +2049,8 @@ partial class CPUBackend
 
                 for (int k = 0; k < spanCount; k++)
                 {
-                    Op[k] = Apply(k);
+                    Op[k] = Apply(index);
+                    index++;
                 }
 
                 Op += spanCount;

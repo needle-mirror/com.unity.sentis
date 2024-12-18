@@ -32,9 +32,11 @@ Sentis provides CPU and GPU backend types. To understand how Sentis executes ope
 
 If a backend type doesn't support a Sentis layer in a model, the worker will assert. Refer to [Supported ONNX operators](supported-operators.md) for more information.
 
-Among the backend types, [`BackendType.GPUCompute`](xref:Unity.Sentis.BackendType.GPUCompute) and [`BackendType.CPU`](xref:Unity.Sentis.BackendType.CPU) are the fastest. Only use [BackendType.GPUPixel](xref:Unity.Sentis.BackendType.GPUPixel) if the platform does not support compute shaders. To check if your runtime platform supports compute shaders, use [SystemInfo.supportsComputeShaders](xref:UnityEngine.SystemInfo.supportsComputeShaders).
+Among the backend types, [`BackendType.GPUCompute`](xref:Unity.Sentis.BackendType.GPUCompute) and [`BackendType.CPU`](xref:Unity.Sentis.BackendType.CPU) are the fastest. Use [BackendType.GPUPixel](xref:Unity.Sentis.BackendType.GPUPixel) only if your platform does not support compute shaders. To check if your runtime platform supports compute shaders, use [SystemInfo.supportsComputeShaders](xref:UnityEngine.SystemInfo.supportsComputeShaders).
 
-If you use [`BackendType.CPU`](xref:Unity.Sentis.BackendType.CPU) with WebGL, Burst compiles to WebAssembly code which might be slow. Refer to [Getting started with WebGL development](https://docs.unity3d.com/Documentation/Manual/webgl-gettingstarted.html) for more information.
+If you use [`BackendType.GPUCompute`](xref:Unity.Sentis.BackendType.GPUCompute) with the DirectX12 Graphics API on a supported platform, Sentis uses [DirectML](https://learn.microsoft.com/en-us/windows/ai/directml/dml) to accelerate inference. Refer to [Supported ONNX operators](supported-operators.md) for information.
+
+If you use [`BackendType.CPU`](xref:Unity.Sentis.BackendType.CPU) with WebGL, Burst compiles to WebAssembly code which might be slow. For more information, refer to [Getting started with WebGL development](https://docs.unity3d.com/Documentation/Manual/webgl-gettingstarted.html).
 
 The speed of model execution depends on the platform's support for multithreading in Burst or its full support for compute shaders. You can [profile a model](profile-a-model.md) to understand the performance of a model.
 

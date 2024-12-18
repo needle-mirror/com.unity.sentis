@@ -61,7 +61,7 @@ namespace Unity.Sentis
                                     src = (float*)constant.weights.RawPtr,
                                     dst = (ushort*)(dataPtr)
                                 };
-                                var jobHandle = job.Schedule(constant.shape.length, 1024);
+                                var jobHandle = job.Schedule(constant.shape.length, 32);
                                 jobHandle.Complete();
                             }
                         }
@@ -97,7 +97,7 @@ namespace Unity.Sentis
                                     scale = scale,
                                     zeroPoint = zeroPoint
                                 };
-                                var jobHandle = job.Schedule(constant.shape.length, 1024);
+                                var jobHandle = job.Schedule(constant.shape.length, 32);
                                 jobHandle.Complete();
                             }
                         }

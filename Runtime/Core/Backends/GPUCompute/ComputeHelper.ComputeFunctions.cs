@@ -120,6 +120,7 @@ namespace Unity.Sentis
         public static ComputeFunction k_ArgMaxReduce = new ComputeFunction(k_Pool, "ArgMaxReduce");
         public static ComputeFunction k_GlobalArgMaxReduce = new ComputeFunction(k_Pool, "GlobalArgMaxReduce");
         public static ComputeFunction k_LayerNormalizationTail = new ComputeFunction(k_Normalization, "LayerNormalizationTail");
+        public static ComputeFunction k_RMSNormalizationTail = new ComputeFunction(k_Normalization, "RMSNormalizationTail");
         public static ComputeFunction k_BatchNormalization = new ComputeFunction(k_Normalization, "BatchNormalization");
         public static ComputeFunction k_ScaleBias = new ComputeFunction(k_Normalization, "ScaleBias");
         public static ComputeFunction k_NMSBitmaskCorners = new ComputeFunction(k_NMS, "NMSBitmaskCorners");
@@ -249,7 +250,9 @@ namespace Unity.Sentis
         public static ComputeFunction k_ReduceSumSquareFloat = new ComputeFunction(k_ReductionGen, "ReduceSumSquareFloat");
         public static ComputeFunction k_GlobalReduceSumSquareFloat = new ComputeFunction(k_ReductionGen, "GlobalReduceSumSquareFloat");
         public static ComputeFunction k_ReduceMeanFloat = new ComputeFunction(k_ReductionGen, "ReduceMeanFloat");
+        public static ComputeFunction k_ReduceMeanSquareFloat = new ComputeFunction(k_ReductionGen, "ReduceMeanSquareFloat");
         public static ComputeFunction k_GlobalReduceMeanFloat = new ComputeFunction(k_ReductionGen, "GlobalReduceMeanFloat");
+        public static ComputeFunction k_GlobalReduceMeanSquareFloat = new ComputeFunction(k_ReductionGen, "GlobalReduceMeanSquareFloat");
         public static ComputeFunction k_ReduceProdFloat = new ComputeFunction(k_ReductionGen, "ReduceProdFloat");
         public static ComputeFunction k_GlobalReduceProdFloat = new ComputeFunction(k_ReductionGen, "GlobalReduceProdFloat");
         public static ComputeFunction k_ReduceL1Float = new ComputeFunction(k_ReductionGen, "ReduceL1Float");
@@ -281,6 +284,7 @@ namespace Unity.Sentis
         public static ComputeFunction k_UnrolledReduceSumFloat = new ComputeFunction(k_ReductionUnrolledGen, "UnrolledReduceSumFloat");
         public static ComputeFunction k_UnrolledReduceSumSquareFloat = new ComputeFunction(k_ReductionUnrolledGen, "UnrolledReduceSumSquareFloat");
         public static ComputeFunction k_UnrolledReduceMeanFloat = new ComputeFunction(k_ReductionUnrolledGen, "UnrolledReduceMeanFloat");
+        public static ComputeFunction k_UnrolledReduceMeanSquareFloat = new ComputeFunction(k_ReductionUnrolledGen, "UnrolledReduceMeanSquareFloat");
         public static ComputeFunction k_UnrolledReduceProdFloat = new ComputeFunction(k_ReductionUnrolledGen, "UnrolledReduceProdFloat");
         public static ComputeFunction k_UnrolledReduceL1Float = new ComputeFunction(k_ReductionUnrolledGen, "UnrolledReduceL1Float");
         public static ComputeFunction k_UnrolledReduceL2Float = new ComputeFunction(k_ReductionUnrolledGen, "UnrolledReduceL2Float");

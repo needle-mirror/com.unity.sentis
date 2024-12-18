@@ -64,6 +64,55 @@ namespace Unity.Sentis
         }
 
         [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+        unsafe struct RMSNormalizationTailJob : IJobParallelFor, IJobResourceDeclarationXSBO
+        {
+            public float epsilon;
+            public int axisDim;
+            public int outerLength;
+            public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+            public ReadOnlyMemResource S { get; set; } float* Sptr => (float*)S.ptr;
+            public ReadOnlyMemResource B { get; set; } float* Bptr => (float*)B.ptr;
+            public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+
+            const int k_InnerLoopLength = 32;
+
+            [SkipLocalsInit]
+            public void Execute(int outerIndex)
+            {
+                var Xp = Xptr + outerIndex * axisDim;
+                var Sp = Sptr;
+                var Op = Optr + outerIndex * axisDim;
+
+                float variance = Bptr[outerIndex];
+
+                var it = stackalloc float[k_InnerLoopLength];
+
+                for (var start = 0; start < axisDim; start += k_InnerLoopLength)
+                {
+                    var count = math.min(k_InnerLoopLength, axisDim - start);
+                    int i;
+
+                    for (i = 0; i < count; i++)
+                    {
+                        float scale = Sp[i];
+                        float v = Xp[i];
+
+                        v = (v) / math.sqrt(variance + epsilon);
+                        v = scale * v;
+
+                        it[i] = v;
+                    }
+
+                    UnsafeUtility.MemCpy(Op, it, sizeof(float) * count);
+
+                    Xp += count;
+                    Sp += count;
+                    Op += count;
+                }
+            }
+        }
+
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
         unsafe struct BatchNormalizationJob : IParallelForBatch
         {
             public float epsilon;

@@ -31,7 +31,7 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     {
                         ptr = (uint*)constant.weights.RawPtr
                     };
-                    var jobHandle = job.Schedule(constant.shape.length, 1024);
+                    var jobHandle = job.Schedule(constant.shape.length, 32);
                     jobHandle.Complete();
                 }
             }

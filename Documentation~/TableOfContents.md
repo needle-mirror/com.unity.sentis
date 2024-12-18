@@ -1,6 +1,6 @@
 * [Sentis package](index.md)
-    * [What's new in Sentis 2.0](whats-new.md)
-    * [Upgrade to Sentis 2.0](upgrade-guide.md)
+    * [What's new in Sentis 2.1.2](whats-new.md)
+    * [Upgrade to Sentis 2.1.2](upgrade-guide.md)
 * [Get started](get-started.md)
     * [Install Sentis](install.md)
     * [Understand the Sentis workflow](understand-sentis-workflow.md)

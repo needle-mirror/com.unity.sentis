@@ -49,7 +49,7 @@ namespace Unity.Sentis
             return valuesOffsets.Count - 1;
         }
 
-        public static Program UpgradeFlatbuffer(Program program, uint toVersion, Func<Chain, FlatBufferBuilder, List<string>, List<Offset<Chain>>, List<Offset<EValue>>, bool> OnChain)
+        public static Program UpgradeFlatbuffer(Program program, uint toVersion, Func<Chain, FlatBufferBuilder, List<string>, List<Offset<Chain>>, List<Offset<EValue>>, bool> OnChain = null, Func<EValue, FlatBufferBuilder, List<Offset<EValue>>, bool> OnValue = null)
         {
             var executionPlan = program.ExecutionPlan.Value;
 
@@ -66,6 +66,11 @@ namespace Unity.Sentis
             {
                 var valOffset = 0;
                 var value = executionPlan.Values(i).Value;
+
+                // check if upgrade code handles case
+                if (OnValue != null && OnValue(value, builder, valuesOffsets))
+                    continue;
+
                 switch (value.ValType)
                 {
                     case KernelTypes.NONE:
@@ -146,7 +151,7 @@ namespace Unity.Sentis
                 var chain = executionPlan.Chains(i).Value;
 
                 // check if upgrade code handles case
-                if (OnChain(chain, builder, operators, chainsOffsets, valuesOffsets))
+                if (OnChain != null && OnChain(chain, builder, operators, chainsOffsets, valuesOffsets))
                     continue;
 
                 var chainInputs = chain.GetInputsArray();
@@ -310,12 +315,19 @@ namespace Unity.Sentis
             return false;
         }
 
+        static bool UpgradeChainV3toV4(Chain chain, FlatBufferBuilder builder, List<string> operators, List<Offset<Chain>> chainsOffsets, List<Offset<EValue>> valuesOffsets)
+        {
+            return false;
+        }
+
         public static Program Upgrade(Program program)
         {
             if (program.Version == 1)
                 program = UpgradeFlatbuffer(program, 2, UpgradeChainV1toV2);
             if (program.Version == 2)
                 program = UpgradeFlatbuffer(program, 3, UpgradeChainV2toV3);
+            if (program.Version == 3)
+                program = UpgradeFlatbuffer(program, 4, UpgradeChainV3toV4);
 
             return program;
         }

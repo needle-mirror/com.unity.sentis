@@ -25,37 +25,44 @@ Shader "Hidden/Sentis/ScatterND"
             #define O_INT
             #endif
 
+            uint ShapeX[8];
+
             #include "CommonVertexShader.cginc"
             #include "CommonPixelShader.cginc"
 
             #ifdef ScatterInt
+            #define DTYPE int
             #define DTYPE4 int4
             DECLARE_TENSOR(X, int);
             DECLARE_TENSOR(W, int);
             #else
+            #define DTYPE float
             #define DTYPE4 float4
             DECLARE_TENSOR(X, float);
             DECLARE_TENSOR(W, float);
             #endif
             DECLARE_TENSOR(B, int);
-            DECLARE_TENSOR_BLOCK_STRIDE(X)
-            DECLARE_TENSOR_BLOCK_STRIDE(B)
-            DECLARE_TENSOR_BLOCK_STRIDE(W)
+            DECLARE_TENSOR_BLOCK_STRIDE(X, DTYPE)
+            DECLARE_TENSOR_BLOCK_STRIDE(B, int)
+            DECLARE_TENSOR_BLOCK_STRIDE(W, DTYPE)
             DECLARE_TENSOR_BLOCK_STRIDE_O;
 
             uint NumIndices;
             uint SliceLength;
             uint Kdiv4, K;
-            uint ShapeX[8];
+            //uint ShapeX[8];
 
             DTYPE4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
+                DTYPE4 updates;
+
                 uint blockIndexO = GetBlockIndexO(screenPos);
                 DTYPE4 v = SampleBlockX(blockIndexO);
                 uint lowerIndexO = blockIndexO % SliceLength;
                 uint upperIndexO = blockIndexO / SliceLength;
                 uint n = upperIndexO;
                 uint indexX[8];
+
                 for (uint j = K - 1; j < 8; j--)
                 {
                     indexX[j] = n % ShapeX[j];
@@ -72,6 +79,7 @@ Shader "Hidden/Sentis/ScatterND"
                         continue;
                     if (K > 3 && (b[3] != indexX[3] && b[3] + ShapeX[3] != indexX[3]))
                         continue;
+
                     #ifdef K_LARGE
                     b = SampleBlockB(Kdiv4 * j + 1);
                     if (K > 4 && (b[0] != indexX[4] && b[0] + ShapeX[4] != indexX[4]))
@@ -84,15 +92,19 @@ Shader "Hidden/Sentis/ScatterND"
                         continue;
                     #endif
 
-                    DTYPE4 updates = SampleBlockW(lowerIndexO + j * SliceLength);
+                    updates = SampleBlockW(lowerIndexO + j * SliceLength);
+
                     #ifdef ReduceNone
-                    return updates;
+                    v = updates;
                     #elif ReduceAdd
-                    return v + updates;
+                    v = v + updates;
                     #elif ReduceMul
-                    return v * updates;
+                    v = v * updates;
                     #endif
+
+                    break;
                 }
+
 
                 return v;
             }

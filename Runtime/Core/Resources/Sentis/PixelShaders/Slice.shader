@@ -22,13 +22,15 @@ Shader "Hidden/Sentis/Slice"
             DECLARE_TENSOR_BLOCK_STRIDE_O;
 
             #ifdef INT
+            #define DTYPE int
             #define DTYPE4 int4
             DECLARE_TENSOR(X, int);
             #else
+            #define DTYPE float
             #define DTYPE4 float4
             DECLARE_TENSOR(X, float);
             #endif
-            DECLARE_TENSOR_BLOCK_STRIDE(X);
+            DECLARE_TENSOR_BLOCK_STRIDE(X, DTYPE);
 
             uint DimO[8];
             uint StridesX[8];

@@ -4,6 +4,21 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.1.2] - 2024-12-18
+
+### Added
+- Support for accelerated inference using [DirectML](https://learn.microsoft.com/en-us/windows/ai/directml/dml) in future Unity versions
+- Support for RMSNormalization subgraph optimization
+
+### Changed
+- Some methods in the TextureConverter have been made obsolete
+
+### Fixed
+- Improved CPU backend performance by optimizing Burst job count
+- Reduced memory usage when serializing and deserializing large models
+- Shader issues on XBOX hardware
+- GPUPixel now reuses RenderTextures reducing garbage collection
+
 ## [2.1.1] - 2024-11-07
 
 ### Fixed

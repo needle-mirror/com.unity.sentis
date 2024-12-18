@@ -22,7 +22,7 @@ Shader "Hidden/Sentis/LayoutSwitchBlockedAxis"
 
             #ifdef TENSORFLOAT
             DECLARE_TENSOR(X, float);
-            DECLARE_TENSOR_BLOCK_STRIDE(X);
+            DECLARE_TENSOR_BLOCK_STRIDE(X, float);
             float4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
                 uint4 index4 = GetIndexO(screenPos);
@@ -30,7 +30,7 @@ Shader "Hidden/Sentis/LayoutSwitchBlockedAxis"
             }
             #else
             DECLARE_TENSOR(X, int);
-            DECLARE_TENSOR_BLOCK_STRIDE(X);
+            DECLARE_TENSOR_BLOCK_STRIDE(X, int);
             int4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
                 uint4 index4 = GetIndexO(screenPos);

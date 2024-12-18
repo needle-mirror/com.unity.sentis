@@ -24,11 +24,12 @@ Shader "Hidden/Sentis/Reshape"
             #ifdef INT
             #define DTYPE4 int4
             DECLARE_TENSOR(X, int);
+            DECLARE_TENSOR_BLOCK_STRIDE(X, int);
             #else
             #define DTYPE4 float4
             DECLARE_TENSOR(X, float);
+            DECLARE_TENSOR_BLOCK_STRIDE(X, float);
             #endif
-            DECLARE_TENSOR_BLOCK_STRIDE(X);
 
             DTYPE4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {

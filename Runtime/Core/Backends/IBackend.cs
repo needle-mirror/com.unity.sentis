@@ -224,6 +224,15 @@ namespace Unity.Sentis
         void LayerNormalization(Tensor<float> X, Tensor<float> S, Tensor<float> B, Tensor<float> O, float epsilon);
 
         /// <summary>
+        /// Reduces an input tensor along the final axis using the `ReduceMeanSquare` operation: f(x1, x2 ... xn) = (x1^2 + x2^2 + ... + xn^2) / n.
+        /// </summary>
+        /// <param name="X">The input tensor.</param>
+        /// <param name="S">The scale tensor.</param>
+        /// <param name="O">The output tensor to be computed and filled.</param>
+        /// <param name="epsilon">The epsilon value the layer uses to avoid division by zero.</param>
+        void RMSNormalization(Tensor<float> X, Tensor<float> S, Tensor<float> O, float epsilon);
+
+        /// <summary>
         /// Computes the mean variance on the last dimension of the input tensor and normalizes it according to `scale` and `bias` tensors.
         /// </summary>
         /// <param name="X">The input tensor.</param>
@@ -912,7 +921,7 @@ namespace Unity.Sentis
         void ReduceMax(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes);
 
         /// <summary>
-        /// Reduces an input tensor along the given axes using the `ReduceMean` operation: f(x1, x2 ... xn) = max(x1, x2, ... , xn).
+        /// Reduces an input tensor along the given axes using the `ReduceMax` operation: f(x1, x2 ... xn) = max(x1, x2, ... , xn).
         /// </summary>
         /// <param name="X">The input tensor.</param>
         /// <param name="O">The output tensor to be computed and filled.</param>

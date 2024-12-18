@@ -10,6 +10,10 @@ namespace Unity.Sentis
             switch (backendType)
             {
                 case BackendType.GPUCompute:
+#if UNITY_6000_1_OR_NEWER
+                    if (SystemInfo.supportsMachineLearning)
+                        return new GfxDeviceBackend();
+#endif
                     return new GPUComputeBackend();
                 case BackendType.GPUPixel:
                     return new GPUPixelBackend();

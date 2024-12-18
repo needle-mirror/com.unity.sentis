@@ -1,0 +1,24 @@
+{
+    "name": "Unity.Sentis.Tests",
+    "rootNamespace": "",
+    "references": [
+        "Unity.Sentis",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "Unity.Sentis.TestsUtils"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Unity.Sentis.dll",
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

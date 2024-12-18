@@ -11,18 +11,22 @@ namespace Unity.Sentis
         /// The index of the constant.
         /// </summary>
         public int index;
+
         /// <summary>
         /// The shape of the constant as a `TensorShape`.
         /// </summary>
         public TensorShape shape;
+
         /// <summary>
         /// The size of the constant in bytes.
         /// </summary>
         public int lengthBytes;
+
         /// <summary>
         /// The data type of the constant as a `DataType`.
         /// </summary>
         public DataType dataType;
+
         /// <summary>
         /// The elements of the constant as a `NativeTensorArrayFromManagedArray`.
         /// </summary>
@@ -97,20 +101,6 @@ namespace Unity.Sentis
             if (value.Length == 0)
                 return;
             m_Weights = new NativeTensorArrayFromManagedArray(value, 0, sizeof(int), value.Length);
-        }
-
-        // TODO remove
-        internal static Constant AllocNoData(int index, DataType dataType, TensorShape shape)
-        {
-            switch (dataType)
-            {
-                case DataType.Float:
-                    return new Constant(index, shape, DataType.Float, shape.length * sizeof(float));
-                case DataType.Int:
-                    return new Constant(index, shape, DataType.Int, shape.length * sizeof(int));
-                default:
-                    throw new NotImplementedException();
-            }
         }
 
         /// <summary>

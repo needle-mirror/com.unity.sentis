@@ -1,4 +1,5 @@
 #pragma kernel LayerNormalizationTail
+#pragma kernel RMSNormalizationTail
 #pragma kernel BatchNormalization
 #pragma kernel ScaleBias
 
@@ -13,6 +14,28 @@ RWStructuredBuffer<float> Optr;
 
 uint outerLength, axisDim, innerLength;
 float epsilon;
+
+[numthreads(8, 8, 1)]
+void RMSNormalizationTail(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    uint dim = dispatchThreadID.x;
+    uint outer = dispatchThreadID.y;
+
+    if (outer >= outerLength || dim >= axisDim)
+        return;
+
+    float variance = Wptr[outer];
+
+    float scale = Sptr[dim];
+
+    uint threadIndex = (outer * axisDim + dim);
+    float v = Xptr[threadIndex];
+
+    v = v / sqrt(variance + epsilon);
+    v = scale * v;
+
+    Optr[threadIndex] = v;
+}
 
 [numthreads(8, 8, 1)]
 void LayerNormalizationTail(uint3 dispatchThreadID : SV_DispatchThreadID)

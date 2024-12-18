@@ -25,19 +25,24 @@ RWStructuredBuffer<float> Optr;
 void Transpose(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if(threadIdx >= unrolledDispatchArgs.y)
-        return;
+    if(threadIdx < unrolledDispatchArgs.y)
     {
         int idx = 0;
         int trailingDim = 1;
-        for (int j = (rank-1); j >= 0; j--)
+        int j = (rank-1);
+        for (; j > 0; j--)
         {
             int tj = permutations[j];
             int ti = (SHAPE_MAXRANK - rank) + tj;
             idx += trailingDim * ((threadIdx / stridesX[ti]) % shapeX[ti]);
             trailingDim *= shapeX[(SHAPE_MAXRANK - rank) + tj];
         }
-
+        // j == 0
+        {
+            int tj = permutations[j];
+            int ti = (SHAPE_MAXRANK - rank) + tj;
+            idx += trailingDim * ((threadIdx / stridesX[ti]) % shapeX[ti]);
+        }
         Optr[idx] = Xptr[threadIdx];
     }
 }

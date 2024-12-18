@@ -13,7 +13,7 @@ namespace Unity.Sentis
     /// <summary>
     /// Represents an importer for Open Neural Network Exchange (ONNX) files.
     /// </summary>
-    [ScriptedImporter(64, new[] { "onnx" })]
+    [ScriptedImporter(65, new[] { "onnx" })]
     [HelpURL("https://docs.unity3d.com/Packages/com.unity.sentis@latest/index.html")]
     class ONNXModelImporter : ScriptedImporter
     {
@@ -57,19 +57,19 @@ namespace Unity.Sentis
             var model = converter.Convert();
 
             ModelAsset asset = ScriptableObject.CreateInstance<ModelAsset>();
+            ModelWriter.SaveModel(model, out var modelDescriptionBytes, out var modelWeightsBytes);
 
             ModelAssetData modelAssetData = ScriptableObject.CreateInstance<ModelAssetData>();
-            modelAssetData.value = ModelWriter.SaveModelDescription(model);
+            modelAssetData.value = modelDescriptionBytes;
             modelAssetData.name = "Data";
             modelAssetData.hideFlags = HideFlags.HideInHierarchy;
             asset.modelAssetData = modelAssetData;
 
-            var serializedWeights = ModelWriter.SaveModelWeights(model);
-            asset.modelWeightsChunks = new ModelAssetWeightsData[serializedWeights.Length];
-            for (int i = 0; i < serializedWeights.Length; i++)
+            asset.modelWeightsChunks = new ModelAssetWeightsData[modelWeightsBytes.Length];
+            for (int i = 0; i < modelWeightsBytes.Length; i++)
             {
                 asset.modelWeightsChunks[i] = ScriptableObject.CreateInstance<ModelAssetWeightsData>();
-                asset.modelWeightsChunks[i].value = serializedWeights[i];
+                asset.modelWeightsChunks[i].value = modelWeightsBytes[i];
                 asset.modelWeightsChunks[i].name = "Data";
                 asset.modelWeightsChunks[i].hideFlags = HideFlags.HideInHierarchy;
 

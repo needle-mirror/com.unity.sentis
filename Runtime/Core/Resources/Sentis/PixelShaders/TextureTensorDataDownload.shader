@@ -20,30 +20,33 @@ Shader "Hidden/Sentis/TextureTensorDataDownload"
 
             #if defined(TensorInt)
             DECLARE_TENSOR(X, int);
+            #define DTYPE4 int4
+            #define DTYPE int
             #else
             DECLARE_TENSOR(X, float);
+            #define DTYPE4 float4
+            #define DTYPE float
             #endif
 
-            DECLARE_TENSOR_BLOCK_STRIDE(X);
-
-            inline float4 IntToFloat(int4 a)
-            {
-                a = clamp(a, -1073741824, 1073741823);
-                uint4 n = asuint(a);
-
-                return asfloat((n & 0xbfffffffu) + (((0xffffffffu ^ n) << 1) & 0x40000000u));
-            }
+            DECLARE_TENSOR_BLOCK_STRIDE(X, DTYPE);
 
             float4 frag(v2f i, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
                 uint blockIndexO = GetBlockIndexO(screenPos);
+                uint4 index4 = UnblockAxis(blockIndexO);
+                DTYPE4 v = SampleElementsX(index4);
+
                 #ifdef TensorFloat
-                uint4 index4 = UnblockAxis(blockIndexO);
-                return SampleElementsX(index4);
+
+                return v;
+
                 #elif TensorInt
-                uint4 index4 = UnblockAxis(blockIndexO);
-                int4 v = SampleElementsX(index4);
-                return IntToFloat(v);
+
+                v = clamp(v, -1073741824, 1073741823);
+                int4 ret = ((v & 0xbfffffffu) + (((0xffffffffu ^ v) << 1) & 0x40000000u));
+
+                return asfloat(ret);
+
                 #else
                 #endif
             }

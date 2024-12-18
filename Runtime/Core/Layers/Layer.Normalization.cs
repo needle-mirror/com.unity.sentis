@@ -181,6 +181,64 @@ namespace Unity.Sentis.Layers
     }
 
     /// <summary>
+    /// Represents a `RMSNormalization` normalization layer. This computes the mean square variance on the last dimension of the input tensor and normalizes it according to `scale` tensor.
+    /// </summary>
+    class RMSNormalization : Layer
+    {
+        static readonly string k_OpName = "RMSNormalization";
+        static readonly ProfilerMarker k_ProfilerMarker = new(k_ProfilerMarkerPrefix + k_OpName);
+        public float epsilon;
+
+        public RMSNormalization(int output, int input, int scale, float epsilon = 1e-5f)
+            : base(new[] { output }, new[] { input, scale })
+        {
+            if (epsilon == 0)
+                epsilon = Mathf.Epsilon; // safety check to prevent division by zero
+            this.epsilon = epsilon;
+        }
+
+        internal override void InferPartial(PartialInferenceContext ctx)
+        {
+            var X = ctx.GetPartialTensor(inputs[0]);
+            var scale = ctx.GetPartialTensor(inputs[1]);
+            var dataType = X.dataType;
+            var shapeX = X.shape;
+            var shapeScale = scale.shape;
+
+            if (!shapeX.hasRank)
+            {
+                ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, DynamicTensorShape.DynamicRank));
+                return;
+            }
+
+            Logger.AssertIsTrue(shapeX.rank >= 3, "RankError: incorrect rank, expecting at least {0}, got {1}", 1, shapeX.rank);
+
+            shapeScale.DeclareRank(1);
+
+            var shape = new DynamicTensorShape(shapeX);
+            shape[-1] = DynamicTensorDim.MaxDefinedDim(shape[-1], shapeScale[0]);
+            ctx.AddPartialTensor(outputs[0], new PartialTensor(dataType, shape));
+        }
+
+        internal override void Execute(ExecutionContext ctx)
+        {
+            var X = ctx.storage.GetTensor(inputs[0]);
+            var O = ctx.storage.AllocateTensorAndStore(outputs[0], X.shape, DataType.Float, ctx.backend.backendType) as Tensor<float>;
+            if (O.shape.HasZeroDims())
+                return;
+            ctx.backend.RMSNormalization(X as Tensor<float>, ctx.storage.GetTensor(inputs[1]) as Tensor<float>, O, epsilon);
+        }
+
+        public override string ToString()
+        {
+            return $"{base.ToString()}, epsilon: {epsilon}";
+        }
+
+        public override string opName => k_OpName;
+        public override ProfilerMarker profilerMarker => k_ProfilerMarker;
+    }
+
+    /// <summary>
     /// Represents an `BatchNormalization` normalization layer. This computes the mean variance on the second dimension of the input tensor and normalizes it according to `scale` and `bias` tensors.
     /// </summary>
     class BatchNormalization : Layer

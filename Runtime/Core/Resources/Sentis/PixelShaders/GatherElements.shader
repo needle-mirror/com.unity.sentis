@@ -22,15 +22,17 @@ Shader "Hidden/Sentis/GatherElements"
             #include "../ComputeShaders/Tensor.cginc"
 
             #ifdef GatherInt
+            #define DTYPE int
             #define DTYPE4 int4
             DECLARE_TENSOR(X, int);
             #else
+            #define DTYPE float
             #define DTYPE4 float4
             DECLARE_TENSOR(X, float);
             #endif
             DECLARE_TENSOR(B, int);
-            DECLARE_TENSOR_BLOCK_STRIDE(X)
-            DECLARE_TENSOR_BLOCK_STRIDE(B)
+            DECLARE_TENSOR_BLOCK_STRIDE(X, DTYPE)
+            DECLARE_TENSOR_BLOCK_STRIDE(B, int)
             DECLARE_TENSOR_BLOCK_STRIDE_O;
 
             uint inputAxisSize;

@@ -61,6 +61,10 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
             {
                 return new LayerNode<Div>(a, b);
             }
+            public static INode operator /(float a, INode b)
+            {
+                return new LayerNode<Div>(a, b);
+            }
             public static INode Erf(INode a)
             {
                 return new LayerNode<Erf>(a);
@@ -272,6 +276,25 @@ namespace Unity.Sentis.Compiler.Passes.Optimization
                     (y, iLayers, iConstants) => {
                     float epsilon = iConstants[0].weights.Get<float>(0);
                     return new LayerNormalization(y.outputs[0], iLayers[iLayers.Count - 1], iLayers[1], iLayers[0], epsilon);
+                }
+            },
+            {
+                x =>
+                {
+                    var pow = INode.Pow(x, 2.0f);
+                    var reduceMean = INode.ReduceMean(pow, -1);
+                    var epsilon = new VariableScalarFloat();
+                    var add = reduceMean + epsilon;
+                    var sqrt = INode.Sqrt(add);
+                    var div = 1.0f / sqrt;
+                    var mul = x * div;
+                    var scale = new InputNode();
+                    return scale * mul;
+                },
+                (y, iLayers, iConstants) =>
+                {
+                    float epsilon = iConstants[0].weights.Get<float>(0);
+                    return new RMSNormalization(y.outputs[0], iLayers[1], iLayers[2], epsilon);
                 }
             },
             { x => x + new VariableScalarFloat(), (y, iLayers, iConstants) => new ScalarMad(y.outputs[0], iLayers[0], 1.0f, iConstants[0].weights.Get<float>(0)) },

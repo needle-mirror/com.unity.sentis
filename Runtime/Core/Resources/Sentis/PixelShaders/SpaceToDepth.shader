@@ -20,7 +20,7 @@ Shader "Hidden/Sentis/SpaceToDepth"
             DECLARE_TENSOR_BLOCK_STRIDE_O;
 
             DECLARE_TENSOR(X, float);
-            DECLARE_TENSOR_BLOCK_STRIDE(X);
+            DECLARE_TENSOR_BLOCK_STRIDE(X, float);
 
             uint O_width, O_height, O_channels;
             uint X_width, X_height, X_channels;

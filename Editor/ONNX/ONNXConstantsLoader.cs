@@ -92,7 +92,7 @@ namespace Unity.Sentis.ONNX
                             src = (long*)dataPtr,
                             dst = (int*)dstPtr
                         };
-                        var jobHandle = job.Schedule(shape.length, 1024);
+                        var jobHandle = job.Schedule(shape.length, 32);
                         jobHandle.Complete();
                     }
                 }
@@ -139,7 +139,7 @@ namespace Unity.Sentis.ONNX
                             src = (long*)dataPtr,
                             dst = (float*)dstPtr
                         };
-                        var jobHandle = job.Schedule(shape.length, 1024);
+                        var jobHandle = job.Schedule(shape.length, 32);
                         jobHandle.Complete();
                     }
                 }
@@ -165,7 +165,7 @@ namespace Unity.Sentis.ONNX
                             src = (ushort*)dataPtr,
                             dst = (float*)dstPtr
                         };
-                        var jobHandle = job.Schedule(shape.length, 1024);
+                        var jobHandle = job.Schedule(shape.length, 32);
                         jobHandle.Complete();
                     }
                 }
@@ -191,7 +191,7 @@ namespace Unity.Sentis.ONNX
                             src = (long*)dataPtr,
                             dst = (int*)dstPtr
                         };
-                        var jobHandle = job.Schedule(shape.length, 1024);
+                        var jobHandle = job.Schedule(shape.length, 32);
                         jobHandle.Complete();
                     }
                 }
@@ -211,7 +211,7 @@ namespace Unity.Sentis.ONNX
                             src = (bool*)dataPtr,
                             dst = (int*)dstPtr
                         };
-                        var jobHandle = job.Schedule(shape.length, 1024);
+                        var jobHandle = job.Schedule(shape.length, 32);
                         jobHandle.Complete();
                     }
                 }
@@ -231,7 +231,7 @@ namespace Unity.Sentis.ONNX
                             src = (byte*)dataPtr,
                             dst = (int*)dstPtr
                         };
-                        var jobHandle = job.Schedule(shape.length, 1024);
+                        var jobHandle = job.Schedule(shape.length, 32);
                         jobHandle.Complete();
                     }
                 }
@@ -251,7 +251,7 @@ namespace Unity.Sentis.ONNX
                             src = (sbyte*)dataPtr,
                             dst = (int*)dstPtr
                         };
-                        var jobHandle = job.Schedule(shape.length, 1024);
+                        var jobHandle = job.Schedule(shape.length, 32);
                         jobHandle.Complete();
                     }
                 }

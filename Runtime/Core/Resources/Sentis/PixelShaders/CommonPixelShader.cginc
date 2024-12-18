@@ -29,8 +29,8 @@ uint upper = blockIndex; \
 return lower + StrideAxisO * ((axis << 2) + uint4(0, 1, 2, 3) + DimAxisO * upper); \
 } \
 
-#define DECLARE_TENSOR_BLOCK_STRIDE(X) uint StrideAxis##X, DimAxis##X, DimBlocked##X; \
-float4 SampleElements##X(uint4 index) { \
+#define DECLARE_TENSOR_BLOCK_STRIDE(X, DTYPE) uint StrideAxis##X, DimAxis##X, DimBlocked##X; \
+DTYPE##4 SampleElements##X(uint4 index) { \
 uint4 lower = index % StrideAxis##X; \
 index /= StrideAxis##X; \
 uint4 axis = index % DimAxis##X; \
@@ -41,13 +41,13 @@ uint4 axisMod4 = axis & 3; \
 uint4 blockIndex4 = lower + StrideAxis##X * (axisDiv4 + DimBlocked##X * upper); \
 return SampleElements(X##ptr, WidthMask##X, WidthShift##X, blockIndex4, axisMod4); \
 } \
-float4 SampleBlock##X(uint lower, uint axis, uint upper) { \
+DTYPE##4 SampleBlock##X(uint lower, uint axis, uint upper) { \
 uint4 axisDiv4 = axis >> 2; \
 uint4 axisMod4 = axis & 3; \
 uint4 blockIndex4 = lower + StrideAxis##X * (axisDiv4 + DimBlocked##X * upper); \
 return SampleElements(X##ptr, WidthMask##X, WidthShift##X, blockIndex4, axisMod4); \
 } \
-float4 SampleElement##X(uint index) { \
+DTYPE##4 SampleElement##X(uint index) { \
 uint lower = index % StrideAxis##X; \
 index /= StrideAxis##X; \
 uint axis = index % DimAxis##X; \
@@ -59,19 +59,19 @@ uint blockIndex = lower + StrideAxis##X * (axisDiv4 + DimBlocked##X * upper); \
 return SampleElement(X##ptr, WidthMask##X, WidthShift##X, blockIndex, axisMod4); \
 } \
 
-inline float4 SampleBlock(Texture2D ptr, uint widthMask, uint widthShift, uint blockIndex)
+inline float4 SampleBlock(Texture2D<float4> ptr, uint widthMask, uint widthShift, uint blockIndex)
 {
     return ptr.Load(uint3(blockIndex & widthMask, blockIndex >> widthShift, 0));
 }
 
-inline float SampleElement(Texture2D ptr, uint widthMask, uint widthShift, uint blockIndex, uint c)
+inline float SampleElement(Texture2D<float4> ptr, uint widthMask, uint widthShift, uint blockIndex, uint c)
 {
     uint x = blockIndex & widthMask;
     uint y = blockIndex >> widthShift;
     return ptr.Load(uint3(x, y, 0))[c];
 }
 
-inline float4 SampleElements(Texture2D ptr, uint widthMask, uint widthShift, uint4 blockIndex4, uint4 c4)
+inline float4 SampleElements(Texture2D<float4> ptr, uint widthMask, uint widthShift, uint4 blockIndex4, uint4 c4)
 {
     float4 v = 0;
     uint4 x4 = blockIndex4 & widthMask;

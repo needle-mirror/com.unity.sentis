@@ -31,7 +31,7 @@ The table below shows which ONNX operators Sentis supports, and which data types
 |[Concat](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Concat) | float, int | float, int | float, int | |
 |[Constant](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Constant) | - | - | - | The `sparse_value` parameter isn't supported. |
 |[ConstantOfShape](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ConstantOfShape) | float, int | float, int | float, int | |
-|[Conv](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Conv) | float | float (1D, 2D and 3D) | float (1D, 2D and 3D) | |
+|[Conv](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Conv) | float | float (1D, 2D and 3D)* | float (1D, 2D and 3D) | |
 |[ConvTranspose](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ConvTranspose) | float | float (1D, 2D and 3D) | float (1D, 2D and 3D) | The `dilations`, `group` and `output_shape` parameters aren't supported. |
 |[Cos](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Cos) | float | float | float | |
 |[Cosh](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Cosh) | float | float | float | |
@@ -71,7 +71,7 @@ The table below shows which ONNX operators Sentis supports, and which data types
 |[LogSoftmax](https://github.com/onnx/onnx/blob/main/docs/Operators.md#LogSoftmax) | float | float | float | |
 |[LRN](https://github.com/onnx/onnx/blob/main/docs/Operators.md#LRN) | float | Not supported | Not supported | |
 |[LSTM](https://github.com/onnx/onnx/blob/main/docs/Operators.md#LSTM) | float | float | Not supported | |
-|[MatMul](https://github.com/onnx/onnx/blob/main/docs/Operators.md#MatMul) | float | float | float | |
+|[MatMul](https://github.com/onnx/onnx/blob/main/docs/Operators.md#MatMul) | float | float* | float | |
 |[Max](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Max) | float, int | float, int | float, int | |
 |[MaxPool](https://github.com/onnx/onnx/blob/main/docs/Operators.md#MaxPool) | float | float (1D and 2D only) | float (1D and 2D only) | The `ceil_mode`, `dilations` and `storage_order` parameters aren't supported. |
 |[Mean](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Mean) | float | float | float | The operator maps to the Sentis layers `Add` and `ScalarMad`. |
@@ -94,16 +94,16 @@ The table below shows which ONNX operators Sentis supports, and which data types
 |[RandomUniformLike](https://github.com/onnx/onnx/blob/main/docs/Operators.md#RandomUniformLike) | float | float | float | |
 |[Range](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Range) | float, int | float, int | float, int | |
 |[Reciprocal](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Reciprocal) | float | float | float | |
-|[ReduceL1](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceL1) | float, int | float, int | float, int | |
-|[ReduceL2](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceL2) | float | float | float | |
-|[ReduceLogSum](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceLogSum) | float | float | float | |
+|[ReduceL1](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceL1) | float, int | float*, int* | float, int | |
+|[ReduceL2](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceL2) | float | float* | float | |
+|[ReduceLogSum](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceLogSum) | float | float* | float | |
 |[ReduceLogSumExp](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceLogSumExp) | float | float | float | |
-|[ReduceMax](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceMax) | float, int | float, int | float, int | |
-|[ReduceMean](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceMean) | float | float | float | |
-|[ReduceMin](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceMin) | float, int | float, int | float, int | |
-|[ReduceProd](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceProd) | float, int | float, int | float, int | |
-|[ReduceSum](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceSum) | float, int | float, int | float, int | |
-|[ReduceSumSquare](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceSumSquare) | float, int | float, int | float, int | |
+|[ReduceMax](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceMax) | float, int | float*, int* | float, int | |
+|[ReduceMean](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceMean) | float | float* | float | |
+|[ReduceMin](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceMin) | float, int | float*, int* | float, int | |
+|[ReduceProd](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceProd) | float, int | float*, int*| float, int | |
+|[ReduceSum](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceSum) | float, int | float*, int* | float, int | |
+|[ReduceSumSquare](https://github.com/onnx/onnx/blob/main/docs/Operators.md#ReduceSumSquare) | float, int | float*, int* | float, int | |
 |[Relu](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Relu) | float | float | float | |
 |[Reshape](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Reshape) | float, int | float, int | float, int | |
 |[Resize](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Resize) | float | float | float | The `cubic_coeff_a`, `exclude_outside`, `extrapolation_value` and `roi`  parameters aren't supported. |
@@ -142,27 +142,32 @@ The table below shows which ONNX operators Sentis supports, and which data types
 |[Where](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Where) | float, int | float, int | float, int | |
 |[Xor](https://github.com/onnx/onnx/blob/main/docs/Operators.md#Xor) | int | int | int | |
 
+\* Sentis uses [DirectML](https://learn.microsoft.com/en-us/windows/ai/directml/dml) to accelerate these operators on supported hardware.
+
 ### Sentis-only layers
 
 Sentis might create the following layers when it [optimizes the model](models-concept.md).
 
 |Name|Supported data types with [`BackendType.CPU`](xref:Unity.Sentis.BackendType.CPU)|Supported data types with [`BackendType.GPUCompute`](xref:Unity.Sentis.BackendType.GPUCompute)|Supported data types with [`BackendType.GPUPixel`](xref:Unity.Sentis.BackendType.GPUPixel)|
 |-|-|-|-|
-|Dense | float | float | float |
+|Dense | float | float* | float |
 |DequantizeUint8 | byte | byte | byte |
 |Gelu | float | float | float |
 |GeluFast | float | float | float |
-|MatMul2D | float | float | float |
+|MatMul2D | float | float* | float |
 |MoveDim | float, int | float, int | float, int |
 |Narrow | float, int | float, int | float, int |
 |RandomChoice | float, int | float, int | float, int |
 |Relu6 | float | float | float |
+|RMSNormalization | float | float | float |
 |ScalarMad | float, int | float, int | float, int |
 |Select | float, int | float, int | float, int |
 |SliceSet | float, int | float, int | float, int |
 |Square | float, int | float, int | float, int |
 |Swish | float | float | float |
 |ScaleBias | float | float | float |
+
+\* Sentis uses [DirectML](https://learn.microsoft.com/en-us/windows/ai/directml/dml) to accelerate these operators on supported hardware.
 
 ## Unsupported operators
 

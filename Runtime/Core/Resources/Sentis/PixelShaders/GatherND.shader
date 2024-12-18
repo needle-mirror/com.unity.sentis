@@ -14,24 +14,27 @@ Shader "Hidden/Sentis/GatherND"
             #pragma vertex vert
             #pragma fragment frag
 
+            uint StridesB[8]; // Leave this declaration precisely here, this avoids triggered a bug on xbox series, see below.
+
             #include "CommonVertexShader.cginc"
             #include "CommonPixelShader.cginc"
 
             DECLARE_TENSOR(X, float);
             DECLARE_TENSOR(B, int);
-            DECLARE_TENSOR_BLOCK_STRIDE(X)
-            DECLARE_TENSOR_BLOCK_STRIDE(B)
+            DECLARE_TENSOR_BLOCK_STRIDE(X, float)
+            DECLARE_TENSOR_BLOCK_STRIDE(B, int)
             DECLARE_TENSOR_BLOCK_STRIDE_O;
 
+            //uint StridesB[8] placing this here still trigger the issue described above
             uint ShapeO[8];
             uint ShapeX[8];
             uint ShapeB[8];
             uint StridesO[8];
             uint StridesX[8];
-            uint StridesB[8];
+            //uint StridesB[8] placing this here still trigger the issue described above
             uint RankX, RankO, RankB;
 
-            uint iStart, iEndIndices, iEndX, iEndMin, iStartB, iEndB;
+            uint iStart, iEndIndices, iEndX, iStartB, iEndB;
 
             float4 frag(v2f j, UNITY_VPOS_TYPE screenPos : VPOS) : SV_Target
             {
@@ -40,24 +43,18 @@ Shader "Hidden/Sentis/GatherND"
                 uint4 itX = 0;
                 uint i;
 
-                // iterate up to point where i < iEndIndices and i < iEndX
-                for (i = iStart; i < iEndMin; i++)
+                // iterate up to point where i == iEndX
+                for (i = iStart; i < iEndX; i++)
                 {
                     uint4 itO = (indexO4 / StridesO[i]) % ShapeO[i];
                     itIndices += itO * StridesB[(RankO - RankB) + i];
                     itX += itO * StridesX[(RankO - RankX) + i];
                 }
 
-                // finish indices if iEndIndices > iEndX
-                for (i = iEndMin; i < iEndIndices; i++)
+                // finish indices
+                for (i = iEndX; i < iEndIndices; i++)
                 {
                     itIndices += ((indexO4 / StridesO[i]) % ShapeO[i]) * StridesB[(RankO - RankB) + i];
-                }
-
-                // finish X if iEndX > iEndIndices
-                for (i = iEndMin; i < iEndX; i++)
-                {
-                    itX += ((indexO4 / StridesO[i]) % ShapeO[i]) * StridesX[(RankO - RankX) + i];
                 }
 
                 itIndices -= iStartB;

@@ -1,3 +1,12 @@
+# What's new in Sentis 2.1.2
+
+### Added
+- Support for accelerated inference using [DirectML](https://learn.microsoft.com/en-us/windows/ai/directml/dml) in future Unity versions
+- Support for RMSNormalization subgraph optimization
+
+### Fixed
+- Improved stability, performance and memory usage in the Unity Editor and Runtime
+
 # What's new in Sentis 2.1.1
 
 This is a summary of the changes from Sentis 2.1.0 to 2.1.1.

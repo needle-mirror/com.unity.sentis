@@ -1,4 +1,7 @@
+using System.Runtime.CompilerServices;
 using UnityEngine.Assertions;
+
+[assembly: InternalsVisibleTo("Unity.Sentis.Tests")]
 
 namespace Unity.Sentis
 {

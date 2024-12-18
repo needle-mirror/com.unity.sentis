@@ -1668,6 +1668,32 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
+        public void RMSNormalization(Tensor<float> X, Tensor<float> S, Tensor<float> O, float epsilon)
+        {
+            var axis = X.shape.Axis(-1);
+            var reducedShape = X.shape.Reduce(axis);
+            var K = AllocTensor(reducedShape, DataType.Float);
+
+            Reduce(X, K, axis, "ReduceMeanSquare");
+
+            var pinX = PinBlockAny(X);
+            var pinK = PinAsSame(K, pinX);
+            var pinS = TextureTensorData.Pin(S, -1);
+            var pinO = PinAsSame(O, pinX);
+            var func = new PixelFunc("Hidden/Sentis/RMSNormalizationTail");
+
+            func.SetTensor(k_TensorPropertiesX, pinX);
+            func.SetTensor(k_TensorPropertiesS, pinS);
+            func.SetTensor(k_TensorPropertiesK, pinK);
+            func.SetInt(k_ID_reduceLength, pinO.shape[-1]);
+            func.SetFloat(k_ID_epsilon, epsilon);
+
+            func.Dispatch(pinO);
+
+            ReleaseTensor(K);
+        }
+
+        /// <inheritdoc/>
         public void ReduceMin(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             Reduce(X, O, axes, "ReduceMin");
@@ -1877,7 +1903,6 @@ namespace Unity.Sentis
             func.SetInt(k_ID_iStart, TensorShape.maxRank - pinO.shape.rank);
             func.SetInt(k_ID_iEndIndices, TensorShape.maxRank - pinO.shape.rank + pinB.shape.rank - 1);
             func.SetInt(k_ID_iEndX, TensorShape.maxRank - pinO.shape.rank + batchDims);
-            func.SetInt(k_ID_iEndMin, TensorShape.maxRank - pinO.shape.rank + Math.Min(batchDims, pinB.shape.rank - 1));
             func.SetInt(k_ID_iStartB, TensorShape.maxRank - pinX.shape.rank + batchDims);
             func.SetInt(k_ID_iEndB, TensorShape.maxRank - pinX.shape.rank + batchDims + pinB.shape[-1]);
             func.SetShapeStrides(k_TensorPropertiesX, pinX.shape);

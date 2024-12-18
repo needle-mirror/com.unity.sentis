@@ -26,12 +26,9 @@ namespace Unity.Sentis
         {
             var modelDescriptionBytes = modelAsset.modelAssetData.value;
             var modelWeightsBytes = new byte[modelAsset.modelWeightsChunks.Length][];
-            for (int i = 0; i < modelAsset.modelWeightsChunks.Length; i++)
+            for (var i = 0; i < modelAsset.modelWeightsChunks.Length; i++)
                 modelWeightsBytes[i] = modelAsset.modelWeightsChunks[i].value;
-            Model model = new Model();
-            LoadModelDescription(modelDescriptionBytes, ref model);
-            LoadModelWeights(modelWeightsBytes, ref model);
-            return model;
+            return LoadModel(modelDescriptionBytes, modelWeightsBytes);
         }
 
         /// <summary>
@@ -62,19 +59,18 @@ namespace Unity.Sentis
                 var modelDescriptionBytes = new byte[modelDescriptionSize + sizeof(int)];
                 System.Buffer.BlockCopy(prefixSizeBytes, 0, modelDescriptionBytes, 0, sizeof(int));
                 stream.Read(modelDescriptionBytes, sizeof(int), modelDescriptionSize);
-                var numModelWeightsChunks = LoadModelDescription(modelDescriptionBytes, ref model);
+                var weightBuffersConstantsOffsets = LoadModelDescription(modelDescriptionBytes, ref model);
 
-                var modelWeightsBytes = new byte[numModelWeightsChunks][];
-                for (int i = 0; i < numModelWeightsChunks; i++)
+                for (var i = 0; i < weightBuffersConstantsOffsets.Length; i++)
                 {
                     stream.Read(prefixSizeBytes);
                     var modelWeightsChunkSize = BitConverter.ToInt32(prefixSizeBytes);
-                    modelWeightsBytes[i] = new byte[modelWeightsChunkSize + sizeof(int)];
-                    System.Buffer.BlockCopy(prefixSizeBytes, 0, modelWeightsBytes[i], 0, sizeof(int));
-                    stream.Read(modelWeightsBytes[i], sizeof(int), modelWeightsChunkSize);
+                    var modelWeightsBufferBytes = new byte[modelWeightsChunkSize + sizeof(int)];
+                    System.Buffer.BlockCopy(prefixSizeBytes, 0, modelWeightsBufferBytes, 0, sizeof(int));
+                    stream.Read(modelWeightsBufferBytes, sizeof(int), modelWeightsChunkSize);
+                    LoadModelWeights(modelWeightsBufferBytes, weightBuffersConstantsOffsets[i], ref model);
                 }
 
-                LoadModelWeights(modelWeightsBytes, ref model);
                 return model;
             }
             catch (Exception e)
@@ -112,10 +108,30 @@ namespace Unity.Sentis
             return output;
         }
 
-        internal static int LoadModelDescription(byte[] modelDescription, ref Model model)
+        internal static Model LoadModelDescription(byte[] modelDescription)
+        {
+            var model = new Model();
+            LoadModelDescription(modelDescription, ref model);
+            return model;
+        }
+
+        internal static Model LoadModel(byte[] modelDescription, byte[][] modelWeights)
+        {
+            var model = new Model();
+            var weightsConstantIndexesOffsets = LoadModelDescription(modelDescription, ref model);
+            for (var i = 0; i < weightsConstantIndexesOffsets.Length; i++)
+                LoadModelWeights(modelWeights[i], weightsConstantIndexesOffsets[i], ref model);
+            return model;
+        }
+
+        static List<(int, int)>[] LoadModelDescription(byte[] modelDescription, ref Model model)
         {
             var bb = new ByteBuffer(modelDescription, sizeof(int));
             var program = Program.GetRootAsProgram(bb);
+            var numWeightsBuffers = program.SegmentsLength;
+            var weightBuffersConstantsOffsets = new List<(int, int)>[numWeightsBuffers];
+            for (var i = 0; i < numWeightsBuffers; i++)
+                weightBuffersConstantsOffsets[i] = new List<(int, int)>();
 
             try
             {
@@ -171,6 +187,9 @@ namespace Unity.Sentis
                         var shape = new TensorShape(constantTensor.GetFixedSizesArray());
                         int lengthByte = constantTensor.LengthByte;
                         model.AddConstant(new Constant(input, shape, (DataType)constantTensor.ScalarType, lengthByte));
+                        var idx = (int)(constantTensor.ConstantBufferIdx - 1);
+                        var offset = constantTensor.StorageOffset;
+                        weightBuffersConstantsOffsets[idx].Add((model.constants.Count - 1, offset));
                         constants.Add(input);
                     }
 
@@ -727,6 +746,13 @@ namespace Unity.Sentis
                         var epsilon = executionPlan.Values(kernel.Args(0)).Value.ValAsFloat().FloatVal;
                         model.AddLayer(new LayerNormalization(index, input, scale, bias, epsilon));
                     }
+                    else if (kernelName == "RMSNormalization")
+                    {
+                        var input = chain.RequiredInput(0);
+                        var scale = chain.RequiredInput(1);
+                        var epsilon = executionPlan.Values(kernel.Args(0)).Value.ValAsFloat().FloatVal;
+                        model.AddLayer(new RMSNormalization(index, input, scale, epsilon));
+                    }
                     else if (kernelName == "BatchNormalization")
                     {
                         var input = chain.RequiredInput(0);
@@ -1192,44 +1218,30 @@ namespace Unity.Sentis
                     else
                         throw new NotImplementedException(kernelName);
                 }
-
-                return program.SegmentsLength;
             }
             catch (Exception e)
             {
                 D.LogError($"Failed to load serialized model description. ({e.Message})");
                 throw;
             }
+
+            return weightBuffersConstantsOffsets;
         }
 
-        internal static void LoadModelWeights(byte[][] modelWeightsBytes, ref Model model)
+        static void LoadModelWeights(byte[] modelWeightsBufferBytes, List<(int, int)> constantIndexesOffsets, ref Model model)
         {
             try
             {
-                var buffers = new byte[modelWeightsBytes.Length][];
-                for (int i = 0; i < modelWeightsBytes.Length; i++)
+                var bb = new ByteBuffer(modelWeightsBufferBytes, sizeof(int));
+                var weightBuffer = SentisFlatBuffer.Buffer.GetRootAsBuffer(bb);
+                var data = weightBuffer.GetStorageArray();
+                foreach (var (constantIdx, offset) in constantIndexesOffsets)
                 {
-                    var bb = new ByteBuffer(modelWeightsBytes[i], sizeof(int));
-                    var weightBuffer = SentisFlatBuffer.Buffer.GetRootAsBuffer(bb);
-                    buffers[i] = weightBuffer.GetStorageArray();
-                }
-
-                long constantBufferOffset = 0;
-                int segmentIndex = 0;
-                for (int i = 0; i < model.constants.Count; i++)
-                {
-                    var constant = model.constants[i];
-                    int constantByteSize = constant.lengthBytes;
-
-                    if (constantBufferOffset + constantByteSize > buffers[segmentIndex].Length)
-                    {
-                        segmentIndex++;
-                        constantBufferOffset = 0;
-                    }
-                    var elementCount = constantByteSize / NativeTensorArray.k_DataItemSize;
-                    var array = new NativeTensorArrayFromManagedArray(buffers[segmentIndex], (int)constantBufferOffset, elementCount);
-                    model.constants[i] = new Constant(constant.index, constant.shape, constant.dataType, array);
-                    constantBufferOffset += constantByteSize;
+                    var constant = model.constants[constantIdx];
+                    if (constant.lengthBytes == 0)
+                        continue;
+                    var elementCount = constant.lengthBytes / NativeTensorArray.k_DataItemSize;
+                    constant.weights = new NativeTensorArrayFromManagedArray(data, offset, elementCount);
                 }
             }
             catch (InvalidOperationException)

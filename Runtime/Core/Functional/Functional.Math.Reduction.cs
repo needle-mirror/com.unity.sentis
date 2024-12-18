@@ -214,7 +214,7 @@ namespace Unity.Sentis
         }
 
         /// <summary>
-        /// Returns the sum of the square of the elements of the input tensor along the dimensions.
+        /// Returns the sum of the square of the elements of the input tensor along the dimension.
         /// </summary>
         /// <param name="input">The input tensor.</param>
         /// <param name="dim">The dimension to reduce.</param>

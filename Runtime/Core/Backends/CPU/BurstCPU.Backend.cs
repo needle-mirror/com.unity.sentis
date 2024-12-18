@@ -355,7 +355,7 @@ namespace Unity.Sentis
                 job.scaleHeight = (int)scales[0];
                 job.scaleWidth = (int)scales[1];
 
-                job.ScheduleBatchXO(pinX, pinO, xShape.length, 1024);
+                job.ScheduleBatchXO(pinX, pinO, xShape.length, 32);
 
                 return;
             }
@@ -397,7 +397,7 @@ namespace Unity.Sentis
                 }
 
                 initTablesJob.ScheduleO(tables);
-                resizeJob.ScheduleBatchXBO(pinX, tables, pinO, O.shape.length, 1024);
+                resizeJob.ScheduleBatchXBO(pinX, tables, pinO, O.shape.length, 32);
             }
             else
             {
@@ -433,7 +433,7 @@ namespace Unity.Sentis
                 }
 
                 initTablesJob.ScheduleO(tables);
-                resizeJob.ScheduleBatchXBO(pinX, tables, pinO, O.shape.length, 1024);
+                resizeJob.ScheduleBatchXBO(pinX, tables, pinO, O.shape.length, 32);
             }
 
             unsafe
@@ -469,7 +469,7 @@ namespace Unity.Sentis
                         outBatch = n, outChannels = c,
                         outSpatialSize = oSpatialDim
                     };
-                    job.ScheduleBatchXBO(Pin(X), Pin(grid), Pin(O), O.shape.length, 1024);
+                    job.ScheduleBatchXBO(Pin(X), Pin(grid), Pin(O), O.shape.length, 32);
                     break;
                 }
                 case 3:
@@ -486,7 +486,7 @@ namespace Unity.Sentis
                         outBatch = n, outChannels = c,
                         outSpatialSize = oSpatialDim
                     };
-                    job.ScheduleBatchXBO(Pin(X), Pin(grid), Pin(O), O.shape.length, 1024);
+                    job.ScheduleBatchXBO(Pin(X), Pin(grid), Pin(O), O.shape.length, 32);
                     break;
                 }
                 default:
@@ -521,7 +521,7 @@ namespace Unity.Sentis
 
             var job = new TransposeJob();
             job.iteratorX.Prepare(reshape, permutations);
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -531,7 +531,7 @@ namespace Unity.Sentis
 
             var job = new TransposeJob();
             job.iteratorX.Prepare(reshape, permutationsSpaceToDepth);
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -570,7 +570,7 @@ namespace Unity.Sentis
                 job.padHeight = 0;
                 job.padWidth = pads[0];
             }
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -609,7 +609,7 @@ namespace Unity.Sentis
                 job.padHeight = 0;
                 job.padWidth = pads[0];
             }
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -618,7 +618,7 @@ namespace Unity.Sentis
             var job = new ReduceMaxFloatJob();
             job.innerLength = 1;
             job.reduceLength = X.shape.Strides(1);
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -629,7 +629,7 @@ namespace Unity.Sentis
             var job = new ReduceMeanFloatJob();
             job.innerLength = 1;
             job.reduceLength = strideX;
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <summary>
@@ -646,7 +646,7 @@ namespace Unity.Sentis
             var job = new GlobalAverageVariancePoolJob();
             job.spatialDims = X.shape.Length(axis);
 
-            job.ScheduleXO(Pin(X), Pin(O), O.shape.length / 2, 1024);
+            job.ScheduleXO(Pin(X), Pin(O), O.shape.length / 2, 32);
         }
 
         /// <inheritdoc/>
@@ -668,7 +668,7 @@ namespace Unity.Sentis
             job.spatialDims = X.shape.length / (X.shape[0] * X.shape[1]);
             job.epsilon = epsilon;
 
-            job.ScheduleXSBWO(pinX, pinS, pinB, Pin(meanVariance), pinO, O.shape.length, 1024);
+            job.ScheduleXSBWO(pinX, pinS, pinB, Pin(meanVariance), pinO, O.shape.length, 32);
             ReleaseTensorFloat(meanVariance);
         }
 
@@ -691,8 +691,30 @@ namespace Unity.Sentis
             job.outerLength = outerLength;
             job.epsilon = epsilon;
 
-            job.ScheduleXSBWO(Pin(X), Pin(S), Pin(B), Pin(meanVariance), Pin(O), outerLength, 1024);
+            job.ScheduleXSBWO(Pin(X), Pin(S), Pin(B), Pin(meanVariance), Pin(O), outerLength, 32);
             ReleaseTensorFloat(meanVariance);
+        }
+
+        /// <inheritdoc/>
+        public void RMSNormalization(Tensor<float> X, Tensor<float> S, Tensor<float> O, float epsilon)
+        {
+            int axis = X.shape.Axis(-1);
+
+            var reducedShape = X.shape.Reduce(axis);
+            int axisDim = X.shape[axis];
+            int outerLength = X.shape.Length(0, -1);
+            Span<int> axes = stackalloc int[1];
+            axes[0] = -1;
+
+            var meanSquared = AllocTensorFloat(reducedShape);
+            ReduceMeanSquare(X, meanSquared, axes);
+
+            var jobTail = new RMSNormalizationTailJob();
+            jobTail.axisDim = axisDim;
+            jobTail.outerLength = outerLength;
+            jobTail.epsilon = epsilon;
+            jobTail.ScheduleXSBO(Pin(X), Pin(S), Pin(meanSquared), Pin(O), outerLength, 1024);
+            ReleaseTensorFloat(meanSquared);
         }
 
         /// <inheritdoc/>
@@ -702,7 +724,7 @@ namespace Unity.Sentis
             job.channels = X.shape[1];
             job.spatialLength = X.shape.Length(2);
 
-            job.ScheduleBatchXSBO(Pin(X), Pin(S), Pin(B), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXSBO(Pin(X), Pin(S), Pin(B), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -738,7 +760,7 @@ namespace Unity.Sentis
         {
             var job = new CastFloatToIntJob();
             job.length = O.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -746,14 +768,14 @@ namespace Unity.Sentis
         {
             var job = new CastIntToFloatJob();
             job.length = O.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
         public void Cast(Tensor<short> X, Tensor<float> O)
         {
             var job = new CastHalfToFloatJob();
-            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -762,7 +784,7 @@ namespace Unity.Sentis
             var job = new DequantizeUint8Job();
             job.scale = scale;
             job.zeroPoint = zeroPoint;
-            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -771,7 +793,7 @@ namespace Unity.Sentis
             var job = new IsInfJob();
             job.detectNegative = detectNegative;
             job.detectPositive = detectPositive;
-            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -779,7 +801,7 @@ namespace Unity.Sentis
         {
             var job = new PReluJob();
             var outputLength = job.broadcast.Prepare(X.shape, S.shape);
-            job.ScheduleBatchXBO(Pin(X), Pin(S), Pin(O), outputLength, 1024);
+            job.ScheduleBatchXBO(Pin(X), Pin(S), Pin(O), outputLength, 32);
         }
 
         /// <inheritdoc/>
@@ -790,7 +812,7 @@ namespace Unity.Sentis
             job.alpha = 0.5f * (1f + alpha);
             job.beta = 0.5f * (1f - alpha);
             job.length = O.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -800,7 +822,7 @@ namespace Unity.Sentis
             job.alpha = alpha;
             job.beta = beta;
             job.length = O.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -809,7 +831,7 @@ namespace Unity.Sentis
             var job = new EluJob();
             job.alpha = alpha;
             job.length = O.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -817,7 +839,7 @@ namespace Unity.Sentis
         {
             var job = new GeluJob();
             job.length = O.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -825,7 +847,7 @@ namespace Unity.Sentis
         {
             var job = new GeluFastJob();
             job.length = O.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -835,7 +857,7 @@ namespace Unity.Sentis
             job.alpha = alpha;
             job.gamma = gamma;
             job.length = O.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -845,7 +867,7 @@ namespace Unity.Sentis
             job.alpha = min;
             job.beta = max;
             job.length = O.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -855,7 +877,7 @@ namespace Unity.Sentis
             job.alphai = min;
             job.betai = max;
             job.length = O.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -864,7 +886,7 @@ namespace Unity.Sentis
             var job = new CeluJob();
             job.alpha = alpha;
             job.length = O.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -874,7 +896,7 @@ namespace Unity.Sentis
             job.alpha = bias;
             job.beta = lambd;
             job.length = O.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -883,7 +905,7 @@ namespace Unity.Sentis
             var job = new ThresholdedReluJob();
             job.alpha = alpha;
             job.length = O.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -906,7 +928,7 @@ namespace Unity.Sentis
                     job.sumRank = sumShape.rank;
                     job.outRank = O.shape.rank;
 
-                    job.ScheduleXO(Pin(inputTensors[0]), Pin(O), O.shape.length, 1024);
+                    job.ScheduleXO(Pin(inputTensors[0]), Pin(O), O.shape.length, 32);
                     return;
                 }
                 case 2:
@@ -925,7 +947,7 @@ namespace Unity.Sentis
                     job.sumRank = sumShape.rank;
                     job.outRank = O.shape.rank;
 
-                    job.ScheduleXBO(Pin(inputTensors[0]), Pin(inputTensors[1]), Pin(O), O.shape.length, 1024);
+                    job.ScheduleXBO(Pin(inputTensors[0]), Pin(inputTensors[1]), Pin(O), O.shape.length, 32);
                     return;
                 }
             }
@@ -967,7 +989,7 @@ namespace Unity.Sentis
                 iouThreshold = iouThreshold,
                 centerPointBox = centerPointBox
             };
-            jobBitMask.ScheduleBatchXO(Pin(boxes), Pin(bitmask), numBatches * numBoxes * numBoxes, 1024);
+            jobBitMask.ScheduleBatchXO(Pin(boxes), Pin(bitmask), numBatches * numBoxes * numBoxes, 32);
 
             var jobSortSelect = new NMSSortSelectJob
             {
@@ -976,7 +998,7 @@ namespace Unity.Sentis
                 maxOutputBoxesPerClass = maxOutputBoxesPerClass,
                 scoreThreshold = scoreThreshold
             };
-            jobSortSelect.ScheduleXSBO(Pin(bitmask), Pin(scores), Pin(orderAll), Pin(selected), numBatches * numClasses, 1024);
+            jobSortSelect.ScheduleXSBO(Pin(bitmask), Pin(scores), Pin(orderAll), Pin(selected), numBatches * numClasses, 32);
 
             // compaction
             int numOutput = 0;
@@ -1018,7 +1040,7 @@ namespace Unity.Sentis
             var job = new SliceJob();
             job.sliceParams.Prepare(X.shape, O.shape, starts, axes, steps);
 
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1027,7 +1049,7 @@ namespace Unity.Sentis
             MemCopy(X, O);
             var job = new SliceSetJob();
             job.sliceParams.Prepare(O.shape, values.shape, starts, axes, steps);
-            job.ScheduleBatchXO(Pin(values), Pin(O), values.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(values), Pin(O), values.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1036,7 +1058,7 @@ namespace Unity.Sentis
             var job = new SliceJob();
             job.sliceParams.Prepare(X.shape, O.shape, stackalloc int[] { start }, stackalloc int[] { axis }, stackalloc int[] { 1 });
 
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1046,7 +1068,7 @@ namespace Unity.Sentis
             job.padMode = padMode;
             job.constant = math.asint(constant);
             job.padParams.Prepare(X.shape, pad, padMode);
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1056,7 +1078,7 @@ namespace Unity.Sentis
             job.padMode = padMode;
             job.constant = constant;
             job.padParams.Prepare(X.shape, pad, padMode);
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1064,7 +1086,7 @@ namespace Unity.Sentis
         {
             var job = new TransposeJob();
             job.iteratorX.Prepare(X.shape, Array.Empty<int>());
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1072,7 +1094,7 @@ namespace Unity.Sentis
         {
             var job = new TransposeJob();
             job.iteratorX.Prepare(X.shape, permutations);
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1080,7 +1102,7 @@ namespace Unity.Sentis
         {
             var job = new PowFloatIntJob();
             var outputLength = job.broadcast.Prepare(A.shape, B.shape);
-            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 1024);
+            job.ScheduleBatchXBO(Pin(A), Pin(B), Pin(O), outputLength, 32);
         }
 
         /// <inheritdoc/>
@@ -1096,7 +1118,7 @@ namespace Unity.Sentis
             }
             job.rank = O.shape.rank;
 
-            job.ScheduleXSBO(Pin(C), Pin(A), Pin(B), Pin(O), O.shape.length, 1024);
+            job.ScheduleXSBO(Pin(C), Pin(A), Pin(B), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1110,7 +1132,7 @@ namespace Unity.Sentis
             }
             job.rank = O.shape.rank;
 
-            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1126,7 +1148,7 @@ namespace Unity.Sentis
         {
             var job = new SetJob();
             job.memValue = math.asint(value);
-            job.ScheduleO(Pin(O), O.shape.length, 1024);
+            job.ScheduleO(Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1134,7 +1156,7 @@ namespace Unity.Sentis
         {
             var job = new SetJob();
             job.memValue = value;
-            job.ScheduleO(Pin(O), O.shape.length, 1024);
+            job.ScheduleO(Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1147,7 +1169,7 @@ namespace Unity.Sentis
                 OpsUtils.PinTensorShapeStrides(X.shape, job.shapeX, job.stridesX);
             }
             job.rank = O.shape.rank;
-            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1158,7 +1180,7 @@ namespace Unity.Sentis
             job.indicesLength = numIndices;
             job.axisDim = X.shape[axis];
 
-            job.ScheduleBatchXBO(Pin(X), Pin(indices), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXBO(Pin(X), Pin(indices), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1168,7 +1190,7 @@ namespace Unity.Sentis
             job.innerLength = X.shape.Strides(axis);
             job.indicesLength = indices.shape.length;
             job.axisDim = X.shape[axis];
-            job.ScheduleBatchXBO(Pin(X), Pin(indices), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXBO(Pin(X), Pin(indices), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1186,7 +1208,7 @@ namespace Unity.Sentis
                 job.inputAxisElementStride = X.shape.Strides(axis);
                 job.indicesAxisMinusOneElementStride = indices.shape[axis] * indices.shape.Strides(axis);
 
-                job.ScheduleXBO(Pin(X), Pin(indices), Pin(O), indices.shape.length, 1024);
+                job.ScheduleXBO(Pin(X), Pin(indices), Pin(O), indices.shape.length, 32);
             }
             else
             {
@@ -1201,7 +1223,7 @@ namespace Unity.Sentis
                 job.posAxis = axis;
                 job.rank = X.shape.rank;
 
-                job.ScheduleXBO(Pin(X), Pin(indices), Pin(O), indices.shape.length, 1024);
+                job.ScheduleXBO(Pin(X), Pin(indices), Pin(O), indices.shape.length, 32);
             }
 
         }
@@ -1223,7 +1245,7 @@ namespace Unity.Sentis
                 OpsUtils.PinTensorShapeStrides(indices.shape, job.shapeIndices, job.stridesIndices);
             }
 
-            job.ScheduleXBO(Pin(X), Pin(indices), Pin(O), O.shape.length, 1024);
+            job.ScheduleXBO(Pin(X), Pin(indices), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1252,8 +1274,9 @@ namespace Unity.Sentis
                 // indices. To avoid race conditions updating the output tensor, force these reduction modes to run
                 // on a single worker by setting the inner loop length to int.MaxValue.
 
+                // TODO: please refactor this to a single worker job instead of relying on this hack?
                 job.ScheduleXBO(Pin(updates), Pin(indices), Pin(O), indices.shape.length,
-                    (reduction == Layers.ScatterReductionMode.None) ? 1024 : int.MaxValue);
+                    (reduction == Layers.ScatterReductionMode.None) ? 32 : int.MaxValue);
             }
             else
             {
@@ -1269,9 +1292,9 @@ namespace Unity.Sentis
                 job.posAxis = axis;
                 job.rank = X.shape.rank;
 
-
+                // TODO: please refactor this to a single worker job instead of relying on this hack?
                 job.ScheduleXBO(Pin(updates), Pin(indices), Pin(O), indices.shape.length,
-                    (reduction == Layers.ScatterReductionMode.None) ? 1024 : int.MaxValue);
+                    (reduction == Layers.ScatterReductionMode.None) ? 32 : int.MaxValue);
             }
         }
 
@@ -1297,7 +1320,7 @@ namespace Unity.Sentis
                     trailing *= X.shape[j];
                 }
             }
-            job.ScheduleXSBO(Pin(X), Pin(indices), Pin(updates), Pin(O), updatesLength * indicesLength, 1024);
+            job.ScheduleXSBO(Pin(X), Pin(indices), Pin(updates), Pin(O), updatesLength * indicesLength, 32);
         }
 
         /// <inheritdoc/>
@@ -1322,7 +1345,7 @@ namespace Unity.Sentis
                     trailing *= X.shape[j];
                 }
             }
-            job.ScheduleXSBO(Pin(X), Pin(indices), Pin(updates), Pin(O), updatesLength * indicesLength, 1024);
+            job.ScheduleXSBO(Pin(X), Pin(indices), Pin(updates), Pin(O), updatesLength * indicesLength, 32);
         }
 
         /// <inheritdoc/>
@@ -1340,7 +1363,7 @@ namespace Unity.Sentis
             }
             job.rankO = O.shape.rank;
 
-            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1358,7 +1381,7 @@ namespace Unity.Sentis
             }
             job.rankO = O.shape.rank;
 
-            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1402,7 +1425,7 @@ namespace Unity.Sentis
             job.samplingRatio = samplingRatio;
             job.spatialScale = spatialScale;
             job.mode = mode;
-            job.ScheduleBatchXSBO(Pin(X), Pin(rois), Pin(indices), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXSBO(Pin(X), Pin(rois), Pin(indices), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1412,7 +1435,7 @@ namespace Unity.Sentis
             job.seed = Random.GetSeed(seed);
             job.mean = mean;
             job.scale = scale;
-            job.ScheduleO(Pin(O), O.shape.length, 1024);
+            job.ScheduleO(Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1422,7 +1445,7 @@ namespace Unity.Sentis
             job.seed = Random.GetSeed(seed);
             job.low = low;
             job.high = high;
-            job.ScheduleO(Pin(O), O.shape.length, 1024);
+            job.ScheduleO(Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1431,7 +1454,7 @@ namespace Unity.Sentis
             var job = new BernoulliJob();
             job.seed = Random.GetSeed(seed);
             job.dataType = O.dataType;
-            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1442,7 +1465,7 @@ namespace Unity.Sentis
             job.count = O.shape[-1];
             job.innerLength = X.shape[-1];
             job.outerLength = batch;
-            job.ScheduleXBO(Pin(X), Pin(random), Pin(O), batch, 1024);
+            job.ScheduleXBO(Pin(X), Pin(random), Pin(O), batch, 32);
         }
 
         /// <inheritdoc/>
@@ -1483,7 +1506,7 @@ namespace Unity.Sentis
             job.strideX = strideX;
             job.strideO = strideO;
             job.length = length;
-            job.ScheduleXO(Pin(X), Pin(O), count, 1024);
+            job.ScheduleXO(Pin(X), Pin(O), count, 32);
         }
 
         /// <inheritdoc/>
@@ -1499,7 +1522,7 @@ namespace Unity.Sentis
             job.alpha = s;
             job.beta = b;
             job.length = O.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <inheritdoc/>
@@ -1509,7 +1532,7 @@ namespace Unity.Sentis
             job.alphai = s;
             job.betai = b;
             job.length = O.shape.length;
-            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 1024);
+            job.ScheduleBatchXO(Pin(X), Pin(O), O.shape.length, 32);
         }
 
         /// <summary>

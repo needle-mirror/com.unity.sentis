@@ -4,6 +4,34 @@
 
 #include "Tensor.cginc"
 
+int stridesIndices[8]; // Leave this declaration precisely here, this avoids triggered a bug on xbox series, see below.
+int shapeO[8];
+int stridesO[8];
+int shapeX[8];
+int stridesX[8];
+int shapeIndices[8];
+//int stridesIndices[8] moved up, leave this as is until we find descriptor/binding problem on xbox series.
+
+uint2 unrolledDispatchArgs;
+
+uint rankO;
+uint rankX;
+uint rankIndices;
+
+int depth;
+int onValue;
+int offValue;
+uint stridesToAxis;
+uint axisDim;
+
+// GatherND
+uint iStart;
+uint iEndIndices;
+uint iEndX;
+uint iStartB;
+uint iEndB;
+
+
 #ifdef INT
 StructuredBuffer<int> Xptr;
 RWStructuredBuffer<int> Optr;
@@ -14,22 +42,6 @@ RWStructuredBuffer<float> Optr;
 
 StructuredBuffer<int> Bptr;
 
-uint2 unrolledDispatchArgs;
-int shapeO[8];
-int stridesO[8];
-uint rankO;
-int shapeX[8];
-int stridesX[8];
-uint rankX;
-int shapeIndices[8];
-int stridesIndices[8];
-uint rankIndices;
-
-int depth;
-int onValue;
-int offValue;
-uint stridesToAxis;
-uint axisDim;
 
 [numthreads(64, 1, 1)]
 void OneHot(uint3 dispatchThreadID : SV_DispatchThreadID)
@@ -45,58 +57,53 @@ void OneHot(uint3 dispatchThreadID : SV_DispatchThreadID)
     Optr[threadIdx] = v;
 }
 
-uint iStart;
-uint iEndIndices;
-uint iEndX;
-uint iEndMin;
-uint iStartB;
-uint iEndB;
 
 [numthreads(64, 1, 1)]
 void GatherND(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     uint threadIdx = unrolledDispatchArgs.x * dispatchThreadID.y + dispatchThreadID.x;
-    if (threadIdx >= unrolledDispatchArgs.y)
-        return;
-    uint itIndices = 0;
-    uint itX = 0;
-    uint i;
-
-    // iterate up to point where i < iEndIndices and i < iEndX
-    for (i = iStart; i < iEndMin; i++)
+    if (threadIdx < unrolledDispatchArgs.y)
     {
-        uint itO = (threadIdx / stridesO[i]) % shapeO[i];
-        itIndices += itO * stridesIndices[(rankO - rankIndices) + i];
-        itX += itO * stridesX[(rankO - rankX) + i];
+        uint itIndices = 0;
+        uint itX = 0;
+        uint i;
+        uint itO;
+
+        int index;
+        uint strideX;
+
+        // iterate up to where i == iEndX
+        for (i = iStart; i < iEndX; i++)
+        {
+            itO = (threadIdx / stridesO[i]) % shapeO[i];
+            itIndices += itO * stridesIndices[(rankO - rankIndices) + i];
+            itX += itO * stridesX[(rankO - rankX) + i];
+        }
+
+        // finish indices
+        for (i = iEndX; i < iEndIndices; i++)
+        {
+            itIndices += ((threadIdx / stridesO[i]) % shapeO[i]) * stridesIndices[(rankO - rankIndices) + i];
+        }
+
+        itIndices -= iStartB;
+
+        for (i = iStartB; i < iEndB; i++)
+        {
+            strideX = stridesX[i];
+            index = Bptr[itIndices + i];
+            if (index < 0)
+                index = shapeX[i] + index;
+            itX += index * stridesX[i];
+        }
+
+        for (; i < 8; i++)
+        {
+            itX += ((threadIdx / stridesO[i]) % shapeO[i]) * stridesX[i];
+        }
+
+        Optr[threadIdx] = Xptr[itX];
     }
-
-    // finish indices if iEndIndices > iEndX
-    for (i = iEndMin; i < iEndIndices; i++)
-    {
-        itIndices += ((threadIdx / stridesO[i]) % shapeO[i]) * stridesIndices[(rankO - rankIndices) + i];
-    }
-
-    // finish X if iEndX > iEndIndices
-    for (i = iEndMin; i < iEndX; i++)
-    {
-        itX += ((threadIdx / stridesO[i]) % shapeO[i]) * stridesX[(rankO - rankX) + i];
-    }
-
-    itIndices -= iStartB;
-
-    for (i = iStartB; i < iEndB; i++)
-    {
-        int index = Bptr[itIndices + i];
-        index = index < 0 ? shapeX[i] + index : index;
-        itX += index * stridesX[i];
-    }
-
-    for (; i < SHAPE_MAXRANK; i++)
-    {
-        itX += ((threadIdx / stridesO[i]) % shapeO[i]) * stridesX[i];
-    }
-
-    Optr[threadIdx] = Xptr[itX];
 }
 
 int starts[8];

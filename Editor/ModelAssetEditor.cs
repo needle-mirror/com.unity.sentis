@@ -125,11 +125,7 @@ public class ModelAssetEditor : UnityEditor.Editor
         if (modelAsset.modelAssetData == null)
             return rootInspector;
 
-        if (m_Model == null)
-        {
-            m_Model = new Model();
-            ModelLoader.LoadModelDescription(modelAsset.modelAssetData.value, ref m_Model);
-        }
+        m_Model ??= ModelLoader.LoadModelDescription(modelAsset.modelAssetData.value);
 
         CreateSerializeButton(rootInspector, modelAsset, target.name);
         CreateInputListView(rootInspector);

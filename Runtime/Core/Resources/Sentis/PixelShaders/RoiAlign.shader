@@ -20,7 +20,7 @@ Shader "Hidden/Sentis/RoiAlign"
             #include "CommonPixelShader.cginc"
 
             DECLARE_TENSOR(B, int);
-            DECLARE_TENSOR_BLOCK_STRIDE(B);
+            DECLARE_TENSOR_BLOCK_STRIDE(B, int);
             DECLARE_TENSOR(X, float);
             DECLARE_TENSOR(S, float);
 

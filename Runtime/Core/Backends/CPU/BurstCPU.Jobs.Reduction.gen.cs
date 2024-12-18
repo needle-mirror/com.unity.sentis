@@ -1037,6 +1037,136 @@ partial class CPUBackend
         }
     }
     [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
+    internal unsafe struct ReduceMeanSquareFloatJob : IParallelForBatch, IJobResourceDeclarationXO
+    {
+        public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
+        public ReadWriteMemResource O { get; set; } float* Optr => (float*)O.ptr;
+        public int reduceLength;
+        public int innerLength;
+        public float normalization;
+
+        public void Execute(int i, int count)
+        {
+            float* Op = Optr + i;
+
+            Hint.Assume(reduceLength > 0);
+            Hint.Assume(innerLength > 0);
+
+            normalization = 1.0f / reduceLength;
+
+            if (innerLength == 1)
+            {
+                float* Xp = Xptr + i * reduceLength;
+
+                // Horizontal reduction: use auto-vectorization to reduce multiple parts of the input in
+                // parallel and then do a horizontal reduce of these parts to produce the output.
+                for (; count > 0; count--)
+                {
+                    float accVal = 0.0f;
+
+                    for (int j = 0; j < reduceLength; j++)
+                        accVal = Reduce(accVal, Xp[j]);
+
+                    Xp += reduceLength;
+                    *Op++ = Finalize(accVal);
+                }
+            }
+            else
+            {
+                int innerIndex = i % innerLength;
+                int outerIndex = i / innerLength;
+
+                int innerRemaining = innerLength - innerIndex;
+                int outerStride = reduceLength * innerLength;
+
+                float* Xp = Xptr + outerIndex * outerStride;
+
+                // Vertical reduction: use auto-vectorization to reduce multiple output elements in parallel.
+                while (count > 0)
+                {
+                    int spanCount = math.min(count, innerRemaining);
+                    count -= spanCount;
+
+                    float* Xpi = Xp + innerIndex;
+
+                    for (; spanCount >= 8; spanCount -= 8)
+                    {
+                        float accVal0 = 0.0f;
+                        float accVal1 = 0.0f;
+                        float accVal2 = 0.0f;
+                        float accVal3 = 0.0f;
+                        float accVal4 = 0.0f;
+                        float accVal5 = 0.0f;
+                        float accVal6 = 0.0f;
+                        float accVal7 = 0.0f;
+
+                        float* Xpr = Xpi;
+                        for (int j = 0; j < reduceLength; j++)
+                        {
+                            accVal0 = Reduce(accVal0, Xpr[0]);
+                            accVal1 = Reduce(accVal1, Xpr[1]);
+                            accVal2 = Reduce(accVal2, Xpr[2]);
+                            accVal3 = Reduce(accVal3, Xpr[3]);
+                            accVal4 = Reduce(accVal4, Xpr[4]);
+                            accVal5 = Reduce(accVal5, Xpr[5]);
+                            accVal6 = Reduce(accVal6, Xpr[6]);
+                            accVal7 = Reduce(accVal7, Xpr[7]);
+
+                            Xpr += innerLength;
+                        }
+
+                        Op[0] = Finalize(accVal0);
+                        Op[1] = Finalize(accVal1);
+                        Op[2] = Finalize(accVal2);
+                        Op[3] = Finalize(accVal3);
+                        Op[4] = Finalize(accVal4);
+                        Op[5] = Finalize(accVal5);
+                        Op[6] = Finalize(accVal6);
+                        Op[7] = Finalize(accVal7);
+
+                        Xpi += 8;
+                        Op += 8;
+                    }
+
+                    for (; spanCount > 0; spanCount--)
+                    {
+                        float accVal0 = 0.0f;
+
+                        float* Xpr = Xpi;
+                        for (int j = 0; j < reduceLength; j++)
+                        {
+                            accVal0 = Reduce(accVal0, Xpr[0]);
+
+                            Xpr += innerLength;
+                        }
+
+                        Op[0] = Finalize(accVal0);
+
+                        Xpi += 1;
+                        Op += 1;
+                    }
+
+                    // Output is now always aligned to the start of the inner dimension.
+                    innerIndex = 0;
+                    innerRemaining = innerLength;
+
+                    Xp += outerStride;
+                }
+            }
+        }
+
+        float Reduce(float accVal, float v)
+        {
+            v = v * v;
+            return accVal + v;
+        }
+
+        float Finalize(float accVal)
+        {
+            return accVal * normalization;
+        }
+    }
+    [BurstCompile(OptimizeFor = OptimizeFor.Performance, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Standard, CompileSynchronously = true)]
     internal unsafe struct ReduceMeanFloatJob : IParallelForBatch, IJobResourceDeclarationXO
     {
         public ReadOnlyMemResource X { get; set; } float* Xptr => (float*)X.ptr;
@@ -2500,7 +2630,7 @@ partial class CPUBackend
 
         static void Reduce(ref float accVal, ref int accValIndex, float v, int index)
         {
-                        // Compare if the reduced value has changed using an integer compare to avoid another
+            // Compare if the reduced value has changed using an integer compare to avoid another
             // floating point compare that may order differently with respect to NaNs or other
             // classes of floating point numbers. Integer compares are also typically less expensive
             // compare to floating point compares.
@@ -2618,7 +2748,7 @@ partial class CPUBackend
 
         static void Reduce(ref float accVal, ref int accValIndex, float v, int index)
         {
-                        // Compare if the reduced value has changed using an integer compare to avoid another
+            // Compare if the reduced value has changed using an integer compare to avoid another
             // floating point compare that may order differently with respect to NaNs or other
             // classes of floating point numbers. Integer compares are also typically less expensive
             // compare to floating point compares.
@@ -2736,7 +2866,7 @@ partial class CPUBackend
 
         static void Reduce(ref int accVal, ref int accValIndex, int v, int index)
         {
-                        // Compare if the reduced value has changed using an integer compare to avoid another
+            // Compare if the reduced value has changed using an integer compare to avoid another
             // floating point compare that may order differently with respect to NaNs or other
             // classes of floating point numbers. Integer compares are also typically less expensive
             // compare to floating point compares.
@@ -2854,7 +2984,7 @@ partial class CPUBackend
 
         static void Reduce(ref int accVal, ref int accValIndex, int v, int index)
         {
-                        // Compare if the reduced value has changed using an integer compare to avoid another
+            // Compare if the reduced value has changed using an integer compare to avoid another
             // floating point compare that may order differently with respect to NaNs or other
             // classes of floating point numbers. Integer compares are also typically less expensive
             // compare to floating point compares.
@@ -2972,7 +3102,7 @@ partial class CPUBackend
 
         static void Reduce(ref float accVal, ref int accValIndex, float v, int index)
         {
-                        if (v >= accVal)
+            if (v >= accVal)
             {
                 accVal = v;
                 accValIndex = index;
@@ -3087,7 +3217,7 @@ partial class CPUBackend
 
         static void Reduce(ref float accVal, ref int accValIndex, float v, int index)
         {
-                        if (v <= accVal)
+            if (v <= accVal)
             {
                 accVal = v;
                 accValIndex = index;
@@ -3202,7 +3332,7 @@ partial class CPUBackend
 
         static void Reduce(ref int accVal, ref int accValIndex, int v, int index)
         {
-                        if (v >= accVal)
+            if (v >= accVal)
             {
                 accVal = v;
                 accValIndex = index;
@@ -3317,7 +3447,7 @@ partial class CPUBackend
 
         static void Reduce(ref int accVal, ref int accValIndex, int v, int index)
         {
-                        if (v <= accVal)
+            if (v <= accVal)
             {
                 accVal = v;
                 accValIndex = index;

@@ -1442,6 +1442,66 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
+        internal void ReduceMeanSquare(Tensor<float> X, Tensor<float> O, int outerLength, int reduceLength, int innerLength)
+        {
+            if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
+            {
+                var fallbackKernel = ComputeFunctions.k_UnrolledReduceMeanSquareFloat;
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_ReducedDim, reduceLength);
+                cb.SetComputeIntParam(fallbackKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeFloatParam(fallbackKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
+
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(fallbackKernel, k_ID_Optr, Pin(O));
+                cb.UnrolledDispatch(fallbackKernel, outerLength * innerLength);
+                return;
+            }
+
+            int localReduceLength = reduceLength;
+            bool isFirstDispatch = true;
+
+            const int kernelReductionThreadCount = 64 * 4;
+
+            // downsample with pyramid approach
+            while (localReduceLength > kernelReductionThreadCount)
+            {
+                int spatialLengthO = ComputeHelper.IDivC(localReduceLength, kernelReductionThreadCount);
+
+                var Otemp = AllocTensorFloat(new TensorShape(outerLength * spatialLengthO * innerLength));
+
+                var localKernel = ComputeFunctions.k_ReduceMeanSquareFloat;
+                cb.SetTensorAsBuffer(localKernel, k_ID_Xptr, Pin(X));
+                cb.SetTensorAsBuffer(localKernel, k_ID_Optr, Pin(Otemp));
+                cb.SetComputeIntParam(localKernel.shader, k_ID_ReducedDim, localReduceLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_InnerDim, innerLength);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_SpatialDimsO, spatialLengthO);
+                cb.SetComputeIntParam(localKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+
+                cb.Dispatch(localKernel, outerLength, ComputeHelper.IDivC(localReduceLength, 4), innerLength);
+
+                if (!isFirstDispatch)
+                    ReleaseTensorFloat(X);
+
+                X = Otemp;
+                localReduceLength = spatialLengthO;
+                isFirstDispatch = false;
+            }
+
+            var globalKernel = ComputeFunctions.k_GlobalReduceMeanSquareFloat;
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Xptr, Pin(X));
+            cb.SetTensorAsBuffer(globalKernel, k_ID_Optr, Pin(O));
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_ReducedDim, localReduceLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_InnerDim, innerLength);
+            cb.SetComputeIntParam(globalKernel.shader, k_ID_IsFirstDispatch, isFirstDispatch ? 1 : 0);
+            cb.SetComputeFloatParam(globalKernel.shader, k_ID_Normalization, 1.0f / reduceLength);
+
+            cb.Dispatch(globalKernel, outerLength, 1, innerLength);
+
+            if (!isFirstDispatch)
+                ReleaseTensorFloat(X);
+        }
+
+        /// <inheritdoc/>
         internal void ReduceMean(Tensor<float> X, Tensor<float> O, int outerLength, int reduceLength, int innerLength)
         {
             if (innerLength > (int)ComputeHelper.SafeDispatchLimit || outerLength > (int)ComputeHelper.SafeDispatchLimit)
@@ -2411,7 +2471,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceMin(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
+        public virtual void ReduceMin(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -2472,7 +2532,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceMax(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
+        public virtual void ReduceMax(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -2533,7 +2593,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceSum(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
+        public virtual void ReduceSum(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -2594,7 +2654,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceSumSquare(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
+        public virtual void ReduceSumSquare(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -2676,7 +2736,89 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceMean(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
+        public void ReduceMeanSquare(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
+        {
+            if (axes == null || axes.Length == 0)
+            {
+                ReduceMeanSquare(X, O, 1, X.shape.length, 1);
+                return;
+            }
+
+            // Accumulate reduce axis until non contiguity
+            // X: (2 3 4 5 6), reduce 0,1,4
+            // reduce 0 + 1 will result in a fused reduce on axis 2*3
+            // 4 breaks contiguity, thus we perform the previous reduce and start procedure over
+
+            int axis = X.shape.Axis(axes[0]);
+            int innerLength = X.shape.Strides(axis);
+            int outerLength = X.shape.Length(0, axis);
+            int dimX = X.shape[axis];
+            int reduceLength = dimX;
+            TensorShape shapeXReduced = X.shape;
+            shapeXReduced[axis] = 1;
+            int prevAxis = axis;
+            bool isInitial = true;
+            bool isXTempAlloc = false;
+
+            for (int i = 1; i < axes.Length; i++)
+            {
+                axis = X.shape.Axis(axes[i]);
+                dimX = X.shape[axis];
+                Assert.AreNotEqual(0, X.shape[axis], "ValueError: zero-size array to reduction operation which has no identity.");
+
+                if ((axis == (prevAxis + 1)))
+                {
+                    innerLength /= dimX;
+                    reduceLength *= dimX;
+                }
+                else if (isInitial)
+                {
+                    var Otmp = AllocTensorFloat(shapeXReduced);
+
+                    ReduceMeanSquare(X, Otmp, outerLength, reduceLength, innerLength);
+
+                    if (isXTempAlloc)
+                        ReleaseTensorFloat(X);
+                    X = Otmp;
+                    innerLength = X.shape.Strides(axis);
+                    outerLength = X.shape.Length(0, axis);
+                    reduceLength = dimX;
+                    isInitial = false;
+                    isXTempAlloc = true;
+                }
+                else
+                {
+                    var Otmp = AllocTensorFloat(shapeXReduced);
+
+                    ReduceSum(X, Otmp, outerLength, reduceLength, innerLength);
+
+                    if (isXTempAlloc)
+                        ReleaseTensorFloat(X);
+                    X = Otmp;
+                    innerLength = X.shape.Strides(axis);
+                    outerLength = X.shape.Length(0, axis);
+                    reduceLength = dimX;
+                    isXTempAlloc = true;
+                }
+
+                shapeXReduced[axis] = 1;
+                prevAxis = axis;
+            }
+
+            if (isInitial)
+            {
+                ReduceMeanSquare(X, O, outerLength, reduceLength, innerLength);
+            }
+            else
+            {
+                ReduceSum(X, O, outerLength, reduceLength, innerLength);
+            }
+            if (isXTempAlloc)
+                ReleaseTensorFloat(X);
+        }
+
+        /// <inheritdoc/>
+        public virtual void ReduceMean(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -2737,7 +2879,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceProd(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
+        public virtual void ReduceProd(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -2798,7 +2940,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceL1(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
+        public virtual void ReduceL1(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -2880,7 +3022,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceL2(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
+        public virtual void ReduceL2(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -2962,7 +3104,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceLogSum(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
+        public virtual void ReduceLogSum(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -3023,7 +3165,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceLogSumExp(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
+        public virtual void ReduceLogSumExp(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -3093,7 +3235,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceSumExp(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
+        public virtual void ReduceSumExp(Tensor<float> X, Tensor<float> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -3154,7 +3296,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceMin(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
+        public virtual void ReduceMin(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -3215,7 +3357,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceMax(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
+        public virtual void ReduceMax(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -3276,7 +3418,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceSum(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
+        public virtual void ReduceSum(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -3337,7 +3479,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceSumSquare(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
+        public virtual void ReduceSumSquare(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -3419,7 +3561,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceProd(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
+        public virtual void ReduceProd(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
@@ -3480,7 +3622,7 @@ namespace Unity.Sentis
         }
 
         /// <inheritdoc/>
-        public void ReduceL1(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
+        public virtual void ReduceL1(Tensor<int> X, Tensor<int> O, ReadOnlySpan<int> axes)
         {
             if (axes == null || axes.Length == 0)
             {
