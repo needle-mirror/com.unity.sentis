@@ -1,3 +1,6 @@
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
 # Use output data
 
 After you [get the output from a model](get-the-output.md) as a tensor, you can post-process the data to use it in your project.

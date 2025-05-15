@@ -1,3 +1,6 @@
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
 # Manage memory
 
 As a Sentis user, you're responsible for calling [`Dispose`](xref:Unity.Sentis.Worker.Dispose) on workers and tensors you instantiate. You must also call `Dispose` on cloned output tensors returned from the [`ReadbackAndClone`](Unity.Sentis.Tensor.ReadbackAndClone*) method.

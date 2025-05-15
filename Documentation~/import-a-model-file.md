@@ -1,3 +1,6 @@
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
 # Import a model file
 
 To import an ONNX model file, drag the file from your computer into the `Assets` folder of the **Project** window.

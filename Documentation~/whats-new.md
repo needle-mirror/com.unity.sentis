@@ -1,3 +1,11 @@
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
+# What's new in Sentis 2.1.3
+
+### Added
+- Notice in docs announcing package rename to Inference Engine
+
 # What's new in Sentis 2.1.2
 
 ### Added

@@ -1,3 +1,6 @@
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
 # Encrypt a model
 
 Encrypt a model so that only a user with the correct key can read the model description and weights from disk. You can encrypt a Sentis model to disk using the [`ModelWriter`](xref:Unity.Sentis.ModelWriter) and [`ModelLoader`](xref:Unity.Sentis.ModelLoader) APIs.

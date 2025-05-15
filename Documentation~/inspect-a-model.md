@@ -1,4 +1,9 @@
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
 # Inspect a model
+
+You can inspect a runtime model in Unity to access its inputs, outputs, and layers. This helps you understand the model’s structure and integrate it into your application.
 
 ## Get model inputs
 

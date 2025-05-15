@@ -1,3 +1,6 @@
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
 # Split inference over multiple frames
 
 To run a model one layer at a time, use the [`ScheduleIterable`](xref:Unity.Sentis.Worker.ScheduleIterable) method of the worker. This method creates an `IEnumerator` object.

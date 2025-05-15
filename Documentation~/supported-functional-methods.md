@@ -1,3 +1,6 @@
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
 # Supported functional methods
 
 Sentis provides a set of operators and functional methods to work with tensors. This topic lists the supported operators and functional methods, and provides examples of their usage.

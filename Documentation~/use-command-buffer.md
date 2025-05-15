@@ -1,4 +1,7 @@
-## Use a command buffer
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
+# Use a command buffer
 
 You can use a [command buffer](https://docs.unity3d.com/ScriptReference/Rendering.CommandBuffer.html) to create a queue of Sentis commands, which can then be executed on the GPU at a later time.
 

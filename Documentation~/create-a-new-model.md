@@ -1,3 +1,6 @@
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
 # Create a new model
 
 You can create a new runtime model without an ONNX file using Sentis. For example if you want to do a series of tensor operations without weights, or if you want to build your own model serialization from another model format.

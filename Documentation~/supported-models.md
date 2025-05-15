@@ -1,3 +1,6 @@
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
 # Supported models
 
 You can import open-source models into your Sentis project. Explore the following sections to understand the models Sentis supports, and find an appropriate model for your project.

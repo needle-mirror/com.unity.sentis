@@ -1,3 +1,6 @@
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
 # Export and convert a file to ONNX
 
 Sentis currently only supports importing files in the Open Neural Network Exchange (ONNX) format, or the Sentis serialized format. If your model is not in one of these formats, you must convert it.

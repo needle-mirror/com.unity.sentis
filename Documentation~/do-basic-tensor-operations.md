@@ -1,4 +1,7 @@
-## Create and modify tensors
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
+# Create and modify tensors
 
 Tensor methods in Sentis are similar to methods found in frameworks like NumPy, TensorFlow, and PyTorch.
 

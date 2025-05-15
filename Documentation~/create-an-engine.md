@@ -1,3 +1,6 @@
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
 # Create an engine to run a model
 
 To run a model, you need to create a worker. A worker is the engine that breaks the model down into executable tasks and schedules the tasks to run on a backend, usually the GPU or CPU.

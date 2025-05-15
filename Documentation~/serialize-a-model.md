@@ -1,10 +1,13 @@
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
 # Serialize a Model
 
-For larger models, it is advisable to use a serialized asset, which typically comes with the file extension `.sentis`.
+For larger models, it's advisable to use a serialized asset, which typically comes with the file extension `.sentis`.
 
 ## Create a Serialized Asset
 
-Once you've imported the ONNX file into your asset folder, you can click on it. In the **Inspector** window, click  **Serialize to StreamingAssets**. This will create a serialized version of your model and save it in the **StreamingAssets** folder.
+Once you have imported the ONNX file into your asset folder, you can click on it. In the **Inspector** window, click  **Serialize to StreamingAssets**. This will create a serialized version of your model and save it in the **StreamingAssets** folder.
 
 ## Loading a Serialized Asset
 

@@ -1,3 +1,6 @@
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
 # How Sentis runs a model
 
 Sentis performs optimized tensor operations by scheduling the work across multiple threaded jobs on the central processing unit (CPU) or scheduling the task in parallel on the graphics processing unit (GPU) using pixel and compute shaders.

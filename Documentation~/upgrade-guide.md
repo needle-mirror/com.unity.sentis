@@ -1,4 +1,7 @@
-# Upgrade to Sentis 2.1.2
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
+# Upgrade to Sentis 2.1.3
 
 You do not need to take any actions to upgrade your project when upgrading from Sentis 2.0.0 or later. If you are upgrading from Sentis 1.6 or earlier please follow the instructions below.
 

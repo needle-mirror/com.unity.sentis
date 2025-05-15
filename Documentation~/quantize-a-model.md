@@ -1,3 +1,6 @@
+> [!NOTE]
+> Sentis is now called Inference Engine. The documentation has moved to `https://docs.unity3d.com/Packages/com.unity.ai.inference@latest`. Refer to the new location for the latest updates and guidance. Make sure to update your bookmarks and references accordingly.
+
 # Quantize a Model
 
 Sentis imports model constants and weights as 32-bit values. If you wish to reduce the storage space required by your model on disk and in memory, you may consider model quantization.
